@@ -3,6 +3,7 @@ package com.kipita.presentation.home
 import android.Manifest
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.speech.RecognizerIntent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,9 +29,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Mic
@@ -48,6 +52,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -57,6 +62,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -118,7 +125,8 @@ fun HomeScreen(
     paddingValues: PaddingValues,
     onOpenWallet: () -> Unit = {},
     onOpenMap: () -> Unit = {},
-    onOpenAI: (String) -> Unit = {}
+    onOpenAI: (String) -> Unit = {},
+    onOpenTranslate: () -> Unit = {}
 ) {
     var visible by remember { mutableStateOf(false) }
     var showPackingList by remember { mutableStateOf(false) }
@@ -252,7 +260,7 @@ fun HomeScreen(
                                     when (tool.label) {
                                         "Currency"     -> onOpenWallet()
                                         "Maps"         -> onOpenMap()
-                                        "Translate"    -> runCatching { uriHandler.openUri("https://translate.google.com") }
+                                        "Translate"    -> onOpenTranslate()
                                         "Packing List" -> showPackingList = true
                                         "Weather"      -> showWeather = true
                                     }
@@ -489,65 +497,148 @@ private fun QuickToolPill(tool: QuickTool, onClick: () -> Unit) {
 }
 
 // ---------------------------------------------------------------------------
-// Packing List Bottom Sheet
+// Packing List Bottom Sheet — with manual items, USPS mail link, Visa Tips
 // ---------------------------------------------------------------------------
 @Composable
 private fun PackingListSheet(onClose: () -> Unit) {
+    val context = LocalContext.current
     var checkedItems by remember { mutableStateOf(setOf<Int>()) }
+    val customItems = remember { mutableStateListOf<PackingItem>() }
+    var newItemText by remember { mutableStateOf("") }
+    var activeSection by remember { mutableStateOf(0) } // 0=Checklist 1=Visa Tips
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+    // Combined list: defaults + custom
+    val allItems = defaultPackingItems + customItems
+    var nextId by remember { mutableStateOf(100) }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(
-                    "Packing List 🧳",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = KipitaOnSurface
-                )
-                Text(
-                    "${checkedItems.size} / ${defaultPackingItems.size} items packed",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = KipitaTextSecondary,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-            Box(
+        // Header
+        item {
+            Row(
                 modifier = Modifier
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(KipitaCardBg)
-                    .clickable(onClick = onClose),
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(Icons.Default.Close, null, tint = KipitaTextSecondary, modifier = Modifier.size(18.dp))
+                Column {
+                    Text(
+                        "Packing List 🧳",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = KipitaOnSurface
+                    )
+                    Text(
+                        "${checkedItems.size} / ${allItems.size} items packed",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = KipitaTextSecondary,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(KipitaCardBg)
+                        .clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Default.Close, null, tint = KipitaTextSecondary, modifier = Modifier.size(18.dp))
+                }
             }
         }
 
         // Progress bar
-        LinearProgressIndicator(
-            progress = {
-                if (defaultPackingItems.isEmpty()) 0f
-                else checkedItems.size.toFloat() / defaultPackingItems.size
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(4.dp))
-                .padding(bottom = 14.dp),
-            color = KipitaRed,
-            trackColor = KipitaCardBg
-        )
+        item {
+            LinearProgressIndicator(
+                progress = {
+                    if (allItems.isEmpty()) 0f
+                    else checkedItems.size.toFloat() / allItems.size
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp))
+                    .padding(bottom = 10.dp),
+                color = KipitaRed,
+                trackColor = KipitaCardBg
+            )
+        }
 
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            defaultPackingItems.forEach { item ->
+        // Section toggle tabs
+        item {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(KipitaCardBg)
+                    .padding(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                listOf("Checklist", "Visa Tips").forEachIndexed { i, label ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(if (activeSection == i) Color.White else Color.Transparent)
+                            .clickable { activeSection = i }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            label,
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontWeight = if (activeSection == i) FontWeight.SemiBold else FontWeight.Normal
+                            ),
+                            color = if (activeSection == i) KipitaRed else KipitaTextSecondary
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+        }
+
+        if (activeSection == 0) {
+            // USPS mail hold link
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFFFF8E1))
+                        .clickable {
+                            runCatching {
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://holdmail.usps.com/holdmail/"))
+                                )
+                            }
+                        }
+                        .padding(14.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("📬", fontSize = 20.sp)
+                        Spacer(Modifier.width(10.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Put USPS Mail on Hold",
+                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = KipitaOnSurface
+                            )
+                            Text(
+                                "Pause mail delivery while traveling — holdmail.usps.com",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = KipitaTextSecondary
+                            )
+                        }
+                        Text("→", color = KipitaRed, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+            }
+
+            // Checklist items
+            items(allItems) { item ->
                 val isChecked = item.id in checkedItems
                 Row(
                     modifier = Modifier
@@ -576,13 +667,124 @@ private fun PackingListSheet(onClose: () -> Unit) {
                     Text(
                         item.label,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (isChecked) KipitaTextTertiary else KipitaOnSurface
+                        color = if (isChecked) KipitaTextTertiary else KipitaOnSurface,
+                        modifier = Modifier.weight(1f)
                     )
+                    if (customItems.any { it.id == item.id }) {
+                        Icon(
+                            Icons.Default.Close,
+                            null,
+                            tint = KipitaTextTertiary,
+                            modifier = Modifier
+                                .size(14.dp)
+                                .clickable { customItems.removeIf { it.id == item.id } }
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+            }
+
+            // Add custom item row
+            item {
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(KipitaCardBg)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, null, tint = KipitaTextTertiary, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    BasicTextField(
+                        value = newItemText,
+                        onValueChange = { newItemText = it },
+                        modifier = Modifier.weight(1f),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = KipitaOnSurface),
+                        cursorBrush = SolidColor(KipitaRed),
+                        singleLine = true,
+                        decorationBox = { inner ->
+                            if (newItemText.isEmpty()) Text(
+                                "Add custom item...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = KipitaTextTertiary
+                            ) else inner()
+                        }
+                    )
+                    if (newItemText.isNotBlank()) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(KipitaRed)
+                                .clickable {
+                                    customItems.add(PackingItem(nextId++, newItemText.trim()))
+                                    newItemText = ""
+                                }
+                                .padding(6.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(14.dp))
+                        }
+                    }
+                }
+                Spacer(Modifier.height(24.dp))
+            }
+        } else {
+            // Visa Tips section
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        "Visa Tips 🛂",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        color = KipitaOnSurface
+                    )
+                    Text(
+                        "Always check entry requirements well before your trip.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = KipitaTextSecondary
+                    )
+
+                    val visaTips = listOf(
+                        Triple("🛂", "Check Visa on Arrival", "Many countries offer VOA for select passport holders — verify eligibility at your destination embassy or IATA Travel Centre."),
+                        Triple("📅", "Application Lead Time", "Apply 6–12 weeks before travel for visa-required destinations. Some countries (India e-Visa, Schengen) take 2–4 weeks minimum."),
+                        Triple("💉", "Vaccination Requirements", "Yellow Fever, Meningitis, and Malaria prophylaxis may be required. Check CDC traveler health notices before your trip."),
+                        Triple("📋", "Documents Checklist", "Valid passport (6+ months validity), return ticket, proof of accommodation, travel insurance, bank statements showing sufficient funds."),
+                        Triple("💰", "Visa Fees", "Budget \$20–\$200 USD for most visas. US B1/B2 = \$185, Schengen = €90, UK Standard = £115. Pay only through official government portals."),
+                        Triple("🌐", "Official Resources", "U.S. passports: travel.state.gov | EU/Schengen: ec.europa.eu | UK: gov.uk/visas-immigration"),
+                        Triple("🔒", "Digital Nomad Visas", "Portugal D8, Spain Digital Nomad, Indonesia KITAS, Thailand LTR, UAE Freelance — great for remote workers staying 90+ days.")
+                    )
+
+                    visaTips.forEach { (emoji, title, desc) ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White)
+                                .padding(14.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(emoji, fontSize = 18.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    title,
+                                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = KipitaOnSurface
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                desc,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = KipitaTextSecondary,
+                                lineHeight = 18.sp
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(24.dp))
                 }
             }
         }
-
-        Spacer(Modifier.height(32.dp))
     }
 }
 

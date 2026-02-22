@@ -64,7 +64,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kipita.presentation.ai.AiAssistantScreen
 import com.kipita.presentation.auth.AuthScreen
+import com.kipita.presentation.common.InAppBrowserScreen
 import com.kipita.presentation.common.KipitaErrorBoundary
+import com.kipita.presentation.community.NearbyTravelersScreen
+import com.kipita.presentation.community.TravelGroupsScreen
 import com.kipita.presentation.explore.ExploreScreen
 import com.kipita.presentation.home.HomeScreen
 import com.kipita.presentation.map.MapScreen
@@ -79,6 +82,7 @@ import com.kipita.presentation.theme.KipitaRed
 import com.kipita.presentation.theme.KipitaRedLight
 import com.kipita.presentation.theme.KipitaTextSecondary
 import com.kipita.presentation.theme.KipitaTextTertiary
+import com.kipita.presentation.translate.TranslateScreen
 import com.kipita.presentation.trips.MyTripsScreen
 import com.kipita.presentation.trips.TripDetailScreen
 import com.kipita.presentation.wallet.WalletScreen
@@ -116,15 +120,26 @@ fun KipitaApp() {
     var showProfile by rememberSaveable { mutableStateOf(false) }
     var showAuth by rememberSaveable { mutableStateOf(false) }
     var showMap by rememberSaveable { mutableStateOf(false) }
+    var showTranslate by rememberSaveable { mutableStateOf(false) }
+    var showWebView by rememberSaveable { mutableStateOf(false) }
+    var webViewUrl by rememberSaveable { mutableStateOf("") }
+    var webViewTitle by rememberSaveable { mutableStateOf("") }
+    var showNearbyTravelers by rememberSaveable { mutableStateOf(false) }
+    var showTravelGroups by rememberSaveable { mutableStateOf(false) }
     var aiPreFill by rememberSaveable { mutableStateOf("") }
     var isGuest by rememberSaveable { mutableStateOf(true) }
     var userName by rememberSaveable { mutableStateOf("") }
     var showProfileMenu by rememberSaveable { mutableStateOf(false) }
     var selectedTripId by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val canGoBack = showMap || showProfile || showAuth || selectedTripId != null
+    val canGoBack = showMap || showProfile || showAuth || showTranslate || showWebView ||
+        showNearbyTravelers || showTravelGroups || selectedTripId != null
     val onBack: () -> Unit = {
         when {
+            showWebView         -> showWebView = false
+            showNearbyTravelers -> showNearbyTravelers = false
+            showTravelGroups    -> showTravelGroups = false
+            showTranslate       -> showTranslate = false
             selectedTripId != null -> selectedTripId = null
             showAuth    -> showAuth = false
             showMap     -> showMap = false
@@ -144,7 +159,8 @@ fun KipitaApp() {
             )
         },
         bottomBar = {
-            if (!showMap && !showProfile && !showAuth && selectedTripId == null) {
+            if (!showMap && !showProfile && !showAuth && !showTranslate && !showWebView &&
+                !showNearbyTravelers && !showTravelGroups && selectedTripId == null) {
                 NavigationBar(
                     containerColor = KipitaNavBg,
                     tonalElevation = 0.dp,
@@ -212,6 +228,41 @@ fun KipitaApp() {
                 .background(Color(0xFFFAFAFA))
         ) {
             when {
+                showWebView -> KipitaErrorBoundary("InAppBrowserScreen") { _ ->
+                    InAppBrowserScreen(
+                        url = webViewUrl,
+                        title = webViewTitle,
+                        paddingValues = padding,
+                        onBack = { showWebView = false }
+                    )
+                }
+
+                showNearbyTravelers -> KipitaErrorBoundary("NearbyTravelersScreen") { _ ->
+                    NearbyTravelersScreen(
+                        paddingValues = padding,
+                        onBack = { showNearbyTravelers = false }
+                    )
+                }
+
+                showTravelGroups -> KipitaErrorBoundary("TravelGroupsScreen") { _ ->
+                    TravelGroupsScreen(
+                        paddingValues = padding,
+                        onBack = { showTravelGroups = false }
+                    )
+                }
+
+                showTranslate -> KipitaErrorBoundary("TranslateScreen") { _ ->
+                    TranslateScreen(
+                        paddingValues = padding,
+                        onBack = { showTranslate = false },
+                        onOpenWebView = { url, title ->
+                            webViewUrl = url
+                            webViewTitle = title
+                            showWebView = true
+                        }
+                    )
+                }
+
                 selectedTripId != null -> KipitaErrorBoundary("TripDetailScreen") { _ ->
                     TripDetailScreen(
                         tripId = selectedTripId!!,
@@ -274,10 +325,11 @@ fun KipitaApp() {
                     when (destination) {
                         MainRoute.HOME -> KipitaErrorBoundary("HomeScreen") { _ ->
                             HomeScreen(
-                                paddingValues = padding,
-                                onOpenWallet = { route = MainRoute.WALLET },
-                                onOpenMap    = { showMap = true },
-                                onOpenAI     = { prompt -> aiPreFill = prompt; route = MainRoute.AI }
+                                paddingValues    = padding,
+                                onOpenWallet     = { route = MainRoute.WALLET },
+                                onOpenMap        = { showMap = true },
+                                onOpenAI         = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
+                                onOpenTranslate  = { showTranslate = true }
                             )
                         }
 
@@ -311,7 +363,11 @@ fun KipitaApp() {
                         }
 
                         MainRoute.SOCIAL -> KipitaErrorBoundary("SocialScreen") { _ ->
-                            SocialScreen(padding)
+                            SocialScreen(
+                                paddingValues       = padding,
+                                onNearbyTravelers   = { showNearbyTravelers = true },
+                                onTravelGroups      = { showTravelGroups = true }
+                            )
                         }
 
                         MainRoute.SETTINGS -> KipitaErrorBoundary("SettingsScreen") { _ ->
