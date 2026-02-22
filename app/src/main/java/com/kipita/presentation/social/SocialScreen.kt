@@ -96,7 +96,12 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SocialScreen(paddingValues: PaddingValues, viewModel: SocialViewModel = hiltViewModel()) {
+fun SocialScreen(
+    paddingValues: PaddingValues,
+    viewModel: SocialViewModel = hiltViewModel(),
+    onNearbyTravelers: () -> Unit = {},
+    onTravelGroups: () -> Unit = {}
+) {
     var visible by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     var searchText by remember { mutableStateOf("") }
@@ -166,9 +171,11 @@ fun SocialScreen(paddingValues: PaddingValues, viewModel: SocialViewModel = hilt
                 visible = visible,
                 searchText = searchText,
                 onOpenGroup = { id, name -> openConversationId = id; openConversationName = name },
-                onInvite = { id, name -> inviteGroupId = id; inviteGroupName = name }
+                onInvite = { id, name -> inviteGroupId = id; inviteGroupName = name },
+                onNearbyTravelers = onNearbyTravelers,
+                onTravelGroups = onTravelGroups
             )
-            1 -> TravelersTab(visible)
+            1 -> TravelersTab(visible, onNearbyTravelers = onNearbyTravelers)
             2 -> DirectMessagesTab(visible, onOpenDm = { id, name -> openConversationId = id; openConversationName = name })
         }
     }
@@ -252,7 +259,9 @@ private fun GroupsTab(
     visible: Boolean,
     searchText: String,
     onOpenGroup: (String, String) -> Unit,
-    onInvite: (String, String) -> Unit = { _, _ -> }
+    onInvite: (String, String) -> Unit = { _, _ -> },
+    onNearbyTravelers: () -> Unit = {},
+    onTravelGroups: () -> Unit = {}
 ) {
     val groups = if (searchText.isBlank()) SampleData.communityGroups
     else SampleData.communityGroups.filter { it.name.contains(searchText, ignoreCase = true) }
@@ -263,8 +272,8 @@ private fun GroupsTab(
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
                     Text("Connect With Travelers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = KipitaOnSurface, modifier = Modifier.padding(bottom = 10.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        ConnectCard(Icons.Default.NearMe, "Find nearby travelers", Modifier.weight(1f))
-                        ConnectCard(Icons.Default.Group, "Join travel groups", Modifier.weight(1f))
+                        ConnectCard(Icons.Default.NearMe, "Find nearby travelers", Modifier.weight(1f), onClick = onNearbyTravelers)
+                        ConnectCard(Icons.Default.Group, "Join travel groups", Modifier.weight(1f), onClick = onTravelGroups)
                     }
                 }
             }
@@ -286,11 +295,11 @@ private fun GroupsTab(
 }
 
 @Composable
-private fun ConnectCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, modifier: Modifier = Modifier) {
+private fun ConnectCard(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String, modifier: Modifier = Modifier, onClick: () -> Unit = {}) {
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.95f else 1f, animationSpec = spring(stiffness = Spring.StiffnessMedium), label = "connect-scale")
     Column(modifier = modifier.scale(scale).shadow(3.dp, RoundedCornerShape(16.dp)).clip(RoundedCornerShape(16.dp))
-        .background(Color.White).clickable { pressed = !pressed }.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        .background(Color.White).clickable { pressed = !pressed; onClick() }.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(modifier = Modifier.size(48.dp).clip(RoundedCornerShape(14.dp)).background(KipitaRedLight), contentAlignment = Alignment.Center) {
             Icon(icon, contentDescription = null, tint = KipitaRed, modifier = Modifier.size(24.dp))
         }
@@ -338,9 +347,20 @@ private fun GroupRow(group: CommunityGroup, onClick: () -> Unit, onInvite: () ->
 }
 
 @Composable
-private fun TravelersTab(visible: Boolean) {
+private fun TravelersTab(visible: Boolean, onNearbyTravelers: () -> Unit = {}) {
     LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        item { Text("Nearby Travelers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = KipitaOnSurface, modifier = Modifier.padding(bottom = 4.dp)) }
+        item {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                Text("Nearby Travelers", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = KipitaOnSurface)
+                Surface(
+                    modifier = Modifier.clip(RoundedCornerShape(20.dp)).clickable(onClick = onNearbyTravelers),
+                    color = KipitaRedLight, shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text("See All", modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = KipitaRed)
+                }
+            }
+        }
         itemsIndexed(SampleData.nearbyTravelers) { index, traveler ->
             AnimatedVisibility(visible = visible, enter = fadeIn(tween(100 + index * 80)) + slideInVertically(tween(100 + index * 80)) { 30 }) {
                 TravelerCard(traveler)
