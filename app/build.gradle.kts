@@ -9,23 +9,13 @@ plugins {
 }
 
 
-val enableFirebasePlugins = providers.gradleProperty("kipita.enableFirebase")
-    .map { it.equals("true", ignoreCase = true) }
-    .orElse(false)
+val hasGoogleServicesConfig = file("google-services.json").exists() || file("src/dev/google-services.json").exists() || file("src/staging/google-services.json").exists() || file("src/prod/google-services.json").exists()
 
-val hasAnyGoogleServicesConfig =
-    file("google-services.json").exists() ||
-        file("src/dev/google-services.json").exists() ||
-        file("src/staging/google-services.json").exists() ||
-        file("src/prod/google-services.json").exists()
-
-if (enableFirebasePlugins.get() && hasAnyGoogleServicesConfig) {
+if (hasGoogleServicesConfig) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.crashlytics")
 } else {
-    logger.lifecycle(
-        "Skipping Google Services/Crashlytics. Set -Pkipita.enableFirebase=true and provide google-services.json for target flavor to enable."
-    )
+    logger.lifecycle("google-services.json not found for app module; skipping Google Services and Crashlytics plugins for local build.")
 }
 
 android {

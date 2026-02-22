@@ -29,14 +29,3 @@ See: `gradle/gradle-daemon-jvm.properties.android-studio.example`
 ./gradlew :app:assembleDevDebug
 ./gradlew :app:lint
 ```
-
-
-## Firebase-enabled local build (optional)
-
-When you are ready to use real Firebase config files, run Gradle with:
-
-```bash
-./gradlew :app:assembleDevDebug -Pkipita.enableFirebase=true
-```
-
-Without this flag, Google Services and Crashlytics plugins are skipped for local prototype builds.
