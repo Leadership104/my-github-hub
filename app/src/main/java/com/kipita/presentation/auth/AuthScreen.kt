@@ -26,7 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
@@ -39,9 +39,10 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -131,7 +132,7 @@ fun AuthScreen(
                 .clickable(onClick = onBack),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Default.ArrowBack, "Back", tint = Color(0xFF757575), modifier = Modifier.size(18.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color(0xFF757575), modifier = Modifier.size(18.dp))
         }
 
         LazyColumn(
@@ -176,17 +177,17 @@ fun AuthScreen(
             // Tab row
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { 12 }) {
-                    TabRow(
+                    PrimaryTabRow(
                         selectedTabIndex = selectedTab,
                         containerColor = Color.Transparent,
                         contentColor = KipitaRed,
-                        indicator = { tabPositions ->
-                            Box(
+                        indicator = {
+                            TabRowDefaults.PrimaryIndicator(
                                 modifier = Modifier
-                                    .tabIndicatorOffset(tabPositions[selectedTab])
+                                    .tabIndicatorOffset(selectedTab)
                                     .height(3.dp)
-                                    .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                                    .background(KipitaRed)
+                                    .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
+                                color = KipitaRed
                             )
                         },
                         divider = {}

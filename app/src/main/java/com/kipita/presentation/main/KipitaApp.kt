@@ -23,7 +23,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.Groups
@@ -430,7 +430,7 @@ private fun KipitaTopBar(
         ) {
             if (canGoBack) {
                 Icon(
-                    Icons.Default.ArrowBack,
+                    Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Back",
                     tint = Color(0xFF757575),
                     modifier = Modifier.size(18.dp)
@@ -625,7 +625,7 @@ private fun ProfileMenuItem(
             color = if (isDestructive) Color(0xFFE53935) else KipitaOnSurface
         )
         Icon(
-            Icons.Default.ArrowBack,
+            Icons.AutoMirrored.Filled.ArrowBack,
             contentDescription = null,
             tint = KipitaTextTertiary,
             modifier = Modifier.size(16.dp)

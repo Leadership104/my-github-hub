@@ -36,7 +36,7 @@ import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.HeadsetMic
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -416,7 +416,7 @@ fun ProfileSetupScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    Icons.Default.Send,
+                                    Icons.AutoMirrored.Filled.Send,
                                     contentDescription = null,
                                     tint = Color.White,
                                     modifier = Modifier.size(16.dp)

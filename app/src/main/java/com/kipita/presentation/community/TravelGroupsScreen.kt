@@ -32,7 +32,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -403,7 +403,7 @@ private fun TravelGroupCard(
                     Icon(
                         when {
                             isJoined -> Icons.Default.Check
-                            isRequested -> Icons.Default.Send
+                            isRequested -> Icons.AutoMirrored.Filled.Send
                             else -> Icons.Default.PersonAdd
                         },
                         null,
@@ -620,7 +620,7 @@ private fun GroupDetailSheet(
                     color = KipitaRedLight
                 ) {
                     Row(modifier = Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Send, null, tint = KipitaRed, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.Send, null, tint = KipitaRed, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(8.dp))
                         Text("Join request sent! The admin will review and email you if approved.",
                             style = MaterialTheme.typography.bodySmall, color = KipitaRed)

@@ -32,16 +32,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import android.content.Intent
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.NearMe
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,13 +50,13 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.TabRowDefaults
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -157,8 +157,17 @@ fun SocialScreen(
 
         // Tabs
         AnimatedVisibility(visible = visible, enter = fadeIn()) {
-            TabRow(selectedTabIndex = selectedTab, containerColor = Color.White, contentColor = KipitaRed,
-                indicator = { tabPositions -> TabRowDefaults.SecondaryIndicator(modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]), color = KipitaRed) }) {
+            SecondaryTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = Color.White,
+                contentColor = KipitaRed,
+                indicator = {
+                    TabRowDefaults.SecondaryIndicator(
+                        modifier = Modifier.tabIndicatorOffset(selectedTab),
+                        color = KipitaRed
+                    )
+                }
+            ) {
                 listOf("Groups", "Travelers", "Messages").forEachIndexed { i, label ->
                     Tab(selected = selectedTab == i, onClick = { selectedTab = i },
                         text = { Text(label, style = MaterialTheme.typography.labelLarge, color = if (selectedTab == i) KipitaRed else KipitaTextSecondary) })
@@ -403,7 +412,7 @@ private fun DirectMessagesTab(visible: Boolean, onOpenDm: (String, String) -> Un
             AnimatedVisibility(visible = visible, enter = fadeIn()) {
                 Column(modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(KipitaCardBg).padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Box(modifier = Modifier.size(56.dp).clip(CircleShape).background(KipitaRedLight), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Chat, contentDescription = null, tint = KipitaRed, modifier = Modifier.size(28.dp))
+                        Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = KipitaRed, modifier = Modifier.size(28.dp))
                     }
                     Spacer(Modifier.height(10.dp))
                     Text("Offline Messaging", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold), color = KipitaOnSurface)
@@ -412,7 +421,7 @@ private fun DirectMessagesTab(visible: Boolean, onOpenDm: (String, String) -> Un
                     Row(modifier = Modifier.clip(RoundedCornerShape(12.dp)).background(KipitaRed).clickable {}.padding(horizontal = 20.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("New Message", style = MaterialTheme.typography.labelLarge, color = Color.White)
                         Spacer(Modifier.width(6.dp))
-                        Icon(Icons.Default.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                     }
                 }
             }
@@ -457,7 +466,7 @@ fun MessageThreadScreen(conversationId: String, conversationName: String, onBack
     Column(modifier = Modifier.fillMaxSize().background(Color(0xFFF8F9FA)).imePadding()) {
         // Thread header
         Row(modifier = Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 12.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onBack) { Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = KipitaOnSurface) }
+            IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = KipitaOnSurface) }
             Box(modifier = Modifier.size(40.dp).clip(CircleShape).background(KipitaRedLight), contentAlignment = Alignment.Center) {
                 Text(conversationName.first().toString(), fontSize = 18.sp, fontWeight = FontWeight.Bold, color = KipitaRed)
             }
@@ -500,7 +509,7 @@ fun MessageThreadScreen(conversationId: String, conversationName: String, onBack
                     draft = ""
                 }, contentAlignment = Alignment.Center) {
                 if (sending) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                else Icon(Icons.Default.Send, contentDescription = "Send", tint = if (draft.isNotBlank()) Color.White else KipitaTextTertiary, modifier = Modifier.size(20.dp))
+                else Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", tint = if (draft.isNotBlank()) Color.White else KipitaTextTertiary, modifier = Modifier.size(20.dp))
             }
         }
     }

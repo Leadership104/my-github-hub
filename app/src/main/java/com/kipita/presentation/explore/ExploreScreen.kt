@@ -52,11 +52,12 @@ import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
-import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.tabIndicatorOffset
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -364,17 +365,17 @@ fun ExploreScreen(
                 Spacer(Modifier.height(4.dp))
 
                 // Tab row: Destinations | Places
-                TabRow(
+                PrimaryTabRow(
                     selectedTabIndex = selectedTab,
                     containerColor = Color.Transparent,
                     contentColor = KipitaRed,
-                    indicator = { tabPositions ->
-                        Box(
+                    indicator = {
+                        TabRowDefaults.PrimaryIndicator(
                             modifier = Modifier
-                                .tabIndicatorOffset(tabPositions[selectedTab])
+                                .tabIndicatorOffset(selectedTab)
                                 .height(3.dp)
-                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp))
-                                .background(KipitaRed)
+                                .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
+                            color = KipitaRed
                         )
                     },
                     divider = {}

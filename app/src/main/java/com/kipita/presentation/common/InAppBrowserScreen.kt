@@ -23,8 +23,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -106,7 +106,7 @@ fun InAppBrowserScreen(
                         .clickable(onClick = onBack),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.ArrowBack, "Back",
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back",
                         tint = Color.White, modifier = Modifier.size(18.dp))
                 }
 
@@ -154,7 +154,7 @@ fun InAppBrowserScreen(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.OpenInNew, "Open in browser",
+                    Icon(Icons.AutoMirrored.Filled.OpenInNew, "Open in browser",
                         tint = Color.White.copy(.70f), modifier = Modifier.size(16.dp))
                 }
             }

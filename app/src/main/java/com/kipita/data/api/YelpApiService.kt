@@ -61,54 +61,54 @@ interface YelpApiService {
 
 @JsonClass(generateAdapter = true)
 data class YelpSearchResponse(
-    @Json(name = "businesses") val businesses: List<YelpBusinessDto> = emptyList(),
-    @Json(name = "total") val total: Int = 0,
-    @Json(name = "region") val region: YelpRegionDto? = null
+    @field:Json(name = "businesses") val businesses: List<YelpBusinessDto> = emptyList(),
+    @field:Json(name = "total") val total: Int = 0,
+    @field:Json(name = "region") val region: YelpRegionDto? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class YelpBusinessDto(
-    @Json(name = "id") val id: String,
-    @Json(name = "name") val name: String,
-    @Json(name = "alias") val alias: String = "",
-    @Json(name = "image_url") val imageUrl: String? = null,
-    @Json(name = "url") val yelpUrl: String = "",
-    @Json(name = "phone") val phone: String = "",
-    @Json(name = "display_phone") val displayPhone: String = "",
-    @Json(name = "review_count") val reviewCount: Int = 0,
-    @Json(name = "rating") val rating: Double = 0.0,
-    @Json(name = "price") val priceLevel: String? = null,
-    @Json(name = "distance") val distanceMeters: Double = 0.0,
-    @Json(name = "is_closed") val isClosed: Boolean = false,
-    @Json(name = "categories") val categories: List<YelpCategoryDto> = emptyList(),
-    @Json(name = "location") val location: YelpLocationDto,
-    @Json(name = "coordinates") val coordinates: YelpCoordinatesDto? = null
+    @field:Json(name = "id") val id: String,
+    @field:Json(name = "name") val name: String,
+    @field:Json(name = "alias") val alias: String = "",
+    @field:Json(name = "image_url") val imageUrl: String? = null,
+    @field:Json(name = "url") val yelpUrl: String = "",
+    @field:Json(name = "phone") val phone: String = "",
+    @field:Json(name = "display_phone") val displayPhone: String = "",
+    @field:Json(name = "review_count") val reviewCount: Int = 0,
+    @field:Json(name = "rating") val rating: Double = 0.0,
+    @field:Json(name = "price") val priceLevel: String? = null,
+    @field:Json(name = "distance") val distanceMeters: Double = 0.0,
+    @field:Json(name = "is_closed") val isClosed: Boolean = false,
+    @field:Json(name = "categories") val categories: List<YelpCategoryDto> = emptyList(),
+    @field:Json(name = "location") val location: YelpLocationDto,
+    @field:Json(name = "coordinates") val coordinates: YelpCoordinatesDto? = null
 )
 
 @JsonClass(generateAdapter = true)
 data class YelpCategoryDto(
-    @Json(name = "alias") val alias: String,
-    @Json(name = "title") val title: String
+    @field:Json(name = "alias") val alias: String,
+    @field:Json(name = "title") val title: String
 )
 
 @JsonClass(generateAdapter = true)
 data class YelpLocationDto(
-    @Json(name = "address1") val address1: String? = null,
-    @Json(name = "city") val city: String = "",
-    @Json(name = "state") val state: String = "",
-    @Json(name = "country") val country: String = "",
-    @Json(name = "display_address") val displayAddress: List<String> = emptyList()
+    @field:Json(name = "address1") val address1: String? = null,
+    @field:Json(name = "city") val city: String = "",
+    @field:Json(name = "state") val state: String = "",
+    @field:Json(name = "country") val country: String = "",
+    @field:Json(name = "display_address") val displayAddress: List<String> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)
 data class YelpCoordinatesDto(
-    @Json(name = "latitude") val latitude: Double,
-    @Json(name = "longitude") val longitude: Double
+    @field:Json(name = "latitude") val latitude: Double,
+    @field:Json(name = "longitude") val longitude: Double
 )
 
 @JsonClass(generateAdapter = true)
 data class YelpRegionDto(
-    @Json(name = "center") val center: YelpCoordinatesDto
+    @field:Json(name = "center") val center: YelpCoordinatesDto
 )
 
 // ---------------------------------------------------------------------------
