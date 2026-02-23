@@ -68,7 +68,7 @@ object TravelDataModule {
 
         return Room.databaseBuilder(context, KipitaDatabase::class.java, "kipita.db")
             .openHelperFactory(factory)
-            .fallbackToDestructiveMigration()
+            .fallbackToDestructiveMigration(true)
             .build()
     }
 

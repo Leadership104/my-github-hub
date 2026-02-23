@@ -28,7 +28,7 @@ import javax.inject.Singleton
 
 @Singleton
 class KeystoreManager @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     companion object {
         // Keystore alias constants — each key has a dedicated AES key in Android KeyStore

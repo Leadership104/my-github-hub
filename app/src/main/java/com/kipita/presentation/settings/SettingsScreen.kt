@@ -39,7 +39,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -163,7 +163,7 @@ fun SettingsScreen(
                         onSave = { viewModel.saveYelpApiKey(it) },
                         onClear = { viewModel.clearYelpApiKey() }
                     )
-                    Divider(color = BorderGray, thickness = 0.5.dp)
+                    HorizontalDivider(color = BorderGray, thickness = 0.5.dp)
                     ApiKeyField(
                         provider = "Coinbase",
                         description = "Fetches your Coinbase wallet balance (read-only OAuth token)",
@@ -172,7 +172,7 @@ fun SettingsScreen(
                         onSave = { viewModel.saveCoinbaseToken(it) },
                         onClear = { viewModel.clearCoinbaseToken() }
                     )
-                    Divider(color = BorderGray, thickness = 0.5.dp)
+                    HorizontalDivider(color = BorderGray, thickness = 0.5.dp)
                     ApiKeyField(
                         provider = "Gemini API Key",
                         description = "Gemini exchange API key for balance and trade data",
@@ -181,7 +181,7 @@ fun SettingsScreen(
                         onSave = { viewModel.saveGeminiApiKey(it) },
                         onClear = { viewModel.clearGeminiKeys() }
                     )
-                    Divider(color = BorderGray, thickness = 0.5.dp)
+                    HorizontalDivider(color = BorderGray, thickness = 0.5.dp)
                     ApiKeyField(
                         provider = "Gemini API Secret",
                         description = "Gemini exchange API secret (paired with Gemini API Key)",
@@ -190,7 +190,7 @@ fun SettingsScreen(
                         onSave = { viewModel.saveGeminiApiSecret(it) },
                         onClear = { viewModel.clearGeminiKeys() }
                     )
-                    Divider(color = BorderGray, thickness = 0.5.dp)
+                    HorizontalDivider(color = BorderGray, thickness = 0.5.dp)
                     ApiKeyField(
                         provider = "River",
                         description = "River Financial OAuth token for Bitcoin wallet balance",
@@ -199,7 +199,7 @@ fun SettingsScreen(
                         onSave = { viewModel.saveRiverToken(it) },
                         onClear = { viewModel.clearRiverToken() }
                     )
-                    Divider(color = BorderGray, thickness = 0.5.dp)
+                    HorizontalDivider(color = BorderGray, thickness = 0.5.dp)
                     ApiKeyField(
                         provider = "CashApp",
                         description = "CashApp OAuth token for peer-to-peer payment data",
@@ -256,7 +256,7 @@ fun SettingsScreen(
                     affiliates.forEachIndexed { index, affiliate ->
                         AffiliateRow(entry = affiliate, context = context)
                         if (index < affiliates.lastIndex) {
-                            Divider(color = BorderGray, thickness = 0.5.dp)
+                            HorizontalDivider(color = BorderGray, thickness = 0.5.dp)
                         }
                     }
                 }
