@@ -242,7 +242,7 @@ fun TripDetailScreen(
                         "BOOK & MANAGE",
                         style = MaterialTheme.typography.labelSmall,
                         color = KipitaTextTertiary,
-                        modifier = Modifier.padding(horizontal = 16.dp, bottom = 8.dp),
+                        modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
                         letterSpacing = 1.sp
                     )
                     LazyRow(
