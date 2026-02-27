@@ -4,67 +4,67 @@
 # Regenerate from real device/emulator usage:
 #   ./gradlew generateDevDebugBaselineProfile
 #
-# Flags: H=hot  S=startup  P=post-startup
+# Note: class rules use no flags (flags are only valid on method rules)
 
 # ── Kipita app classes ────────────────────────────────────────────────────────
-HSPLcom/kipita/MainActivity;
-HSPLcom/kipita/KipitaApplication;
+Lcom/kipita/MainActivity;
+Lcom/kipita/KipitaApplication;
 
 # Presentation layer
-HSPLcom/kipita/presentation/main/KipitaAppKt;
-HSPLcom/kipita/presentation/theme/ThemeKt;
-HSPLcom/kipita/presentation/home/ExperienceScreenKt;
-HSPLcom/kipita/presentation/home/KipitaFeaturesKt;
-HSPLcom/kipita/presentation/map/MapScreenKt;
-HSPLcom/kipita/presentation/map/MapViewModel;
-HSPLcom/kipita/presentation/chat/ChatScreenKt;
-HSPLcom/kipita/presentation/chat/ChatViewModel;
-HSPLcom/kipita/presentation/ai/AiAssistantScreenKt;
-HSPLcom/kipita/presentation/ai/AiViewModel;
-HSPLcom/kipita/presentation/wallet/WalletScreenKt;
-HSPLcom/kipita/presentation/wallet/WalletViewModel;
-HSPLcom/kipita/presentation/settings/SettingsScreenKt;
-HSPLcom/kipita/presentation/settings/SettingsViewModel;
+Lcom/kipita/presentation/main/KipitaAppKt;
+Lcom/kipita/presentation/theme/ThemeKt;
+Lcom/kipita/presentation/home/ExperienceScreenKt;
+Lcom/kipita/presentation/home/KipitaFeaturesKt;
+Lcom/kipita/presentation/map/MapScreenKt;
+Lcom/kipita/presentation/map/MapViewModel;
+Lcom/kipita/presentation/chat/ChatScreenKt;
+Lcom/kipita/presentation/chat/ChatViewModel;
+Lcom/kipita/presentation/ai/AiAssistantScreenKt;
+Lcom/kipita/presentation/ai/AiViewModel;
+Lcom/kipita/presentation/wallet/WalletScreenKt;
+Lcom/kipita/presentation/wallet/WalletViewModel;
+Lcom/kipita/presentation/settings/SettingsScreenKt;
+Lcom/kipita/presentation/settings/SettingsViewModel;
 
 # Domain layer
-HSPLcom/kipita/domain/usecase/AiOrchestrator;
-HSPLcom/kipita/domain/usecase/LlmRouter;
-HSPLcom/kipita/domain/usecase/TravelDataEngine;
+Lcom/kipita/domain/usecase/AiOrchestrator;
+Lcom/kipita/domain/usecase/LlmRouter;
+Lcom/kipita/domain/usecase/TravelDataEngine;
 
 # Data layer
-HSPLcom/kipita/data/repository/MerchantRepository;
-HSPLcom/kipita/data/repository/NomadRepository;
-HSPLcom/kipita/data/repository/TravelRepository;
-HSPLcom/kipita/data/repository/CurrencyRepository;
-HSPLcom/kipita/data/repository/OfflineMapRepository;
-HSPLcom/kipita/data/error/InHouseErrorLogger;
+Lcom/kipita/data/repository/MerchantRepository;
+Lcom/kipita/data/repository/NomadRepository;
+Lcom/kipita/data/repository/TravelRepository;
+Lcom/kipita/data/repository/CurrencyRepository;
+Lcom/kipita/data/repository/OfflineMapRepository;
+Lcom/kipita/data/error/InHouseErrorLogger;
 
 # DI modules (Hilt initialises these at startup)
-HSPLcom/kipita/di/NetworkModule;
-HSPLcom/kipita/di/AiModule;
-HSPLcom/kipita/di/TravelDataModule;
-HSPLcom/kipita/di/WalletModule;
-HSPLcom/kipita/di/MapModule;
+Lcom/kipita/di/NetworkModule;
+Lcom/kipita/di/AiModule;
+Lcom/kipita/di/TravelDataModule;
+Lcom/kipita/di/WalletModule;
+Lcom/kipita/di/MapModule;
 
 # Hilt-generated app component (verified for 566 ms in logcat)
-HSPLcom/kipita/DaggerKipitaApplication_HiltComponents_SingletonC;
+Lcom/kipita/DaggerKipitaApplication_HiltComponents_SingletonC;
 
 # ── Critical library classes (slow to JIT-verify per logcat) ─────────────────
 
 # Compose UI — GraphicsLayer verification took 439 ms+
-HSPLandroidx/compose/ui/graphics/layer/GraphicsLayer;
-HSPLandroidx/compose/ui/platform/AndroidComposeView;
-HSPLandroidx/compose/ui/layout/SubcomposeLayoutKt;
+Landroidx/compose/ui/graphics/layer/GraphicsLayer;
+Landroidx/compose/ui/platform/AndroidComposeView;
+Landroidx/compose/ui/layout/SubcomposeLayoutKt;
 
 # Coroutines Flow — FlowKt__ReduceKt verified at 900 ms+
-HSPLkotlinx/coroutines/flow/FlowKt__ReduceKt;
-HSPLkotlinx/coroutines/flow/FlowKt__LimitKt;
-HSPLkotlinx/coroutines/flow/internal/ChannelFlowKt;
+Lkotlinx/coroutines/flow/FlowKt__ReduceKt;
+Lkotlinx/coroutines/flow/FlowKt__LimitKt;
+Lkotlinx/coroutines/flow/internal/ChannelFlowKt;
 
 # Room
-HSPLandroidx/room/RoomDatabase;
-HSPLandroidx/room/coroutines/PassthroughConnection;
+Landroidx/room/RoomDatabase;
+Landroidx/room/coroutines/PassthroughConnection;
 
 # WorkManager
-HSPLandroidx/work/impl/WorkManagerImpl;
-HSPLandroidx/work/impl/background/greedy/GreedyScheduler;
+Landroidx/work/impl/WorkManagerImpl;
+Landroidx/work/impl/background/greedy/GreedyScheduler;
