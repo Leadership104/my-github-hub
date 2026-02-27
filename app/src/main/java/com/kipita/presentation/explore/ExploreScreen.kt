@@ -79,7 +79,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocalTaxi
+import androidx.compose.material3.IconButton
 import androidx.compose.ui.layout.ContentScale
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -146,6 +149,7 @@ fun ExploreScreen(
 ) {
     val context = LocalContext.current
     val exploreState by viewModel.state.collectAsStateWithLifecycleCompat()
+    val savedPlaceIds by viewModel.savedPlaceIds.collectAsStateWithLifecycleCompat()
     var visible by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     var selectedScope by remember { mutableStateOf(LocationScope.CITY) }
@@ -161,7 +165,7 @@ fun ExploreScreen(
 
     LaunchedEffect(Unit) { delay(80); visible = true }
 
-    // Auto-fetch Yelp results when user switches to Places tab
+    // Auto-fetch results when user switches to Places tab
     LaunchedEffect(selectedTab) {
         if (selectedTab == 1) {
             if (searchText.isNotBlank()) viewModel.fetchByLocation(searchText, selectedCategory)
@@ -206,6 +210,41 @@ fun ExploreScreen(
                 }
             } catch (_: Exception) {}
             isLocating = false
+        }
+    }
+
+    // Auto-request GPS on first composition — immediately fetches nearby places
+    LaunchedEffect(Unit) {
+        val hasPerm = androidx.core.content.ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (hasPerm) {
+            isLocating = true
+            try {
+                val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+                val loc = lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                    ?: lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                if (loc != null) {
+                    detectedLat = loc.latitude
+                    detectedLon = loc.longitude
+                    viewModel.updateUserLocation(loc.latitude, loc.longitude)
+                    if (Geocoder.isPresent()) {
+                        val geo = Geocoder(context, Locale.getDefault())
+                        @Suppress("DEPRECATION")
+                        val addresses = geo.getFromLocation(loc.latitude, loc.longitude, 1)
+                        if (!addresses.isNullOrEmpty()) {
+                            val addr = addresses[0]
+                            locationLabel = listOfNotNull(
+                                addr.locality ?: addr.subAdminArea, addr.adminArea
+                            ).joinToString(", ")
+                        }
+                    }
+                    viewModel.fetchByCoordinates(selectedCategory, loc.latitude, loc.longitude)
+                }
+            } catch (_: Exception) {}
+            isLocating = false
+        } else {
+            gpsLauncher.launch(android.Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
@@ -434,7 +473,9 @@ fun ExploreScreen(
                     lyftInstalled = exploreState.lyftInstalled,
                     onBookUber = { place -> viewModel.bookUberToPlace(place) },
                     onBookLyft = { place -> viewModel.bookLyftToPlace(place) },
-                    onAiSuggest = onAiSuggest
+                    onAiSuggest = onAiSuggest,
+                    savedPlaceIds = savedPlaceIds,
+                    onToggleSaved = { place -> viewModel.toggleSaved(place) }
                 )
             }
         }
@@ -563,7 +604,9 @@ private fun PlacesTab(
     lyftInstalled: Boolean,
     onBookUber: (NearbyPlace) -> Unit,
     onBookLyft: (NearbyPlace) -> Unit,
-    onAiSuggest: (String) -> Unit
+    onAiSuggest: (String) -> Unit,
+    savedPlaceIds: Set<String> = emptySet(),
+    onToggleSaved: (NearbyPlace) -> Unit = {}
 ) {
     LazyColumn(
         contentPadding = PaddingValues(bottom = 80.dp)
@@ -655,7 +698,9 @@ private fun PlacesTab(
                                     uberInstalled = uberInstalled,
                                     lyftInstalled = lyftInstalled,
                                     onBookUber = { onBookUber(place) },
-                                    onBookLyft = { onBookLyft(place) }
+                                    onBookLyft = { onBookLyft(place) },
+                                    isSaved = savedPlaceIds.contains(place.id),
+                                    onToggleSaved = { onToggleSaved(place) }
                                 )
                             }
                         }
@@ -696,7 +741,9 @@ private fun NearbyPlaceCard(
     uberInstalled: Boolean,
     lyftInstalled: Boolean,
     onBookUber: () -> Unit,
-    onBookLyft: () -> Unit
+    onBookLyft: () -> Unit,
+    isSaved: Boolean = false,
+    onToggleSaved: () -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
     Column(
@@ -771,6 +818,18 @@ private fun NearbyPlaceCard(
                         )
                     }
                 }
+            }
+            // Favorite / save button
+            IconButton(
+                onClick = onToggleSaved,
+                modifier = Modifier.size(36.dp)
+            ) {
+                Icon(
+                    imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = if (isSaved) "Unsave" else "Save",
+                    tint = if (isSaved) KipitaRed else KipitaTextTertiary,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
