@@ -24,7 +24,7 @@ import javax.inject.Singleton
 @Singleton
 class KipitaAIManager @Inject constructor(
     private val tripDao: TripDao,
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
     private val _isAiTyping = MutableStateFlow(false)
     val isAiTyping: StateFlow<Boolean> = _isAiTyping.asStateFlow()
