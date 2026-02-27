@@ -332,7 +332,7 @@
       <div class="wallet-balance" id="walletBalance">0.0000 ETH</div>
       <div class="wallet-balance-sub" id="walletBalanceUsd">≈ $0.00 USD</div>
       <div class="wallet-actions">
-        <button class="wbtn" onclick="copyWalletAddr()">📋 Copy Address</button>
+        <button class="wbtn" id="copyAddrBtn" onclick="copyWalletAddr()">📋 Copy Address</button>
         <button class="wbtn danger" onclick="disconnectWallet()">Disconnect</button>
       </div>
     </div>
@@ -746,7 +746,9 @@ function renderWalletUI() {
 function copyWalletAddr() {
   if (!walletAccount) return;
   navigator.clipboard.writeText(walletAccount).then(() => {
-    const btn = document.querySelector('[onclick="copyWalletAddr()"]');
+    // Bug #3 fix: stable ID selector instead of fragile attribute selector
+    const btn = document.getElementById('copyAddrBtn');
+    if (!btn) return;
     const orig = btn.textContent;
     btn.textContent = '✅ Copied!';
     setTimeout(() => { btn.textContent = orig; }, 2000);
@@ -755,7 +757,8 @@ function copyWalletAddr() {
 
 // Restore wallet on page load
 if (walletAccount && window.ethereum) {
-  fetchWalletBalance().then(renderWalletUI);
+  // Bug #2 fix: add .catch() so unhandled rejection doesn't surface
+  fetchWalletBalance().then(renderWalletUI).catch(() => renderWalletUI());
 } else if (walletAccount) {
   walletAccount = null;
   localStorage.removeItem('kipita_wallet');
@@ -846,6 +849,9 @@ function renderPlaces(elements, cat, emoji) {
     const saved = isPlaceInAnyTrip(placeObj.id);
     const card = document.createElement('div');
     card.className = 'place-card';
+    // Bug #1 fix: avoid serialising placeObj into an onclick attribute (double-stringify
+    // bug). Build the static HTML first, then attach the click handler via addEventListener
+    // so placeObj is captured by closure — no serialisation at all.
     card.innerHTML = `
       <div class="place-img-placeholder">${emoji}</div>
       <div class="place-info">
@@ -856,11 +862,14 @@ function renderPlaces(elements, cat, emoji) {
           ${phone ? `<span class="place-tag">📞 ${phone}</span>` : ''}
           ${website ? `<a href="${website}" target="_blank" rel="noopener" style="font-size:11px;color:var(--blue)">🌐 Website</a>` : ''}
         </div>
-        <button class="add-itinerary-btn ${saved?'added':''}" data-id="${el.id}" onclick="openItinModal(${JSON.stringify(JSON.stringify(placeObj))}, this)">
+        <button class="add-itinerary-btn ${saved?'added':''}" data-id="${el.id}">
           ${saved ? '✅ Saved' : '+ Add to Itinerary'}
         </button>
       </div>
     `;
+    card.querySelector('.add-itinerary-btn').addEventListener('click', function() {
+      openItinModal(placeObj, this);
+    });
     grid.appendChild(card);
   });
   container.innerHTML = `<p style="font-size:13px;color:var(--text2);margin-bottom:16px">Showing ${named.length} places · OpenStreetMap data</p>`;
@@ -1023,15 +1032,20 @@ function renderTripsGrid() {
 }
 
 function deleteTrip(index) {
-  if (!confirm('Delete this trip?')) return;
+  // Bug #7 fix: bounds check before splice
   const trips = loadTrips();
+  if (index < 0 || index >= trips.length) return;
+  if (!confirm('Delete this trip?')) return;
   trips.splice(index, 1);
   saveTrips(trips);
   renderTripsGrid();
 }
 
 function removeFromTrip(tripIndex, placeIndex) {
+  // Bug #7 fix: bounds check before splice
   const trips = loadTrips();
+  if (tripIndex < 0 || tripIndex >= trips.length) return;
+  if (placeIndex < 0 || placeIndex >= trips[tripIndex].places.length) return;
   trips[tripIndex].places.splice(placeIndex, 1);
   saveTrips(trips);
   renderTripsGrid();
@@ -1055,8 +1069,17 @@ function promptNewTrip() {
   renderTripsGrid();
 }
 
-function openItinModal(placeJsonStr, buttonEl) {
-  pendingPlaceForItin = JSON.parse(placeJsonStr);
+function openItinModal(placeOrJson, buttonEl) {
+  // Bug #1 fix: accepts either an object (from closure) or a JSON string (legacy).
+  // Bug #6 fix: wrapped in try-catch with type guard.
+  try {
+    const place = (typeof placeOrJson === 'string') ? JSON.parse(placeOrJson) : placeOrJson;
+    if (!place || typeof place !== 'object') throw new Error('Invalid place');
+    pendingPlaceForItin = { ...place };
+  } catch(e) {
+    console.warn('openItinModal: invalid place data', e);
+    return;
+  }
   pendingPlaceForItin._buttonEl = buttonEl;
   const trips = loadTrips();
   const list = document.getElementById('modalTripList');
@@ -1563,11 +1586,16 @@ document.getElementById('bookingIframe').addEventListener('load', function() {
   }
 });
 
-// Close iframe modal on Escape key
+// Bug #9 fix: Escape closes ANY open modal, not just the booking iframe
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    if (document.getElementById('bookingIframeModal').classList.contains('open')) closeBookingIframe();
+  if (e.key !== 'Escape') return;
+  // Full-screen iframe modal (needs src cleanup)
+  if (document.getElementById('bookingIframeModal').classList.contains('open')) {
+    closeBookingIframe();
+    return;
   }
+  // Overlay modals (SOS, itinerary)
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
