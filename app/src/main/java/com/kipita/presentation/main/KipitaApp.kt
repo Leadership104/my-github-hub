@@ -45,18 +45,28 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.kipita.presentation.auth.AuthViewModel
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.scale
+import coil.compose.AsyncImage
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +93,7 @@ import com.kipita.presentation.theme.KipitaRedLight
 import com.kipita.presentation.theme.KipitaTextSecondary
 import com.kipita.presentation.theme.KipitaTextTertiary
 import com.kipita.data.api.PlaceCategory
+import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
 import com.kipita.presentation.places.PlacesCategoryResultScreen
 import com.kipita.presentation.translate.TranslateScreen
 import com.kipita.presentation.trips.MyTripsScreen
@@ -118,6 +129,10 @@ private val navItems = listOf(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KipitaApp() {
+    val authVm: AuthViewModel = hiltViewModel()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
     var route by rememberSaveable { mutableStateOf(MainRoute.HOME) }
     var showProfile by rememberSaveable { mutableStateOf(false) }
     var showAuth by rememberSaveable { mutableStateOf(false) }
@@ -131,10 +146,19 @@ fun KipitaApp() {
     var aiPreFill by rememberSaveable { mutableStateOf("") }
     var isGuest by rememberSaveable { mutableStateOf(true) }
     var userName by rememberSaveable { mutableStateOf("") }
+    var userAvatarUri by rememberSaveable { mutableStateOf("") }
     var showProfileMenu by rememberSaveable { mutableStateOf(false) }
     var selectedTripId by rememberSaveable { mutableStateOf<String?>(null) }
     var showPlacesResult by rememberSaveable { mutableStateOf(false) }
     var placesResultCategory by rememberSaveable { mutableStateOf(PlaceCategory.HOTELS) }
+
+    // Sync avatar from AuthViewModel whenever the current user changes
+    val currentUser by authVm.currentUser.collectAsStateWithLifecycleCompat()
+    LaunchedEffect(currentUser) {
+        currentUser?.let {
+            if (it.avatarUrl.isNotBlank()) userAvatarUri = it.avatarUrl
+        }
+    }
 
     val canGoBack = showMap || showProfile || showAuth || showTranslate || showWebView ||
         showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult
@@ -160,9 +184,11 @@ fun KipitaApp() {
                 onBack = onBack,
                 isGuest = isGuest,
                 userName = userName,
+                userAvatarUri = userAvatarUri,
                 onProfileClick = { showProfileMenu = true }
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!showMap && !showProfile && !showAuth && !showTranslate && !showWebView &&
                 !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult) {
@@ -330,10 +356,14 @@ fun KipitaApp() {
                     ProfileSetupScreen(
                         paddingValues = padding,
                         onBack = { showProfile = false },
-                        onSave = { savedName ->
+                        onSave = { savedName, avatarUri ->
                             if (savedName.isNotBlank()) {
                                 userName = savedName
                                 isGuest = false
+                            }
+                            if (avatarUri.isNotBlank()) {
+                                userAvatarUri = avatarUri
+                                authVm.updateProfile(savedName, avatarUri)
                             }
                             showProfile = false
                         }
@@ -401,7 +431,16 @@ fun KipitaApp() {
                             SocialScreen(
                                 paddingValues       = padding,
                                 onNearbyTravelers   = { showNearbyTravelers = true },
-                                onTravelGroups      = { showTravelGroups = true }
+                                onTravelGroups      = {
+                                    if (isGuest) {
+                                        showAuth = true
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Create a profile to join groups")
+                                        }
+                                    } else {
+                                        showTravelGroups = true
+                                    }
+                                }
                             )
                         }
 
@@ -424,9 +463,10 @@ fun KipitaApp() {
                     ProfileMenuContent(
                         isGuest           = isGuest,
                         userName          = userName,
+                        userAvatarUri     = userAvatarUri,
                         onSetupProfile    = { showProfileMenu = false; if (isGuest) showAuth = true else showProfile = true },
                         onContinueAsGuest = { isGuest = true; showProfileMenu = false },
-                        onSignOut         = { isGuest = true; userName = ""; showProfileMenu = false },
+                        onSignOut         = { isGuest = true; userName = ""; userAvatarUri = ""; showProfileMenu = false },
                         onSettings        = { showProfileMenu = false; route = MainRoute.SETTINGS }
                     )
                 }
@@ -444,6 +484,7 @@ private fun KipitaTopBar(
     onBack: () -> Unit,
     isGuest: Boolean,
     userName: String,
+    userAvatarUri: String = "",
     onProfileClick: () -> Unit
 ) {
     Row(
@@ -487,15 +528,20 @@ private fun KipitaTopBar(
                 .clickable(onClick = onProfileClick),
             contentAlignment = Alignment.Center
         ) {
-            if (isGuest || userName.isBlank()) {
-                Icon(
+            when {
+                userAvatarUri.isNotBlank() -> AsyncImage(
+                    model = userAvatarUri,
+                    contentDescription = "Profile photo",
+                    modifier = Modifier.fillMaxSize().clip(CircleShape),
+                    contentScale = ContentScale.Crop
+                )
+                isGuest || userName.isBlank() -> Icon(
                     Icons.Default.Person,
                     contentDescription = "Profile",
                     tint = KipitaTextSecondary,
                     modifier = Modifier.size(18.dp)
                 )
-            } else {
-                Text(
+                else -> Text(
                     text = userName.first().uppercaseChar().toString(),
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
                     color = KipitaRed
@@ -512,6 +558,7 @@ private fun KipitaTopBar(
 private fun ProfileMenuContent(
     isGuest: Boolean,
     userName: String,
+    userAvatarUri: String = "",
     onSetupProfile: () -> Unit,
     onContinueAsGuest: () -> Unit,
     onSignOut: () -> Unit,
@@ -537,10 +584,15 @@ private fun ProfileMenuContent(
                     .border(2.dp, if (isGuest) KipitaBorder else KipitaRed, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (isGuest || userName.isBlank()) {
-                    Icon(Icons.Default.Person, null, tint = KipitaTextSecondary, modifier = Modifier.size(26.dp))
-                } else {
-                    Text(
+                when {
+                    userAvatarUri.isNotBlank() -> AsyncImage(
+                        model = userAvatarUri,
+                        contentDescription = "Profile photo",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    isGuest || userName.isBlank() -> Icon(Icons.Default.Person, null, tint = KipitaTextSecondary, modifier = Modifier.size(26.dp))
+                    else -> Text(
                         userName.first().uppercaseChar().toString(),
                         style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                         color = KipitaRed

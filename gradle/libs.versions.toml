@@ -31,6 +31,8 @@ androidxTestExtJunit = "1.2.1"
 generativeai = "0.9.0"
 mapsCompose = "4.3.3"
 playServicesMaps = "19.0.0"
+credentialsManager = "1.3.0"
+googleId = "1.1.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -78,6 +80,11 @@ google-generativeai = { group = "com.google.ai.client.generativeai", name = "gen
 google-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version = "21.3.0" }
+firebase-auth-ktx = { group = "com.google.firebase", name = "firebase-auth-ktx" }
+androidx-credentials = { group = "androidx.credentials", name = "credentials", version.ref = "credentialsManager" }
+androidx-credentials-play-services = { group = "androidx.credentials", name = "credentials-play-services-auth", version.ref = "credentialsManager" }
+googleid = { group = "com.google.android.libraries.identity.googleid", name = "googleid", version.ref = "googleId" }
+kotlinx-coroutines-play-services = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-play-services", version.ref = "coroutines" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

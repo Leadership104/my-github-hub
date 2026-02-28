@@ -16,4 +16,9 @@
     <string name="url_privacy_policy" translatable="false">https://kipita.com/privacy</string>
     <string name="url_terms_of_service" translatable="false">https://kipita.com/terms</string>
     <string name="url_support_email" translatable="false">info@kipita.com</string>
+
+    <!-- Google Sign-In — overridden automatically by the google-services plugin when
+         google-services.json is present and Google Sign-In is enabled in Firebase Console.
+         Replace with your actual OAuth 2.0 web client ID to activate Google Sign-In. -->
+    <string name="default_web_client_id" translatable="false"></string>
 </resources>

@@ -1,7 +1,10 @@
 package com.kipita.data.repository
 
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import com.kipita.data.local.UserDao
 import com.kipita.data.local.UserEntity
+import kotlinx.coroutines.tasks.await
 import java.security.MessageDigest
 import java.util.UUID
 import javax.inject.Inject
@@ -56,6 +59,62 @@ class AccountRepository @Inject constructor(
             return Result.failure(IllegalStateException("Invalid password."))
         }
         return Result.success(user)
+    }
+
+    /** Updates display name and avatar URL for an existing user. */
+    suspend fun updateProfile(userId: String, displayName: String, avatarUri: String): Result<UserEntity> {
+        val user = userDao.getById(userId)
+            ?: return Result.failure(IllegalStateException("User not found"))
+        val updated = user.copy(
+            displayName = displayName.trim().ifBlank { user.displayName },
+            avatarUrl = avatarUri
+        )
+        userDao.upsert(updated)
+        return Result.success(updated)
+    }
+
+    /**
+     * Signs in with a Google ID token obtained from Credential Manager.
+     * Creates or updates a local UserEntity from the Firebase user profile.
+     *
+     * Prerequisites: google-services.json with Google Sign-In enabled in Firebase Console
+     * and SHA-1 debug fingerprint registered.
+     */
+    suspend fun signInWithGoogle(idToken: String): Result<UserEntity> = try {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        val authResult = FirebaseAuth.getInstance().signInWithCredential(credential).await()
+        val firebaseUser = authResult.user
+            ?: return Result.failure(IllegalStateException("Google sign-in failed: no user"))
+
+        val normalizedEmail = normalizeEmail(firebaseUser.email ?: "")
+        val existing = if (normalizedEmail.isNotBlank()) userDao.getByEmail(normalizedEmail) else null
+
+        val user = if (existing != null) {
+            val updated = existing.copy(
+                displayName = firebaseUser.displayName?.takeIf { it.isNotBlank() } ?: existing.displayName,
+                avatarUrl = firebaseUser.photoUrl?.toString() ?: existing.avatarUrl
+            )
+            userDao.upsert(updated)
+            updated
+        } else {
+            val base = normalizeUsername(firebaseUser.displayName ?: firebaseUser.uid)
+            val newUser = UserEntity(
+                id = firebaseUser.uid,
+                displayName = firebaseUser.displayName ?: "Traveler",
+                username = base,
+                usernameNormalized = base,
+                avatarUrl = firebaseUser.photoUrl?.toString() ?: "",
+                email = firebaseUser.email ?: "",
+                emailNormalized = normalizedEmail,
+                emailVerified = firebaseUser.isEmailVerified,
+                createdAtEpochMillis = System.currentTimeMillis()
+            )
+            userDao.upsert(newUser)
+            newUser
+        }
+        Result.success(user)
+    } catch (e: Exception) {
+        Result.failure(e)
     }
 
     private fun normalizeUsername(value: String): String =

@@ -499,6 +499,32 @@ fun TripDetailScreen(
             }
         }
 
+        // ── Mark Complete button (only for active/upcoming trips) ─────────────
+        if (trip.status != "PAST" && trip.status != "CANCELLED") {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFFE8F5E9))
+                        .clickable { viewModel.markTripComplete(tripId) { onBack() } }
+                        .padding(vertical = 14.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Check, null, tint = KipitaGreenAccent, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Mark Complete ✓",
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = KipitaGreenAccent
+                        )
+                    }
+                }
+            }
+        }
+
         // ── Cancel Trip button (only for active/upcoming trips) ───────────────
         if (trip.status != "PAST" && trip.status != "CANCELLED") {
             item {

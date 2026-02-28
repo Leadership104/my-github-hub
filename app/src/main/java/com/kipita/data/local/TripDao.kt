@@ -59,7 +59,7 @@ interface TripDao {
 
     @Query(
         "UPDATE trips SET status = 'PAST' " +
-        "WHERE endDateEpoch < :todayEpoch AND status != 'PAST'"
+        "WHERE endDateEpoch < :todayEpoch AND status NOT IN ('PAST','CANCELLED')"
     )
     suspend fun markExpiredTripsAsPast(todayEpoch: Long)
 
@@ -70,6 +70,10 @@ interface TripDao {
     /** Removes all sample / onboarding trips. Called after user saves their first real trip. */
     @Query("DELETE FROM trips WHERE isSample = 1")
     suspend fun deleteSampleTrips()
+
+    /** Promotes a trip to PAST immediately (manual "Mark Complete"). */
+    @Query("UPDATE trips SET status = 'PAST' WHERE id = :tripId")
+    suspend fun markComplete(tripId: String)
 
     /** Marks a trip as CANCELLED with a timestamp and optional reason. */
     @Query("UPDATE trips SET status = 'CANCELLED', cancelledAt = :cancelledAt, cancellationReason = :reason WHERE id = :tripId")

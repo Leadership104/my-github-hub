@@ -82,6 +82,13 @@ class TripRepository @Inject constructor(
 
     // ── Maintenance ───────────────────────────────────────────────────────────
 
+    /** Immediately promotes a trip to PAST (manual "Mark Complete"). */
+    suspend fun markTripComplete(tripId: String) = try {
+        dao.markComplete(tripId)
+    } catch (e: Exception) {
+        logger.log("TripRepository.markTripComplete", e)
+    }
+
     /** Marks a trip as CANCELLED with an optional user-provided reason. */
     suspend fun cancelTrip(tripId: String, reason: String) = try {
         dao.cancelTrip(tripId, System.currentTimeMillis(), reason)

@@ -97,6 +97,19 @@ class TripDetailViewModel @Inject constructor(
         }
     }
 
+    /** Promotes the trip to PAST immediately. Calls onDone() so the UI can navigate back. */
+    fun markTripComplete(tripId: String, onDone: () -> Unit = {}) {
+        viewModelScope.launch {
+            try {
+                repo.markTripComplete(tripId)
+                onDone()
+            } catch (e: Exception) {
+                logger.log("TripDetailViewModel.markTripComplete", e)
+                _state.update { it.copy(error = "Could not mark trip complete.") }
+            }
+        }
+    }
+
     /**
      * Cancels the current trip and notifies the caller with the list of invited
      * member emails so the UI can fire a mailto Intent.

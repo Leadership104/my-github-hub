@@ -150,6 +150,13 @@ dependencies {
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)
 
+    // Google Sign-In via Firebase Auth + Credential Manager
+    implementation(libs.firebase.auth.ktx)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services)
+    implementation(libs.googleid)
+    implementation(libs.kotlinx.coroutines.play.services)
+
 
     testImplementation(libs.junit)
     testImplementation(libs.mockk)

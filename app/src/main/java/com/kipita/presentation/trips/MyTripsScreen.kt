@@ -10,6 +10,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,6 +44,8 @@ import androidx.compose.material.icons.filled.Anchor
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -52,6 +55,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -91,6 +96,10 @@ import com.kipita.presentation.theme.KipitaTextSecondary
 import com.kipita.presentation.theme.KipitaTextTertiary
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -382,15 +391,13 @@ fun MyTripsScreen(
                     showPlanSheet = false
                     onAiSuggest(prompt)
                 },
-                onManualCreate = { destination, country, startInDays, durationDays, notes ->
-                    val start = java.time.LocalDate.now().plusDays(startInDays.toLong())
-                    val end = start.plusDays((durationDays - 1).coerceAtLeast(0).toLong())
+                onManualCreate = { destination, country, startDate, endDate, notes ->
                     viewModel.createManualTrip(
                         destination = destination,
                         country = country,
                         countryFlag = "🌍",
-                        startDate = start,
-                        endDate = end,
+                        startDate = startDate,
+                        endDate = endDate,
                         flightNumber = "",
                         hotelName = "",
                         hotelConfirmation = "",
@@ -413,19 +420,22 @@ fun MyTripsScreen(
 private fun PlanTripSheet(
     onClose: () -> Unit,
     onAiPlan: (String) -> Unit,
-    onManualCreate: (destination: String, country: String, startInDays: Int, durationDays: Int, notes: String) -> Unit,
+    onManualCreate: (destination: String, country: String, startDate: LocalDate, endDate: LocalDate, notes: String) -> Unit,
     onOpenWebView: (url: String, title: String) -> Unit
 ) {
     var modeIndex by remember { mutableIntStateOf(0) } // 0 = AI, 1 = Manual
     var destination by remember { mutableStateOf("") }
     var country by remember { mutableStateOf("") }
     var duration by remember { mutableStateOf("7") }
-    var startInDays by remember { mutableStateOf("14") }
+    var startDate by remember { mutableStateOf<LocalDate?>(null) }
+    var endDate by remember { mutableStateOf<LocalDate?>(null) }
     var notes by remember { mutableStateOf("") }
     var showVerification by remember { mutableStateOf(false) }
+    var showStartPicker by remember { mutableStateOf(false) }
+    var showEndPicker by remember { mutableStateOf(false) }
 
     val parsedDuration = duration.toIntOrNull() ?: 0
-    val parsedStartDays = startInDays.toIntOrNull() ?: 0
+    val dateFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy")
     val farCityHint = listOf("tokyo", "london", "new york", "sydney", "paris")
         .count { notes.lowercase().contains(it) } > 1
 
@@ -506,23 +516,11 @@ private fun PlanTripSheet(
             )
         )
 
-        OutlinedTextField(
-            value = duration,
-            onValueChange = { duration = it },
-            label = { Text("Duration (days)") },
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = KipitaRed,
-                unfocusedBorderColor = KipitaBorder
-            )
-        )
-
-        if (modeIndex == 1) {
+        if (modeIndex == 0) {
             OutlinedTextField(
-                value = startInDays,
-                onValueChange = { startInDays = it },
-                label = { Text("Start in (days from now)") },
+                value = duration,
+                onValueChange = { duration = it },
+                label = { Text("Duration (days)") },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -530,6 +528,55 @@ private fun PlanTripSheet(
                     unfocusedBorderColor = KipitaBorder
                 )
             )
+        } else {
+            // Start date picker trigger
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .border(1.dp, if (startDate != null) KipitaRed else KipitaBorder, RoundedCornerShape(12.dp))
+                    .clickable { showStartPicker = true }
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Column {
+                    Text(
+                        "Start Date",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (startDate != null) KipitaRed else KipitaTextTertiary
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        startDate?.format(dateFormatter) ?: "Tap to select start date",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (startDate != null) KipitaOnSurface else KipitaTextTertiary
+                    )
+                }
+            }
+            // End date picker trigger
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .border(1.dp, if (endDate != null) KipitaRed else KipitaBorder, RoundedCornerShape(12.dp))
+                    .clickable { showEndPicker = true }
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Column {
+                    Text(
+                        "End Date",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (endDate != null) KipitaRed else KipitaTextTertiary
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        endDate?.format(dateFormatter) ?: "Tap to select end date",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (endDate != null) KipitaOnSurface else KipitaTextTertiary
+                    )
+                }
+            }
         }
 
         OutlinedTextField(
@@ -570,6 +617,8 @@ private fun PlanTripSheet(
         }
 
         if (showVerification && modeIndex == 1) {
+            val tripDays = if (startDate != null && endDate != null)
+                (endDate!!.toEpochDay() - startDate!!.toEpochDay() + 1).toInt() else 0
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -580,22 +629,25 @@ private fun PlanTripSheet(
             ) {
                 Text("Verification", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold), color = KipitaOnSurface)
                 Text("Destination: $destination, $country", style = MaterialTheme.typography.labelSmall, color = KipitaTextSecondary)
-                Text("Starts in: $parsedStartDays day(s), Duration: $parsedDuration day(s)", style = MaterialTheme.typography.labelSmall, color = KipitaTextSecondary)
+                Text("Start: ${startDate?.format(dateFormatter) ?: "—"}  →  End: ${endDate?.format(dateFormatter) ?: "—"}", style = MaterialTheme.typography.labelSmall, color = KipitaTextSecondary)
+                if (tripDays > 0) Text("Duration: $tripDays day(s)", style = MaterialTheme.typography.labelSmall, color = KipitaTextSecondary)
                 if (farCityHint) {
                     Text("Advisory: Notes mention multiple far-apart cities. Check travel time realism.", style = MaterialTheme.typography.labelSmall, color = KipitaRed)
                 }
-                if (parsedDuration <= 0 || parsedDuration > 60) {
-                    Text("Advisory: Duration should be between 1 and 60 days.", style = MaterialTheme.typography.labelSmall, color = KipitaRed)
+                if (endDate != null && startDate != null && endDate!! < startDate!!) {
+                    Text("Advisory: End date is before start date.", style = MaterialTheme.typography.labelSmall, color = KipitaRed)
                 }
             }
         }
 
+        val manualReady = modeIndex == 0 || (startDate != null && endDate != null && endDate!! >= startDate!!)
+        val actionEnabled = destination.isNotBlank() && country.isNotBlank() && (modeIndex == 0 || manualReady)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(if (destination.isNotBlank() && country.isNotBlank()) KipitaRed else KipitaCardBg)
-                .clickable(enabled = destination.isNotBlank() && country.isNotBlank()) {
+                .background(if (actionEnabled) KipitaRed else KipitaCardBg)
+                .clickable(enabled = actionEnabled) {
                     if (modeIndex == 0) {
                         val prompt = buildString {
                             append("Help me plan a ${duration}-day trip to $destination, $country")
@@ -606,7 +658,7 @@ private fun PlanTripSheet(
                     } else if (!showVerification) {
                         showVerification = true
                     } else {
-                        onManualCreate(destination.trim(), country.trim(), parsedStartDays.coerceAtLeast(0), parsedDuration.coerceAtLeast(1), notes.trim())
+                        onManualCreate(destination.trim(), country.trim(), startDate!!, endDate!!, notes.trim())
                     }
                 }
                 .padding(vertical = 14.dp),
@@ -621,19 +673,64 @@ private fun PlanTripSheet(
                 Icon(
                     if (modeIndex == 0) Icons.Default.Mic else Icons.Default.Check,
                     null,
-                    tint = if (destination.isNotBlank() && country.isNotBlank()) Color.White else KipitaTextTertiary,
+                    tint = if (actionEnabled) Color.White else KipitaTextTertiary,
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     label,
                     style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (destination.isNotBlank() && country.isNotBlank()) Color.White else KipitaTextTertiary
+                    color = if (actionEnabled) Color.White else KipitaTextTertiary
                 )
             }
         }
 
         Spacer(Modifier.height(24.dp))
+    }
+
+    // ── Start Date Picker Dialog ───────────────────────────────────────────
+    if (showStartPicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = startDate?.atStartOfDay(ZoneId.systemDefault())
+                ?.toInstant()?.toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showStartPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { millis ->
+                        startDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                        if (endDate != null && endDate!! < startDate!!) endDate = null
+                    }
+                    showStartPicker = false
+                }) { Text("OK", color = KipitaRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStartPicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = pickerState) }
+    }
+
+    // ── End Date Picker Dialog ─────────────────────────────────────────────
+    if (showEndPicker) {
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = endDate?.atStartOfDay(ZoneId.systemDefault())
+                ?.toInstant()?.toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showEndPicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    pickerState.selectedDateMillis?.let { millis ->
+                        endDate = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    }
+                    showEndPicker = false
+                }) { Text("OK", color = KipitaRed) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEndPicker = false }) { Text("Cancel") }
+            }
+        ) { DatePicker(state = pickerState) }
     }
 }
 

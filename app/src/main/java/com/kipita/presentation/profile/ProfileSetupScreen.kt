@@ -79,7 +79,7 @@ private val travelStyleOptions = listOf(
 fun ProfileSetupScreen(
     paddingValues: PaddingValues,
     onBack: () -> Unit = {},
-    onSave: (String) -> Unit = {}
+    onSave: (displayName: String, avatarUri: String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     var visible by remember { mutableStateOf(false) }
@@ -313,7 +313,10 @@ fun ProfileSetupScreen(
                                 .background(KipitaRed)
                                 .clickable {
                                     setupComplete = true
-                                    onSave(displayName.ifBlank { groupName })
+                                    onSave(
+                                        displayName.ifBlank { groupName },
+                                        avatarUri?.toString() ?: ""
+                                    )
                                 }
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
