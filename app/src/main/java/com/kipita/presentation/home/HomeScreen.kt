@@ -548,7 +548,11 @@ fun HomeScreen(
             SosSheet(
                 emails = sosEmails,
                 context = context,
-                onClose = { showSosSheet = false }
+                onClose = { showSosSheet = false },
+                onOpenWebView = { url, title ->
+                    showSosSheet = false
+                    onOpenWebView(url, title)
+                }
             )
         }
     }
@@ -1011,7 +1015,8 @@ private fun WeatherSheet(onClose: () -> Unit) {
 private fun SosSheet(
     emails: List<String>,
     context: android.content.Context,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     Column(
         modifier = Modifier
@@ -1182,20 +1187,17 @@ private fun SosSheet(
         )
 
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            // Navigate to hospital
+            // Navigate to hospital — iframed in in-app WebView
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color(0xFFFFF3E0))
                     .clickable {
-                        runCatching {
-                            val geoIntent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("geo:0,0?q=nearest+hospital")
-                            )
-                            context.startActivity(geoIntent)
-                        }
+                        onOpenWebView(
+                            "https://www.google.com/maps/search/nearest+hospital",
+                            "Nearest Hospital"
+                        )
                     }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1209,7 +1211,7 @@ private fun SosSheet(
                         color = KipitaOnSurface
                     )
                     Text(
-                        "Opens maps with nearest hospital",
+                        "Opens in-app map to nearest hospital",
                         style = MaterialTheme.typography.labelSmall,
                         color = KipitaTextSecondary
                     )
@@ -1217,20 +1219,17 @@ private fun SosSheet(
                 Text("→", color = Color(0xFFE65100), fontWeight = FontWeight.Bold)
             }
 
-            // Navigate to fire station
+            // Navigate to fire station — iframed in in-app WebView
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
                     .background(Color(0xFFFCE4EC))
                     .clickable {
-                        runCatching {
-                            val geoIntent = Intent(
-                                Intent.ACTION_VIEW,
-                                Uri.parse("geo:0,0?q=nearest+fire+station")
-                            )
-                            context.startActivity(geoIntent)
-                        }
+                        onOpenWebView(
+                            "https://www.google.com/maps/search/nearest+fire+station",
+                            "Nearest Fire Station"
+                        )
                     }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1244,7 +1243,7 @@ private fun SosSheet(
                         color = KipitaOnSurface
                     )
                     Text(
-                        "Opens maps with nearest fire station",
+                        "Opens in-app map to nearest fire station",
                         style = MaterialTheme.typography.labelSmall,
                         color = KipitaTextSecondary
                     )

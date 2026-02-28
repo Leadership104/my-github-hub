@@ -4,6 +4,40 @@ All notable changes to Kipita are documented here.
 
 ---
 
+## [v0.7.0] — 2026-02-28
+
+### 📍 GPS-Sorted Destinations (Explore)
+- The 8 nomad-city destination cards are now sorted by proximity when GPS is active
+- Closest city gets a green **"Near You ✦"** badge and a "sorted by distance from you" label
+- Falls back to default order when location is unavailable
+
+### 🗂️ Category Result Pages (Places)
+- Tapping any category chip in the Explore → Places tab now opens a **dedicated full-screen result page**
+- Each location card uses round curves (`RoundedCornerShape(20dp)`) and shadow (`4dp elevation`) for a uniform, polished look
+- **Safety & Health categories** (Safety, Urgent Care, Pharmacies, Fitness): tapping a result opens Google Maps search **iframed in the in-app WebView** — user never leaves the app
+- **All other categories**: tapping a card expands it in place to reveal phone number, distance, and review count
+- GPS is auto-requested on entry to the result page; results fetch from the user's real location
+
+### ₿ BTCMap in Finance & Services (Places)
+- A dedicated orange **BTCMap** chip now appears in the Finance & Services category group
+- Tapping it opens `btcmap.org/map` iframed inside the in-app WebView
+
+### 🗺️ Map — Geolocation + Address Search
+- Map screen now **auto-requests GPS permission** on first launch
+- A **search bar** overlaid at the top of the map lets users type any city, address, or country
+- On submit, the address is geocoded and the map **re-centers** to the new location
+
+### ₿ BTC Source Toggle (Map)
+- When the ₿ BTC filter is active in the map bottom sheet, three sub-pills appear: **₿ BTCMap**, **⚡ Cash App**, and **🌐 Both**
+- Tapping a pill filters map markers and the merchant list to show only that source
+
+### 🆘 SOS — Hospital & Fire Station Now Iframed
+- "Navigate to Hospital" and "Navigate to Fire Station" in the SOS Emergency sheet now open **inside the in-app WebView** instead of launching an external maps app
+- Keeps users fully within Kipita during emergencies
+- "Call Emergency Services" (911) remains a native phone dialer intent
+
+---
+
 ## [v0.6.0] — 2026-02-27
 
 ### ✈️ Destination Detail View (Explore)
