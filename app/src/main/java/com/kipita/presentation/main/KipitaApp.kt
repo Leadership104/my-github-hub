@@ -80,6 +80,7 @@ import com.kipita.presentation.community.NearbyTravelersScreen
 import com.kipita.presentation.community.TravelGroupsScreen
 import com.kipita.presentation.explore.ExploreScreen
 import com.kipita.presentation.home.HomeScreen
+import com.kipita.presentation.perks.PerksScreen
 import com.kipita.presentation.map.MapScreen
 import com.kipita.presentation.profile.ProfileSetupScreen
 import com.kipita.presentation.settings.SettingsScreen
@@ -151,6 +152,7 @@ fun KipitaApp() {
     var selectedTripId by rememberSaveable { mutableStateOf<String?>(null) }
     var showPlacesResult by rememberSaveable { mutableStateOf(false) }
     var placesResultCategory by rememberSaveable { mutableStateOf(PlaceCategory.HOTELS) }
+    var showPerks by rememberSaveable { mutableStateOf(false) }
 
     // Sync avatar from AuthViewModel whenever the current user changes
     val currentUser by authVm.currentUser.collectAsStateWithLifecycleCompat()
@@ -161,7 +163,7 @@ fun KipitaApp() {
     }
 
     val canGoBack = showMap || showProfile || showAuth || showTranslate || showWebView ||
-        showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult
+        showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult || showPerks
     val onBack: () -> Unit = {
         when {
             showWebView         -> showWebView = false
@@ -170,6 +172,7 @@ fun KipitaApp() {
             showTravelGroups    -> showTravelGroups = false
             showTranslate       -> showTranslate = false
             selectedTripId != null -> selectedTripId = null
+            showPerks   -> showPerks = false
             showAuth    -> showAuth = false
             showMap     -> showMap = false
             showProfile -> showProfile = false
@@ -191,7 +194,7 @@ fun KipitaApp() {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!showMap && !showProfile && !showAuth && !showTranslate && !showWebView &&
-                !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult) {
+                !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult && !showPerks) {
                 NavigationBar(
                     containerColor = KipitaNavBg,
                     tonalElevation = 0.dp,
@@ -324,6 +327,17 @@ fun KipitaApp() {
                     )
                 }
 
+                showPerks -> KipitaErrorBoundary("PerksScreen") { _ ->
+                    PerksScreen(
+                        paddingValues = padding,
+                        onOpenWebView = { url, title ->
+                            webViewUrl = url
+                            webViewTitle = title
+                            showWebView = true
+                        }
+                    )
+                }
+
                 showAuth -> KipitaErrorBoundary("AuthScreen") { _ ->
                     AuthScreen(
                         paddingValues = padding,
@@ -382,6 +396,7 @@ fun KipitaApp() {
                                 onOpenMap        = { showMap = true },
                                 onOpenAI         = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
                                 onOpenTranslate  = { showTranslate = true },
+                                onOpenPerks      = { showPerks = true },
                                 onOpenWebView    = { url, title ->
                                     webViewUrl = url
                                     webViewTitle = title

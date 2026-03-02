@@ -98,6 +98,7 @@ private val quickTools = listOf(
     QuickTool("💱", "Currency"),
     QuickTool("🗺️", "Maps"),
     QuickTool("🌐", "Translate"),
+    QuickTool("🎁", "Deals"),
     QuickTool("🧳", "Packing List"),
     QuickTool("🌤️", "Weather")
 )
@@ -130,6 +131,7 @@ fun HomeScreen(
     onOpenMap: () -> Unit = {},
     onOpenAI: (String) -> Unit = {},
     onOpenTranslate: () -> Unit = {},
+    onOpenPerks: () -> Unit = {},
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
     tripsViewModel: TripsViewModel = hiltViewModel()
 ) {
@@ -277,6 +279,7 @@ fun HomeScreen(
                                         "Currency"     -> onOpenWallet()
                                         "Maps"         -> onOpenMap()
                                         "Translate"    -> onOpenTranslate()
+                                        "Deals"        -> onOpenPerks()
                                         "Packing List" -> showPackingList = true
                                         "Weather"      -> showWeather = true
                                     }

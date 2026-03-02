@@ -57,3 +57,7 @@ annotation class CoinGeckoApi
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
 annotation class CashAppApi
+
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class DwaatApi

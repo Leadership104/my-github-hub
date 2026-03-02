@@ -16,7 +16,9 @@ import com.kipita.data.api.OpenAiApiService
 import com.kipita.data.api.RiverApiService
 import com.kipita.data.api.WalletApiService
 import com.kipita.data.api.WeatherApiService
+import com.kipita.data.api.DwaatApiService
 import com.kipita.data.api.GooglePlacesApiService
+import com.kipita.di.DwaatApi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -273,4 +275,21 @@ object NetworkModule {
     @Provides
     fun provideCashAppApiService(@CashAppApi retrofit: Retrofit): CashAppApiService =
         retrofit.create(CashAppApiService::class.java)
+
+    // -----------------------------------------------------------------------
+    // Dwaat API — original Kipita backend (affiliates, auth, advisories)
+    // -----------------------------------------------------------------------
+
+    @Provides
+    @Singleton
+    @DwaatApi
+    fun provideDwaatRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl("https://api.dwaat.com/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+
+    @Provides
+    fun provideDwaatApiService(@DwaatApi retrofit: Retrofit): DwaatApiService =
+        retrofit.create(DwaatApiService::class.java)
 }

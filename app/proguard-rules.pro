@@ -147,3 +147,13 @@
 -dontwarn javax.annotation.**
 -dontwarn sun.misc.Unsafe
 -dontwarn java.lang.instrument.**
+
+# Kipita Dwaat API models
+-keep class com.kipita.data.api.DwaatApiService { *; }
+-keep class com.kipita.data.api.PerkItem { *; }
+-keep class com.kipita.data.api.AffiliatesResponse { *; }
+-keep class com.kipita.data.api.AffiliatesRequest { *; }
+-keep class com.kipita.data.api.DwaatLoginRequest { *; }
+-keep class com.kipita.data.api.DwaatLoginResponse { *; }
+-keep class com.kipita.data.api.DwaatRegisterRequest { *; }
+-keep class com.kipita.data.api.DwaatGenericResponse { *; }
