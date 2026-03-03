@@ -15,8 +15,6 @@ import com.kipita.domain.model.TravelNotice
 import com.kipita.domain.usecase.TravelDataEngine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -28,51 +26,33 @@ class MapViewModel @Inject constructor(
     private val merchantRepository: MerchantRepository,
     private val nomadRepository: NomadRepository,
     private val offlineMapRepository: OfflineMapRepository,
-    private val googlePlacesRepository: GooglePlacesRepository,
+    private val placesRepository: GooglePlacesRepository,
     private val errorLogger: InHouseErrorLogger
 ) : ViewModel() {
     private val _state = MutableStateFlow(MapUiState())
     val state: StateFlow<MapUiState> = _state.asStateFlow()
 
-    fun load(region: String, userLat: Double = 0.0, userLng: Double = 0.0) {
+    fun load(region: String) {
         viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, userLat = userLat, userLng = userLng)
+            _state.value = _state.value.copy(loading = true)
             runCatching {
-                coroutineScope {
-                    val noticesD  = async { travelDataEngine.collectRegionNotices(region) }
-                    val merchantsD = async { merchantRepository.refresh(null, userLat, userLng) }
-                    val nomadD    = async { nomadRepository.refresh() }
-                    val offlineD  = async { offlineMapRepository.isRegionAvailableOffline(region) }
-                    val foodD = async {
-                        runCatching {
-                            googlePlacesRepository.fetchCategory(userLat, userLng, PlaceCategory.RESTAURANTS)
-                        }.getOrElse { emptyList() }
-                    }
-                    val cafeD = async {
-                        runCatching {
-                            googlePlacesRepository.fetchCategory(userLat, userLng, PlaceCategory.CAFES)
-                        }.getOrElse { emptyList() }
-                    }
-                    val shopD = async {
-                        runCatching {
-                            googlePlacesRepository.fetchCategory(userLat, userLng, PlaceCategory.SHOPPING)
-                        }.getOrElse { emptyList() }
-                    }
-
-                    MapUiState(
-                        loading           = false,
-                        notices           = noticesD.await(),
-                        merchants         = merchantsD.await(),
-                        nomadPlaces       = nomadD.await(),
-                        nearbyFoodPlaces  = foodD.await(),
-                        nearbyCafePlaces  = cafeD.await(),
-                        nearbyShopPlaces  = shopD.await(),
-                        activeOverlays    = _state.value.activeOverlays,
-                        offlineReady      = offlineD.await(),
-                        userLat           = userLat,
-                        userLng           = userLng
-                    )
-                }
+                val notices = travelDataEngine.collectRegionNotices(region)
+                val merchants = merchantRepository.refresh(cashAppToken = null)
+                val nomadPlaces = nomadRepository.refresh()
+                val isOfflineReady = offlineMapRepository.isRegionAvailableOffline(region)
+                val places = placesRepository.fetchCategory(
+                    latitude = _state.value.currentLat,
+                    longitude = _state.value.currentLon,
+                    category = _state.value.selectedMarkerType.category
+                )
+                _state.value.copy(
+                    loading = false,
+                    notices = notices,
+                    merchants = merchants,
+                    nomadPlaces = nomadPlaces,
+                    places = places,
+                    offlineReady = isOfflineReady
+                )
             }.onSuccess { _state.value = it }
                 .onFailure {
                     _state.value = _state.value.copy(loading = false)
@@ -89,6 +69,20 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    fun updateLocation(lat: Double, lon: Double) {
+        _state.value = _state.value.copy(currentLat = lat, currentLon = lon)
+        load("global")
+    }
+
+    fun updateSearchQuery(query: String) {
+        _state.value = _state.value.copy(searchQuery = query)
+    }
+
+    fun applySearchCenter(label: String, lat: Double, lon: Double) {
+        _state.value = _state.value.copy(searchQuery = label, currentLat = lat, currentLon = lon)
+        load("global")
+    }
+
     fun toggleOverlay(overlay: OverlayType) {
         _state.value = _state.value.copy(
             activeOverlays = _state.value.activeOverlays.toMutableSet().apply {
@@ -97,33 +91,53 @@ class MapViewModel @Inject constructor(
         )
     }
 
-    fun setBtcSource(source: BtcSource) {
-        _state.value = _state.value.copy(btcSource = source)
+    fun setBtcSourceFilter(filter: BtcSourceFilter) {
+        _state.value = _state.value.copy(btcSourceFilter = filter)
+    }
+
+    fun setMarkerType(markerType: MarkerType) {
+        _state.value = _state.value.copy(selectedMarkerType = markerType)
+        load("global")
+    }
+
+    fun toggleExpanded(placeId: String) {
+        _state.value = _state.value.copy(expandedPlaceId = if (_state.value.expandedPlaceId == placeId) null else placeId)
+    }
+
+    fun showEmbeddedMapSearch(query: String) {
+        _state.value = _state.value.copy(embeddedMapQuery = query)
     }
 }
 
-enum class OverlayType { BTC_MERCHANTS, SAFETY, HEALTH, INFRASTRUCTURE, NOMAD }
+enum class OverlayType(val label: String) {
+    BTC_MERCHANTS("BTC merchants"),
+    SAFETY("Safety"),
+    HEALTH("Health"),
+    INFRASTRUCTURE("Infrastructure"),
+    NOMAD("Nomad")
+}
 
-enum class BtcSource { BTCMAP, CASHAPP, BOTH }
+enum class BtcSourceFilter { BTCMAP, CASH_APP, BOTH }
+
+enum class MarkerType(val label: String, val category: PlaceCategory) {
+    FOOD("Food", PlaceCategory.RESTAURANTS),
+    CAFE("Cafe", PlaceCategory.CAFES),
+    SHOPS("Shops", PlaceCategory.SHOPPING)
+}
 
 data class MapUiState(
     val loading: Boolean = false,
     val notices: List<TravelNotice> = emptyList(),
     val merchants: List<MerchantLocation> = emptyList(),
     val nomadPlaces: List<NomadPlaceInfo> = emptyList(),
-    val nearbyFoodPlaces: List<NearbyPlace> = emptyList(),
-    val nearbyCafePlaces: List<NearbyPlace> = emptyList(),
-    val nearbyShopPlaces: List<NearbyPlace> = emptyList(),
+    val places: List<NearbyPlace> = emptyList(),
     val activeOverlays: Set<OverlayType> = setOf(OverlayType.BTC_MERCHANTS, OverlayType.SAFETY, OverlayType.HEALTH, OverlayType.NOMAD),
-    val offlineReady: Boolean = false,
-    val userLat: Double = 0.0,
-    val userLng: Double = 0.0,
-    val btcSource: BtcSource = BtcSource.BOTH
-) {
-    val filteredMerchants: List<MerchantLocation>
-        get() = when (btcSource) {
-            BtcSource.BTCMAP  -> merchants.filter { it.source == "btcmap" }
-            BtcSource.CASHAPP -> merchants.filter { it.source == "cashapp" }
-            BtcSource.BOTH    -> merchants
-        }
-}
+    val btcSourceFilter: BtcSourceFilter = BtcSourceFilter.BOTH,
+    val selectedMarkerType: MarkerType = MarkerType.FOOD,
+    val currentLat: Double = 35.6762,
+    val currentLon: Double = 139.6503,
+    val searchQuery: String = "",
+    val expandedPlaceId: String? = null,
+    val embeddedMapQuery: String = "",
+    val offlineReady: Boolean = false
+)

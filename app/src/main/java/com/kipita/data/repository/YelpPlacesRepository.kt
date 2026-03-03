@@ -38,7 +38,9 @@ data class NearbyPlace(
     val isOpen: Boolean,
     val latitude: Double?,
     val longitude: Double?,
-    val phone: String
+    val phone: String,
+    val website: String = "",
+    val photoRef: String = ""
 )
 
 @Singleton
@@ -144,7 +146,9 @@ class GooglePlacesRepository @Inject constructor(
         isOpen = currentOpeningHours?.openNow ?: false,
         latitude = location?.latitude,
         longitude = location?.longitude,
-        phone = nationalPhoneNumber
+        phone = nationalPhoneNumber,
+        website = websiteUri,
+        photoRef = photos.firstOrNull()?.name ?: ""
     )
 }
 

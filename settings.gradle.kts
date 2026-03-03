@@ -23,4 +23,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Kipita"
 include(":app")
-include(":baselineprofile")
+//include(":baselineprofile")

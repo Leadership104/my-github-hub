@@ -96,6 +96,7 @@ import kotlinx.coroutines.delay
  * Error reporting: any auth failure is captured and forwarded to info@kipita.com
  * via the in-app error mailto link.
  */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun AuthScreen(
     paddingValues: PaddingValues = PaddingValues(),
