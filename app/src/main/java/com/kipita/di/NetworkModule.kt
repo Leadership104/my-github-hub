@@ -1,6 +1,7 @@
 ﻿package com.kipita.di
 
 import com.kipita.BuildConfig
+import com.kipita.data.api.BitcoinPriceApiService
 import com.kipita.data.api.BtcMerchantApiService
 import com.kipita.data.api.ClaudeApiService
 import com.kipita.data.api.CoinbaseApiService
@@ -199,4 +200,17 @@ object NetworkModule {
 
     @Provides
     fun provideDwaatApiService(@DwaatApi retrofit: Retrofit): DwaatApiService = retrofit.create(DwaatApiService::class.java)
+
+    @Provides
+    @Singleton
+    @CoinGeckoApi
+    fun provideCoinGeckoRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl("https://api.coingecko.com/api/v3/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+
+    @Provides
+    fun provideBitcoinPriceApiService(@CoinGeckoApi retrofit: Retrofit): BitcoinPriceApiService =
+        retrofit.create(BitcoinPriceApiService::class.java)
 }
