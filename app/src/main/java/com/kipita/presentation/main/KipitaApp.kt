@@ -80,6 +80,7 @@ import com.kipita.presentation.community.NearbyTravelersScreen
 import com.kipita.presentation.community.TravelGroupsScreen
 import com.kipita.presentation.explore.ExploreScreen
 import com.kipita.presentation.home.HomeScreen
+import com.kipita.presentation.perks.PerksScreen
 import com.kipita.presentation.map.MapScreen
 import com.kipita.presentation.profile.ProfileSetupScreen
 import com.kipita.presentation.settings.SettingsScreen
@@ -151,6 +152,7 @@ fun KipitaApp() {
     var selectedTripId by rememberSaveable { mutableStateOf<String?>(null) }
     var showPlacesResult by rememberSaveable { mutableStateOf(false) }
     var placesResultCategory by rememberSaveable { mutableStateOf(PlaceCategory.HOTELS) }
+    var showPerks by rememberSaveable { mutableStateOf(false) }
 
     // Sync avatar from AuthViewModel whenever the current user changes
     val currentUser by authVm.currentUser.collectAsStateWithLifecycleCompat()
@@ -161,7 +163,7 @@ fun KipitaApp() {
     }
 
     val canGoBack = showMap || showProfile || showAuth || showTranslate || showWebView ||
-        showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult
+        showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult || showPerks
     val onBack: () -> Unit = {
         when {
             showWebView         -> showWebView = false
@@ -170,6 +172,7 @@ fun KipitaApp() {
             showTravelGroups    -> showTravelGroups = false
             showTranslate       -> showTranslate = false
             selectedTripId != null -> selectedTripId = null
+            showPerks   -> showPerks = false
             showAuth    -> showAuth = false
             showMap     -> showMap = false
             showProfile -> showProfile = false
@@ -191,11 +194,11 @@ fun KipitaApp() {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!showMap && !showProfile && !showAuth && !showTranslate && !showWebView &&
-                !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult) {
+                !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult && !showPerks) {
                 NavigationBar(
                     containerColor = KipitaNavBg,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.height(76.dp)
+                    modifier = Modifier.height(90.dp)
                 ) {
                     navItems.forEach { item ->
                         val selected = route == item.route
@@ -205,19 +208,23 @@ fun KipitaApp() {
                             label = "nav-scale"
                         )
                         NavigationBarItem(
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
                             selected = selected,
                             onClick = { route = item.route },
                             icon = {
-                                if (item.isCenter && !selected) {
+                                if (item.isCenter) {
                                     Box(
                                         modifier = Modifier
-                                            .size(42.dp)
+                                            .size(44.dp)
                                             .scale(scale)
-                                            .background(KipitaRed, CircleShape),
+                                            .background(
+                                                color = if (selected) KipitaRed else KipitaRed.copy(alpha = 0.92f),
+                                                shape = CircleShape
+                                            ),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Icon(
-                                            item.unselectedIcon,
+                                            imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
                                             contentDescription = item.label,
                                             tint = Color.White,
                                             modifier = Modifier.size(22.dp)
@@ -237,7 +244,8 @@ fun KipitaApp() {
                                 Text(
                                     text = item.label,
                                     fontSize = 10.sp,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                    modifier = Modifier.padding(top = 2.dp)
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
@@ -324,10 +332,26 @@ fun KipitaApp() {
                     )
                 }
 
+                showPerks -> KipitaErrorBoundary("PerksScreen") { _ ->
+                    PerksScreen(
+                        paddingValues = padding,
+                        onOpenWebView = { url, title ->
+                            webViewUrl = url
+                            webViewTitle = title
+                            showWebView = true
+                        }
+                    )
+                }
+
                 showAuth -> KipitaErrorBoundary("AuthScreen") { _ ->
                     AuthScreen(
                         paddingValues = padding,
                         onBack = { showAuth = false },
+                        onOpenWebView = { url, title ->
+                            webViewUrl = url
+                            webViewTitle = title
+                            showWebView = true
+                        },
                         onAuthSuccess = { displayName ->
                             userName = displayName
                             isGuest = false
@@ -341,7 +365,15 @@ fun KipitaApp() {
                 }
 
                 showMap -> KipitaErrorBoundary("MapScreen") { _ ->
-                    MapScreen(paddingValues = padding)
+                    MapScreen(
+                        paddingValues = padding,
+                        onNavigateBack = { showMap = false },
+                        onAiSuggest = { prompt ->
+                            aiPreFill = prompt
+                            showMap = false
+                            route = MainRoute.AI
+                        }
+                    )
                 }
 
                 showProfile -> KipitaErrorBoundary("ProfileSetupScreen") { _ ->
@@ -374,6 +406,7 @@ fun KipitaApp() {
                                 onOpenMap        = { showMap = true },
                                 onOpenAI         = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
                                 onOpenTranslate  = { showTranslate = true },
+                                onOpenPerks      = { showPerks = true },
                                 onOpenWebView    = { url, title ->
                                     webViewUrl = url
                                     webViewTitle = title
@@ -393,7 +426,9 @@ fun KipitaApp() {
                         }
 
                         MainRoute.AI -> KipitaErrorBoundary("AiAssistantScreen") { _ ->
-                            AiAssistantScreen(paddingValues = padding)
+                            AiAssistantScreen(
+                                paddingValues = padding
+                            )
                         }
 
                         MainRoute.TRIPS -> KipitaErrorBoundary("MyTripsScreen") { _ ->
@@ -412,7 +447,14 @@ fun KipitaApp() {
                         }
 
                         MainRoute.WALLET -> KipitaErrorBoundary("WalletScreen") { _ ->
-                            WalletScreen(padding)
+                            WalletScreen(
+                                paddingValues = padding,
+                                onOpenWebView = { url, title ->
+                                    webViewUrl = url
+                                    webViewTitle = title
+                                    showWebView = true
+                                }
+                            )
                         }
 
                         MainRoute.SOCIAL -> KipitaErrorBoundary("SocialScreen") { _ ->
@@ -433,7 +475,14 @@ fun KipitaApp() {
                         }
 
                         MainRoute.SETTINGS -> KipitaErrorBoundary("SettingsScreen") { _ ->
-                            SettingsScreen(paddingValues = padding)
+                            SettingsScreen(
+                                paddingValues = padding,
+                                onOpenWebView = { url, title ->
+                                    webViewUrl = url
+                                    webViewTitle = title
+                                    showWebView = true
+                                }
+                            )
                         }
                     }
                 }
@@ -483,6 +532,7 @@ private fun KipitaTopBar(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // Silver back button — always reserves space; only visible/clickable when navigable
         Box(
             modifier = Modifier
                 .size(36.dp)
@@ -501,6 +551,7 @@ private fun KipitaTopBar(
             }
         }
 
+        // Profile / guest circle — always visible top-right on every screen
         Box(
             modifier = Modifier
                 .size(36.dp)
@@ -557,6 +608,7 @@ private fun ProfileMenuContent(
             .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        // Avatar + name header
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(vertical = 8.dp)
@@ -636,6 +688,7 @@ private fun ProfileMenuContent(
             ProfileMenuItem("Sign Out",            onClick = onSignOut, isDestructive = true)
         }
 
+        // Share Kipita — visible to all users (guest and signed-in)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
