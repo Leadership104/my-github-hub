@@ -37,6 +37,13 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
+        <!-- Disable Firebase auto-init provider so Application.onCreate guards it -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            android:exported="false"
+            tools:node="remove" />
+
         <!-- Disable auto-init so HiltWorkerFactory is used instead of the default -->
         <provider
             android:name="androidx.startup.InitializationProvider"

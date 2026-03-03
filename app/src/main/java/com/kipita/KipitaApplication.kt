@@ -1,8 +1,10 @@
 ﻿package com.kipita
 
 import android.app.Application
+import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import com.google.firebase.FirebaseApp
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -11,6 +13,16 @@ class KipitaApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    override fun onCreate() {
+        super.onCreate()
+        // Guard Firebase init — fails on AOSP emulators without Google Play Services
+        try {
+            FirebaseApp.initializeApp(this)
+        } catch (e: Exception) {
+            Log.w("KipitaApp", "Firebase unavailable (no GMS): ${e.message}")
+        }
+    }
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
