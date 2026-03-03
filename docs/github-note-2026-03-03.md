@@ -86,3 +86,22 @@ Put these in `local.properties` (for local/release build pipeline secrets inject
    Where to set: generated from Firebase `google-services.json` + console OAuth client; referenced in `app/src/main/res/values/strings.xml`.
 
 Also ensure Firebase package registration and SHA-1/SHA-256 are configured for release app id variants.
+
+## Emulator clean-run validation (fast)
+- Removed all Kipita app instances from emulator:
+  - `com.kipita.dev`
+  - `com.kipita.baselineprofile`
+- Reinstalled fresh `devDebug` and relaunched:
+  - `:app:installDevDebug` passed
+  - launch intent: `com.kipita.dev/com.kipita.MainActivity`
+- Post-launch package check confirms only active app instance is:
+  - `com.kipita.dev`
+- Quick log sanity check after cold launch:
+  - no immediate fatal crash patterns observed
+  - no immediate API exception signatures observed
+
+## Live API/JSON demo readiness summary
+- Gemini API key is configured in `local.properties` and injected into `BuildConfig`.
+- Google Places key is configured in `local.properties`; Maps placeholder falls back to Places key if `MAPS_API_KEY` is absent.
+- Firebase JSON is present for `dev`, `staging`, and `prod` source sets.
+- Wallet live price pipeline is configured for near-live refresh and short cache TTL.
