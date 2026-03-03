@@ -167,6 +167,9 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
     implementation(libs.firebase.auth)
+    implementation(libs.google.maps.compose)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

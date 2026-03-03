@@ -81,7 +81,6 @@ fun KipitaApp() {
                             selectedCategory != null -> PlacesCategoryResultScreen(
                                 category = selectedCategory!!,
                                 onBack = { selectedCategory = null },
-                                onOpenDetail = { place -> selectedPlace = place },
                                 onOpenWebView = { u, t -> browserUrl = u; browserTitle = t }
                             )
                             else -> PlacesScreen(

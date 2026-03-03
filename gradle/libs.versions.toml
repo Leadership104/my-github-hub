@@ -22,8 +22,13 @@ truth = "1.4.4"
 ksp = "2.0.0-1.0.21"
 googleServices = "4.4.2"
 coil = "2.7.0"
+mapsCompose = "4.3.3"
+playServicesMaps = "19.0.0"
 
 [libraries]
+google-maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
+play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
+play-services-location = { group = "com.google.android.gms", name = "play-services-location", version = "21.3.0" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
