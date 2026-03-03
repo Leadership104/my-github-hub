@@ -265,9 +265,9 @@ fun TripDetailScreen(
                                 value = trip.flightNumber.ifBlank { "Search" },
                                 onClick = {
                                     val url = if (trip.flightNumber.isNotBlank())
-                                        "https://www.google.com/flights?hl=en#flt=${trip.flightNumber}"
+                                        "https://expedia.com/affiliate/eA2cKky"
                                     else
-                                        "https://www.google.com/flights"
+                                        "https://expedia.com/affiliate/eA2cKky"
                                     onOpenWebView(url, "Flights")
                                 }
                             )
@@ -280,7 +280,7 @@ fun TripDetailScreen(
                                 value = trip.hotelName.ifBlank { "Search" },
                                 onClick = {
                                     val q = trip.hotelName.ifBlank { trip.destination }
-                                    onOpenWebView("https://www.booking.com/searchresults.html?ss=${Uri.encode(q)}", "Hotels")
+                                    onOpenWebView("https://www.hotels.com/affiliate/RrZ7bmg", "Hotels")
                                 }
                             )
                         }
@@ -291,7 +291,7 @@ fun TripDetailScreen(
                                 label = "Car Rental",
                                 value = "Search",
                                 onClick = {
-                                    onOpenWebView("https://www.rentalcars.com/en/searchresults/?dropoff=${Uri.encode(trip.destination)}", "Car Rental")
+                                    onOpenWebView("https://expedia.com/affiliate/eA2cKky", "Car Rental")
                                 }
                             )
                         }

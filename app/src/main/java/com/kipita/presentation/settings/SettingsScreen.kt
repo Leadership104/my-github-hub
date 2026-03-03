@@ -187,19 +187,19 @@ fun SettingsScreen(
                         name  = "Fold",
                         desc  = "Bitcoin rewards debit card — earn sats on every purchase",
                         emoji = "🟠",
-                        url   = "AFFILIATE_FOLD_URL"
+                        url   = "https://use.foldapp.com/r/MAJL4MYU"
                     ),
                     AffiliateEntry(
                         name  = "Swan Bitcoin",
                         desc  = "Automated Bitcoin savings & accumulation platform",
                         emoji = "🦢",
-                        url   = "AFFILIATE_SWAN_URL"
+                        url   = "https://www.swanbitcoin.com/kipita/"
                     ),
                     AffiliateEntry(
                         name  = "Kinesis",
                         desc  = "Digital gold & silver — spend, save, and earn yield",
                         emoji = "⚡",
-                        url   = "AFFILIATE_KINESIS_URL"
+                        url   = "https://kms.kinesis.money/signup/KM00083150"
                     ),
                     AffiliateEntry(
                         name  = "Upside",

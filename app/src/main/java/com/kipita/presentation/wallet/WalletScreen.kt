@@ -137,7 +137,7 @@ private val kipitaPerks = listOf(
         logoBg = Color(0xFFD4AF37),
         logoTextColor = Color.White,
         accentColor = Color(0xFFB8860B),
-        url = "https://kinesis.money"
+        url = "https://kms.kinesis.money/signup/KM00083150"
     ),
     PerkPartner(
         name = "Swan Bitcoin",
@@ -146,7 +146,7 @@ private val kipitaPerks = listOf(
         logoBg = Color(0xFF1B3A6B),
         logoTextColor = Color.White,
         accentColor = Color(0xFF1B3A6B),
-        url = "https://swanbitcoin.com"
+        url = "https://www.swanbitcoin.com/kipita/"
     ),
     PerkPartner(
         name = "Fold",
@@ -155,7 +155,7 @@ private val kipitaPerks = listOf(
         logoBg = Color(0xFFFF6B35),
         logoTextColor = Color.White,
         accentColor = Color(0xFFE55A2B),
-        url = "https://foldapp.com"
+        url = "https://use.foldapp.com/r/MAJL4MYU"
     ),
     PerkPartner(
         name = "Upside",
@@ -908,4 +908,3 @@ private fun QuickCurrencyChip(currency: String, flag: String, selected: Boolean,
         }
     }
 }
-

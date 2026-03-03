@@ -126,3 +126,17 @@ Also ensure Firebase package registration and SHA-1/SHA-256 are configured for r
 - `com.kipita.baselineprofile` uninstall returned `DELETE_FAILED_INTERNAL_ERROR` on emulator package manager, but active app instance is clean.
 - Relaunched with launcher intent (`monkey`) and verified active package:
   - `com.kipita.dev`
+
+## Affiliate Link Expansion (fast pass)
+- Updated transport booking links to affiliate routes in:
+  - Home (`Book Transport`)
+  - My Trips (`Book Transport`)
+  - Trip Detail (`Book & Manage`)
+- Expedia affiliate applied for Flights, Car Rental, and Cruise:
+  - `https://expedia.com/affiliate/eA2cKky`
+- Hotels affiliate applied for Hotels:
+  - `https://www.hotels.com/affiliate/RrZ7bmg`
+- Updated Finance/Perks affiliate links in Wallet and Settings:
+  - Kinesis: `https://kms.kinesis.money/signup/KM00083150`
+  - Swan Bitcoin: `https://www.swanbitcoin.com/kipita/`
+  - Fold: `https://use.foldapp.com/r/MAJL4MYU`

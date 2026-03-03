@@ -315,10 +315,10 @@ fun HomeScreen(
                         )
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             val transports = listOf(
-                                Triple("✈️", "Flights",   "https://www.google.com/flights"),
-                                Triple("🏨", "Hotels",    "https://www.booking.com"),
-                                Triple("🚗", "Car Rental","https://www.rentalcars.com"),
-                                Triple("🚢", "Cruise",    "https://www.cruisecritic.com"),
+                                Triple("✈️", "Flights",   "https://expedia.com/affiliate/eA2cKky"),
+                                Triple("🏨", "Hotels",    "https://www.hotels.com/affiliate/RrZ7bmg"),
+                                Triple("🚗", "Car Rental","https://expedia.com/affiliate/eA2cKky"),
+                                Triple("🚢", "Cruise",    "https://expedia.com/affiliate/eA2cKky"),
                                 Triple("🚕", "Uber",      "https://uber.com"),
                                 Triple("🚕", "Lyft",      "https://lyft.com")
                             )

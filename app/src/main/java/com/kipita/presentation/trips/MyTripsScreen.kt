@@ -345,12 +345,12 @@ fun MyTripsScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             val transports = listOf(
-                                Triple(Icons.Default.FlightTakeoff, "Flights", "https://www.google.com/flights"),
-                                Triple(Icons.Default.Hotel, "Hotels", "https://www.booking.com"),
-                                Triple(Icons.Default.DirectionsCar, "Car Rental", "https://www.rentalcars.com"),
+                                Triple(Icons.Default.FlightTakeoff, "Flights", "https://expedia.com/affiliate/eA2cKky"),
+                                Triple(Icons.Default.Hotel, "Hotels", "https://www.hotels.com/affiliate/RrZ7bmg"),
+                                Triple(Icons.Default.DirectionsCar, "Car Rental", "https://expedia.com/affiliate/eA2cKky"),
                                 Triple(Icons.Default.LocalTaxi, "Uber", "https://www.uber.com"),
                                 Triple(Icons.Default.LocalTaxi, "Lyft", "https://www.lyft.com"),
-                                Triple(Icons.Default.Anchor, "Cruise", "https://www.cruisecritic.com")
+                                Triple(Icons.Default.Anchor, "Cruise", "https://expedia.com/affiliate/eA2cKky")
                             )
                             items(transports.size) { i ->
                                 val (icon, label, deepLink) = transports[i]
