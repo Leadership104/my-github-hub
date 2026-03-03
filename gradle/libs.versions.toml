@@ -1,4 +1,4 @@
-﻿[versions]
+[versions]
 agp = "8.7.3"
 kotlin = "2.0.0"
 coreKtx = "1.13.1"
@@ -21,6 +21,7 @@ mockk = "1.13.13"
 truth = "1.4.4"
 ksp = "2.0.0-1.0.21"
 googleServices = "4.4.2"
+coil = "2.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -54,10 +55,12 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics-ktx" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics-ktx" }
+firebase-auth = { group = "com.google.firebase", name = "firebase-auth-ktx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 mockk = { group = "io.mockk", name = "mockk", version.ref = "mockk" }
 truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

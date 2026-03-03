@@ -8,12 +8,16 @@ import com.kipita.data.api.ErrorReportApiService
 import com.kipita.data.api.GovernmentApiService
 import com.kipita.data.api.NomadApiService
 import com.kipita.data.error.InHouseErrorLogger
+import com.kipita.data.local.DirectMessageDao
 import com.kipita.data.local.KipitaDatabase
 import com.kipita.data.local.ErrorLogDao
 import com.kipita.data.local.MerchantDao
 import com.kipita.data.local.NomadPlaceDao
+import com.kipita.data.local.SavedLocationDao
 import com.kipita.data.local.TravelNoticeDao
 import com.kipita.data.local.TripMessageDao
+import com.kipita.data.local.UserDao
+import com.kipita.data.repository.OfflineMessagingRepository
 import com.kipita.data.repository.AdvisoryRepository
 import com.kipita.data.repository.CurrencyRepository
 import com.kipita.data.repository.HealthRepository
@@ -107,6 +111,19 @@ object TravelDataModule {
         dao: ErrorLogDao,
         errorReportApiService: ErrorReportApiService
     ): InHouseErrorLogger = InHouseErrorLogger(dao, errorReportApiService)
+
+    @Provides
+    fun provideUserDao(db: KipitaDatabase): UserDao = db.userDao()
+
+    @Provides
+    fun provideSavedLocationDao(db: KipitaDatabase): SavedLocationDao = db.savedLocationDao()
+
+    @Provides
+    fun provideDirectMessageDao(db: KipitaDatabase): DirectMessageDao = db.directMessageDao()
+
+    @Provides
+    fun provideOfflineMessagingRepository(dao: DirectMessageDao): OfflineMessagingRepository =
+        OfflineMessagingRepository(dao)
 
     @Provides
     fun provideTravelDataEngine(

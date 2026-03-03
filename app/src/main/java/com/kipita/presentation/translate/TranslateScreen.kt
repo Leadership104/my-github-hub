@@ -423,6 +423,7 @@ private fun fallbackPhrases(lang: TravelLanguage): List<PhraseRow> = listOf(
 // TranslateScreen
 // ---------------------------------------------------------------------------
 
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun TranslateScreen(
     paddingValues: PaddingValues = PaddingValues(),

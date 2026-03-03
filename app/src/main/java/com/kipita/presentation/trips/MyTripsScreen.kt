@@ -416,6 +416,7 @@ fun MyTripsScreen(
 // ---------------------------------------------------------------------------
 // Plan New Trip Bottom Sheet
 // ---------------------------------------------------------------------------
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanTripSheet(
     onClose: () -> Unit,

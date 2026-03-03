@@ -539,7 +539,7 @@ fun TripDetailScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Cancel, null, tint = KipitaRed, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Close, null, tint = KipitaRed, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(8.dp))
                         Text(
                             "Cancel Trip",

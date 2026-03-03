@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -30,7 +31,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -78,6 +78,7 @@ private val emergencyCategories = setOf(
 fun PlacesCategoryResultScreen(
     category: PlaceCategory,
     onBack: () -> Unit,
+    onOpenDetail: (NearbyPlace) -> Unit = {},
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
     viewModel: PlacesViewModel = hiltViewModel()
 ) {
@@ -282,8 +283,9 @@ fun PlacesCategoryResultScreen(
                                         "https://www.google.com/maps/search/$query",
                                         "Find ${place.name}"
                                     )
+                                } else {
+                                    onOpenDetail(place)
                                 }
-                                // Non-emergency: expand handled inside the card
                             }
                         )
                     }
@@ -305,18 +307,13 @@ private fun PlaceResultCard(
     isEmergency: Boolean = false,
     onTap: () -> Unit = {}
 ) {
-    var expanded by remember { mutableStateOf(false) }
-
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .shadow(elevation = 4.dp, shape = RoundedCornerShape(20.dp))
             .clip(RoundedCornerShape(20.dp))
             .background(Color.White)
-            .clickable {
-                if (isEmergency) onTap()
-                else expanded = !expanded
-            }
+            .clickable(onClick = onTap)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -395,72 +392,19 @@ private fun PlaceResultCard(
                 }
             }
 
-            // Right column: distance + emergency indicator
+            // Right column: distance + tap indicator
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     "${"%.1f".format(place.distanceKm)} km",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = KipitaOnSurface
                 )
-                if (isEmergency) {
-                    Text(
-                        "View →",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = KipitaRed,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
-            }
-        }
-
-        // Expanded detail — only for non-emergency categories
-        if (expanded && !isEmergency) {
-            Spacer(Modifier.height(12.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(KipitaCardBg)
-                    .padding(12.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    if (place.phone.isNotBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.Phone,
-                                contentDescription = null,
-                                tint = KipitaTextSecondary,
-                                modifier = Modifier.size(14.dp)
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                place.phone,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = KipitaOnSurface
-                            )
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("📍", fontSize = 12.sp)
-                        Spacer(Modifier.width(6.dp))
-                        Text(
-                            "${"%.2f".format(place.distanceKm)} km away",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = KipitaTextSecondary
-                        )
-                    }
-                    if (place.reviewCount > 0) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("⭐", fontSize = 12.sp)
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                "${"%.1f".format(place.rating)} from ${place.reviewCount} reviews",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = KipitaTextSecondary
-                            )
-                        }
-                    }
-                }
+                Text(
+                    "View →",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = KipitaRed,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
             }
         }
     }

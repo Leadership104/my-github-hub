@@ -1,4 +1,4 @@
-﻿package com.kipita.data.local
+package com.kipita.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
@@ -9,9 +9,13 @@ import androidx.room.RoomDatabase
         MerchantEntity::class,
         NomadPlaceEntity::class,
         TripMessageEntity::class,
-        ErrorLogEntity::class
+        ErrorLogEntity::class,
+        TripEntity::class,
+        UserEntity::class,
+        SavedLocationEntity::class,
+        DirectMessageEntity::class
     ],
-    version = 4,
+    version = 6,
     exportSchema = false
 )
 abstract class KipitaDatabase : RoomDatabase() {
@@ -20,4 +24,8 @@ abstract class KipitaDatabase : RoomDatabase() {
     abstract fun nomadPlaceDao(): NomadPlaceDao
     abstract fun tripMessageDao(): TripMessageDao
     abstract fun errorLogDao(): ErrorLogDao
+    abstract fun tripDao(): TripDao
+    abstract fun userDao(): UserDao
+    abstract fun savedLocationDao(): SavedLocationDao
+    abstract fun directMessageDao(): DirectMessageDao
 }

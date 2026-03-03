@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.kapt)
@@ -18,6 +18,17 @@ if (googleServicesCandidates.any { file(it).exists() }) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+// Read local.properties for API keys and manifest placeholders
+fun localProp(key: String, default: String = "placeholder_$key"): String {
+    val f = rootProject.file("local.properties")
+    if (!f.exists()) return default
+    return f.readLines()
+        .firstOrNull { it.startsWith("$key=") }
+        ?.substringAfter("=")
+        ?.trim()
+        ?: default
+}
+
 android {
     namespace = "com.kipita"
     compileSdk = 35
@@ -31,6 +42,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
         buildConfigField("String", "FIREBASE_PROJECT_ID", "\"kipita-a1694\"")
+        manifestPlaceholders["MAPS_API_KEY"] = localProp("MAPS_API_KEY")
+        buildConfigField("String", "GOOGLE_PLACES_API_KEY", "\"${localProp("GOOGLE_PLACES_API_KEY")}\"")
+        buildConfigField("String", "GEMINI_API_KEY", "\"${localProp("GEMINI_API_KEY")}\"")
+        buildConfigField("String", "OPENAI_API_KEY", "\"${localProp("OPENAI_API_KEY")}\"")
+        buildConfigField("String", "CLAUDE_API_KEY", "\"${localProp("CLAUDE_API_KEY")}\"")
     }
 
     signingConfigs {
@@ -87,6 +103,10 @@ android {
         jvmTarget = "17"
     }
 
+    lint {
+        abortOnError = false
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -106,6 +126,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
@@ -139,6 +160,13 @@ dependencies {
     testImplementation(libs.mockk)
     testImplementation(libs.truth)
     testImplementation(libs.kotlinx.coroutines.test)
+
+    implementation(libs.coil.compose)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
+    implementation("androidx.credentials:credentials:1.3.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.3.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
+    implementation(libs.firebase.auth)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

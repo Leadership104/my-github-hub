@@ -3,12 +3,17 @@
 import com.kipita.BuildConfig
 import com.kipita.data.api.BtcMerchantApiService
 import com.kipita.data.api.ClaudeApiService
+import com.kipita.data.api.CoinbaseApiService
 import com.kipita.data.api.CurrencyApiService
+import com.kipita.data.api.DwaatApiService
 import com.kipita.data.api.ErrorReportApiService
 import com.kipita.data.api.GeminiApiService
+import com.kipita.data.api.GeminiCryptoApiService
 import com.kipita.data.api.GovernmentApiService
+import com.kipita.data.api.GooglePlacesApiService
 import com.kipita.data.api.NomadApiService
 import com.kipita.data.api.OpenAiApiService
+import com.kipita.data.api.RiverApiService
 import com.kipita.data.api.WalletApiService
 import dagger.Module
 import dagger.Provides
@@ -134,4 +139,64 @@ object NetworkModule {
 
     @Provides
     fun provideGeminiApiService(@GeminiApi retrofit: Retrofit): GeminiApiService = retrofit.create(GeminiApiService::class.java)
+
+    @Provides
+    @Singleton
+    @CoinbaseApi
+    fun provideCoinbaseRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl("https://api.coinbase.com/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+
+    @Provides
+    @Singleton
+    @GeminiCryptoApi
+    fun provideGeminiCryptoRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl("https://api.gemini.com/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+
+    @Provides
+    @Singleton
+    @RiverApi
+    fun provideRiverRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl("https://app.river.com/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+
+    @Provides
+    @Singleton
+    @GooglePlacesApi
+    fun provideGooglePlacesRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl("https://places.googleapis.com/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+
+    @Provides
+    @Singleton
+    @DwaatApi
+    fun provideDwaatRetrofit(okHttpClient: OkHttpClient): Retrofit = Retrofit.Builder()
+        .baseUrl("https://api.dwaat.com/")
+        .client(okHttpClient)
+        .addConverterFactory(MoshiConverterFactory.create())
+        .build()
+
+    @Provides
+    fun provideCoinbaseApiService(@CoinbaseApi retrofit: Retrofit): CoinbaseApiService = retrofit.create(CoinbaseApiService::class.java)
+
+    @Provides
+    fun provideGeminiCryptoApiService(@GeminiCryptoApi retrofit: Retrofit): GeminiCryptoApiService = retrofit.create(GeminiCryptoApiService::class.java)
+
+    @Provides
+    fun provideRiverApiService(@RiverApi retrofit: Retrofit): RiverApiService = retrofit.create(RiverApiService::class.java)
+
+    @Provides
+    fun provideGooglePlacesApiService(@GooglePlacesApi retrofit: Retrofit): GooglePlacesApiService = retrofit.create(GooglePlacesApiService::class.java)
+
+    @Provides
+    fun provideDwaatApiService(@DwaatApi retrofit: Retrofit): DwaatApiService = retrofit.create(DwaatApiService::class.java)
 }
