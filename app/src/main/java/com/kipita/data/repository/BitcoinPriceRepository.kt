@@ -2,6 +2,7 @@ package com.kipita.data.repository
 
 import com.kipita.data.api.BitcoinPriceApiService
 import com.kipita.data.api.CoinbaseApiService
+import com.kipita.data.api.CurrencyApiService
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.async
@@ -31,7 +32,8 @@ data class CryptoPrices(
 @Singleton
 class BitcoinPriceRepository @Inject constructor(
     private val api: BitcoinPriceApiService,
-    private val coinbaseApi: CoinbaseApiService
+    private val coinbaseApi: CoinbaseApiService,
+    private val currencyApi: CurrencyApiService
 ) {
     private var cached: CryptoPrices? = null
     private val cacheMaxAgeMs = 2_000L // 2 seconds
@@ -79,6 +81,12 @@ class BitcoinPriceRepository @Inject constructor(
             return fallback
         }
 
+        val fxFallback = runCatching { fetchFromFxHost(cache) }.getOrNull()
+        if (fxFallback != null && (fxFallback.btcUsd > 0.0 || fxFallback.ethUsd > 0.0 || fxFallback.solUsd > 0.0)) {
+            cached = fxFallback
+            return fxFallback
+        }
+
         if (cache != null) return cache
         throw IllegalStateException("Price fetch failed from CoinGecko and Coinbase fallback")
     }
@@ -93,6 +101,21 @@ class BitcoinPriceRepository @Inject constructor(
         val sol = solDeferred.await() ?: cache?.solUsd ?: 0.0
 
         CryptoPrices(
+            btcUsd = btc,
+            btcChange24h = cache?.btcChange24h ?: 0.0,
+            ethUsd = eth,
+            ethChange24h = cache?.ethChange24h ?: 0.0,
+            solUsd = sol,
+            solChange24h = cache?.solChange24h ?: 0.0
+        )
+    }
+
+    private suspend fun fetchFromFxHost(cache: CryptoPrices?): CryptoPrices {
+        val rates = currencyApi.getRates(base = "USD", symbols = "BTC,ETH,SOL").rates
+        val btc = rates["BTC"]?.takeIf { it > 0.0 }?.let { 1.0 / it } ?: cache?.btcUsd ?: 0.0
+        val eth = rates["ETH"]?.takeIf { it > 0.0 }?.let { 1.0 / it } ?: cache?.ethUsd ?: 0.0
+        val sol = rates["SOL"]?.takeIf { it > 0.0 }?.let { 1.0 / it } ?: cache?.solUsd ?: 0.0
+        return CryptoPrices(
             btcUsd = btc,
             btcChange24h = cache?.btcChange24h ?: 0.0,
             ethUsd = eth,
