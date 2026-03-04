@@ -154,22 +154,22 @@ private enum class LocationScope(val label: String, val emoji: String) {
 // ---------------------------------------------------------------------------
 private data class CategoryGroup(val label: String, val categories: List<PlaceCategory>)
 private val exploreCategories = listOf(
-    CategoryGroup("Travel & Lodging", listOf(
+    CategoryGroup("Stay", listOf(
         PlaceCategory.HOTELS, PlaceCategory.VACATION_RENTALS, PlaceCategory.TOURS, PlaceCategory.AIRPORTS
     )),
-    CategoryGroup("Transportation", listOf(
+    CategoryGroup("Move Around", listOf(
         PlaceCategory.TRANSPORT, PlaceCategory.CAR_RENTAL, PlaceCategory.EV_CHARGING, PlaceCategory.GAS_STATIONS
     )),
-    CategoryGroup("Dining", listOf(
+    CategoryGroup("Food & Drinks", listOf(
         PlaceCategory.RESTAURANTS, PlaceCategory.CAFES, PlaceCategory.NIGHTLIFE
     )),
-    CategoryGroup("Safety & Health", listOf(
+    CategoryGroup("Health & Safety", listOf(
         PlaceCategory.SAFETY, PlaceCategory.URGENT_CARE, PlaceCategory.PHARMACIES, PlaceCategory.FITNESS
     )),
     CategoryGroup("Finance & Services", listOf(
         PlaceCategory.BANKS_ATMS
     )),
-    CategoryGroup("Culture & Entertainment", listOf(
+    CategoryGroup("Fun & Shopping", listOf(
         PlaceCategory.ARTS, PlaceCategory.SHOPPING, PlaceCategory.PARKS, PlaceCategory.ENTERTAINMENT
     ))
 )

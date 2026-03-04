@@ -340,25 +340,35 @@ fun MyTripsScreen(
                 AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { 70 }) {
                     Column {
                         SectionHeader("Book Transport", "")
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(14.dp)
+                        val transports = listOf(
+                            Triple(Icons.Default.FlightTakeoff, "Flights", "https://expedia.com/affiliate/eA2cKky"),
+                            Triple(Icons.Default.Hotel, "Hotels", "https://www.hotels.com/affiliate/RrZ7bmg"),
+                            Triple(Icons.Default.DirectionsCar, "Car Rental", "https://expedia.com/affiliate/eA2cKky"),
+                            Triple(Icons.Default.LocalTaxi, "Uber", "https://www.uber.com"),
+                            Triple(Icons.Default.LocalTaxi, "Lyft", "https://www.lyft.com"),
+                            Triple(Icons.Default.Anchor, "Cruise", "https://expedia.com/affiliate/eA2cKky")
+                        )
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            val transports = listOf(
-                                Triple(Icons.Default.FlightTakeoff, "Flights", "https://expedia.com/affiliate/eA2cKky"),
-                                Triple(Icons.Default.Hotel, "Hotels", "https://www.hotels.com/affiliate/RrZ7bmg"),
-                                Triple(Icons.Default.DirectionsCar, "Car Rental", "https://expedia.com/affiliate/eA2cKky"),
-                                Triple(Icons.Default.LocalTaxi, "Uber", "https://www.uber.com"),
-                                Triple(Icons.Default.LocalTaxi, "Lyft", "https://www.lyft.com"),
-                                Triple(Icons.Default.Anchor, "Cruise", "https://expedia.com/affiliate/eA2cKky")
-                            )
-                            items(transports.size) { i ->
-                                val (icon, label, deepLink) = transports[i]
-                                TransportChip(
-                                    icon = icon,
-                                    label = label,
-                                    onClick = { onOpenWebView(deepLink, label) }
-                                )
+                            transports.chunked(3).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    row.forEach { (icon, label, deepLink) ->
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            TransportChip(
+                                                icon = icon,
+                                                label = label,
+                                                onClick = { onOpenWebView(deepLink, label) }
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

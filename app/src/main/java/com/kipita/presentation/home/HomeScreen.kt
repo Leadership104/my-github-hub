@@ -281,17 +281,28 @@ fun HomeScreen(
                             color = KipitaOnSurface,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            items(quickTools.size) { i ->
-                                val tool = quickTools[i]
-                                QuickToolPill(tool = tool) {
-                                    when (tool.label) {
-                                        "Currency"     -> onOpenWallet()
-                                        "Maps"         -> onOpenMap()
-                                        "Translate"    -> onOpenTranslate()
-                                        "Deals"        -> onOpenPerks()
-                                        "Packing List" -> showPackingList = true
-                                        "Weather"      -> showWeather = true
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            quickTools.chunked(3).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    row.forEach { tool ->
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            QuickToolPill(tool = tool) {
+                                                when (tool.label) {
+                                                    "Currency"     -> onOpenWallet()
+                                                    "Maps"         -> onOpenMap()
+                                                    "Translate"    -> onOpenTranslate()
+                                                    "Deals"        -> onOpenPerks()
+                                                    "Packing List" -> showPackingList = true
+                                                    "Weather"      -> showWeather = true
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (row.size < 3) {
+                                        repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
                                     }
                                 }
                             }
@@ -317,8 +328,7 @@ fun HomeScreen(
                             color = KipitaOnSurface,
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            val transports = listOf(
+                        val transports = listOf(
                                 Triple("✈️", "Flights",   "https://expedia.com/affiliate/eA2cKky"),
                                 Triple("🏨", "Hotels",    "https://www.hotels.com/affiliate/RrZ7bmg"),
                                 Triple("🚗", "Car Rental","https://expedia.com/affiliate/eA2cKky"),
@@ -326,24 +336,33 @@ fun HomeScreen(
                                 Triple("🚕", "Uber",      "https://uber.com"),
                                 Triple("🚕", "Lyft",      "https://lyft.com")
                             )
-                            items(transports.size) { i ->
-                                val (emoji, label, url) = transports[i]
-                                Column(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(14.dp))
-                                        .background(Color.White)
-                                        .border(1.dp, KipitaBorder, RoundedCornerShape(14.dp))
-                                        .clickable { onOpenWebView(url, label) }
-                                        .padding(horizontal = 20.dp, vertical = 16.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            transports.chunked(3).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Text(emoji, fontSize = 26.sp)
-                                    Spacer(Modifier.height(6.dp))
-                                    Text(
-                                        label,
-                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                        color = KipitaOnSurface
-                                    )
+                                    row.forEach { (emoji, label, url) ->
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(14.dp))
+                                                .background(Color.White)
+                                                .border(1.dp, KipitaBorder, RoundedCornerShape(14.dp))
+                                                .clickable { onOpenWebView(url, label) }
+                                                .padding(horizontal = 12.dp, vertical = 16.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally
+                                        ) {
+                                            Text(emoji, fontSize = 26.sp)
+                                            Spacer(Modifier.height(6.dp))
+                                            Text(
+                                                label,
+                                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                                color = KipitaOnSurface,
+                                                textAlign = TextAlign.Center
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -491,6 +510,7 @@ fun HomeScreen(
 private fun QuickToolPill(tool: QuickTool, onClick: () -> Unit) {
     Surface(
         modifier = Modifier
+            .fillMaxWidth()
             .shadow(2.dp, RoundedCornerShape(24.dp))
             .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onClick),
