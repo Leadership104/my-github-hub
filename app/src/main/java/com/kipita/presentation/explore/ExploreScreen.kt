@@ -181,6 +181,7 @@ fun ExploreScreen(
     paddingValues: PaddingValues,
     onAiSuggest: (String) -> Unit = {},
     onOpenMap: () -> Unit = {},
+    onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
     onTripClick: (tripId: String) -> Unit = {},
     onCategorySelected: (PlaceCategory) -> Unit = {},
     viewModel: ExploreViewModel = hiltViewModel(),
@@ -192,7 +193,7 @@ fun ExploreScreen(
     var visible by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
     var selectedScope by remember { mutableStateOf(LocationScope.CITY) }
-    var selectedTab by remember { mutableIntStateOf(0) }           // 0=Destinations, 1=Places
+    var selectedTab by remember { mutableIntStateOf(1) }           // 0=Destinations, 1=Places
     var selectedCategory by remember { mutableStateOf(PlaceCategory.HOTELS) }
     var isLocating by remember { mutableStateOf(false) }
     var locationLabel by remember { mutableStateOf("") }
@@ -465,7 +466,7 @@ fun ExploreScreen(
                             text = {
                                 Text(
                                     label,
-                                    style = MaterialTheme.typography.labelLarge.copy(
+                                    style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = if (selectedTab == index) FontWeight.SemiBold else FontWeight.Normal
                                     ),
                                     color = if (selectedTab == index) KipitaRed else KipitaTextSecondary
@@ -517,6 +518,7 @@ fun ExploreScreen(
                     onBookUber = { place -> viewModel.bookUberToPlace(place) },
                     onBookLyft = { place -> viewModel.bookLyftToPlace(place) },
                     onAiSuggest = onAiSuggest,
+                    onOpenWebView = onOpenWebView,
                     savedPlaceIds = savedPlaceIds,
                     onToggleSaved = { place -> viewModel.toggleSaved(place) }
                 )
@@ -716,6 +718,7 @@ private fun PlacesTab(
     onBookUber: (NearbyPlace) -> Unit,
     onBookLyft: (NearbyPlace) -> Unit,
     onAiSuggest: (String) -> Unit,
+    onOpenWebView: (url: String, title: String) -> Unit,
     savedPlaceIds: Set<String> = emptySet(),
     onToggleSaved: (NearbyPlace) -> Unit = {}
 ) {
@@ -729,21 +732,62 @@ private fun PlacesTab(
                     Column(modifier = Modifier.padding(top = 12.dp)) {
                         Text(
                             group.label,
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = KipitaTextTertiary,
                             modifier = Modifier.padding(start = 16.dp, bottom = 7.dp)
                         )
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            items(group.categories.size) { i ->
-                                val cat = group.categories[i]
-                                PlaceCategoryChip(
-                                    category = cat,
-                                    selected = selectedCategory == cat,
-                                    onClick = { onCategorySelect(cat) }
-                                )
+                            group.categories.chunked(2).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    row.forEach { cat ->
+                                        Box(modifier = Modifier.weight(1f)) {
+                                            PlaceCategoryChip(
+                                                category = cat,
+                                                selected = selectedCategory == cat,
+                                                onClick = { onCategorySelect(cat) }
+                                            )
+                                        }
+                                    }
+                                    if (row.size == 1) {
+                                        Spacer(modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                            if (group.label == "Finance & Services") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color(0xFFFFF3E0))
+                                        .border(1.dp, KipitaBorder, RoundedCornerShape(16.dp))
+                                        .clickable { onOpenWebView("https://btcmap.org/map", "BTC Map") }
+                                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text("₿", fontSize = 26.sp)
+                                        Spacer(Modifier.width(10.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                "Bitcoin Merchants Map",
+                                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                                color = KipitaOnSurface
+                                            )
+                                            Text(
+                                                "Open BTCMap in-app",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = KipitaTextSecondary
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -765,7 +809,7 @@ private fun PlacesTab(
                             Spacer(Modifier.width(6.dp))
                             Text(
                                 selectedCategory.label,
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                                 color = KipitaOnSurface
                             )
                             if (placesLoading) {
@@ -789,12 +833,12 @@ private fun PlacesTab(
                             shape = RoundedCornerShape(16.dp)
                         ) {
                             Row(
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.AutoAwesome, null, tint = Color(0xFFFFD700), modifier = Modifier.size(12.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("Ask AI", style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
+                                Icon(Icons.Default.AutoAwesome, null, tint = Color(0xFFFFD700), modifier = Modifier.size(16.dp))
+                                Spacer(Modifier.width(6.dp))
+                                Text("Ask AI", style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold), color = Color.White)
                             }
                         }
                     }
@@ -830,7 +874,7 @@ private fun PlacesTab(
                                 Spacer(Modifier.height(8.dp))
                                 Text(
                                     "No ${selectedCategory.label}${if (searchText.isNotBlank()) " found in $searchText" else " found nearby"}. Try a different location or category.",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyLarge,
                                     color = KipitaTextSecondary,
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                                 )
@@ -860,38 +904,38 @@ private fun NearbyPlaceCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(18.dp))
             .background(Color.White)
-            .border(1.dp, KipitaBorder, RoundedCornerShape(14.dp))
+            .border(1.dp, KipitaBorder, RoundedCornerShape(18.dp))
             .clickable { expanded = !expanded }
     ) {
         // Main row
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Emoji badge
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(52.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(KipitaCardBg),
                 contentAlignment = Alignment.Center
             ) {
-                Text(place.emoji, fontSize = 20.sp)
+                Text(place.emoji, fontSize = 24.sp)
             }
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     place.name,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = KipitaOnSurface,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     place.address.ifBlank { place.category.label },
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = KipitaTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -904,15 +948,15 @@ private fun NearbyPlaceCard(
                     // Rating
                     if (place.rating > 0) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(12.dp))
-                            Text("${"%.1f".format(place.rating)}", style = MaterialTheme.typography.labelSmall, color = KipitaTextSecondary)
+                            Icon(Icons.Default.Star, null, tint = Color(0xFFFFB300), modifier = Modifier.size(14.dp))
+                            Text("${"%.1f".format(place.rating)}", style = MaterialTheme.typography.labelMedium, color = KipitaTextSecondary)
                         }
                     }
                     // Distance
                     if (place.distanceKm > 0) {
                         Text(
                             "${"%.1f".format(place.distanceKm)} km",
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = KipitaTextTertiary
                         )
                     }
@@ -923,8 +967,8 @@ private fun NearbyPlaceCard(
                     ) {
                         Text(
                             if (place.isOpen) "Open" else "Closed",
-                            modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp),
-                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+                            style = MaterialTheme.typography.labelMedium,
                             color = if (place.isOpen) KipitaGreenAccent else KipitaRed
                         )
                     }
@@ -933,13 +977,13 @@ private fun NearbyPlaceCard(
             // Favorite / save button
             IconButton(
                 onClick = onToggleSaved,
-                modifier = Modifier.size(36.dp)
+                modifier = Modifier.size(40.dp)
             ) {
                 Icon(
                     imageVector = if (isSaved) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                     contentDescription = if (isSaved) "Unsave" else "Save",
                     tint = if (isSaved) KipitaRed else KipitaTextTertiary,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -1073,22 +1117,23 @@ private fun AiSuggestBar(
 private fun PlaceCategoryChip(category: PlaceCategory, selected: Boolean, onClick: () -> Unit) {
     Column(
         modifier = Modifier
+            .fillMaxWidth()
             .clip(RoundedCornerShape(14.dp))
             .background(if (selected) KipitaRed else Color.White)
             .border(if (selected) 0.dp else 1.dp, KipitaBorder, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .padding(horizontal = 12.dp, vertical = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(category.emoji, fontSize = 18.sp)
-        Spacer(Modifier.height(3.dp))
+        Text(category.emoji, fontSize = 26.sp)
+        Spacer(Modifier.height(8.dp))
         Text(
             text = category.label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
             ),
             color = if (selected) Color.White else KipitaOnSurface,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
     }

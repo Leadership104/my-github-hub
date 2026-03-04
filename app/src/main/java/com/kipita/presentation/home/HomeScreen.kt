@@ -133,6 +133,7 @@ fun HomeScreen(
     onOpenAI: (String) -> Unit = {},
     onOpenTranslate: () -> Unit = {},
     onOpenPerks: () -> Unit = {},
+    openSosSignal: Int = 0,
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
     tripsViewModel: TripsViewModel = hiltViewModel(),
     weatherViewModel: WeatherViewModel = hiltViewModel()
@@ -158,6 +159,9 @@ fun HomeScreen(
     LaunchedEffect(Unit) { delay(80); visible = true }
     LaunchedEffect(showWeather) {
         if (showWeather) weatherViewModel.refresh()
+    }
+    LaunchedEffect(openSosSignal) {
+        if (openSosSignal > 0) showSosSheet = true
     }
 
     // Speech recognition result
@@ -208,12 +212,12 @@ fun HomeScreen(
                         Column {
                             Text(
                                 "Good ${greeting()} ✈️",
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.titleMedium,
                                 color = Color.White.copy(.70f)
                             )
                             Text(
                                 "Where to next?",
-                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
                                 color = Color.White,
                                 modifier = Modifier.padding(top = 2.dp, bottom = 16.dp)
                             )
@@ -231,12 +235,12 @@ fun HomeScreen(
                                     Icons.Default.Search,
                                     contentDescription = null,
                                     tint = Color.White.copy(.60f),
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(22.dp)
                                 )
                                 Spacer(Modifier.width(10.dp))
                                 Text(
                                     "Search destinations, hotels, flights...",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.titleSmall,
                                     color = Color.White.copy(.55f),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -255,7 +259,7 @@ fun HomeScreen(
                                         if (isListening) Icons.Default.Stop else Icons.Default.Mic,
                                         contentDescription = "Voice search",
                                         tint = if (isListening) KipitaRed else Color.White.copy(.70f),
-                                        modifier = Modifier.size(16.dp)
+                                        modifier = Modifier.size(18.dp)
                                     )
                                 }
                             }
@@ -273,7 +277,7 @@ fun HomeScreen(
                     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
                         Text(
                             "Quick Tools",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                             color = KipitaOnSurface,
                             modifier = Modifier.padding(bottom = 12.dp)
                         )
@@ -309,7 +313,7 @@ fun HomeScreen(
                     ) {
                         Text(
                             "Book Transport",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                             color = KipitaOnSurface,
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
@@ -360,7 +364,7 @@ fun HomeScreen(
                     ) {
                         Text(
                             "Ask Kipita AI",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
                             color = KipitaOnSurface,
                             modifier = Modifier.padding(bottom = 10.dp)
                         )
@@ -405,98 +409,6 @@ fun HomeScreen(
                 }
             }
 
-            // ── Nomad Tips ───────────────────────────────────────────────────
-            // ── Safety & Help section ────────────────────────────────────────
-            item {
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(tween(280)) + slideInVertically(tween(280)) { 45 }
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp).padding(bottom = 24.dp)) {
-                        Text(
-                            "Safety & Help",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = KipitaOnSurface,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
-                        // SOS emergency button
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(
-                                    Brush.horizontalGradient(
-                                        listOf(Color(0xFFB71C1C), Color(0xFFD32F2F))
-                                    )
-                                )
-                                .clickable { showSosSheet = true }
-                                .padding(vertical = 16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Text("🆘", fontSize = 22.sp)
-                                Column {
-                                    Text(
-                                        "SOS Emergency Alert",
-                                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.ExtraBold),
-                                        color = Color.White
-                                    )
-                                    Text(
-                                        "Alert trip members · Navigate to hospital",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White.copy(.80f)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(tween(300)) + slideInVertically(tween(300)) { 50 }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 20.dp)
-                            .padding(bottom = 24.dp)
-                    ) {
-                        Text(
-                            "Nomad Tips",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = KipitaOnSurface,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFF1A1A2E))
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(9.dp)
-                        ) {
-                            listOf(
-                                "📶 Test WiFi speed before booking co-working",
-                                "₿ Use BTCMap to find Bitcoin merchants nearby",
-                                "🛡️ Get travel insurance before every international trip",
-                                "💱 Convert currency at ECB rates — avoid airport kiosks",
-                                "📵 Download offline maps before you lose signal"
-                            ).forEach { tip ->
-                                Text(
-                                    tip,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(.80f)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         }
 
         // ── Floating Mic FAB ─────────────────────────────────────────────────
@@ -585,14 +497,14 @@ private fun QuickToolPill(tool: QuickTool, onClick: () -> Unit) {
         color = Color.White
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(tool.emoji, fontSize = 16.sp)
-            Spacer(Modifier.width(6.dp))
+            Text(tool.emoji, fontSize = 20.sp)
+            Spacer(Modifier.width(8.dp))
             Text(
                 tool.label,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = KipitaOnSurface
             )
         }

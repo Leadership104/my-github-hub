@@ -140,3 +140,20 @@ Also ensure Firebase package registration and SHA-1/SHA-256 are configured for r
   - Kinesis: `https://kms.kinesis.money/signup/KM00083150`
   - Swan Bitcoin: `https://www.swanbitcoin.com/kipita/`
   - Fold: `https://use.foldapp.com/r/MAJL4MYU`
+
+## Accessibility + Places UX refresh
+- Increased baseline touch target and visual size in main navigation icons/labels.
+- Home:
+  - Removed home-page `Nomad Tips` block.
+  - Removed `Safety & Help` section card from Home feed.
+  - Added top-bar-driven SOS trigger support via app state (`openSosSignal`) so emergency entry point is now in top controls.
+  - Increased key hero/search/section typography and quick-tool size for easier readability.
+- Top bar:
+  - Added emergency icon button (left of weather/account controls).
+  - Added weather indicator (emoji + current temperature) beside account avatar.
+- Explore/Places:
+  - Added `onOpenWebView` support in `ExploreScreen`.
+  - Default tab now opens Places first while keeping Places on the right tab position.
+  - Refactored category UI from small horizontal chips into larger boxed grid cards for simpler selection.
+  - Added BTC button under `Finance & Services` that opens in-app webview to `https://btcmap.org/map`.
+  - Increased icon/text size across Places cards and controls for easier usability.

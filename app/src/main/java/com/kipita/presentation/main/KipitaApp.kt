@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.TravelExplore
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Flight
@@ -80,6 +81,7 @@ import com.kipita.presentation.community.NearbyTravelersScreen
 import com.kipita.presentation.community.TravelGroupsScreen
 import com.kipita.presentation.explore.ExploreScreen
 import com.kipita.presentation.home.HomeScreen
+import com.kipita.presentation.home.WeatherViewModel
 import com.kipita.presentation.perks.PerksScreen
 import com.kipita.presentation.map.MapScreen
 import com.kipita.presentation.profile.ProfileSetupScreen
@@ -153,6 +155,9 @@ fun KipitaApp() {
     var showPlacesResult by rememberSaveable { mutableStateOf(false) }
     var placesResultCategory by rememberSaveable { mutableStateOf(PlaceCategory.HOTELS) }
     var showPerks by rememberSaveable { mutableStateOf(false) }
+    var openSosSignal by rememberSaveable { mutableStateOf(0) }
+    val topBarWeatherViewModel: WeatherViewModel = hiltViewModel()
+    val topBarWeatherState by topBarWeatherViewModel.state.collectAsStateWithLifecycleCompat()
 
     // Sync avatar from AuthViewModel whenever the current user changes
     val currentUser by authVm.currentUser.collectAsStateWithLifecycleCompat()
@@ -160,6 +165,9 @@ fun KipitaApp() {
         currentUser?.let {
             if (it.avatarUrl.isNotBlank()) userAvatarUri = it.avatarUrl
         }
+    }
+    LaunchedEffect(Unit) {
+        topBarWeatherViewModel.refresh()
     }
 
     val canGoBack = showMap || showProfile || showAuth || showTranslate || showWebView ||
@@ -188,7 +196,13 @@ fun KipitaApp() {
                 isGuest = isGuest,
                 userName = userName,
                 userAvatarUri = userAvatarUri,
-                onProfileClick = { showProfileMenu = true }
+                onProfileClick = { showProfileMenu = true },
+                weatherEmoji = topBarWeatherState.current?.emoji ?: "🌤️",
+                weatherTempC = topBarWeatherState.current?.temperatureC?.toInt(),
+                onEmergencyClick = {
+                    route = MainRoute.HOME
+                    openSosSignal += 1
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -198,7 +212,7 @@ fun KipitaApp() {
                 NavigationBar(
                     containerColor = KipitaNavBg,
                     tonalElevation = 0.dp,
-                    modifier = Modifier.height(90.dp)
+                    modifier = Modifier.height(98.dp)
                 ) {
                     navItems.forEach { item ->
                         val selected = route == item.route
@@ -215,7 +229,7 @@ fun KipitaApp() {
                                 if (item.isCenter) {
                                     Box(
                                         modifier = Modifier
-                                            .size(46.dp)
+                                            .size(52.dp)
                                             .scale(scale)
                                             .background(
                                                 color = if (selected) KipitaRed else KipitaRed.copy(alpha = 0.92f),
@@ -227,7 +241,7 @@ fun KipitaApp() {
                                             imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
                                             contentDescription = item.label,
                                             tint = Color.White,
-                                            modifier = Modifier.size(18.dp)
+                                            modifier = Modifier.size(22.dp)
                                         )
                                     }
                                 } else {
@@ -235,7 +249,7 @@ fun KipitaApp() {
                                         imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
                                         contentDescription = item.label,
                                         modifier = Modifier
-                                            .size(22.dp)
+                                            .size(26.dp)
                                             .scale(scale)
                                     )
                                 }
@@ -243,7 +257,7 @@ fun KipitaApp() {
                             label = {
                                 Text(
                                     text = item.label,
-                                    fontSize = 10.sp,
+                                    fontSize = 12.sp,
                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                                     modifier = Modifier.padding(top = 2.dp)
                                 )
@@ -407,6 +421,7 @@ fun KipitaApp() {
                                 onOpenAI         = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
                                 onOpenTranslate  = { showTranslate = true },
                                 onOpenPerks      = { showPerks = true },
+                                openSosSignal    = openSosSignal,
                                 onOpenWebView    = { url, title ->
                                     webViewUrl = url
                                     webViewTitle = title
@@ -421,7 +436,12 @@ fun KipitaApp() {
                                 onAiSuggest        = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
                                 onOpenMap          = { showMap = true },
                                 onTripClick        = { tripId -> selectedTripId = tripId },
-                                onCategorySelected = { cat -> placesResultCategory = cat; showPlacesResult = true }
+                                onCategorySelected = { cat -> placesResultCategory = cat; showPlacesResult = true },
+                                onOpenWebView      = { url, title ->
+                                    webViewUrl = url
+                                    webViewTitle = title
+                                    showWebView = true
+                                }
                             )
                         }
 
@@ -524,7 +544,10 @@ private fun KipitaTopBar(
     isGuest: Boolean,
     userName: String,
     userAvatarUri: String = "",
-    onProfileClick: () -> Unit
+    onProfileClick: () -> Unit,
+    weatherEmoji: String,
+    weatherTempC: Int?,
+    onEmergencyClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -553,38 +576,72 @@ private fun KipitaTopBar(
             }
         }
 
-        // Profile / guest circle — always visible top-right on every screen
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(if (isGuest) KipitaCardBg else KipitaRedLight)
-                .border(
-                    width = 1.5.dp,
-                    color = if (isGuest) KipitaBorder else KipitaRed,
-                    shape = CircleShape
-                )
-                .clickable(onClick = onProfileClick),
-            contentAlignment = Alignment.Center
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            when {
-                userAvatarUri.isNotBlank() -> AsyncImage(
-                    model = userAvatarUri,
-                    contentDescription = "Profile photo",
-                    modifier = Modifier.fillMaxSize().clip(CircleShape),
-                    contentScale = ContentScale.Crop
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFD32F2F))
+                    .clickable(onClick = onEmergencyClick),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = "Emergency",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
                 )
-                isGuest || userName.isBlank() -> Icon(
-                    Icons.Default.Person,
-                    contentDescription = "Profile",
-                    tint = KipitaTextSecondary,
-                    modifier = Modifier.size(18.dp)
+            }
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(KipitaCardBg)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(weatherEmoji, fontSize = 16.sp)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    weatherTempC?.let { "$it°C" } ?: "--°C",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = KipitaOnSurface
                 )
-                else -> Text(
-                    text = userName.first().uppercaseChar().toString(),
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                    color = KipitaRed
-                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(CircleShape)
+                    .background(if (isGuest) KipitaCardBg else KipitaRedLight)
+                    .border(
+                        width = 1.5.dp,
+                        color = if (isGuest) KipitaBorder else KipitaRed,
+                        shape = CircleShape
+                    )
+                    .clickable(onClick = onProfileClick),
+                contentAlignment = Alignment.Center
+            ) {
+                when {
+                    userAvatarUri.isNotBlank() -> AsyncImage(
+                        model = userAvatarUri,
+                        contentDescription = "Profile photo",
+                        modifier = Modifier.fillMaxSize().clip(CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                    isGuest || userName.isBlank() -> Icon(
+                        Icons.Default.Person,
+                        contentDescription = "Profile",
+                        tint = KipitaTextSecondary,
+                        modifier = Modifier.size(19.dp)
+                    )
+                    else -> Text(
+                        text = userName.first().uppercaseChar().toString(),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = KipitaRed
+                    )
+                }
             }
         }
     }
