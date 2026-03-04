@@ -408,7 +408,7 @@ fun WalletScreen(
             // Live BTC / ETH / SOL Price Ticker (CoinGecko) — Crypto Tab
             // ----------------------------------------------------------------
             item {
-                AnimatedVisibility(visible = visible && walletTab == 0, enter = fadeIn(tween(120)) + slideInVertically(tween(120)) { 16 }) {
+                AnimatedVisibility(visible = visible, enter = fadeIn(tween(120)) + slideInVertically(tween(120)) { 16 }) {
                     val prices = state.cryptoPrices
                     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
                         Row(
@@ -422,7 +422,7 @@ fun WalletScreen(
                                 color = KipitaOnSurface
                             )
                             Text(
-                                "CoinGecko · 30s refresh",
+                                "CoinGecko · live refresh",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = KipitaTextTertiary
                             )
