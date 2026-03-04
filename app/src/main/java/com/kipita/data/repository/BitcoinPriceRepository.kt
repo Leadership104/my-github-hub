@@ -52,16 +52,16 @@ class BitcoinPriceRepository @Inject constructor(
             }
 
         return try {
-            val btc = response["bitcoin"] ?: CoinGeckoPriceDto(0.0)
-            val eth = response["ethereum"] ?: CoinGeckoPriceDto(0.0)
-            val sol = response["solana"] ?: CoinGeckoPriceDto(0.0)
+            val btc = response["bitcoin"]
+            val eth = response["ethereum"]
+            val sol = response["solana"]
             CryptoPrices(
-                btcUsd = btc.usd,
-                btcChange24h = btc.usd24hChange ?: 0.0,
-                ethUsd = eth.usd,
-                ethChange24h = eth.usd24hChange ?: 0.0,
-                solUsd = sol.usd,
-                solChange24h = sol.usd24hChange ?: 0.0
+                btcUsd = btc?.usd ?: cache?.btcUsd ?: 0.0,
+                btcChange24h = btc?.usd24hChange ?: cache?.btcChange24h ?: 0.0,
+                ethUsd = eth?.usd ?: cache?.ethUsd ?: 0.0,
+                ethChange24h = eth?.usd24hChange ?: cache?.ethChange24h ?: 0.0,
+                solUsd = sol?.usd ?: cache?.solUsd ?: 0.0,
+                solChange24h = sol?.usd24hChange ?: cache?.solChange24h ?: 0.0
             ).also { cached = it }
         } catch (e: Exception) {
             if (cache != null) cache else throw e

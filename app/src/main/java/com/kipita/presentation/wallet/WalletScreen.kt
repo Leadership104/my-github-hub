@@ -195,6 +195,9 @@ fun WalletScreen(
 
     LaunchedEffect(Unit) { delay(80); visible = true }
     LaunchedEffect(Unit) { viewModel.refreshPrices() }
+    LaunchedEffect(walletTab) {
+        if (walletTab == 0) viewModel.refreshPrices()
+    }
     LaunchedEffect(state.coinbaseBalance + state.cashAppBalance) {
         animatedBalance.animateTo((state.coinbaseBalance + state.cashAppBalance).toFloat(), animationSpec = tween(700))
         if (manualBtcBalance.isBlank()) {
@@ -381,7 +384,10 @@ fun WalletScreen(
                                     .weight(1f)
                                     .clip(RoundedCornerShape(14.dp))
                                     .background(if (selected) KipitaRed else Color.Transparent)
-                                    .clickable { walletTab = mappedTab }
+                                    .clickable {
+                                        walletTab = mappedTab
+                                        if (mappedTab == 0) viewModel.refreshPrices()
+                                    }
                                     .padding(vertical = 12.dp),
                                 contentAlignment = Alignment.Center
                             ) {
