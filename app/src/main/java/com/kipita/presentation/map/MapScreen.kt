@@ -3,7 +3,6 @@ package com.kipita.presentation.map
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.Geocoder
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -40,6 +39,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Search
@@ -74,7 +74,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import java.util.Locale
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
@@ -323,6 +322,11 @@ fun MapScreen(
                             )
                         }
                     )
+                    GlassButton(
+                        icon = Icons.Default.FilterList,
+                        label = "Filter",
+                        onClick = { /* City/County/State filters intentionally disabled for now */ }
+                    )
                     Spacer(Modifier.weight(1f))
                     // Overlay toggles
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -378,21 +382,12 @@ fun MapScreen(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                         keyboardActions = KeyboardActions(onSearch = {
-                            if (searchQuery.isNotBlank() && Geocoder.isPresent()) {
-                                runCatching {
-                                    @Suppress("DEPRECATION")
-                                    val addresses = Geocoder(context, Locale.getDefault())
-                                        .getFromLocationName(searchQuery, 1)
-                                    if (!addresses.isNullOrEmpty()) {
-                                        viewModel.load(searchQuery, addresses[0].latitude, addresses[0].longitude)
-                                    }
-                                }
-                            }
+                            // Search remains local UX only; city/county/state filtering is disabled for now.
                         }),
                         decorationBox = { inner ->
                             if (searchQuery.isEmpty()) {
                                 Text(
-                                    "Search city, address, country...",
+                                    "Search nearby places...",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = KipitaTextTertiary
                                 )

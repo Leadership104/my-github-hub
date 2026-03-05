@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -111,6 +112,43 @@ fun SettingsScreen(
                     )
                 }
             }
+        }
+
+        // ----------------------------------------------------------------
+        // Places UI toggles
+        // ----------------------------------------------------------------
+        item {
+            SectionHeader(title = "Places")
+        }
+
+        item {
+            Row(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White)
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        "Enable Destinations Tab",
+                        color = Color(0xFF111827),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        "Off = minimum steps in Places flow",
+                        color = TextMuted,
+                        fontSize = 12.sp
+                    )
+                }
+                Switch(
+                    checked = state.showDestinations,
+                    onCheckedChange = viewModel::setShowDestinations
+                )
+            }
+            Spacer(Modifier.height(16.dp))
         }
 
         // ----------------------------------------------------------------

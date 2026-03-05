@@ -6,6 +6,7 @@ import com.kipita.data.api.PlaceCategory
 import com.kipita.data.error.InHouseErrorLogger
 import com.kipita.data.repository.NearbyPlace
 import com.kipita.data.repository.GooglePlacesRepository
+import com.kipita.data.repository.UiPreferencesRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class PlacesViewModel @Inject constructor(
     private val googlePlacesRepository: GooglePlacesRepository,
+    private val uiPreferencesRepository: UiPreferencesRepository,
     private val errorLogger: InHouseErrorLogger
 ) : ViewModel() {
 
@@ -23,9 +25,12 @@ class PlacesViewModel @Inject constructor(
     val state: StateFlow<PlacesUiState> = _state.asStateFlow()
 
     init {
-        // Default location: Tokyo (35.6762, 139.6503)
-        // In production: use FusedLocationProviderClient to get device GPS
-        loadCategory(PlaceCategory.HOTELS, latitude = 35.6762, longitude = 139.6503)
+        loadCategory(PlaceCategory.RESTAURANTS, latitude = 35.6762, longitude = 139.6503)
+        viewModelScope.launch {
+            uiPreferencesRepository.showDestinations.collect { enabled ->
+                _state.value = _state.value.copy(showDestinations = enabled)
+            }
+        }
     }
 
     fun selectCategory(category: PlaceCategory) {
@@ -68,13 +73,14 @@ class PlacesViewModel @Inject constructor(
 }
 
 data class PlacesUiState(
-    val selectedCategory: PlaceCategory = PlaceCategory.HOTELS,
+    val selectedCategory: PlaceCategory = PlaceCategory.RESTAURANTS,
     val places: List<NearbyPlace> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
     val searchQuery: String = "",
     val currentLat: Double = 35.6762,
-    val currentLon: Double = 139.6503
+    val currentLon: Double = 139.6503,
+    val showDestinations: Boolean = false
 ) {
     val filteredPlaces: List<NearbyPlace>
         get() = if (searchQuery.isBlank()) places

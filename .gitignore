@@ -11,3 +11,6 @@ debug.keystore
 # Firebase
 app/src/**/google-services.json
 *firebase-adminsdk*.json
+
+# Local secret vault (Kipita artifacts)
+/security-vault/

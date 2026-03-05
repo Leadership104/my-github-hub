@@ -31,13 +31,12 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Wallet
 import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Flight
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.TravelExplore
-import androidx.compose.material.icons.outlined.Wallet
+import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -79,11 +78,12 @@ import com.kipita.presentation.common.InAppBrowserScreen
 import com.kipita.presentation.common.KipitaErrorBoundary
 import com.kipita.presentation.community.NearbyTravelersScreen
 import com.kipita.presentation.community.TravelGroupsScreen
-import com.kipita.presentation.explore.ExploreScreen
+import com.kipita.presentation.advisory.AdvisoryScreen
 import com.kipita.presentation.home.HomeScreen
 import com.kipita.presentation.home.WeatherViewModel
 import com.kipita.presentation.perks.PerksScreen
 import com.kipita.presentation.map.MapScreen
+import com.kipita.presentation.places.PlacesScreen
 import com.kipita.presentation.profile.ProfileSetupScreen
 import com.kipita.presentation.settings.SettingsScreen
 import com.kipita.presentation.social.SocialScreen
@@ -109,7 +109,7 @@ import com.kipita.presentation.wallet.WalletScreen
 // SETTINGS is not in the nav bar — accessed via the top-right profile avatar menu
 // ---------------------------------------------------------------------------
 enum class MainRoute {
-    HOME, EXPLORE, AI, TRIPS, WALLET, SOCIAL, SETTINGS
+    HOME, PLACES, AI, TRIPS, ADVISORY, SOCIAL, SETTINGS
 }
 
 private data class NavItem(
@@ -122,10 +122,10 @@ private data class NavItem(
 
 private val navItems = listOf(
     NavItem(MainRoute.HOME,    "Home",    Icons.Filled.Home,          Icons.Outlined.Home),
-    NavItem(MainRoute.EXPLORE, "Explore", Icons.Filled.TravelExplore, Icons.Outlined.TravelExplore),
+    NavItem(MainRoute.PLACES,  "Places",  Icons.Filled.TravelExplore, Icons.Outlined.TravelExplore),
     NavItem(MainRoute.AI,      "AI",      Icons.Filled.AutoAwesome,   Icons.Outlined.AutoAwesome, isCenter = true),
     NavItem(MainRoute.TRIPS,   "Trips",   Icons.Filled.Flight,        Icons.Outlined.Flight),
-    NavItem(MainRoute.WALLET,  "Wallet",  Icons.Filled.Wallet,        Icons.Outlined.Wallet),
+    NavItem(MainRoute.ADVISORY, "Advisory", Icons.Filled.Warning, Icons.Outlined.Warning),
     NavItem(MainRoute.SOCIAL,  "Social",  Icons.Filled.Groups,        Icons.Outlined.Groups)
 )
 
@@ -136,7 +136,7 @@ fun KipitaApp() {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    var route by rememberSaveable { mutableStateOf(MainRoute.HOME) }
+    var route by rememberSaveable { mutableStateOf(MainRoute.PLACES) }
     var showProfile by rememberSaveable { mutableStateOf(false) }
     var showAuth by rememberSaveable { mutableStateOf(false) }
     var showMap by rememberSaveable { mutableStateOf(false) }
@@ -155,8 +155,8 @@ fun KipitaApp() {
     var showPlacesResult by rememberSaveable { mutableStateOf(false) }
     var placesResultCategory by rememberSaveable { mutableStateOf(PlaceCategory.HOTELS) }
     var showPerks by rememberSaveable { mutableStateOf(false) }
+    var showWallet by rememberSaveable { mutableStateOf(false) }
     var openSosSignal by rememberSaveable { mutableStateOf(0) }
-    var walletOpenSignal by rememberSaveable { mutableStateOf(0) }
     val topBarWeatherViewModel: WeatherViewModel = hiltViewModel()
     val topBarWeatherState by topBarWeatherViewModel.state.collectAsStateWithLifecycleCompat()
 
@@ -172,7 +172,7 @@ fun KipitaApp() {
     }
 
     val canGoBack = showMap || showProfile || showAuth || showTranslate || showWebView ||
-        showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult || showPerks
+        showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult || showPerks || showWallet
     val onBack: () -> Unit = {
         when {
             showWebView         -> showWebView = false
@@ -182,6 +182,7 @@ fun KipitaApp() {
             showTranslate       -> showTranslate = false
             selectedTripId != null -> selectedTripId = null
             showPerks   -> showPerks = false
+            showWallet  -> showWallet = false
             showAuth    -> showAuth = false
             showMap     -> showMap = false
             showProfile -> showProfile = false
@@ -209,7 +210,7 @@ fun KipitaApp() {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!showMap && !showProfile && !showAuth && !showTranslate && !showWebView &&
-                !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult && !showPerks) {
+                !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult && !showPerks && !showWallet) {
                 NavigationBar(
                     containerColor = KipitaNavBg,
                     tonalElevation = 0.dp,
@@ -227,7 +228,6 @@ fun KipitaApp() {
                             selected = selected,
                             onClick = {
                                 route = item.route
-                                if (item.route == MainRoute.WALLET) walletOpenSignal += 1
                             },
                             icon = {
                                 if (item.isCenter) {
@@ -421,8 +421,7 @@ fun KipitaApp() {
                             HomeScreen(
                                 paddingValues    = padding,
                                 onOpenWallet     = {
-                                    route = MainRoute.WALLET
-                                    walletOpenSignal += 1
+                                    showWallet = true
                                 },
                                 onOpenMap        = { showMap = true },
                                 onOpenAI         = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
@@ -437,12 +436,10 @@ fun KipitaApp() {
                             )
                         }
 
-                        MainRoute.EXPLORE -> KipitaErrorBoundary("ExploreScreen") { _ ->
-                            ExploreScreen(
+                        MainRoute.PLACES -> KipitaErrorBoundary("PlacesScreen") { _ ->
+                            PlacesScreen(
                                 paddingValues      = padding,
-                                onAiSuggest        = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
-                                onOpenMap          = { showMap = true },
-                                onTripClick        = { tripId -> selectedTripId = tripId },
+                                onAiSuggest        = { route = MainRoute.AI },
                                 onCategorySelected = { cat -> placesResultCategory = cat; showPlacesResult = true },
                                 onOpenWebView      = { url, title ->
                                     webViewUrl = url
@@ -465,8 +462,7 @@ fun KipitaApp() {
                                 paddingValues = padding,
                                 onAiSuggest  = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
                                 onOpenWallet = {
-                                    route = MainRoute.WALLET
-                                    walletOpenSignal += 1
+                                    showWallet = true
                                 },
                                 onOpenMap    = { showMap = true },
                                 onOpenWebView = { url, title ->
@@ -478,16 +474,8 @@ fun KipitaApp() {
                             )
                         }
 
-                        MainRoute.WALLET -> KipitaErrorBoundary("WalletScreen") { _ ->
-                            WalletScreen(
-                                paddingValues = padding,
-                                walletOpenSignal = walletOpenSignal,
-                                onOpenWebView = { url, title ->
-                                    webViewUrl = url
-                                    webViewTitle = title
-                                    showWebView = true
-                                }
-                            )
+                        MainRoute.ADVISORY -> KipitaErrorBoundary("AdvisoryScreen") { _ ->
+                            AdvisoryScreen(paddingValues = padding)
                         }
 
                         MainRoute.SOCIAL -> KipitaErrorBoundary("SocialScreen") { _ ->
@@ -521,6 +509,20 @@ fun KipitaApp() {
                 }
             }
 
+            if (showWallet) {
+                KipitaErrorBoundary("WalletScreen") { _ ->
+                    WalletScreen(
+                        paddingValues = padding,
+                        walletOpenSignal = 1,
+                        onOpenWebView = { url, title ->
+                            webViewUrl = url
+                            webViewTitle = title
+                            showWebView = true
+                        }
+                    )
+                }
+            }
+
             // Profile / account bottom sheet
             if (showProfileMenu) {
                 val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -537,6 +539,7 @@ fun KipitaApp() {
                         onSetupProfile    = { showProfileMenu = false; if (isGuest) showAuth = true else showProfile = true },
                         onContinueAsGuest = { isGuest = true; showProfileMenu = false },
                         onSignOut         = { isGuest = true; userName = ""; userAvatarUri = ""; showProfileMenu = false },
+                        onWallet          = { showProfileMenu = false; showWallet = true },
                         onSettings        = { showProfileMenu = false; route = MainRoute.SETTINGS }
                     )
                 }
@@ -669,6 +672,7 @@ private fun ProfileMenuContent(
     onSetupProfile: () -> Unit,
     onContinueAsGuest: () -> Unit,
     onSignOut: () -> Unit,
+    onWallet: () -> Unit,
     onSettings: () -> Unit
 ) {
     val context = LocalContext.current
@@ -754,6 +758,7 @@ private fun ProfileMenuContent(
             }
         } else {
             ProfileMenuItem("View / Edit Profile", onClick = onSetupProfile)
+            ProfileMenuItem("Wallet",              onClick = onWallet)
             ProfileMenuItem("Settings",            onClick = onSettings)
             ProfileMenuItem("Sign Out",            onClick = onSignOut, isDestructive = true)
         }

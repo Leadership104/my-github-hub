@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.kipita.data.error.InHouseErrorLogger
 import com.kipita.data.local.ErrorLogEntity
 import com.kipita.data.repository.AccountRepository
+import com.kipita.data.repository.UiPreferencesRepository
 import com.kipita.data.security.KeystoreManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -19,7 +20,8 @@ import kotlinx.coroutines.withContext
 class SettingsViewModel @Inject constructor(
     private val errorLogger: InHouseErrorLogger,
     private val keystoreManager: KeystoreManager,
-    private val accountRepository: AccountRepository
+    private val accountRepository: AccountRepository,
+    private val uiPreferencesRepository: UiPreferencesRepository
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SettingsUiState())
@@ -33,6 +35,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val logs = withContext(Dispatchers.IO) { errorLogger.allLogs() }
             _state.value = _state.value.copy(logs = logs)
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            uiPreferencesRepository.showDestinations.collect { enabled ->
+                _state.value = _state.value.copy(showDestinations = enabled)
+            }
         }
     }
 
@@ -64,9 +74,16 @@ class SettingsViewModel @Inject constructor(
             withContext(Dispatchers.Main) { onDeleted() }
         }
     }
+
+    fun setShowDestinations(enabled: Boolean) {
+        viewModelScope.launch {
+            uiPreferencesRepository.setShowDestinations(enabled)
+        }
+    }
 }
 
 data class SettingsUiState(
     val logs: List<ErrorLogEntity> = emptyList(),
-    val lastFlushStatus: String = ""
+    val lastFlushStatus: String = "",
+    val showDestinations: Boolean = false
 )

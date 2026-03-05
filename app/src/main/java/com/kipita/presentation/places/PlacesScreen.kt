@@ -72,7 +72,7 @@ import kotlinx.coroutines.delay
 // ---------------------------------------------------------------------------
 private data class CategoryGroup(val label: String, val categories: List<PlaceCategory>)
 
-private val categoryGroups = listOf(
+private val baseCategoryGroups = listOf(
     CategoryGroup("Travel & Lodging", listOf(
         PlaceCategory.HOTELS, PlaceCategory.VACATION_RENTALS,
         PlaceCategory.AIRPORTS, PlaceCategory.TOURS
@@ -234,6 +234,8 @@ fun PlacesScreen(
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(150)) + slideInVertically(tween(150)) { 20 }) {
                     Column(modifier = Modifier.padding(top = 16.dp)) {
+                        val categoryGroups = if (state.showDestinations) baseCategoryGroups
+                        else baseCategoryGroups.filterNot { it.label == "Travel & Lodging" }
                         categoryGroups.forEach { group ->
                             Text(
                                 text = group.label,
