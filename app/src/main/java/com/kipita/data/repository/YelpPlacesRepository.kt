@@ -142,7 +142,7 @@ class GooglePlacesRepository @Inject constructor(
         address = formattedAddress,
         distanceKm = 0.0,
         rating = rating,
-        reviewCount = 0,
+        reviewCount = userRatingCount,
         isOpen = currentOpeningHours?.openNow ?: false,
         latitude = location?.latitude,
         longitude = location?.longitude,

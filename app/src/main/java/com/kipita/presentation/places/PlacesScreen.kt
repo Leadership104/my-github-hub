@@ -32,12 +32,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import android.Manifest
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -46,10 +52,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.kipita.BuildConfig
@@ -58,6 +66,9 @@ import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
 import com.kipita.presentation.theme.KipitaBorder
 import com.kipita.presentation.theme.KipitaCardBg
 import com.kipita.presentation.theme.KipitaGreenAccent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.kipita.presentation.theme.KipitaOnSurface
 import com.kipita.presentation.theme.KipitaRed
 import com.kipita.presentation.theme.KipitaTextSecondary
@@ -96,6 +107,8 @@ fun PlacesScreen(
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var visible by remember { mutableStateOf(false) }
     var activeTabIndex by rememberSaveable { mutableIntStateOf(0) }
     var resultsExpanded by rememberSaveable { mutableStateOf(true) }
@@ -105,7 +118,32 @@ fun PlacesScreen(
         } else tab
     }
 
-    LaunchedEffect(Unit) { delay(80); visible = true }
+    val gpsLauncher = rememberLauncherForActivityResult(RequestPermission()) { granted ->
+        if (granted) {
+            scope.launch(Dispatchers.IO) {
+                val lm = context.getSystemService(LocationManager::class.java)
+                val loc = lm?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                    ?: lm?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                if (loc != null) viewModel.updateLocation(loc.latitude, loc.longitude)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        delay(80); visible = true
+        withContext(Dispatchers.IO) {
+            val perm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+            if (perm == PackageManager.PERMISSION_GRANTED) {
+                val lm = context.getSystemService(LocationManager::class.java)
+                val loc = lm?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
+                    ?: lm?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
+                if (loc != null) viewModel.updateLocation(loc.latitude, loc.longitude)
+            } else {
+                withContext(Dispatchers.Main) { gpsLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION) }
+            }
+        }
+    }
+
     LaunchedEffect(tabs.size) {
         if (tabs.isEmpty()) return@LaunchedEffect
         if (activeTabIndex > tabs.lastIndex) activeTabIndex = 0

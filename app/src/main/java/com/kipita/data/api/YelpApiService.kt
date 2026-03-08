@@ -57,7 +57,7 @@ interface GooglePlacesApiService {
 
 const val PLACES_LIST_FIELD_MASK =
     "places.id,places.displayName,places.formattedAddress,places.location," +
-    "places.rating,places.priceLevel,places.types,places.nationalPhoneNumber," +
+    "places.rating,places.userRatingCount,places.priceLevel,places.types,places.nationalPhoneNumber," +
     "places.currentOpeningHours,places.photos"
 
 const val PLACES_DETAIL_FIELD_MASK =
@@ -116,6 +116,7 @@ data class GooglePlaceDto(
     @field:Json(name = "formattedAddress") val formattedAddress: String = "",
     @field:Json(name = "location") val location: PlaceLatLng? = null,
     @field:Json(name = "rating") val rating: Double = 0.0,
+    @field:Json(name = "userRatingCount") val userRatingCount: Int = 0,
     @field:Json(name = "priceLevel") val priceLevel: String? = null,
     @field:Json(name = "types") val types: List<String> = emptyList(),
     @field:Json(name = "nationalPhoneNumber") val nationalPhoneNumber: String = "",

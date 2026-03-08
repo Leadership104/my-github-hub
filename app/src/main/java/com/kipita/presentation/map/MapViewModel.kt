@@ -106,6 +106,12 @@ enum class OverlayType { BTC_MERCHANTS, SAFETY, HEALTH, INFRASTRUCTURE, NOMAD }
 
 enum class BtcSource { BTCMAP, CASHAPP, BOTH }
 
+/** Alias used by tests and MapOverlayLogicTest */
+typealias BtcSourceFilter = BtcSource
+
+/** Marker type for the map overlay filter bar */
+enum class MarkerType { BTC, FOOD, CAFE, SHOP }
+
 data class MapUiState(
     val loading: Boolean = false,
     val notices: List<TravelNotice> = emptyList(),
@@ -118,7 +124,9 @@ data class MapUiState(
     val offlineReady: Boolean = false,
     val userLat: Double = 0.0,
     val userLng: Double = 0.0,
-    val btcSource: BtcSource = BtcSource.BOTH
+    val btcSource: BtcSource = BtcSource.BOTH,
+    val btcSourceFilter: BtcSourceFilter = BtcSourceFilter.BOTH,
+    val selectedMarkerType: MarkerType = MarkerType.FOOD
 ) {
     val filteredMerchants: List<MerchantLocation>
         get() = when (btcSource) {
