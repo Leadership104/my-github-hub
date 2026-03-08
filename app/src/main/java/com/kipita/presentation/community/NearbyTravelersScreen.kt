@@ -25,6 +25,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -113,20 +115,26 @@ fun NearbyTravelersScreen(
                     .padding(horizontal = 20.dp, vertical = 24.dp)
                     .padding(paddingValues)
             ) {
-                Column {
-                    Text("👥 Nearby Travelers", color = Color.White.copy(.7f),
-                        style = MaterialTheme.typography.labelLarge)
-                    Text("Connect with travelers in your area",
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White, modifier = Modifier.padding(top = 2.dp))
-                    Spacer(Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.LocationOn, null,
-                            tint = KipitaRed, modifier = Modifier.size(14.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("Based on your current location",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Color.White.copy(.60f))
+                Row(verticalAlignment = Alignment.Top) {
+                    IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                    Spacer(Modifier.width(4.dp))
+                    Column {
+                        Text("👥 Nearby Travelers", color = Color.White.copy(.7f),
+                            style = MaterialTheme.typography.labelLarge)
+                        Text("Connect with travelers in your area",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White, modifier = Modifier.padding(top = 2.dp))
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.LocationOn, null,
+                                tint = KipitaRed, modifier = Modifier.size(14.dp))
+                            Spacer(Modifier.width(4.dp))
+                            Text("Based on your current location",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(.60f))
+                        }
                     }
                 }
             }

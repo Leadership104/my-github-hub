@@ -31,8 +31,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.SnackbarHost
@@ -400,6 +402,209 @@ private val masterPhrases: Map<LangCode, List<PhraseRow>> = mapOf(
         PhraseRow("Sorry","ごめんなさい","Gomen nasai",PhraseCategory.LOGISTICS),
         PhraseRow("Good morning","おはようございます","Ohayou gozaimasu",PhraseCategory.LOGISTICS),
         PhraseRow("Good night","おやすみなさい","Oyasumi nasai",PhraseCategory.LOGISTICS)
+    ),
+    "hi" to listOf(
+        PhraseRow("Help!","मदद करो!","Madad karo!",PhraseCategory.EMERGENCY),
+        PhraseRow("Call the police","पुलिस को बुलाओ","Pulis ko bulao",PhraseCategory.EMERGENCY),
+        PhraseRow("I need a doctor","मुझे डॉक्टर चाहिए","Mujhe doctor chahiye",PhraseCategory.EMERGENCY),
+        PhraseRow("Where is the hospital?","अस्पताल कहाँ है?","Aspatal kahan hai?",PhraseCategory.EMERGENCY),
+        PhraseRow("Fire!","आग!","Aag!",PhraseCategory.EMERGENCY),
+        PhraseRow("I'm lost","मैं खो गया हूँ","Main kho gaya hoon",PhraseCategory.EMERGENCY),
+        PhraseRow("Take me to the airport","मुझे हवाई अड्डे ले जाओ","Mujhe hawai adde le jao",PhraseCategory.TRANSPORT),
+        PhraseRow("How much does it cost?","इसकी कीमत क्या है?","Iski keemat kya hai?",PhraseCategory.TRANSPORT),
+        PhraseRow("Stop here please","यहाँ रोकें","Yahan roken",PhraseCategory.TRANSPORT),
+        PhraseRow("Is there a bus to...?","क्या ... के लिए बस है?","Kya ... ke liye bus hai?",PhraseCategory.TRANSPORT),
+        PhraseRow("Train station","रेलवे स्टेशन","Railway station",PhraseCategory.TRANSPORT),
+        PhraseRow("Do you have a room?","क्या आपके पास कमरा है?","Kya aapke paas kamra hai?",PhraseCategory.HOUSING),
+        PhraseRow("How much per night?","प्रति रात कितना?","Prati raat kitna?",PhraseCategory.HOUSING),
+        PhraseRow("Check out time?","चेकआउट समय?","Checkout samay?",PhraseCategory.HOUSING),
+        PhraseRow("Wi-Fi password please","वाई-फाई पासवर्ड?","Wi-Fi password?",PhraseCategory.HOUSING),
+        PhraseRow("Is breakfast included?","क्या नाश्ता शामिल है?","Kya nashta shamil hai?",PhraseCategory.HOUSING),
+        PhraseRow("Hello","नमस्ते","Namaste",PhraseCategory.LOGISTICS),
+        PhraseRow("Thank you","धन्यवाद","Dhanyavaad",PhraseCategory.LOGISTICS),
+        PhraseRow("Yes / No","हाँ / नहीं","Haan / Nahin",PhraseCategory.LOGISTICS),
+        PhraseRow("Where is the ATM?","एटीएम कहाँ है?","ATM kahan hai?",PhraseCategory.LOGISTICS),
+        PhraseRow("Do you speak English?","क्या आप अंग्रेजी बोलते हैं?","Kya aap angrezi bolte hain?",PhraseCategory.LOGISTICS),
+        PhraseRow("I'm vegetarian","मैं शाकाहारी हूँ","Main shakahari hoon",PhraseCategory.LOGISTICS),
+        PhraseRow("Water please","पानी दीजिए","Paani dijiye",PhraseCategory.LOGISTICS),
+        PhraseRow("The check please","बिल लाइए","Bill laiye",PhraseCategory.LOGISTICS),
+        PhraseRow("I have an allergy","मुझे एलर्जी है","Mujhe allergy hai",PhraseCategory.LOGISTICS),
+        PhraseRow("Good morning","सुप्रभात","Suprabhat",PhraseCategory.LOGISTICS),
+        PhraseRow("Good night","शुभ रात्रि","Shubh ratri",PhraseCategory.LOGISTICS)
+    ),
+    "ar" to listOf(
+        PhraseRow("Help!","مساعدة!","Musa-ada!",PhraseCategory.EMERGENCY),
+        PhraseRow("Call the police","اتصل بالشرطة","Ittasil bil-shurta",PhraseCategory.EMERGENCY),
+        PhraseRow("I need a doctor","أحتاج طبيباً","Ahtaj tabiban",PhraseCategory.EMERGENCY),
+        PhraseRow("Where is the hospital?","أين المستشفى؟","Ayn al-mustashfa?",PhraseCategory.EMERGENCY),
+        PhraseRow("Fire!","حريق!","Hariq!",PhraseCategory.EMERGENCY),
+        PhraseRow("I'm lost","أنا ضائع","Ana da-i",PhraseCategory.EMERGENCY),
+        PhraseRow("Take me to the airport","خذني إلى المطار","Khudni ila al-matar",PhraseCategory.TRANSPORT),
+        PhraseRow("How much does it cost?","كم يكلف هذا؟","Kam yukallifu hadha?",PhraseCategory.TRANSPORT),
+        PhraseRow("Stop here please","قف هنا من فضلك","Qif huna min fadlak",PhraseCategory.TRANSPORT),
+        PhraseRow("Is there a bus to...?","هل يوجد حافلة إلى...؟","Hal yujad hafila ila...?",PhraseCategory.TRANSPORT),
+        PhraseRow("Train station","محطة القطار","Mahattat al-qitar",PhraseCategory.TRANSPORT),
+        PhraseRow("Do you have a room?","هل لديك غرفة؟","Hal ladayk ghurfa?",PhraseCategory.HOUSING),
+        PhraseRow("How much per night?","كم سعر الليلة؟","Kam si-r al-layla?",PhraseCategory.HOUSING),
+        PhraseRow("Check out time?","وقت تسجيل الخروج؟","Waqt tasjil al-khuruj?",PhraseCategory.HOUSING),
+        PhraseRow("Wi-Fi password please","كلمة مرور Wi-Fi؟","Kalimatu murur al-Wi-Fi?",PhraseCategory.HOUSING),
+        PhraseRow("Is breakfast included?","هل الإفطار مشمول؟","Hal al-iftar mashmul?",PhraseCategory.HOUSING),
+        PhraseRow("Hello","مرحبا","Marhaban",PhraseCategory.LOGISTICS),
+        PhraseRow("Thank you","شكراً","Shukran",PhraseCategory.LOGISTICS),
+        PhraseRow("Yes / No","نعم / لا","Na-am / La",PhraseCategory.LOGISTICS),
+        PhraseRow("Where is the ATM?","أين الصراف الآلي؟","Ayn al-sarraf al-ali?",PhraseCategory.LOGISTICS),
+        PhraseRow("Do you speak English?","هل تتكلم الإنجليزية؟","Hal tatakallam al-ingliziyya?",PhraseCategory.LOGISTICS),
+        PhraseRow("I'm vegetarian","أنا نباتي","Ana nabati",PhraseCategory.LOGISTICS),
+        PhraseRow("Water please","ماء من فضلك","Ma min fadlak",PhraseCategory.LOGISTICS),
+        PhraseRow("The check please","الحساب من فضلك","Al-hisab min fadlak",PhraseCategory.LOGISTICS),
+        PhraseRow("I have an allergy","لدي حساسية","Ladayya hassasiyya",PhraseCategory.LOGISTICS),
+        PhraseRow("Good morning","صباح الخير","Sabah al-khayr",PhraseCategory.LOGISTICS),
+        PhraseRow("Good night","تصبح على خير","Tusbih ala khayr",PhraseCategory.LOGISTICS)
+    ),
+    "pt" to listOf(
+        PhraseRow("Help!","Socorro!","Socorro!",PhraseCategory.EMERGENCY),
+        PhraseRow("Call the police","Ligue para a polícia","Ligue para a policia",PhraseCategory.EMERGENCY),
+        PhraseRow("I need a doctor","Preciso de um médico","Preciso de um medico",PhraseCategory.EMERGENCY),
+        PhraseRow("Where is the hospital?","Onde fica o hospital?","Onde fica o hospital?",PhraseCategory.EMERGENCY),
+        PhraseRow("Fire!","Fogo!","Fogo!",PhraseCategory.EMERGENCY),
+        PhraseRow("I'm lost","Estou perdido","Estou perdido",PhraseCategory.EMERGENCY),
+        PhraseRow("Take me to the airport","Leve-me ao aeroporto","Leve-me ao aeroporto",PhraseCategory.TRANSPORT),
+        PhraseRow("How much does it cost?","Quanto custa?","Quanto custa?",PhraseCategory.TRANSPORT),
+        PhraseRow("Stop here please","Pare aqui, por favor","Pare aqui, por favor",PhraseCategory.TRANSPORT),
+        PhraseRow("Is there a bus to...?","Tem ônibus para...?","Tem onibus para...?",PhraseCategory.TRANSPORT),
+        PhraseRow("Train station","Estação de trem","Estacao de trem",PhraseCategory.TRANSPORT),
+        PhraseRow("Do you have a room?","Tem quarto disponível?","Tem quarto disponivel?",PhraseCategory.HOUSING),
+        PhraseRow("How much per night?","Quanto por noite?","Quanto por noite?",PhraseCategory.HOUSING),
+        PhraseRow("Check out time?","Horário de saída?","Horario de saida?",PhraseCategory.HOUSING),
+        PhraseRow("Wi-Fi password please","Senha do Wi-Fi?","Senha do Wi-Fi?",PhraseCategory.HOUSING),
+        PhraseRow("Is breakfast included?","O café da manhã está incluído?","O cafe da manha esta incluido?",PhraseCategory.HOUSING),
+        PhraseRow("Hello","Olá","Ola",PhraseCategory.LOGISTICS),
+        PhraseRow("Thank you","Obrigado","Obrigado",PhraseCategory.LOGISTICS),
+        PhraseRow("Yes / No","Sim / Não","Sim / Nao",PhraseCategory.LOGISTICS),
+        PhraseRow("Where is the ATM?","Onde fica o caixa eletrônico?","Onde fica o caixa eletronico?",PhraseCategory.LOGISTICS),
+        PhraseRow("Do you speak English?","Você fala inglês?","Voce fala ingles?",PhraseCategory.LOGISTICS),
+        PhraseRow("I'm vegetarian","Sou vegetariano","Sou vegetariano",PhraseCategory.LOGISTICS),
+        PhraseRow("Water please","Água, por favor","Agua, por favor",PhraseCategory.LOGISTICS),
+        PhraseRow("The check please","A conta, por favor","A conta, por favor",PhraseCategory.LOGISTICS),
+        PhraseRow("I have an allergy","Tenho alergia","Tenho alergia",PhraseCategory.LOGISTICS),
+        PhraseRow("Good morning","Bom dia","Bom dia",PhraseCategory.LOGISTICS),
+        PhraseRow("Good night","Boa noite","Boa noite",PhraseCategory.LOGISTICS)
+    ),
+    "ru" to listOf(
+        PhraseRow("Help!","Помогите!","Pomogite!",PhraseCategory.EMERGENCY),
+        PhraseRow("Call the police","Вызовите полицию","Vyzovite politsiyu",PhraseCategory.EMERGENCY),
+        PhraseRow("I need a doctor","Мне нужен врач","Mne nuzhen vrach",PhraseCategory.EMERGENCY),
+        PhraseRow("Where is the hospital?","Где больница?","Gde bolnitsa?",PhraseCategory.EMERGENCY),
+        PhraseRow("Fire!","Пожар!","Pozhar!",PhraseCategory.EMERGENCY),
+        PhraseRow("I'm lost","Я заблудился","Ya zabludilsya",PhraseCategory.EMERGENCY),
+        PhraseRow("Take me to the airport","Отвезите меня в аэропорт","Otvezite menya v aeroport",PhraseCategory.TRANSPORT),
+        PhraseRow("How much does it cost?","Сколько это стоит?","Skolko eto stoit?",PhraseCategory.TRANSPORT),
+        PhraseRow("Stop here please","Остановитесь здесь","Ostanovites zdyes",PhraseCategory.TRANSPORT),
+        PhraseRow("Is there a bus to...?","Есть автобус до...?","Yest avtobus do...?",PhraseCategory.TRANSPORT),
+        PhraseRow("Train station","Железнодорожный вокзал","Zheleznodorozhny vokzal",PhraseCategory.TRANSPORT),
+        PhraseRow("Do you have a room?","Есть ли свободный номер?","Yest li svobodny nomer?",PhraseCategory.HOUSING),
+        PhraseRow("How much per night?","Сколько за ночь?","Skolko za noch?",PhraseCategory.HOUSING),
+        PhraseRow("Check out time?","Время выезда?","Vremya vyezda?",PhraseCategory.HOUSING),
+        PhraseRow("Wi-Fi password please","Пароль от Wi-Fi?","Parol ot Wi-Fi?",PhraseCategory.HOUSING),
+        PhraseRow("Is breakfast included?","Завтрак включён?","Zavtrak vklyuchen?",PhraseCategory.HOUSING),
+        PhraseRow("Hello","Привет","Privet",PhraseCategory.LOGISTICS),
+        PhraseRow("Thank you","Спасибо","Spasibo",PhraseCategory.LOGISTICS),
+        PhraseRow("Yes / No","Да / Нет","Da / Net",PhraseCategory.LOGISTICS),
+        PhraseRow("Where is the ATM?","Где банкомат?","Gde bankomat?",PhraseCategory.LOGISTICS),
+        PhraseRow("Do you speak English?","Вы говорите по-английски?","Vy govorite po-angliyski?",PhraseCategory.LOGISTICS),
+        PhraseRow("I'm vegetarian","Я вегетарианец","Ya vegetarianets",PhraseCategory.LOGISTICS),
+        PhraseRow("Water please","Воду, пожалуйста","Vodu, pozhaluysta",PhraseCategory.LOGISTICS),
+        PhraseRow("The check please","Счёт, пожалуйста","Schet, pozhaluysta",PhraseCategory.LOGISTICS),
+        PhraseRow("I have an allergy","У меня аллергия","U menya allergiya",PhraseCategory.LOGISTICS),
+        PhraseRow("Good morning","Доброе утро","Dobroye utro",PhraseCategory.LOGISTICS),
+        PhraseRow("Good night","Спокойной ночи","Spokoinoi nochi",PhraseCategory.LOGISTICS)
+    ),
+    "th" to listOf(
+        PhraseRow("Help!","ช่วยด้วย!","Chuay duay!",PhraseCategory.EMERGENCY),
+        PhraseRow("Call the police","โทรเรียกตำรวจ","Tho riak tamruat",PhraseCategory.EMERGENCY),
+        PhraseRow("I need a doctor","ฉันต้องการหมอ","Chan tong kan mor",PhraseCategory.EMERGENCY),
+        PhraseRow("Where is the hospital?","โรงพยาบาลอยู่ที่ไหน?","Rong phayaban yu thi nai?",PhraseCategory.EMERGENCY),
+        PhraseRow("Fire!","ไฟไหม้!","Fai mai!",PhraseCategory.EMERGENCY),
+        PhraseRow("I'm lost","ฉันหลงทาง","Chan long thang",PhraseCategory.EMERGENCY),
+        PhraseRow("Take me to the airport","พาฉันไปสนามบิน","Pha chan pai sanam bin",PhraseCategory.TRANSPORT),
+        PhraseRow("How much does it cost?","ราคาเท่าไหร่?","Raka thao rai?",PhraseCategory.TRANSPORT),
+        PhraseRow("Stop here please","หยุดที่นี่","Yut thi ni",PhraseCategory.TRANSPORT),
+        PhraseRow("Is there a bus to...?","มีรถเมล์ไป...?","Mi rot me pai...?",PhraseCategory.TRANSPORT),
+        PhraseRow("Train station","สถานีรถไฟ","Sathani rot fai",PhraseCategory.TRANSPORT),
+        PhraseRow("Do you have a room?","มีห้องว่างไหม?","Mi hong wang mai?",PhraseCategory.HOUSING),
+        PhraseRow("How much per night?","ราคาต่อคืนเท่าไหร่?","Raka to khuen thao rai?",PhraseCategory.HOUSING),
+        PhraseRow("Check out time?","เวลาเช็คเอาท์?","Wela check out?",PhraseCategory.HOUSING),
+        PhraseRow("Wi-Fi password please","รหัสผ่าน Wi-Fi?","Rahat phan Wi-Fi?",PhraseCategory.HOUSING),
+        PhraseRow("Is breakfast included?","รวมอาหารเช้าไหม?","Ruam ahan chao mai?",PhraseCategory.HOUSING),
+        PhraseRow("Hello","สวัสดี","Sawasdee",PhraseCategory.LOGISTICS),
+        PhraseRow("Thank you","ขอบคุณ","Khob khun",PhraseCategory.LOGISTICS),
+        PhraseRow("Yes / No","ใช่ / ไม่","Chai / Mai",PhraseCategory.LOGISTICS),
+        PhraseRow("Where is the ATM?","ตู้เอทีเอ็มอยู่ที่ไหน?","Tu ATM yu thi nai?",PhraseCategory.LOGISTICS),
+        PhraseRow("Do you speak English?","คุณพูดภาษาอังกฤษได้ไหม?","Khun phut phasa Angkrit dai mai?",PhraseCategory.LOGISTICS),
+        PhraseRow("I'm vegetarian","ฉันกินเจ","Chan kin je",PhraseCategory.LOGISTICS),
+        PhraseRow("Water please","น้ำเปล่าหน่อย","Nam plao noi",PhraseCategory.LOGISTICS),
+        PhraseRow("The check please","เก็บเงินด้วย","Kep ngoen duay",PhraseCategory.LOGISTICS),
+        PhraseRow("I have an allergy","ฉันแพ้อาหาร","Chan phae ahan",PhraseCategory.LOGISTICS),
+        PhraseRow("Good morning","อรุณสวัสดิ์","Arun sawasdee",PhraseCategory.LOGISTICS),
+        PhraseRow("Good night","ราตรีสวัสดิ์","Ratri sawasdee",PhraseCategory.LOGISTICS)
+    ),
+    "ko" to listOf(
+        PhraseRow("Help!","도와주세요!","Dowa juseyo!",PhraseCategory.EMERGENCY),
+        PhraseRow("Call the police","경찰을 불러주세요","Gyeongchal-eul bulleo juseyo",PhraseCategory.EMERGENCY),
+        PhraseRow("I need a doctor","의사가 필요해요","Uisa-ga piryohaeyo",PhraseCategory.EMERGENCY),
+        PhraseRow("Where is the hospital?","병원이 어디에 있어요?","Byeongwon-i eodi-e isseoyo?",PhraseCategory.EMERGENCY),
+        PhraseRow("Fire!","불이야!","Buri-ya!",PhraseCategory.EMERGENCY),
+        PhraseRow("I'm lost","길을 잃었어요","Gil-eul ireosseoyo",PhraseCategory.EMERGENCY),
+        PhraseRow("Take me to the airport","공항으로 가주세요","Gonghang-euro gajuseyo",PhraseCategory.TRANSPORT),
+        PhraseRow("How much does it cost?","얼마예요?","Eolma-yeyo?",PhraseCategory.TRANSPORT),
+        PhraseRow("Stop here please","여기서 세워주세요","Yeogi-seo seowo juseyo",PhraseCategory.TRANSPORT),
+        PhraseRow("Is there a bus to...?","...행 버스가 있나요?","...haeng beoseu-ga innayo?",PhraseCategory.TRANSPORT),
+        PhraseRow("Train station","기차역","Gicha-yeok",PhraseCategory.TRANSPORT),
+        PhraseRow("Do you have a room?","빈 방 있어요?","Bin bang isseoyo?",PhraseCategory.HOUSING),
+        PhraseRow("How much per night?","하룻밤에 얼마예요?","Harutbam-e eolma-yeyo?",PhraseCategory.HOUSING),
+        PhraseRow("Check out time?","체크아웃 시간이 언제예요?","Chekeuaut sigan-i eonje-yeyo?",PhraseCategory.HOUSING),
+        PhraseRow("Wi-Fi password please","와이파이 비밀번호 주세요","Waipai bimilbeonho juseyo",PhraseCategory.HOUSING),
+        PhraseRow("Is breakfast included?","조식 포함인가요?","Josik poham-ingayo?",PhraseCategory.HOUSING),
+        PhraseRow("Hello","안녕하세요","Annyeonghaseyo",PhraseCategory.LOGISTICS),
+        PhraseRow("Thank you","감사합니다","Gamsahamnida",PhraseCategory.LOGISTICS),
+        PhraseRow("Yes / No","네 / 아니요","Ne / Aniyo",PhraseCategory.LOGISTICS),
+        PhraseRow("Where is the ATM?","ATM이 어디에 있어요?","ATM-i eodi-e isseoyo?",PhraseCategory.LOGISTICS),
+        PhraseRow("Do you speak English?","영어 할 줄 아세요?","Yeong-eo hal jul aseyo?",PhraseCategory.LOGISTICS),
+        PhraseRow("I'm vegetarian","저는 채식주의자예요","Jeoneun chaesikjuuija-yeyo",PhraseCategory.LOGISTICS),
+        PhraseRow("Water please","물 주세요","Mul juseyo",PhraseCategory.LOGISTICS),
+        PhraseRow("The check please","계산서 주세요","Gyesanseo juseyo",PhraseCategory.LOGISTICS),
+        PhraseRow("I have an allergy","저는 알레르기가 있어요","Jeoneun allereugi-ga isseoyo",PhraseCategory.LOGISTICS),
+        PhraseRow("Good morning","좋은 아침이에요","Joeun achim-i-eyo",PhraseCategory.LOGISTICS),
+        PhraseRow("Good night","안녕히 주무세요","Annyeonghi jumuseyo",PhraseCategory.LOGISTICS)
+    ),
+    "it" to listOf(
+        PhraseRow("Help!","Aiuto!","Aiuto!",PhraseCategory.EMERGENCY),
+        PhraseRow("Call the police","Chiama la polizia","Kiama la politsiya",PhraseCategory.EMERGENCY),
+        PhraseRow("I need a doctor","Ho bisogno di un medico","O bisonio di un mediko",PhraseCategory.EMERGENCY),
+        PhraseRow("Where is the hospital?","Dov'è l'ospedale?","Dove l-ospedale?",PhraseCategory.EMERGENCY),
+        PhraseRow("Fire!","Fuoco!","Fwoko!",PhraseCategory.EMERGENCY),
+        PhraseRow("I'm lost","Mi sono perso","Mi sono perso",PhraseCategory.EMERGENCY),
+        PhraseRow("Take me to the airport","Portami all'aeroporto","Portami all-aeroporto",PhraseCategory.TRANSPORT),
+        PhraseRow("How much does it cost?","Quanto costa?","Kwanto kosta?",PhraseCategory.TRANSPORT),
+        PhraseRow("Stop here please","Si fermi qui per favore","Si fermi kwi per favore",PhraseCategory.TRANSPORT),
+        PhraseRow("Is there a bus to...?","C'è un autobus per...?","Che un autobus per...?",PhraseCategory.TRANSPORT),
+        PhraseRow("Train station","Stazione ferroviaria","Stazione ferroviaria",PhraseCategory.TRANSPORT),
+        PhraseRow("Do you have a room?","Ha una stanza disponibile?","A una stanza disponibile?",PhraseCategory.HOUSING),
+        PhraseRow("How much per night?","Quanto costa a notte?","Kwanto kosta a notte?",PhraseCategory.HOUSING),
+        PhraseRow("Check out time?","A che ora si libera la stanza?","A ke ora si libera la stanza?",PhraseCategory.HOUSING),
+        PhraseRow("Wi-Fi password please","Password del Wi-Fi?","Password del Wi-Fi?",PhraseCategory.HOUSING),
+        PhraseRow("Is breakfast included?","La colazione è inclusa?","La kolazione e inclusa?",PhraseCategory.HOUSING),
+        PhraseRow("Hello","Ciao","Chao",PhraseCategory.LOGISTICS),
+        PhraseRow("Thank you","Grazie","Gratsie",PhraseCategory.LOGISTICS),
+        PhraseRow("Yes / No","Sì / No","Si / No",PhraseCategory.LOGISTICS),
+        PhraseRow("Where is the ATM?","Dov'è il bancomat?","Dove il bankomat?",PhraseCategory.LOGISTICS),
+        PhraseRow("Do you speak English?","Parla inglese?","Parla inglese?",PhraseCategory.LOGISTICS),
+        PhraseRow("I'm vegetarian","Sono vegetariano","Sono vegetariano",PhraseCategory.LOGISTICS),
+        PhraseRow("Water please","Acqua per favore","Akwa per favore",PhraseCategory.LOGISTICS),
+        PhraseRow("The check please","Il conto per favore","Il konto per favore",PhraseCategory.LOGISTICS),
+        PhraseRow("I have an allergy","Ho un'allergia","O un allergia",PhraseCategory.LOGISTICS),
+        PhraseRow("Good morning","Buongiorno","Bwon-jorno",PhraseCategory.LOGISTICS),
+        PhraseRow("Good night","Buonanotte","Bwona-notte",PhraseCategory.LOGISTICS)
     )
 )
 
@@ -464,12 +669,18 @@ fun TranslateScreen(
                         .padding(horizontal = 20.dp, vertical = 24.dp)
                         .padding(paddingValues)
                 ) {
-                    Column {
-                        Text("🌐 Translate", color = Color.White.copy(.7f),
-                            style = MaterialTheme.typography.labelLarge)
-                        Text("Global Communication Hub",
-                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Color.White, modifier = Modifier.padding(top = 2.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onBack, modifier = Modifier.size(40.dp)) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                        }
+                        Spacer(Modifier.width(4.dp))
+                        Column {
+                            Text("🌐 Translate", color = Color.White.copy(.7f),
+                                style = MaterialTheme.typography.labelLarge)
+                            Text("Global Communication Hub",
+                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color.White, modifier = Modifier.padding(top = 2.dp))
+                        }
                     }
                 }
             }
