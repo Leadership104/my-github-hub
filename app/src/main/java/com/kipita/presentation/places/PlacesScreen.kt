@@ -25,7 +25,11 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -42,35 +46,44 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.kipita.BuildConfig
 import com.kipita.data.api.PlaceCategory
 import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
 import com.kipita.presentation.theme.KipitaBorder
 import com.kipita.presentation.theme.KipitaCardBg
+import com.kipita.presentation.theme.KipitaGreenAccent
 import com.kipita.presentation.theme.KipitaOnSurface
+import com.kipita.presentation.theme.KipitaRed
 import com.kipita.presentation.theme.KipitaTextSecondary
 import kotlinx.coroutines.delay
 
 private data class PlacesMainTab(
     val label: String,
+    val icon: String,
     val categories: List<PlaceCategory>
 )
 
 private val mainTabs = listOf(
     PlacesMainTab(
         label = "Food",
+        icon = "🍽",
         categories = listOf(PlaceCategory.RESTAURANTS, PlaceCategory.CAFES, PlaceCategory.NIGHTLIFE)
     ),
     PlacesMainTab(
         label = "Travel",
+        icon = "🧭",
         categories = listOf(PlaceCategory.HOTELS, PlaceCategory.TRANSPORT, PlaceCategory.BANKS_ATMS)
     ),
     PlacesMainTab(
         label = "Essentials",
+        icon = "🛟",
         categories = listOf(PlaceCategory.SAFETY, PlaceCategory.URGENT_CARE, PlaceCategory.PHARMACIES)
     )
 )
@@ -85,6 +98,7 @@ fun PlacesScreen(
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
     var visible by remember { mutableStateOf(false) }
     var activeTabIndex by rememberSaveable { mutableIntStateOf(0) }
+    var resultsExpanded by rememberSaveable { mutableStateOf(true) }
     val tabs = if (state.showDestinations) mainTabs else mainTabs.map { tab ->
         if (tab.label == "Travel") {
             tab.copy(categories = listOf(PlaceCategory.TRANSPORT, PlaceCategory.BANKS_ATMS, PlaceCategory.GAS_STATIONS))
@@ -170,6 +184,7 @@ fun PlacesScreen(
                                     val selected = tabs[activeTabIndex].label == tab.label
                                     MainTabButton(
                                         label = tab.label,
+                                        icon = tab.icon,
                                         selected = selected,
                                         onClick = { activeTabIndex = tabs.indexOf(tab) }
                                     )
@@ -187,7 +202,7 @@ fun PlacesScreen(
                                         selected = category == state.selectedCategory,
                                         onClick = {
                                             viewModel.selectCategory(category)
-                                            onCategorySelected(category)
+                                            resultsExpanded = true
                                         }
                                     )
                                 }
@@ -212,6 +227,64 @@ fun PlacesScreen(
                                 }
                             }
                         }
+                    }
+                }
+            }
+
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.White)
+                        .border(1.dp, KipitaBorder, RoundedCornerShape(16.dp))
+                        .clickable { resultsExpanded = !resultsExpanded }
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Nearby Results (${state.filteredPlaces.size})",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = KipitaOnSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Icon(
+                            imageVector = if (resultsExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (resultsExpanded) "Collapse results" else "Expand results",
+                            tint = KipitaOnSurface
+                        )
+                    }
+                }
+            }
+
+            if (resultsExpanded) {
+                if (state.isLoading) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 28.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = KipitaRed)
+                        }
+                    }
+                } else if (state.error != null) {
+                    item {
+                        Text(
+                            state.error ?: "Could not load places",
+                            color = KipitaRed,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
+                        )
+                    }
+                } else {
+                    items(state.filteredPlaces) { place ->
+                        InlinePlaceCard(place = place)
                     }
                 }
             }
@@ -252,7 +325,7 @@ fun PlacesScreen(
 }
 
 @Composable
-private fun MainTabButton(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun MainTabButton(label: String, icon: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
@@ -266,11 +339,15 @@ private fun MainTabButton(label: String, selected: Boolean, onClick: () -> Unit)
             .padding(horizontal = 20.dp, vertical = 14.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = if (selected) Color.White else KipitaOnSurface
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(icon, fontSize = 20.sp)
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = if (selected) Color.White else KipitaOnSurface
+            )
+        }
     }
 }
 
@@ -325,5 +402,86 @@ private fun LargeCategoryButton(
                 Text("Ready", style = MaterialTheme.typography.labelSmall, color = Color.White)
             }
         }
+    }
+}
+
+@Composable
+private fun InlinePlaceCard(place: com.kipita.data.repository.NearbyPlace) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .border(1.dp, KipitaBorder, RoundedCornerShape(16.dp))
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .width(100.dp)
+                .height(84.dp)
+                .clip(RoundedCornerShape(12.dp))
+        ) {
+            if (place.photoRef.isNotBlank()) {
+                AsyncImage(
+                    model = "https://places.googleapis.com/v1/${place.photoRef}/media?maxHeightPx=320&maxWidthPx=320&key=${BuildConfig.GOOGLE_PLACES_API_KEY}",
+                    contentDescription = "${place.name} photo",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(84.dp),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(84.dp)
+                        .background(KipitaCardBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(place.emoji, fontSize = 26.sp)
+                }
+            }
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                place.name,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = KipitaOnSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                place.address,
+                style = MaterialTheme.typography.bodySmall,
+                color = KipitaTextSecondary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+            Row(
+                modifier = Modifier.padding(top = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (place.rating > 0) {
+                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("${"%.1f".format(place.rating)}", style = MaterialTheme.typography.labelSmall, color = KipitaTextSecondary)
+                    Spacer(Modifier.width(10.dp))
+                }
+                Text(
+                    text = if (place.isOpen) "Open" else "Closed",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (place.isOpen) KipitaGreenAccent else KipitaRed
+                )
+            }
+        }
+        Text(
+            text = "${"%.1f".format(place.distanceKm)} km",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = KipitaOnSurface
+        )
     }
 }

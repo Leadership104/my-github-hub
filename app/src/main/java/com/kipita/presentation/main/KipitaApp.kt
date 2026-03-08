@@ -24,16 +24,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Flight
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.TravelExplore
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Flight
-import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.TravelExplore
 import androidx.compose.material.icons.outlined.Warning
@@ -95,9 +91,7 @@ import com.kipita.presentation.theme.KipitaRed
 import com.kipita.presentation.theme.KipitaRedLight
 import com.kipita.presentation.theme.KipitaTextSecondary
 import com.kipita.presentation.theme.KipitaTextTertiary
-import com.kipita.data.api.PlaceCategory
 import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
-import com.kipita.presentation.places.PlacesCategoryResultScreen
 import com.kipita.presentation.translate.TranslateScreen
 import com.kipita.presentation.trips.MyTripsScreen
 import com.kipita.presentation.trips.TripDetailScreen
@@ -105,11 +99,11 @@ import com.kipita.presentation.wallet.WalletScreen
 
 // ---------------------------------------------------------------------------
 // Navigation routes
-// 6 bottom-tab routes: HOME | EXPLORE | AI(centre) | TRIPS | WALLET | SOCIAL
+// Bottom-tab routes: HOME | PLACES | TRIPS | ADVISORY
 // SETTINGS is not in the nav bar — accessed via the top-right profile avatar menu
 // ---------------------------------------------------------------------------
 enum class MainRoute {
-    HOME, PLACES, AI, TRIPS, ADVISORY, SOCIAL, SETTINGS
+    HOME, PLACES, AI, TRIPS, ADVISORY, SETTINGS
 }
 
 private data class NavItem(
@@ -123,10 +117,8 @@ private data class NavItem(
 private val navItems = listOf(
     NavItem(MainRoute.HOME,    "Home",    Icons.Filled.Home,          Icons.Outlined.Home),
     NavItem(MainRoute.PLACES,  "Places",  Icons.Filled.TravelExplore, Icons.Outlined.TravelExplore),
-    NavItem(MainRoute.AI,      "AI",      Icons.Filled.AutoAwesome,   Icons.Outlined.AutoAwesome, isCenter = true),
     NavItem(MainRoute.TRIPS,   "Trips",   Icons.Filled.Flight,        Icons.Outlined.Flight),
-    NavItem(MainRoute.ADVISORY, "Advisory", Icons.Filled.Warning, Icons.Outlined.Warning),
-    NavItem(MainRoute.SOCIAL,  "Social",  Icons.Filled.Groups,        Icons.Outlined.Groups)
+    NavItem(MainRoute.ADVISORY, "Advisory", Icons.Filled.Warning, Icons.Outlined.Warning)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -146,14 +138,13 @@ fun KipitaApp() {
     var webViewTitle by rememberSaveable { mutableStateOf("") }
     var showNearbyTravelers by rememberSaveable { mutableStateOf(false) }
     var showTravelGroups by rememberSaveable { mutableStateOf(false) }
+    var showSocial by rememberSaveable { mutableStateOf(false) }
     var aiPreFill by rememberSaveable { mutableStateOf("") }
     var isGuest by rememberSaveable { mutableStateOf(true) }
     var userName by rememberSaveable { mutableStateOf("") }
     var userAvatarUri by rememberSaveable { mutableStateOf("") }
     var showProfileMenu by rememberSaveable { mutableStateOf(false) }
     var selectedTripId by rememberSaveable { mutableStateOf<String?>(null) }
-    var showPlacesResult by rememberSaveable { mutableStateOf(false) }
-    var placesResultCategory by rememberSaveable { mutableStateOf(PlaceCategory.HOTELS) }
     var showPerks by rememberSaveable { mutableStateOf(false) }
     var showWallet by rememberSaveable { mutableStateOf(false) }
     var openSosSignal by rememberSaveable { mutableStateOf(0) }
@@ -172,13 +163,13 @@ fun KipitaApp() {
     }
 
     val canGoBack = showMap || showProfile || showAuth || showTranslate || showWebView ||
-        showNearbyTravelers || showTravelGroups || selectedTripId != null || showPlacesResult || showPerks || showWallet
+        showNearbyTravelers || showTravelGroups || showSocial || selectedTripId != null || showPerks || showWallet
     val onBack: () -> Unit = {
         when {
             showWebView         -> showWebView = false
-            showPlacesResult    -> showPlacesResult = false
             showNearbyTravelers -> showNearbyTravelers = false
             showTravelGroups    -> showTravelGroups = false
+            showSocial          -> showSocial = false
             showTranslate       -> showTranslate = false
             selectedTripId != null -> selectedTripId = null
             showPerks   -> showPerks = false
@@ -210,7 +201,7 @@ fun KipitaApp() {
         snackbarHost = { SnackbarHost(snackbarHostState) },
         bottomBar = {
             if (!showMap && !showProfile && !showAuth && !showTranslate && !showWebView &&
-                !showNearbyTravelers && !showTravelGroups && selectedTripId == null && !showPlacesResult && !showPerks && !showWallet) {
+                !showNearbyTravelers && !showTravelGroups && !showSocial && selectedTripId == null && !showPerks && !showWallet) {
                 NavigationBar(
                     containerColor = KipitaNavBg,
                     tonalElevation = 0.dp,
@@ -308,6 +299,23 @@ fun KipitaApp() {
                     )
                 }
 
+                showSocial -> KipitaErrorBoundary("SocialScreen") { _ ->
+                    SocialScreen(
+                        paddingValues       = padding,
+                        onNearbyTravelers   = { showNearbyTravelers = true },
+                        onTravelGroups      = {
+                            if (isGuest) {
+                                showAuth = true
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Create a profile to join groups")
+                                }
+                            } else {
+                                showTravelGroups = true
+                            }
+                        }
+                    )
+                }
+
                 showTranslate -> KipitaErrorBoundary("TranslateScreen") { _ ->
                     TranslateScreen(
                         paddingValues = padding,
@@ -334,18 +342,6 @@ fun KipitaApp() {
                             selectedTripId = null
                             aiPreFill = prompt
                             route = MainRoute.AI
-                        }
-                    )
-                }
-
-                showPlacesResult -> KipitaErrorBoundary("PlacesCategoryResultScreen") { _ ->
-                    PlacesCategoryResultScreen(
-                        category = placesResultCategory,
-                        onBack = { showPlacesResult = false },
-                        onOpenWebView = { url, title ->
-                            webViewUrl = url
-                            webViewTitle = title
-                            showWebView = true
                         }
                     )
                 }
@@ -425,6 +421,7 @@ fun KipitaApp() {
                                 },
                                 onOpenMap        = { showMap = true },
                                 onOpenAI         = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
+                                onOpenSocial     = { showSocial = true },
                                 onOpenTranslate  = { showTranslate = true },
                                 onOpenPerks      = { showPerks = true },
                                 openSosSignal    = openSosSignal,
@@ -439,8 +436,6 @@ fun KipitaApp() {
                         MainRoute.PLACES -> KipitaErrorBoundary("PlacesScreen") { _ ->
                             PlacesScreen(
                                 paddingValues      = padding,
-                                onAiSuggest        = { route = MainRoute.AI },
-                                onCategorySelected = { cat -> placesResultCategory = cat; showPlacesResult = true },
                                 onOpenWebView      = { url, title ->
                                     webViewUrl = url
                                     webViewTitle = title
@@ -476,23 +471,6 @@ fun KipitaApp() {
 
                         MainRoute.ADVISORY -> KipitaErrorBoundary("AdvisoryScreen") { _ ->
                             AdvisoryScreen(paddingValues = padding)
-                        }
-
-                        MainRoute.SOCIAL -> KipitaErrorBoundary("SocialScreen") { _ ->
-                            SocialScreen(
-                                paddingValues       = padding,
-                                onNearbyTravelers   = { showNearbyTravelers = true },
-                                onTravelGroups      = {
-                                    if (isGuest) {
-                                        showAuth = true
-                                        coroutineScope.launch {
-                                            snackbarHostState.showSnackbar("Create a profile to join groups")
-                                        }
-                                    } else {
-                                        showTravelGroups = true
-                                    }
-                                }
-                            )
                         }
 
                         MainRoute.SETTINGS -> KipitaErrorBoundary("SettingsScreen") { _ ->
