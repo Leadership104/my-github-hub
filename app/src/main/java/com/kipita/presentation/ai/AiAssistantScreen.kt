@@ -39,7 +39,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.filled.FlightTakeoff
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
@@ -103,6 +105,7 @@ private val quickActions = listOf(
 @Composable
 fun AiAssistantScreen(
     paddingValues: PaddingValues,
+    onBack: () -> Unit = {},
     onTripClick: (tripId: String) -> Unit = {},
     viewModel: AiViewModel = hiltViewModel(),
     tripsViewModel: TripsViewModel = hiltViewModel(),
@@ -185,7 +188,7 @@ fun AiAssistantScreen(
             // Header with sparkle branding
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { -20 }) {
-                    Column(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
@@ -193,9 +196,13 @@ fun AiAssistantScreen(
                                     listOf(Color(0xFF1A1A2E), Color(0xFF0F3460))
                                 )
                             )
-                            .padding(horizontal = 20.dp, vertical = 28.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 28.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
                         // Sparkle icon
                         Box(
                             modifier = Modifier
@@ -226,6 +233,17 @@ fun AiAssistantScreen(
                         Spacer(Modifier.height(16.dp))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             ModelBadge("Gemini", Color(0xFF4285F4))
+                        }
+                        // Back button overlay
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.align(Alignment.TopStart)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
                         }
                     }
                 }

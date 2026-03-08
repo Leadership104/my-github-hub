@@ -436,6 +436,7 @@ fun KipitaApp() {
                         MainRoute.PLACES -> KipitaErrorBoundary("PlacesScreen") { _ ->
                             PlacesScreen(
                                 paddingValues      = padding,
+                                onBack             = { route = MainRoute.HOME },
                                 onAskKipita        = { route = MainRoute.AI },
                                 onOpenWebView      = { url, title ->
                                     webViewUrl = url
@@ -448,6 +449,7 @@ fun KipitaApp() {
                         MainRoute.AI -> KipitaErrorBoundary("AiAssistantScreen") { _ ->
                             AiAssistantScreen(
                                 paddingValues = padding,
+                                onBack        = { route = MainRoute.HOME },
                                 onTripClick   = { tripId -> selectedTripId = tripId },
                                 preFillPrompt = aiPreFill.also { aiPreFill = "" }
                             )
@@ -471,7 +473,10 @@ fun KipitaApp() {
                         }
 
                         MainRoute.ADVISORY -> KipitaErrorBoundary("AdvisoryScreen") { _ ->
-                            AdvisoryScreen(paddingValues = padding)
+                            AdvisoryScreen(
+                                paddingValues = padding,
+                                onBack        = { route = MainRoute.HOME }
+                            )
                         }
 
                         MainRoute.SETTINGS -> KipitaErrorBoundary("SettingsScreen") { _ ->

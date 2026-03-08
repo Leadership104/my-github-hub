@@ -41,11 +41,15 @@ import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.graphics.Brush
 
 @Composable
 fun AdvisoryScreen(
     paddingValues: PaddingValues,
+    onBack: () -> Unit = {},
     viewModel: AdvisoryViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
@@ -57,11 +61,34 @@ fun AdvisoryScreen(
             .background(Color(0xFFFAFAFA))
             .padding(paddingValues)
     ) {
-        Text(
-            "Advisory",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-        )
+        // Blue gradient header
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(listOf(Color(0xFF1A1A2E), Color(0xFF16213E)))
+                )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 4.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White
+                    )
+                }
+                Text(
+                    "Advisory",
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White
+                )
+            }
+        }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
