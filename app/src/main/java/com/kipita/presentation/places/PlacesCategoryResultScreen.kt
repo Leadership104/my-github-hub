@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Arrangement
@@ -41,8 +42,6 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,6 +59,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +69,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import com.kipita.BuildConfig
 import com.kipita.data.api.PlaceCategory
 import com.kipita.data.repository.NearbyPlace
 import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
@@ -91,25 +93,14 @@ private val emergencyCategories = setOf(
 private data class ResultCategorySection(val label: String, val categories: List<PlaceCategory>)
 
 private val resultCategorySections = listOf(
-    ResultCategorySection("Restaurants", listOf(
+    ResultCategorySection("Food", listOf(
         PlaceCategory.RESTAURANTS, PlaceCategory.CAFES, PlaceCategory.NIGHTLIFE
     )),
-    ResultCategorySection("Entertainment", listOf(
-        PlaceCategory.ENTERTAINMENT, PlaceCategory.ARTS, PlaceCategory.PARKS
+    ResultCategorySection("Travel", listOf(
+        PlaceCategory.HOTELS, PlaceCategory.TRANSPORT, PlaceCategory.BANKS_ATMS
     )),
-    ResultCategorySection("Shopping", listOf(PlaceCategory.SHOPPING)),
-    ResultCategorySection("Transportation", listOf(
-        PlaceCategory.TRANSPORT, PlaceCategory.CAR_RENTAL,
-        PlaceCategory.EV_CHARGING, PlaceCategory.GAS_STATIONS, PlaceCategory.AIRPORTS
-    )),
-    ResultCategorySection("Services", listOf(
-        PlaceCategory.BANKS_ATMS, PlaceCategory.FITNESS
-    )),
-    ResultCategorySection("Safety", listOf(
+    ResultCategorySection("Essentials", listOf(
         PlaceCategory.SAFETY, PlaceCategory.URGENT_CARE, PlaceCategory.PHARMACIES
-    )),
-    ResultCategorySection("Destinations", listOf(
-        PlaceCategory.HOTELS, PlaceCategory.VACATION_RENTALS, PlaceCategory.TOURS
     ))
 )
 
@@ -127,8 +118,12 @@ fun PlacesCategoryResultScreen(
     var currentCategory by rememberSaveable { mutableStateOf(category) }
     var activeSectionIndex by rememberSaveable { mutableIntStateOf(0) }
     val enabledSections = if (state.showDestinations) resultCategorySections
-    else resultCategorySections.filterNot { it.label == "Destinations" }
-    val sections = sortSectionsForCurrentTime(enabledSections) { it.label }
+    else resultCategorySections.map { section ->
+        if (section.label == "Travel") {
+            section.copy(categories = listOf(PlaceCategory.TRANSPORT, PlaceCategory.BANKS_ATMS, PlaceCategory.GAS_STATIONS))
+        } else section
+    }
+    val sections = sortSectionsForCurrentTime(enabledSections, labelOf = { it.label })
     val uriHandler = LocalUriHandler.current
 
     val gpsLauncher = rememberLauncherForActivityResult(
@@ -223,26 +218,35 @@ fun PlacesCategoryResultScreen(
         ) {
             item {
                 if (sections.isNotEmpty()) {
-                    ScrollableTabRow(selectedTabIndex = activeSectionIndex, edgePadding = 0.dp) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         sections.forEachIndexed { index, section ->
-                            Tab(
+                            BigTab(
+                                modifier = Modifier.weight(1f),
+                                label = section.label,
                                 selected = activeSectionIndex == index,
-                                onClick = { activeSectionIndex = index },
-                                text = { Text(section.label) }
+                                onClick = { activeSectionIndex = index }
                             )
                         }
                     }
                     val children = sections[activeSectionIndex].categories
                     val selectedChild = children.indexOf(currentCategory).let { if (it >= 0) it else 0 }
-                    ScrollableTabRow(selectedTabIndex = selectedChild, edgePadding = 0.dp) {
+                    Spacer(Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         children.forEachIndexed { index, child ->
-                            Tab(
+                            BigTab(
+                                modifier = Modifier.weight(1f),
+                                label = "${child.emoji} ${child.label}",
                                 selected = selectedChild == index,
                                 onClick = {
                                     currentCategory = child
                                     scope.launch { resolveLocationAndFetch(context, viewModel, child) }
-                                },
-                                text = { Text("${child.emoji} ${child.label}") }
+                                }
                             )
                         }
                     }
@@ -423,12 +427,30 @@ private fun PlaceResultCard(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .size(52.dp)
+                    .width(112.dp)
+                    .height(90.dp)
                     .clip(RoundedCornerShape(14.dp))
-                    .background(if (isEmergency) Color(0xFFFFEBEE) else KipitaCardBg),
-                contentAlignment = Alignment.Center
             ) {
-                Text(place.emoji, fontSize = 24.sp)
+                if (place.photoRef.isNotBlank()) {
+                    AsyncImage(
+                        model = googlePlacePhotoUrl(place.photoRef),
+                        contentDescription = "${place.name} photo",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(90.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(90.dp)
+                            .background(if (isEmergency) Color(0xFFFFEBEE) else KipitaCardBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(place.emoji, fontSize = 28.sp)
+                    }
+                }
             }
 
             Spacer(Modifier.width(12.dp))
@@ -534,6 +556,32 @@ private fun PlaceResultCard(
     }
 }
 
+@Composable
+private fun BigTab(
+    modifier: Modifier = Modifier,
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) Color(0xFF1A1A2E) else Color.White)
+            .border(1.dp, if (selected) Color(0xFF1A1A2E) else Color(0xFFE6E6E6), RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 14.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = if (selected) Color.White else KipitaOnSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun QuickActionRow(
@@ -603,4 +651,8 @@ private suspend fun resolveLocationAndFetch(
     } catch (_: Exception) {
         viewModel.selectCategory(category)
     }
+}
+
+private fun googlePlacePhotoUrl(photoRef: String): String {
+    return "https://places.googleapis.com/v1/$photoRef/media?maxHeightPx=320&maxWidthPx=320&key=${BuildConfig.GOOGLE_PLACES_API_KEY}"
 }
