@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -177,17 +176,29 @@ fun PlacesScreen(
                 AnimatedVisibility(visible = visible, enter = fadeIn(tween(150)) + slideInVertically(tween(150)) { 20 }) {
                     Column(modifier = Modifier.padding(top = 18.dp)) {
                         if (tabs.isNotEmpty()) {
-                            LazyRow(
-                                contentPadding = PaddingValues(horizontal = 20.dp),
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 20.dp),
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                items(tabs) { tab ->
+                                tabs.forEach { tab ->
                                     val selected = tabs[activeTabIndex].label == tab.label
                                     MainTabButton(
+                                        modifier = Modifier.weight(1f),
                                         label = tab.label,
                                         icon = tab.icon,
                                         selected = selected,
-                                        onClick = { activeTabIndex = tabs.indexOf(tab) }
+                                        onClick = {
+                                            val index = tabs.indexOf(tab)
+                                            activeTabIndex = index
+                                            val firstCategory = tabs[index].categories.firstOrNull()
+                                            if (firstCategory != null) {
+                                                viewModel.selectCategory(firstCategory)
+                                                onCategorySelected(firstCategory)
+                                                resultsExpanded = true
+                                            }
+                                        }
                                     )
                                 }
                             }
@@ -317,9 +328,15 @@ fun PlacesScreen(
 }
 
 @Composable
-private fun MainTabButton(label: String, icon: String, selected: Boolean, onClick: () -> Unit) {
+private fun MainTabButton(
+    modifier: Modifier = Modifier,
+    label: String,
+    icon: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .clip(RoundedCornerShape(20.dp))
             .background(if (selected) Color(0xFF1A1A2E) else Color.White)
             .border(
@@ -328,7 +345,7 @@ private fun MainTabButton(label: String, icon: String, selected: Boolean, onClic
                 shape = RoundedCornerShape(20.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 24.dp, vertical = 18.dp),
+            .padding(horizontal = 12.dp, vertical = 18.dp),
         contentAlignment = Alignment.Center
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
