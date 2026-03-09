@@ -3,12 +3,18 @@ package com.kipita.presentation.places
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +64,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -438,8 +446,18 @@ fun PlacesScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 12.dp)
+                            .shadow(
+                                elevation = 14.dp,
+                                shape = RoundedCornerShape(18.dp),
+                                spotColor = Color(0xFF1A1A2E).copy(alpha = 0.38f),
+                                ambientColor = Color(0xFF1A1A2E).copy(alpha = 0.12f)
+                            )
                             .clip(RoundedCornerShape(18.dp))
-                            .background(Color(0xFF1A1A2E))
+                            .background(
+                                brush = Brush.linearGradient(
+                                    listOf(Color(0xFF1A1A2E), Color(0xFF0D1B2A))
+                                )
+                            )
                             .clickable(onClick = onAskKipita)
                             .padding(horizontal = 20.dp, vertical = 18.dp),
                         contentAlignment = Alignment.Center
@@ -474,9 +492,20 @@ private fun PlacesSectionAccordion(
     onHeaderClick: () -> Unit,
     onSubCategoryClick: (PlaceSubCategory) -> Unit
 ) {
+    val accordionElevation by animateDpAsState(
+        targetValue = if (isExpanded) 10.dp else 2.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "accordion-shadow"
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(
+                elevation = accordionElevation,
+                shape = RoundedCornerShape(18.dp),
+                spotColor = if (isExpanded) Color(0xFF1A1A2E).copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.06f),
+                ambientColor = Color.Black.copy(alpha = 0.04f)
+            )
             .clip(RoundedCornerShape(18.dp))
             .background(Color.White)
             .border(1.dp, if (isExpanded) Color(0xFF1A1A2E) else KipitaBorder, RoundedCornerShape(18.dp))
@@ -534,6 +563,14 @@ private fun PlacesSectionAccordion(
                     val isSelected = selectedSubCatLabel == subCat.label
                     Row(
                         modifier = Modifier
+                            .then(
+                                if (isSelected) Modifier.shadow(
+                                    elevation = 4.dp,
+                                    shape = RoundedCornerShape(20.dp),
+                                    spotColor = Color(0xFF1A1A2E).copy(alpha = 0.22f),
+                                    ambientColor = Color(0xFF1A1A2E).copy(alpha = 0.07f)
+                                ) else Modifier
+                            )
                             .clip(RoundedCornerShape(20.dp))
                             .background(if (isSelected) Color(0xFF1A1A2E) else Color.White)
                             .border(
@@ -570,6 +607,12 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(16.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
+            )
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
             .border(1.dp, KipitaBorder, RoundedCornerShape(16.dp))
@@ -739,11 +782,29 @@ private fun PlaceActionButton(
     bgColor: Color,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.94f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "action-btn-press"
+    )
     Row(
         modifier = modifier
+            .scale(scale)
+            .shadow(
+                elevation = 5.dp,
+                shape = RoundedCornerShape(20.dp),
+                spotColor = bgColor.copy(alpha = 0.42f),
+                ambientColor = bgColor.copy(alpha = 0.16f)
+            )
             .clip(RoundedCornerShape(20.dp))
             .background(bgColor)
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
             .padding(horizontal = 6.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
