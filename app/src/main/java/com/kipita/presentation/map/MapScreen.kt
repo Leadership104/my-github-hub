@@ -51,7 +51,9 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -176,6 +178,38 @@ fun MapScreen(
             .background(Color(0xFFEFF3F9))
             .padding(paddingValues)
     ) {
+        // ── Layout column: header + map ──────────────────────────────────────
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Dark navy header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Brush.linearGradient(listOf(Color(0xFF0D1B2A), Color(0xFF1B3A5C))))
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (onNavigateBack != null) {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                    }
+                }
+                Column(modifier = Modifier.padding(start = if (onNavigateBack != null) 4.dp else 8.dp)) {
+                    Text(
+                        "₿ Bitcoin Map",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Color.White
+                    )
+                    Text(
+                        "Bitcoin-friendly places near you",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.65f)
+                    )
+                }
+            }
+            // Map background (fills remaining height)
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()){}
+        }
+
         // ── Google Map ──────────────────────────────────────────────────────
         Box(
             modifier = Modifier
@@ -263,37 +297,16 @@ fun MapScreen(
             }
         }
 
-        if (onNavigateBack != null) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(horizontal = 12.dp, vertical = 28.dp)
-                    .size(36.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.92f))
-                    .border(1.dp, KipitaBorder, CircleShape)
-                    .clickable { onNavigateBack() },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color(0xFF1A1A2E),
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
         // Glass morphism top controls + search bar
         AnimatedVisibility(
             visible = visible,
             enter = fadeIn() + slideInVertically { -20 },
-            modifier = Modifier.align(Alignment.TopStart)
+            modifier = Modifier.align(Alignment.TopStart).padding(top = 72.dp)
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 16.dp),
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 // Glass buttons row + overlay toggles
