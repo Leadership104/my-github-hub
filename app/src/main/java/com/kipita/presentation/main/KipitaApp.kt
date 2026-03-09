@@ -186,8 +186,6 @@ fun KipitaApp() {
     Scaffold(
         topBar = {
             KipitaTopBar(
-                canGoBack = canGoBack,
-                onBack = onBack,
                 isGuest = isGuest,
                 userName = userName,
                 userAvatarUri = userAvatarUri,
@@ -466,6 +464,7 @@ fun KipitaApp() {
                                     showWallet = true
                                 },
                                 onOpenMap    = { showMap = true },
+                                onOpenTranslate = { showTranslate = true },
                                 onOpenWebView = { url, title ->
                                     webViewUrl = url
                                     webViewTitle = title
@@ -500,6 +499,7 @@ fun KipitaApp() {
                 KipitaErrorBoundary("WalletScreen") { _ ->
                     WalletScreen(
                         paddingValues = padding,
+                        onBack = { showWallet = false },
                         walletOpenSignal = 1,
                         onOpenWebView = { url, title ->
                             webViewUrl = url
@@ -540,8 +540,6 @@ fun KipitaApp() {
 // ---------------------------------------------------------------------------
 @Composable
 private fun KipitaTopBar(
-    canGoBack: Boolean,
-    onBack: () -> Unit,
     isGuest: Boolean,
     userName: String,
     userAvatarUri: String = "",
@@ -556,27 +554,8 @@ private fun KipitaTopBar(
             .background(Color(0xFF1565C0))
             .padding(horizontal = 12.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.End
     ) {
-        // Back button — white icon on semi-transparent circle, visible when navigable
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(if (canGoBack) Color.White.copy(alpha = 0.2f) else Color.Transparent)
-                .then(if (canGoBack) Modifier.clickable(onClick = onBack) else Modifier),
-            contentAlignment = Alignment.Center
-        ) {
-            if (canGoBack) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-        }
-
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)

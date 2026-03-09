@@ -30,6 +30,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Close
@@ -175,6 +176,7 @@ private val kipitaPerks = listOf(
 @Composable
 fun WalletScreen(
     paddingValues: PaddingValues,
+    onBack: () -> Unit = {},
     walletOpenSignal: Int = 0,
     viewModel: WalletViewModel = hiltViewModel(),
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> }
@@ -239,7 +241,10 @@ fun WalletScreen(
                             .padding(horizontal = 20.dp, vertical = 28.dp)
                     ) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                            Column {
+                            IconButton(onClick = onBack) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
                                 Text("Travel Wallet", style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
                                 Text("Real-time ECB rates · 50+ currencies", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.65f), modifier = Modifier.padding(top = 2.dp))
                             }

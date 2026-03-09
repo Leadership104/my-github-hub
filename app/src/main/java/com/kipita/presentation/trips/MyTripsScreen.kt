@@ -111,6 +111,7 @@ fun MyTripsScreen(
     onAiSuggest: (String) -> Unit = {},
     onOpenWallet: () -> Unit = {},
     onOpenMap: () -> Unit = {},
+    onOpenTranslate: () -> Unit = {},
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
     onTripClick: (tripId: String) -> Unit = {},
     viewModel: TripsViewModel = hiltViewModel()
@@ -347,7 +348,7 @@ fun MyTripsScreen(
                                 icon = Icons.Default.Language,
                                 label = "Translate",
                                 modifier = Modifier.weight(1f),
-                                onClick = { onOpenWebView("https://translate.google.com", "Translate") }
+                                onClick = { onOpenTranslate() }
                             )
                         }
                     }
