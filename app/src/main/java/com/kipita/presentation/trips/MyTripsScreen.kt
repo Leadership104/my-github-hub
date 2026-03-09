@@ -363,12 +363,12 @@ fun MyTripsScreen(
                     Column {
                         SectionHeader("Book Transport", "")
                         val transports = listOf(
-                            Triple(Icons.Default.FlightTakeoff, "Flights", "https://expedia.com/affiliate/eA2cKky"),
-                            Triple(Icons.Default.Hotel, "Hotels", "https://www.hotels.com/affiliate/RrZ7bmg"),
-                            Triple(Icons.Default.DirectionsCar, "Car Rental", "https://expedia.com/affiliate/eA2cKky"),
-                            Triple(Icons.Default.LocalTaxi, "Uber", "https://www.uber.com"),
-                            Triple(Icons.Default.LocalTaxi, "Lyft", "https://www.lyft.com"),
-                            Triple(Icons.Default.Anchor, "Cruise", "https://expedia.com/affiliate/eA2cKky")
+                            TransportEntry(emoji = "✈️", label = "Flights", url = "https://expedia.com/affiliate/eA2cKky"),
+                            TransportEntry(emoji = "🏨", label = "Hotels",  url = "https://www.hotels.com/affiliate/RrZ7bmg"),
+                            TransportEntry(emoji = "🚗", label = "Car Rental", url = "https://expedia.com/affiliate/eA2cKky"),
+                            TransportEntry(matIcon = Icons.Default.DirectionsCar, iconTint = Color.Black, label = "Uber", url = "https://www.uber.com"),
+                            TransportEntry(matIcon = Icons.Default.DirectionsCar, iconTint = Color(0xFFE91E63), label = "Lyft", url = "https://www.lyft.com"),
+                            TransportEntry(emoji = "🚢", label = "Cruise", url = "https://expedia.com/affiliate/eA2cKky")
                         )
                         Column(
                             modifier = Modifier
@@ -381,12 +381,11 @@ fun MyTripsScreen(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    row.forEach { (icon, label, deepLink) ->
+                                    row.forEach { entry ->
                                         Box(modifier = Modifier.weight(1f)) {
                                             TransportChip(
-                                                icon = icon,
-                                                label = label,
-                                                onClick = { onOpenWebView(deepLink, label) }
+                                                entry = entry,
+                                                onClick = { onOpenWebView(entry.url, entry.label) }
                                             )
                                         }
                                     }
@@ -1239,8 +1238,19 @@ private fun QuickToolCard(
 // ---------------------------------------------------------------------------
 // Transport Chip
 // ---------------------------------------------------------------------------
+private data class TransportEntry(
+    val emoji: String? = null,
+    val matIcon: ImageVector? = null,
+    val iconTint: Color = Color.Unspecified,
+    val label: String,
+    val url: String
+)
+
 @Composable
-private fun TransportChip(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun TransportChip(
+    entry: TransportEntry,
+    onClick: () -> Unit
+) {
     var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(
         targetValue = if (pressed) 0.94f else 1f,
@@ -1263,11 +1273,20 @@ private fun TransportChip(icon: ImageVector, label: String, onClick: () -> Unit)
                 .background(KipitaCardBg),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = label, tint = KipitaOnSurface, modifier = Modifier.size(28.dp))
+            if (entry.emoji != null) {
+                Text(entry.emoji, fontSize = 28.sp)
+            } else if (entry.matIcon != null) {
+                Icon(
+                    entry.matIcon,
+                    contentDescription = entry.label,
+                    tint = entry.iconTint,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
         }
         Spacer(Modifier.height(8.dp))
         Text(
-            text = label,
+            text = entry.label,
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
             color = KipitaOnSurface
         )

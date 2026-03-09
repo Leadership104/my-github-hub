@@ -319,65 +319,6 @@ fun HomeScreen(
                 }
             }
 
-            // ── Book Transport row ───────────────────────────────────────────
-            item {
-                AnimatedVisibility(
-                    visible = visible,
-                    enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { 30 }
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(horizontal = 20.dp)
-                            .padding(bottom = 16.dp)
-                    ) {
-                        Text(
-                            "Book Transport",
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = KipitaOnSurface,
-                            modifier = Modifier.padding(bottom = 10.dp)
-                        )
-                        val transports = listOf(
-                                Triple("✈️", "Flights",   "https://expedia.com/affiliate/eA2cKky"),
-                                Triple("🏨", "Hotels",    "https://www.hotels.com/affiliate/RrZ7bmg"),
-                                Triple("🚗", "Car Rental","https://expedia.com/affiliate/eA2cKky"),
-                                Triple("🚢", "Cruise",    "https://expedia.com/affiliate/eA2cKky"),
-                                Triple("🚕", "Uber",      "https://uber.com"),
-                                Triple("🚕", "Lyft",      "https://lyft.com")
-                            )
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            transports.chunked(3).forEach { row ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    row.forEach { (emoji, label, url) ->
-                                        Column(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clip(RoundedCornerShape(14.dp))
-                                                .background(Color.White)
-                                                .border(1.dp, KipitaBorder, RoundedCornerShape(14.dp))
-                                                .clickable { onOpenWebView(url, label) }
-                                                .padding(horizontal = 12.dp, vertical = 16.dp),
-                                            horizontalAlignment = Alignment.CenterHorizontally
-                                        ) {
-                                            Text(emoji, fontSize = 26.sp)
-                                            Spacer(Modifier.height(6.dp))
-                                            Text(
-                                                label,
-                                                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                                                color = KipitaOnSurface,
-                                                textAlign = TextAlign.Center
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
         }
 
         // ── Bottom action bar (few-click flow) ──────────────────────────────
