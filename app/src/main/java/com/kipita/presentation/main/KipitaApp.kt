@@ -5,6 +5,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,15 +26,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.TravelExplore
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.TravelExplore
-import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.Luggage
+import androidx.compose.material.icons.outlined.Place
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -59,6 +66,8 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.scale
@@ -115,10 +124,10 @@ private data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem(MainRoute.HOME,    "Home",    Icons.Filled.Home,          Icons.Outlined.Home),
-    NavItem(MainRoute.PLACES,  "Places",  Icons.Filled.TravelExplore, Icons.Outlined.TravelExplore),
-    NavItem(MainRoute.TRIPS,   "Trips",   Icons.Filled.Flight,        Icons.Outlined.Flight),
-    NavItem(MainRoute.ADVISORY, "Advisory", Icons.Filled.Warning, Icons.Outlined.Warning)
+    NavItem(MainRoute.HOME,     "Home",     Icons.Filled.Home,           Icons.Outlined.Home),
+    NavItem(MainRoute.ADVISORY, "Advisory", Icons.Filled.HealthAndSafety, Icons.Outlined.HealthAndSafety),
+    NavItem(MainRoute.TRIPS,    "Trips",    Icons.Filled.Luggage,         Icons.Outlined.Luggage),
+    NavItem(MainRoute.PLACES,   "Places",   Icons.Filled.Place,           Icons.Outlined.Place)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,6 +157,7 @@ fun KipitaApp() {
     var showPerks by rememberSaveable { mutableStateOf(false) }
     var showWallet by rememberSaveable { mutableStateOf(false) }
     var openSosSignal by rememberSaveable { mutableStateOf(0) }
+    var currentLocationAddress by rememberSaveable { mutableStateOf("Detecting location...") }
     val topBarWeatherViewModel: WeatherViewModel = hiltViewModel()
     val topBarWeatherState by topBarWeatherViewModel.state.collectAsStateWithLifecycleCompat()
 
@@ -192,6 +202,8 @@ fun KipitaApp() {
                 onProfileClick = { showProfileMenu = true },
                 weatherEmoji = topBarWeatherState.current?.emoji ?: "🌤️",
                 weatherTempC = topBarWeatherState.current?.temperatureC?.toInt(),
+                currentLocationAddress = currentLocationAddress,
+                onChangeLocation = { showMap = true },
                 onEmergencyClick = {
                     route = MainRoute.HOME
                     openSosSignal += 1
@@ -202,69 +214,137 @@ fun KipitaApp() {
         bottomBar = {
             if (!showMap && !showProfile && !showAuth && !showTranslate && !showWebView &&
                 !showNearbyTravelers && !showTravelGroups && !showSocial && selectedTripId == null && !showPerks && !showWallet) {
-                NavigationBar(
-                    containerColor = KipitaNavBg,
-                    tonalElevation = 0.dp,
-                    modifier = Modifier.height(98.dp)
-                ) {
-                    navItems.forEach { item ->
-                        val selected = route == item.route
-                        val scale by animateFloatAsState(
-                            targetValue = if (selected) 1.1f else 1f,
-                            animationSpec = spring(stiffness = Spring.StiffnessMedium),
-                            label = "nav-scale"
+                // Glassmorphism + 3D shadow nav bar container
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .shadow(
+                            elevation = 24.dp,
+                            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+                            ambientColor = Color.Black.copy(alpha = 0.05f),
+                            spotColor = Color.Black.copy(alpha = 0.09f)
                         )
-                        NavigationBarItem(
-                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
-                            selected = selected,
-                            onClick = {
-                                route = item.route
-                            },
-                            icon = {
-                                if (item.isCenter) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(52.dp)
-                                            .scale(scale)
-                                            .background(
-                                                color = if (selected) KipitaRed else KipitaRed.copy(alpha = 0.92f),
-                                                shape = CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                            contentDescription = item.label,
-                                            tint = Color.White,
-                                            modifier = Modifier.size(22.dp)
-                                        )
-                                    }
-                                } else {
-                                    Icon(
-                                        imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
-                                        contentDescription = item.label,
-                                        modifier = Modifier
-                                            .size(26.dp)
-                                            .scale(scale)
-                                    )
-                                }
-                            },
-                            label = {
-                                Text(
-                                    text = item.label,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                                    modifier = Modifier.padding(top = 2.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.88f),
+                                    Color.White.copy(alpha = 0.96f)
                                 )
-                            },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = KipitaRed,
-                                selectedTextColor = KipitaRed,
-                                unselectedIconColor = KipitaTextTertiary,
-                                unselectedTextColor = KipitaTextTertiary,
-                                indicatorColor = Color.Transparent
-                            )
+                            ),
+                            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
                         )
+                ) {
+                    // Subtle top highlight line — glass shimmer effect
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.White.copy(alpha = 0.85f),
+                                        Color.Transparent
+                                    )
+                                )
+                            )
+                    )
+                    NavigationBar(
+                        containerColor = Color.Transparent,
+                        tonalElevation = 0.dp,
+                        modifier = Modifier.height(98.dp)
+                    ) {
+                        navItems.forEach { item ->
+                            val selected = route == item.route
+                            val scale by animateFloatAsState(
+                                targetValue = if (selected) 1.1f else 1f,
+                                animationSpec = spring(stiffness = Spring.StiffnessMedium),
+                                label = "nav-scale"
+                            )
+                            NavigationBarItem(
+                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                                selected = selected,
+                                onClick = {
+                                    route = item.route
+                                },
+                                icon = {
+                                    if (item.isCenter) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(52.dp)
+                                                .scale(scale)
+                                                .shadow(
+                                                    elevation = if (selected) 8.dp else 2.dp,
+                                                    shape = CircleShape,
+                                                    spotColor = KipitaRed.copy(alpha = 0.28f),
+                                                    ambientColor = KipitaRed.copy(alpha = 0.12f)
+                                                )
+                                                .background(
+                                                    color = if (selected) KipitaRed else KipitaRed.copy(alpha = 0.92f),
+                                                    shape = CircleShape
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                                contentDescription = item.label,
+                                                tint = Color.White,
+                                                modifier = Modifier.size(22.dp)
+                                            )
+                                        }
+                                    } else {
+                                        // Glassy pill behind selected icon
+                                        Box(
+                                            modifier = Modifier
+                                                .then(
+                                                    if (selected) Modifier
+                                                        .shadow(
+                                                            elevation = 4.dp,
+                                                            shape = RoundedCornerShape(12.dp),
+                                                            ambientColor = KipitaRed.copy(alpha = 0.07f),
+                                                            spotColor = KipitaRed.copy(alpha = 0.13f)
+                                                        )
+                                                        .background(
+                                                            brush = Brush.verticalGradient(
+                                                                colors = listOf(
+                                                                    KipitaRed.copy(alpha = 0.11f),
+                                                                    KipitaRed.copy(alpha = 0.04f)
+                                                                )
+                                                            ),
+                                                            shape = RoundedCornerShape(12.dp)
+                                                        )
+                                                    else Modifier
+                                                )
+                                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(
+                                                imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                                contentDescription = item.label,
+                                                modifier = Modifier
+                                                    .size(26.dp)
+                                                    .scale(scale)
+                                            )
+                                        }
+                                    }
+                                },
+                                label = {
+                                    Text(
+                                        text = item.label,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                        modifier = Modifier.padding(top = 2.dp)
+                                    )
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = KipitaRed,
+                                    selectedTextColor = KipitaRed,
+                                    unselectedIconColor = KipitaTextTertiary,
+                                    unselectedTextColor = KipitaTextTertiary,
+                                    indicatorColor = Color.Transparent
+                                )
+                            )
+                        }
                     }
                 }
             }
@@ -537,7 +617,9 @@ fun KipitaApp() {
 }
 
 // ---------------------------------------------------------------------------
-// Top bar — silver back button (←) + profile avatar, visible on every screen
+// Top bar — 2-row design:
+//   Row 1 (white): avatar + greeting | weather (°F) | Change Location
+//   Row 2 (dark):  flag + address    | safety level + color bar + SOS siren
 // ---------------------------------------------------------------------------
 @Composable
 private fun KipitaTopBar(
@@ -547,67 +629,35 @@ private fun KipitaTopBar(
     onProfileClick: () -> Unit,
     weatherEmoji: String,
     weatherTempC: Int?,
+    currentLocationAddress: String = "Detecting location...",
+    onChangeLocation: () -> Unit = {},
     onEmergencyClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Color(0xFF1565C0))
-            .padding(horizontal = 12.dp, vertical = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.End
-    ) {
+    // Convert °C → °F for display
+    val weatherTempF = weatherTempC?.let { (it * 9 / 5) + 32 }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // ── Row 1: Avatar + greeting | Weather | Change Location ─────────────
         Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Avatar circle (opens profile menu)
             Box(
                 modifier = Modifier
-                    .size(38.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFD32F2F))
-                    .clickable(onClick = onEmergencyClick),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = "Emergency",
-                    tint = Color.White,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color.White.copy(alpha = 0.15f))
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(weatherEmoji, fontSize = 16.sp)
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    weatherTempC?.let { "$it°C" } ?: "--°C",
-                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color.White
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.15f))
-                    .border(
-                        width = 1.5.dp,
-                        color = Color.White.copy(alpha = 0.5f),
-                        shape = CircleShape
-                    )
+                    .background(KipitaRed)
                     .clickable(onClick = onProfileClick),
                 contentAlignment = Alignment.Center
             ) {
                 when {
                     userAvatarUri.isNotBlank() -> AsyncImage(
                         model = userAvatarUri,
-                        contentDescription = "Profile photo",
+                        contentDescription = "Profile",
                         modifier = Modifier.fillMaxSize().clip(CircleShape),
                         contentScale = ContentScale.Crop
                     )
@@ -615,16 +665,209 @@ private fun KipitaTopBar(
                         Icons.Default.Person,
                         contentDescription = "Profile",
                         tint = Color.White,
-                        modifier = Modifier.size(19.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                     else -> Text(
                         text = userName.first().uppercaseChar().toString(),
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
                     )
                 }
             }
+            Spacer(Modifier.width(10.dp))
+
+            // Greeting text
+            Text(
+                text = if (isGuest || userName.isBlank()) "Hi, Traveler..." else "Hi, ${userName.split(" ").firstOrNull() ?: userName}...",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF1A1A1A),
+                modifier = Modifier.weight(1f),
+                maxLines = 1
+            )
+
+            // Weather pill
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFFF2F2F2))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(weatherEmoji, fontSize = 17.sp)
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = weatherTempF?.let { "$it°F" } ?: "--°F",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color(0xFF1A1A1A)
+                )
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            // Change Location button
+            Column(
+                modifier = Modifier.clickable(onClick = onChangeLocation),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("🌍", fontSize = 24.sp)
+                Text(
+                    text = "Change\nLocation",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = Color(0xFF555555),
+                    textAlign = TextAlign.Center,
+                    lineHeight = 13.sp
+                )
+            }
         }
+
+        // Thin separator
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFFE0E0E0))
+        )
+
+        // ── Row 2: Flag + address | Safety level + SOS siren ─────────────────
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFF1A1A2E))
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Country flag + address
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("🇺🇸", fontSize = 28.sp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = currentLocationAddress,
+                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                    color = Color.White,
+                    maxLines = 2,
+                    lineHeight = 16.sp
+                )
+            }
+
+            // Safety level text + color bar
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "Exercise increased\ncaution",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.90f),
+                    textAlign = TextAlign.End,
+                    lineHeight = 13.sp
+                )
+                Text("▶", fontSize = 9.sp, color = Color.White.copy(alpha = 0.55f))
+                SafetyLevelBar(level = 2)
+                Spacer(Modifier.width(6.dp))
+
+                // Emergency SOS — mini red siren button
+                Box(
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFD32F2F))
+                        .clickable(onClick = onEmergencyClick),
+                    contentAlignment = Alignment.Center
+                ) {
+                    SirenIcon(
+                        modifier = Modifier.size(18.dp),
+                        tint = Color.White
+                    )
+                }
+            }
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Safety level vertical color bar
+//   level 1 = Exercise Normal Precautions (green)
+//   level 2 = Exercise Increased Caution  (yellow)  ← default shown
+//   level 3 = Reconsider Travel           (orange)
+//   level 4 = Do Not Travel               (red)
+// ---------------------------------------------------------------------------
+@Composable
+private fun SafetyLevelBar(level: Int = 2) {
+    val segments = listOf(
+        Color(0xFFC62828), // level 4 — red (top)
+        Color(0xFFF57C00), // level 3 — orange
+        Color(0xFFF9A825), // level 2 — yellow
+        Color(0xFF2E7D32)  // level 1 — green (bottom)
+    )
+    Column(
+        modifier = Modifier
+            .width(10.dp)
+            .height(42.dp)
+            .clip(RoundedCornerShape(5.dp)),
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        segments.forEachIndexed { index, color ->
+            val segLevel = 4 - index // segment 0 = level 4, segment 3 = level 1
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .background(
+                        if (segLevel == level) color
+                        else color.copy(alpha = 0.28f)
+                    )
+            )
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Mini siren icon — drawn with Canvas, replaces the Warning triangle
+// ---------------------------------------------------------------------------
+@Composable
+private fun SirenIcon(modifier: Modifier = Modifier, tint: Color = Color.White) {
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+
+        // Dome (upper half-circle arc)
+        drawArc(
+            color = tint,
+            startAngle = 180f,
+            sweepAngle = 180f,
+            useCenter = true,
+            topLeft = Offset(w * 0.10f, h * 0.08f),
+            size = Size(w * 0.80f, h * 0.62f)
+        )
+
+        // Base rectangle
+        drawRoundRect(
+            color = tint,
+            topLeft = Offset(w * 0.12f, h * 0.58f),
+            size = Size(w * 0.76f, h * 0.30f),
+            cornerRadius = CornerRadius(w * 0.10f)
+        )
+
+        // Left light beam
+        drawLine(
+            color = tint.copy(alpha = 0.75f),
+            start = Offset(w * 0.22f, h * 0.24f),
+            end = Offset(w * 0.03f, h * 0.04f),
+            strokeWidth = w * 0.11f,
+            cap = StrokeCap.Round
+        )
+
+        // Right light beam
+        drawLine(
+            color = tint.copy(alpha = 0.75f),
+            start = Offset(w * 0.78f, h * 0.24f),
+            end = Offset(w * 0.97f, h * 0.04f),
+            strokeWidth = w * 0.11f,
+            cap = StrokeCap.Round
+        )
     }
 }
 

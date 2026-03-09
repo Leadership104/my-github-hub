@@ -1,5 +1,7 @@
 package com.kipita.presentation.advisory
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,22 +15,36 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,13 +54,101 @@ import com.kipita.domain.model.NoticeCategory
 import com.kipita.domain.model.SeverityLevel
 import com.kipita.domain.model.TravelNotice
 import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
+import com.kipita.presentation.theme.KipitaBorder
+import com.kipita.presentation.theme.KipitaCardBg
+import com.kipita.presentation.theme.KipitaGreenAccent
+import com.kipita.presentation.theme.KipitaOnSurface
+import com.kipita.presentation.theme.KipitaRed
+import com.kipita.presentation.theme.KipitaTextSecondary
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material3.IconButton
-import androidx.compose.ui.graphics.Brush
+
+// ---------------------------------------------------------------------------
+// Sample nearby safety/health locations (visual reference for emulator)
+// ---------------------------------------------------------------------------
+private data class SampleLocation(
+    val name: String,
+    val subtitle: String,
+    val address: String,
+    val rating: Double,
+    val reviewCount: Int,
+    val distanceMi: Double,
+    val isOpen: Boolean,
+    val phone: String,
+    val emoji: String
+)
+
+private val sampleSafetyLocations = listOf(
+    SampleLocation(
+        name = "Los Angeles Police Dept.",
+        subtitle = "Police Station",
+        address = "150 N Los Angeles St, Los Angeles, CA 90012",
+        rating = 3.9,
+        reviewCount = 142,
+        distanceMi = 0.6,
+        isOpen = true,
+        phone = "+12134856811",
+        emoji = "🛡️"
+    ),
+    SampleLocation(
+        name = "LA County Fire Station 9",
+        subtitle = "Fire & Emergency Services",
+        address = "430 E College St, Los Angeles, CA 90012",
+        rating = 4.5,
+        reviewCount = 67,
+        distanceMi = 0.9,
+        isOpen = true,
+        phone = "+12136128911",
+        emoji = "🚒"
+    ),
+    SampleLocation(
+        name = "Downtown Emergency Center",
+        subtitle = "Emergency Management",
+        address = "200 N Spring St, Los Angeles, CA 90012",
+        rating = 4.1,
+        reviewCount = 38,
+        distanceMi = 1.2,
+        isOpen = true,
+        phone = "+12132621990",
+        emoji = "🚨"
+    )
+)
+
+private val sampleHealthLocations = listOf(
+    SampleLocation(
+        name = "Cedars-Sinai Medical Center",
+        subtitle = "Hospital · Urgent Care",
+        address = "8700 Beverly Blvd, Los Angeles, CA 90048",
+        rating = 4.3,
+        reviewCount = 892,
+        distanceMi = 1.4,
+        isOpen = true,
+        phone = "+13104232000",
+        emoji = "🏥"
+    ),
+    SampleLocation(
+        name = "CVS Pharmacy",
+        subtitle = "Pharmacy",
+        address = "750 S Garfield Ave, Los Angeles, CA 90017",
+        rating = 4.0,
+        reviewCount = 215,
+        distanceMi = 0.3,
+        isOpen = true,
+        phone = "+12132517700",
+        emoji = "💊"
+    ),
+    SampleLocation(
+        name = "Keck Hospital of USC",
+        subtitle = "Hospital · Emergency Room",
+        address = "1500 San Pablo St, Los Angeles, CA 90033",
+        rating = 4.2,
+        reviewCount = 478,
+        distanceMi = 2.1,
+        isOpen = true,
+        phone = "+13234423814",
+        emoji = "🏨"
+    )
+)
 
 @Composable
 fun AdvisoryScreen(
@@ -118,8 +222,217 @@ fun AdvisoryScreen(
                 items(state.tabbedNotices) { notice ->
                     AdvisoryNoticeCard(notice = notice)
                 }
+
+                // ----------------------------------------------------------------
+                // Sample nearby safety locations (Safety tab)
+                // ----------------------------------------------------------------
+                if (state.selectedTab == NoticeCategory.SAFETY) {
+                    item {
+                        Text(
+                            "Nearby Safety Resources",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = KipitaOnSurface,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                        Text(
+                            "Sample preview — live locations populate when active",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = KipitaTextSecondary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    items(sampleSafetyLocations) { loc ->
+                        SampleNearbyCard(location = loc)
+                    }
+                }
+
+                // ----------------------------------------------------------------
+                // Sample nearby health locations (Health tab)
+                // ----------------------------------------------------------------
+                if (state.selectedTab == NoticeCategory.HEALTH) {
+                    item {
+                        Text(
+                            "Nearby Health Resources",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = KipitaOnSurface,
+                            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                        )
+                        Text(
+                            "Sample preview — live locations populate when active",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = KipitaTextSecondary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    items(sampleHealthLocations) { loc ->
+                        SampleNearbyCard(location = loc)
+                    }
+                }
             }
         }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Sample nearby resource card — same UI pattern as InlinePlaceCard
+// ---------------------------------------------------------------------------
+@Composable
+private fun SampleNearbyCard(location: SampleLocation) {
+    val context = LocalContext.current
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White)
+            .border(1.dp, KipitaBorder, RoundedCornerShape(16.dp))
+    ) {
+        // Top info row
+        Row(
+            modifier = Modifier.padding(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Circular emoji badge with pink/red ring
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .border(2.5.dp, Color(0xFFE91E63), CircleShape)
+                    .padding(3.dp)
+                    .clip(CircleShape)
+                    .background(KipitaCardBg),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(location.emoji, fontSize = 28.sp)
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                // Name + Open badge
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        location.name,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = KipitaOnSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        if (location.isOpen) "OPEN" else "CLOSED",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = if (location.isOpen) KipitaGreenAccent else KipitaRed,
+                        modifier = Modifier.padding(start = 6.dp)
+                    )
+                }
+                // Subtitle
+                Text(
+                    location.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = KipitaTextSecondary,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+                // Rating + distance
+                Row(
+                    modifier = Modifier.padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(2.dp))
+                    Text(
+                        "${"%.1f".format(location.rating)} (${location.reviewCount})",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KipitaTextSecondary
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text("$", style = MaterialTheme.typography.labelSmall, color = KipitaTextSecondary)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "${"%.2f".format(location.distanceMi)}mi Away",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = KipitaTextSecondary
+                    )
+                }
+                // Address
+                Text(
+                    location.address,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = KipitaTextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp)
+                )
+            }
+        }
+
+        // Divider
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(KipitaBorder))
+
+        // Action buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            AdvisoryActionButton(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Call,
+                label = "CALL",
+                bgColor = Color(0xFF4CAF50),
+                onClick = {
+                    if (location.phone.isNotBlank()) {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse("tel:${location.phone}")))
+                        }
+                    }
+                }
+            )
+            AdvisoryActionButton(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.DirectionsWalk,
+                label = "DIRECTIONS",
+                bgColor = Color(0xFF2196F3),
+                onClick = { /* navigate when live */ }
+            )
+            AdvisoryActionButton(
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.Info,
+                label = "MORE INFO",
+                bgColor = Color(0xFFFF5722),
+                onClick = { /* more info when live */ }
+            )
+        }
+    }
+}
+
+@Composable
+private fun AdvisoryActionButton(
+    modifier: Modifier = Modifier,
+    icon: ImageVector,
+    label: String,
+    bgColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bgColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -179,14 +492,14 @@ private fun AdvisoryNoticeCard(notice: TravelNotice) {
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 notice.description,
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF666666),
                 maxLines = 3,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.padding(top = 4.dp)
             )
             Row(
@@ -225,7 +538,7 @@ private fun AdvisoryNoticeCard(notice: TravelNotice) {
                     style = MaterialTheme.typography.labelSmall,
                     color = Color(0xFF757575),
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }

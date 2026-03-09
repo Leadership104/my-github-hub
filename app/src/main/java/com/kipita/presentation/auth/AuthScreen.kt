@@ -39,9 +39,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Tab
-import androidx.compose.material3.PrimaryTabRow
-import androidx.compose.material3.TabRowDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,9 +48,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -193,36 +198,57 @@ fun AuthScreen(
             // Tab row
             item {
                 AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { 12 }) {
-                    PrimaryTabRow(
-                        selectedTabIndex = selectedTab,
-                        containerColor = Color.Transparent,
-                        contentColor = KipitaRed,
-                        indicator = {
-                            TabRowDefaults.PrimaryIndicator(
-                                modifier = Modifier
-                                    .tabIndicatorOffset(selectedTab)
-                                    .height(3.dp)
-                                    .clip(RoundedCornerShape(topStart = 3.dp, topEnd = 3.dp)),
-                                color = KipitaRed
+                    // Pill-style segmented tab — glassmorphism + 3D lift
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(
+                                elevation = 6.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.04f),
+                                spotColor = Color.Black.copy(alpha = 0.07f)
                             )
-                        },
-                        divider = {}
+                            .background(Color(0xFFF0F0F0), RoundedCornerShape(16.dp))
+                            .padding(4.dp)
                     ) {
-                        listOf("Sign In", "Create Account").forEachIndexed { i, label ->
-                            Tab(
-                                selected = selectedTab == i,
-                                onClick  = { selectedTab = i; siError = ""; caError = "" },
-                                text = {
+                        Row {
+                            listOf("Sign In", "Create Account").forEachIndexed { i, label ->
+                                val isSelected = selectedTab == i
+                                val pillColor by animateColorAsState(
+                                    targetValue = if (isSelected) Color.White else Color.Transparent,
+                                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                    label = "tab-pill-$i"
+                                )
+                                val labelColor by animateColorAsState(
+                                    targetValue = if (isSelected) KipitaRed else KipitaTextSecondary,
+                                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                                    label = "tab-label-$i"
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .then(
+                                            if (isSelected) Modifier.shadow(
+                                                elevation = 4.dp,
+                                                shape = RoundedCornerShape(12.dp),
+                                                ambientColor = Color.Black.copy(alpha = 0.05f),
+                                                spotColor = Color.Black.copy(alpha = 0.09f)
+                                            ) else Modifier
+                                        )
+                                        .background(pillColor, RoundedCornerShape(12.dp))
+                                        .clickable { selectedTab = i; siError = ""; caError = "" }
+                                        .padding(vertical = 11.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
                                     Text(
                                         label,
                                         style = MaterialTheme.typography.labelLarge.copy(
-                                            fontWeight = if (selectedTab == i) FontWeight.SemiBold
-                                                         else FontWeight.Normal
+                                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                                         ),
-                                        color = if (selectedTab == i) KipitaRed else KipitaTextSecondary
+                                        color = labelColor
                                     )
                                 }
-                            )
+                            }
                         }
                     }
                     Spacer(Modifier.height(24.dp))
@@ -520,12 +546,36 @@ private fun PrimaryButton(
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "btn-press"
+    )
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .scale(scale)
+            .shadow(
+                elevation = if (enabled) 8.dp else 0.dp,
+                shape = RoundedCornerShape(14.dp),
+                spotColor = if (enabled) KipitaRed.copy(alpha = 0.32f) else Color.Transparent,
+                ambientColor = if (enabled) KipitaRed.copy(alpha = 0.10f) else Color.Transparent
+            )
             .clip(RoundedCornerShape(14.dp))
-            .background(if (enabled) KipitaRed else KipitaCardBg)
-            .clickable(enabled = enabled, onClick = onClick)
+            .background(
+                brush = if (enabled)
+                    Brush.verticalGradient(listOf(KipitaRed.copy(alpha = 0.93f), KipitaRed))
+                else
+                    Brush.verticalGradient(listOf(KipitaCardBg, KipitaCardBg))
+            )
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+                onClick = onClick
+            )
             .padding(vertical = 15.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -604,17 +654,35 @@ private fun OAuthSection(onGoogleIdToken: (String) -> Unit) {
 
 @Composable
 private fun OAuthButton(label: String, onClick: () -> Unit) {
-    Surface(
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.96f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "oauth-press"
+    )
+    Box(
         modifier = Modifier
+            .scale(scale)
+            .shadow(
+                elevation = 4.dp,
+                shape = RoundedCornerShape(12.dp),
+                ambientColor = Color.Black.copy(alpha = 0.04f),
+                spotColor = Color.Black.copy(alpha = 0.08f)
+            )
             .clip(RoundedCornerShape(12.dp))
+            .background(Color.White)
             .border(1.dp, KipitaBorder, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick),
-        color = Color.White,
-        shape = RoundedCornerShape(12.dp)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 20.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
             color = KipitaOnSurface
         )

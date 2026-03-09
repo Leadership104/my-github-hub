@@ -1,7 +1,6 @@
 package com.kipita.presentation.wallet
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -182,10 +181,7 @@ fun WalletScreen(
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
     val state by viewModel.state.collectAsStateWithLifecycleCompat()
-    val animatedBalance = remember { Animatable(0f) }
-    var walletTab by remember { mutableStateOf(0) } // 0=Crypto, 1=Currency
-    var topBalanceTab by remember { mutableStateOf(0) } // 0=Currency, 1=BTC
-    var manualBtcBalance by remember { mutableStateOf("") }
+    var walletTab by remember { mutableStateOf(0) } // 0=Live Prices, 1=Currency
     var manualCurrencyBalance by remember { mutableStateOf("") }
     var manualCurrencyCode by remember { mutableStateOf("USD") }
     var amount by remember { mutableStateOf("100") }
@@ -210,13 +206,6 @@ fun WalletScreen(
             viewModel.refreshPrices()
         }
     }
-    LaunchedEffect(state.coinbaseBalance + state.cashAppBalance) {
-        animatedBalance.animateTo((state.coinbaseBalance + state.cashAppBalance).toFloat(), animationSpec = tween(700))
-        if (manualBtcBalance.isBlank()) {
-            manualBtcBalance = "%.6f".format(state.coinbaseBalance + state.cashAppBalance)
-        }
-    }
-
     if (showPicker) {
         CurrencyPickerSheet(
             sheetState = sheetState,
@@ -260,118 +249,55 @@ fun WalletScreen(
                         Spacer(Modifier.height(20.dp))
                         Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = Color.White.copy(alpha = 0.1f)) {
                             Column(modifier = Modifier.padding(20.dp)) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(Color.White.copy(alpha = 0.10f))
-                                        .padding(4.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    listOf("Currency Balance", "BTC Balance").forEachIndexed { index, label ->
-                                        val selected = topBalanceTab == index
-                                        Box(
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .clip(RoundedCornerShape(10.dp))
-                                                .background(if (selected) Color.White.copy(alpha = 0.20f) else Color.Transparent)
-                                                .clickable { topBalanceTab = index }
-                                                .padding(vertical = 8.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                label,
-                                                style = MaterialTheme.typography.labelSmall.copy(
-                                                    fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                Spacer(Modifier.height(4.dp))
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                                    Column {
+                                        Text("Currency Balance", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.65f))
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            BasicTextField(
+                                                value = manualCurrencyCode,
+                                                onValueChange = { manualCurrencyCode = it.uppercase().take(4) },
+                                                singleLine = true,
+                                                textStyle = MaterialTheme.typography.titleMedium.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
                                                 ),
-                                                color = Color.White
+                                                cursorBrush = SolidColor(Color.White),
+                                                modifier = Modifier.width(56.dp)
+                                            )
+                                            Spacer(Modifier.width(8.dp))
+                                            BasicTextField(
+                                                value = manualCurrencyBalance,
+                                                onValueChange = { manualCurrencyBalance = it },
+                                                singleLine = true,
+                                                textStyle = MaterialTheme.typography.headlineSmall.copy(
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color.White
+                                                ),
+                                                cursorBrush = SolidColor(Color.White),
+                                                decorationBox = { inner ->
+                                                    if (manualCurrencyBalance.isBlank()) {
+                                                        Text(
+                                                            "0.00",
+                                                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                                            color = Color.White.copy(alpha = 0.6f)
+                                                        )
+                                                    } else inner()
+                                                }
                                             )
                                         }
                                     }
-                                }
-                                Spacer(Modifier.height(12.dp))
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                    Column {
-                                        if (topBalanceTab == 1) {
-                                            Text("Bitcoin Balance", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.65f))
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text("BTC", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = Color.White)
-                                                Spacer(Modifier.width(8.dp))
-                                                BasicTextField(
-                                                    value = manualBtcBalance,
-                                                    onValueChange = { manualBtcBalance = it },
-                                                    singleLine = true,
-                                                    textStyle = MaterialTheme.typography.headlineSmall.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color.White
-                                                    ),
-                                                    cursorBrush = SolidColor(Color.White),
-                                                    decorationBox = { inner ->
-                                                        if (manualBtcBalance.isBlank()) {
-                                                            Text(
-                                                                "%.6f".format(animatedBalance.value),
-                                                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                                                color = Color.White.copy(alpha = 0.6f)
-                                                            )
-                                                        } else inner()
-                                                    }
-                                                )
-                                            }
-                                        } else {
-                                            Text("Currency Balance", style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.65f))
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                BasicTextField(
-                                                    value = manualCurrencyCode,
-                                                    onValueChange = { manualCurrencyCode = it.uppercase().take(4) },
-                                                    singleLine = true,
-                                                    textStyle = MaterialTheme.typography.titleMedium.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color.White
-                                                    ),
-                                                    cursorBrush = SolidColor(Color.White),
-                                                    modifier = Modifier.width(56.dp)
-                                                )
-                                                Spacer(Modifier.width(8.dp))
-                                                BasicTextField(
-                                                    value = manualCurrencyBalance,
-                                                    onValueChange = { manualCurrencyBalance = it },
-                                                    singleLine = true,
-                                                    textStyle = MaterialTheme.typography.headlineSmall.copy(
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = Color.White
-                                                    ),
-                                                    cursorBrush = SolidColor(Color.White),
-                                                    decorationBox = { inner ->
-                                                        if (manualCurrencyBalance.isBlank()) {
-                                                            Text(
-                                                                "0.00",
-                                                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                                                color = Color.White.copy(alpha = 0.6f)
-                                                            )
-                                                        } else inner()
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-                                    IconButton(onClick = { viewModel.refreshBalances("coinbase-token", "cashapp-token") },
+                                    IconButton(onClick = { viewModel.refreshPrices() },
                                         modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.15f))) {
                                         Icon(Icons.Default.Refresh, contentDescription = "Refresh", tint = Color.White, modifier = Modifier.size(18.dp))
                                     }
                                 }
                                 Spacer(Modifier.height(14.dp))
-                                if (topBalanceTab == 1) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                        BalanceChip("Coinbase", "BTC ${"%.4f".format(state.coinbaseBalance)}", Modifier.weight(1f))
-                                        BalanceChip("Cash App", "BTC ${"%.4f".format(state.cashAppBalance)}", Modifier.weight(1f))
-                                    }
-                                } else {
-                                    Text(
-                                        "Enter your estimated cash/card balance for quick travel budgeting.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.78f)
-                                    )
-                                }
+                                Text(
+                                    "Enter your estimated cash/card balance for quick travel budgeting.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.78f)
+                                )
                             }
                         }
                     }
@@ -391,7 +317,7 @@ fun WalletScreen(
                             .background(KipitaCardBg),
                         horizontalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        listOf("Currency", "Crypto").forEachIndexed { index, label ->
+                        listOf("Currency", "Live Prices").forEachIndexed { index, label ->
                             val mappedTab = if (index == 0) 1 else 0
                             val selected = walletTab == mappedTab
                             Box(
@@ -463,53 +389,6 @@ fun WalletScreen(
                                 priceUsd = prices?.solUsd ?: 0.0,
                                 change24h = prices?.solChange24h ?: 0.0,
                                 modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Aggregated Crypto Wallets — Crypto Tab
-            item {
-                AnimatedVisibility(visible = visible && walletTab == 0, enter = fadeIn(tween(150)) + slideInVertically(tween(150)) { 20 }) {
-                    val wallet = state.aggregatedWallet
-                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Crypto Wallets",
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                                color = KipitaOnSurface
-                            )
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (state.syncingWallets) {
-                                    CircularProgressIndicator(color = KipitaRed, modifier = Modifier.size(14.dp), strokeWidth = 2.dp)
-                                    Spacer(Modifier.width(6.dp))
-                                }
-                                if (wallet != null) {
-                                    Text(
-                                        "${"$"}${"%.2f".format(state.totalWalletUsd)} total",
-                                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                                        color = KipitaGreenAccent
-                                    )
-                                }
-                            }
-                        }
-                        if (wallet != null) {
-                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                wallet.wallets.forEach { balance ->
-                                    WalletBalanceRow(balance)
-                                }
-                            }
-                        } else if (!state.syncingWallets) {
-                            Text(
-                                state.walletError ?: "Connect wallets in Settings to view live balances",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = KipitaTextSecondary,
-                                modifier = Modifier.padding(vertical = 8.dp)
                             )
                         }
                     }
