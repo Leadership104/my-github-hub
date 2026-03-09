@@ -1,8 +1,62 @@
-# UI Design Notes — Glassmorphism, 3D Shadows & Motion Design
+# UI Design Notes — Glassmorphism, 3D Shadows, Motion Design & Header Refresh
 
 **Branch:** `claude/check-code-update-jtt2q`
-**Commits:** `5c5b138`, `505b54f`
+**Commits:** `5c5b138`, `505b54f`, `574730f`, `530cafe` + latest
 **Date:** March 2026
+
+---
+
+## Latest Changes (March 2026 — Build 3)
+
+### Kipita Logo Splash Screen (`SplashScreen.kt` + `MainActivity.kt`)
+- **New file:** `presentation/splash/SplashScreen.kt`
+  - Full-screen `#F7F7F7` background
+  - White rounded card (`24dp` radius, `8dp` shadow) containing 4 colorful
+    stick-figure logo drawn entirely with Compose Canvas:
+    - Red figure — top center, arms up
+    - Yellow figure — mid left, arms up
+    - Blue figure — mid right, arms up
+    - Green figure — front center, arms up (slightly larger for depth)
+  - "**Kipita**" title — `52sp`, ExtraBold, near-black
+  - "Know before you go" subtitle — `17sp`, SemiBold, muted grey
+- **`MainActivity.kt`** — `AppEntryPoint` wraps `KipitaApp()` in a `Box`:
+  - `KipitaApp` renders immediately underneath
+  - Splash overlay starts at `alpha = 1f`
+  - After `1800 ms` delay → `splashVisible = false` → `animateFloatAsState` fades
+    alpha to `0f` over `600 ms` (total ~2.4 s from launch)
+  - When alpha reaches `0`, composable is removed from composition
+
+### Top Bar Redesign — 2-Row Header (`KipitaApp.kt`)
+Old: Single blue bar with weather pill + profile avatar + warning triangle SOS button
+New: Two-row card header matching reference design:
+
+**Row 1 (white background)**:
+| Zone | Content |
+|------|---------|
+| Left | Red avatar circle (user initial / Person icon) — tapping opens profile menu |
+| Left text | "Hi, [FirstName]..." bold greeting (or "Hi, Traveler..." for guests) |
+| Center | Weather emoji + temperature in **°F** (converted from Open-Meteo °C) |
+| Right | 🌍 globe + "Change / Location" stacked — tapping opens Map screen |
+
+**Row 2 (dark `#1A1A2E` background)**:
+| Zone | Content |
+|------|---------|
+| Left | 🇺🇸 flag emoji + `currentLocationAddress` text (2-line, white) |
+| Right | "Exercise increased caution" text + `▶` + `SafetyLevelBar` + SOS siren button |
+
+### Safety Level Bar (`SafetyLevelBar`)
+- `10dp × 42dp` vertical 4-segment bar, `5dp` corner radius
+- Segments (top→bottom): red (Level 4) · orange (Level 3) · yellow (Level 2) · green (Level 1)
+- Active segment at **full opacity**, inactive segments at **28% alpha**
+- Default: Level 2 — "Exercise Increased Caution" (yellow segment lit)
+
+### Siren Icon — replaces Warning Triangle (`SirenIcon`)
+- Custom Canvas composable (no external asset or library icon)
+- Draws: semicircle dome + rounded-rect base + two angled light beams
+- Renders in the `34dp` red circle SOS button (white tint on red bg)
+- Replaces `Icons.Default.Warning` (triangle) — visually a mini police siren
+
+---
 
 ---
 
