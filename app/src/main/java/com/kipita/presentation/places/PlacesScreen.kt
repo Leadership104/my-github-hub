@@ -37,10 +37,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -55,7 +54,6 @@ import androidx.activity.result.contract.ActivityResultContracts.RequestPermissi
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -107,7 +105,9 @@ private data class PlacesSection(
     val label: String,
     val emoji: String,
     val baseCategory: PlaceCategory,
-    val subCategories: List<PlaceSubCategory>
+    val subCategories: List<PlaceSubCategory>,
+    val gradientStart: Color,
+    val gradientEnd: Color
 )
 
 // ---------------------------------------------------------------------------
@@ -191,30 +191,43 @@ private val shoppingSubCategories = listOf(
 )
 
 private val placesSections = listOf(
-    PlacesSection("Restaurants", "🍽️", PlaceCategory.RESTAURANTS, restaurantSubCategories),
-    PlacesSection("Entertainment", "🎭", PlaceCategory.ENTERTAINMENT, entertainmentSubCategories),
-    PlacesSection("Shopping", "🛍️", PlaceCategory.SHOPPING, shoppingSubCategories)
+    PlacesSection(
+        label        = "Restaurants",
+        emoji        = "🍽️",
+        baseCategory = PlaceCategory.RESTAURANTS,
+        subCategories = restaurantSubCategories,
+        gradientStart = Color(0xFF1B5E20),
+        gradientEnd   = Color(0xFF2E7D32)
+    ),
+    PlacesSection(
+        label        = "Entertainment",
+        emoji        = "🎭",
+        baseCategory = PlaceCategory.ENTERTAINMENT,
+        subCategories = entertainmentSubCategories,
+        gradientStart = Color(0xFF1A237E),
+        gradientEnd   = Color(0xFF283593)
+    ),
+    PlacesSection(
+        label        = "Shopping",
+        emoji        = "🛍️",
+        baseCategory = PlaceCategory.SHOPPING,
+        subCategories = shoppingSubCategories,
+        gradientStart = Color(0xFF4A148C),
+        gradientEnd   = Color(0xFF6A1B9A)
+    )
 )
 
 // ---------------------------------------------------------------------------
-// Sample hardcoded place (visual reference — replaced by live results)
+// Popular quick-access subcategories (top 4 from each section → 3 rows of 4)
 // ---------------------------------------------------------------------------
-private val samplePlace = NearbyPlace(
-    id = "sample_01",
-    name = "The Golden Fork Restaurant",
-    category = PlaceCategory.RESTAURANTS,
-    emoji = "🍽️",
-    address = "1842 Sunset Blvd, Los Angeles, CA 90026",
-    distanceKm = 0.4,
-    rating = 4.7,
-    reviewCount = 312,
-    isOpen = true,
-    latitude = 34.0901,
-    longitude = -118.3603,
-    phone = "+12135550123",
-    website = "https://example.com",
-    photoRef = ""
-)
+private val popularSubCategories: List<PlaceSubCategory> =
+    restaurantSubCategories.take(4) +
+    entertainmentSubCategories.take(4) +
+    shoppingSubCategories.take(4)
+
+// ---------------------------------------------------------------------------
+// PlacesScreen — internal nav: browse grid ↔ category result screen
+// ---------------------------------------------------------------------------
 
 @Composable
 fun PlacesScreen(
@@ -225,20 +238,55 @@ fun PlacesScreen(
     onAskKipita: () -> Unit = {},
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> }
 ) {
-    val state by viewModel.state.collectAsStateWithLifecycleCompat()
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    var visible by remember { mutableStateOf(false) }
-    var resultsExpanded by rememberSaveable { mutableStateOf(true) }
+    // Store enum name so rememberSaveable can survive config change
+    var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedCategory = selectedCategoryName?.let { name ->
+        PlaceCategory.values().find { it.name == name }
+    }
 
-    // Track which section is expanded (accordion style) and which subcat is selected
-    var expandedSectionIndex by rememberSaveable { mutableIntStateOf(-1) }
-    var selectedSubCatLabel by rememberSaveable { mutableStateOf("") }
+    if (selectedCategory != null) {
+        // Click 1 complete → show results immediately
+        PlacesCategoryResultScreen(
+            category     = selectedCategory,
+            onBack       = { selectedCategoryName = null },
+            onOpenWebView = onOpenWebView,
+            viewModel    = viewModel
+        )
+        return
+    }
+
+    BrowseGrid(
+        paddingValues = paddingValues,
+        onBack        = onBack,
+        onAskKipita   = onAskKipita,
+        viewModel     = viewModel,
+        onNavigate    = { cat ->
+            selectedCategoryName = cat.name
+            onCategorySelected(cat)
+        }
+    )
+}
+
+// ---------------------------------------------------------------------------
+// Browse grid screen
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun BrowseGrid(
+    paddingValues: PaddingValues,
+    onBack: () -> Unit,
+    onAskKipita: () -> Unit,
+    viewModel: PlacesViewModel,
+    onNavigate: (PlaceCategory) -> Unit
+) {
+    val context = LocalContext.current
+    val scope   = rememberCoroutineScope()
+    var visible by remember { mutableStateOf(false) }
 
     val gpsLauncher = rememberLauncherForActivityResult(RequestPermission()) { granted ->
         if (granted) {
             scope.launch(Dispatchers.IO) {
-                val lm = context.getSystemService(LocationManager::class.java)
+                val lm  = context.getSystemService(LocationManager::class.java)
                 val loc = lm?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                     ?: lm?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 if (loc != null) viewModel.updateLocation(loc.latitude, loc.longitude)
@@ -251,7 +299,7 @@ fun PlacesScreen(
         withContext(Dispatchers.IO) {
             val perm = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
             if (perm == PackageManager.PERMISSION_GRANTED) {
-                val lm = context.getSystemService(LocationManager::class.java)
+                val lm  = context.getSystemService(LocationManager::class.java)
                 val loc = lm?.getLastKnownLocation(LocationManager.GPS_PROVIDER)
                     ?: lm?.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
                 if (loc != null) viewModel.updateLocation(loc.latitude, loc.longitude)
@@ -261,339 +309,230 @@ fun PlacesScreen(
         }
     }
 
-    Box(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .padding(paddingValues),
+        contentPadding = PaddingValues(bottom = 80.dp)
     ) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(bottom = 80.dp)
+
+        // ----------------------------------------------------------------
+        // Search bar — tapping opens restaurants (most common intent)
+        // ----------------------------------------------------------------
+        item {
+            AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { -16 }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .shadow(4.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.08f))
+                        .clip(RoundedCornerShape(28.dp))
+                        .background(Color.White)
+                        .clickable { onNavigate(PlaceCategory.RESTAURANTS) }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = KipitaTextSecondary, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        "Search restaurants, parks, hotels…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = KipitaTextSecondary
+                    )
+                }
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Section label: Browse
+        // ----------------------------------------------------------------
+        item {
+            AnimatedVisibility(visible = visible, enter = fadeIn(tween(120))) {
+                Text(
+                    "Browse",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = KipitaOnSurface,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
+                )
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Hero cards — one per main section (1 tap → results)
+        // ----------------------------------------------------------------
+        items(placesSections) { section ->
+            AnimatedVisibility(visible = visible, enter = fadeIn(tween(160)) + slideInVertically(tween(160)) { 24 }) {
+                SectionHeroCard(section = section, onClick = { onNavigate(section.baseCategory) })
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Section label: Quick Access
+        // ----------------------------------------------------------------
+        item {
+            AnimatedVisibility(visible = visible, enter = fadeIn(tween(200))) {
+                Text(
+                    "Quick Access",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = KipitaOnSurface,
+                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp)
+                )
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Popular subcategory grid — 4 columns, 3 rows (12 tiles)
+        // ----------------------------------------------------------------
+        val rows = popularSubCategories.chunked(4)
+        items(rows) { row ->
+            AnimatedVisibility(visible = visible, enter = fadeIn(tween(220)) + slideInVertically(tween(220)) { 16 }) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { subCat ->
+                        SubCategoryTile(
+                            modifier  = Modifier.weight(1f),
+                            subCat    = subCat,
+                            onClick   = { onNavigate(subCat.baseCategory) }
+                        )
+                    }
+                    // Pad remaining slots so grid stays aligned
+                    repeat(4 - row.size) {
+                        Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
+
+        // ----------------------------------------------------------------
+        // Ask Kipita CTA
+        // ----------------------------------------------------------------
+        item {
+            AnimatedVisibility(visible = visible, enter = fadeIn(tween(250)) + slideInVertically(tween(250)) { 20 }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 18.dp)
+                        .shadow(
+                            elevation    = 14.dp,
+                            shape        = RoundedCornerShape(18.dp),
+                            spotColor    = Color(0xFF1A1A2E).copy(alpha = 0.38f),
+                            ambientColor = Color(0xFF1A1A2E).copy(alpha = 0.12f)
+                        )
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Brush.linearGradient(listOf(Color(0xFF1A1A2E), Color(0xFF0D1B2A))))
+                        .clickable(onClick = onAskKipita)
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("✨", fontSize = 24.sp)
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "Ask Kipita",
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Color.White
+                        )
+                    }
+                }
+            }
+        }
+
+        item { Spacer(Modifier.height(16.dp)) }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Section hero card — full-width, gradient bg, emoji + label + subcategory preview
+// ---------------------------------------------------------------------------
+
+@Composable
+private fun SectionHeroCard(section: PlacesSection, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 6.dp)
+            .shadow(6.dp, RoundedCornerShape(20.dp), spotColor = section.gradientStart.copy(alpha = 0.30f))
+            .clip(RoundedCornerShape(20.dp))
+            .background(Brush.linearGradient(listOf(section.gradientStart, section.gradientEnd)))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 20.dp, vertical = 18.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-
-            // ----------------------------------------------------------------
-            // Header
-            // ----------------------------------------------------------------
-            item {
-                AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { -20 }) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                Brush.linearGradient(
-                                    listOf(Color(0xFF0D1B2A), Color(0xFF1B3A5C))
-                                )
-                            )
-                            .padding(horizontal = 20.dp, vertical = 24.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.Start,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(onClick = onBack) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                    contentDescription = "Back",
-                                    tint = Color.White
-                                )
-                            }
-                            Column {
-                                Text(
-                                    "Explore Places",
-                                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                                    color = Color.White
-                                )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(top = 3.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.LocationOn,
-                                        contentDescription = null,
-                                        tint = Color.White.copy(alpha = 0.65f),
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Spacer(Modifier.width(3.dp))
-                                    Text(
-                                        "Restaurants · Entertainment · Shopping",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White.copy(alpha = 0.65f)
-                                    )
-                                }
-                            }
-                        }
-                    }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    section.label,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White
+                )
+                Spacer(Modifier.height(4.dp))
+                // Preview: first 4 subcategory labels
+                Text(
+                    section.subCategories.take(4).joinToString(" · ") { it.emoji + " " + it.label },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White.copy(alpha = 0.75f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(Color.White.copy(alpha = 0.22f))
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        "Near you  →",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = Color.White
+                    )
                 }
             }
-
-            // ----------------------------------------------------------------
-            // Sample Preview Card (visual reference)
-            // ----------------------------------------------------------------
-            item {
-                AnimatedVisibility(visible = visible, enter = fadeIn(tween(120)) + slideInVertically(tween(120)) { 16 }) {
-                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Sample Preview",
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = KipitaOnSurface
-                            )
-                            Text(
-                                "Live results populate when active",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = KipitaTextSecondary
-                            )
-                        }
-                        InlinePlaceCard(place = samplePlace)
-                    }
-                }
-            }
-
-            // ----------------------------------------------------------------
-            // Accordion sections: Restaurants, Entertainment, Shopping
-            // ----------------------------------------------------------------
-            item {
-                AnimatedVisibility(visible = visible, enter = fadeIn(tween(150)) + slideInVertically(tween(150)) { 20 }) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        placesSections.forEachIndexed { sectionIdx, section ->
-                            PlacesSectionAccordion(
-                                section = section,
-                                isExpanded = expandedSectionIndex == sectionIdx,
-                                selectedSubCatLabel = selectedSubCatLabel,
-                                onHeaderClick = {
-                                    expandedSectionIndex = if (expandedSectionIndex == sectionIdx) -1 else sectionIdx
-                                },
-                                onSubCategoryClick = { subCat ->
-                                    selectedSubCatLabel = subCat.label
-                                    viewModel.selectCategory(subCat.baseCategory)
-                                    onCategorySelected(subCat.baseCategory)
-                                    resultsExpanded = true
-                                }
-                            )
-                        }
-                    }
-                }
-            }
-
-            // ----------------------------------------------------------------
-            // Results section
-            // ----------------------------------------------------------------
-            if (resultsExpanded && selectedSubCatLabel.isNotBlank()) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White)
-                            .border(1.dp, KipitaBorder, RoundedCornerShape(16.dp))
-                            .clickable { resultsExpanded = false }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "Nearby $selectedSubCatLabel (${state.filteredPlaces.size})",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = KipitaOnSurface,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(Icons.Default.ExpandLess, contentDescription = "Close results", tint = KipitaOnSurface)
-                    }
-                }
-                if (state.isLoading) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = KipitaRed)
-                        }
-                    }
-                } else if (state.error != null) {
-                    item {
-                        Text(
-                            state.error ?: "Could not load places",
-                            color = KipitaRed,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)
-                        )
-                    }
-                } else {
-                    items(state.filteredPlaces) { place ->
-                        InlinePlaceCard(place = place)
-                    }
-                }
-            }
-
-            // ----------------------------------------------------------------
-            // Ask Kipita CTA
-            // ----------------------------------------------------------------
-            item {
-                AnimatedVisibility(visible = visible, enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { 20 }) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp)
-                            .shadow(
-                                elevation = 14.dp,
-                                shape = RoundedCornerShape(18.dp),
-                                spotColor = Color(0xFF1A1A2E).copy(alpha = 0.38f),
-                                ambientColor = Color(0xFF1A1A2E).copy(alpha = 0.12f)
-                            )
-                            .clip(RoundedCornerShape(18.dp))
-                            .background(
-                                brush = Brush.linearGradient(
-                                    listOf(Color(0xFF1A1A2E), Color(0xFF0D1B2A))
-                                )
-                            )
-                            .clickable(onClick = onAskKipita)
-                            .padding(horizontal = 20.dp, vertical = 18.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("✨", fontSize = 24.sp)
-                            Spacer(Modifier.width(10.dp))
-                            Text(
-                                "Ask Kipita",
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-
-            item { Spacer(Modifier.height(16.dp)) }
+            Spacer(Modifier.width(16.dp))
+            Text(section.emoji, fontSize = 56.sp)
         }
     }
 }
 
 // ---------------------------------------------------------------------------
-// Accordion section composable
+// Subcategory tile — compact 4-col grid tile
 // ---------------------------------------------------------------------------
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun PlacesSectionAccordion(
-    section: PlacesSection,
-    isExpanded: Boolean,
-    selectedSubCatLabel: String,
-    onHeaderClick: () -> Unit,
-    onSubCategoryClick: (PlaceSubCategory) -> Unit
-) {
-    val accordionElevation by animateDpAsState(
-        targetValue = if (isExpanded) 10.dp else 2.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
-        label = "accordion-shadow"
-    )
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(
-                elevation = accordionElevation,
-                shape = RoundedCornerShape(18.dp),
-                spotColor = if (isExpanded) Color(0xFF1A1A2E).copy(alpha = 0.16f) else Color.Black.copy(alpha = 0.06f),
-                ambientColor = Color.Black.copy(alpha = 0.04f)
-            )
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color.White)
-            .border(1.dp, if (isExpanded) Color(0xFF1A1A2E) else KipitaBorder, RoundedCornerShape(18.dp))
-    ) {
-        // Section header (tap to expand/collapse)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onHeaderClick)
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(52.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(if (isExpanded) Color(0xFF1A1A2E) else KipitaCardBg),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(section.emoji, fontSize = 24.sp)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = section.label,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = KipitaOnSurface
-                )
-                Text(
-                    text = "${section.subCategories.size} categories",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = KipitaTextSecondary,
-                    modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-            Icon(
-                imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (isExpanded) "Collapse" else "Expand",
-                tint = KipitaOnSurface,
-                modifier = Modifier.size(22.dp)
-            )
-        }
 
-        // Subcategory chip grid (visible when expanded)
-        AnimatedVisibility(visible = isExpanded) {
-            FlowRow(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFFF8F9FA))
-                    .padding(horizontal = 12.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                section.subCategories.forEach { subCat ->
-                    val isSelected = selectedSubCatLabel == subCat.label
-                    Row(
-                        modifier = Modifier
-                            .then(
-                                if (isSelected) Modifier.shadow(
-                                    elevation = 4.dp,
-                                    shape = RoundedCornerShape(20.dp),
-                                    spotColor = Color(0xFF1A1A2E).copy(alpha = 0.22f),
-                                    ambientColor = Color(0xFF1A1A2E).copy(alpha = 0.07f)
-                                ) else Modifier
-                            )
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (isSelected) Color(0xFF1A1A2E) else Color.White)
-                            .border(
-                                width = 1.dp,
-                                color = if (isSelected) Color(0xFF1A1A2E) else KipitaBorder,
-                                shape = RoundedCornerShape(20.dp)
-                            )
-                            .clickable { onSubCategoryClick(subCat) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(subCat.emoji, fontSize = 14.sp)
-                        Spacer(Modifier.width(5.dp))
-                        Text(
-                            text = subCat.label,
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
-                            color = if (isSelected) Color.White else KipitaOnSurface,
-                            maxLines = 1
-                        )
-                    }
-                }
-            }
-        }
+@Composable
+private fun SubCategoryTile(
+    modifier: Modifier = Modifier,
+    subCat: PlaceSubCategory,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = modifier
+            .shadow(2.dp, RoundedCornerShape(14.dp), ambientColor = Color.Black.copy(alpha = 0.04f))
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .border(1.dp, KipitaBorder, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(subCat.emoji, fontSize = 26.sp)
+        Spacer(Modifier.height(4.dp))
+        Text(
+            subCat.label,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = KipitaOnSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -608,10 +547,10 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
             .fillMaxWidth()
             .padding(horizontal = 20.dp, vertical = 6.dp)
             .shadow(
-                elevation = 4.dp,
-                shape = RoundedCornerShape(16.dp),
+                elevation    = 4.dp,
+                shape        = RoundedCornerShape(16.dp),
                 ambientColor = Color.Black.copy(alpha = 0.04f),
-                spotColor = Color.Black.copy(alpha = 0.08f)
+                spotColor    = Color.Black.copy(alpha = 0.08f)
             )
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
@@ -632,16 +571,14 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
             ) {
                 if (place.photoRef.isNotBlank()) {
                     AsyncImage(
-                        model = "https://places.googleapis.com/v1/${place.photoRef}/media?maxHeightPx=320&maxWidthPx=320&key=${BuildConfig.GOOGLE_PLACES_API_KEY}",
+                        model              = "https://places.googleapis.com/v1/${place.photoRef}/media?maxHeightPx=320&maxWidthPx=320&key=${BuildConfig.GOOGLE_PLACES_API_KEY}",
                         contentDescription = "${place.name} photo",
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        modifier           = Modifier.fillMaxSize(),
+                        contentScale       = ContentScale.Crop
                     )
                 } else {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(KipitaCardBg),
+                        modifier         = Modifier.fillMaxSize().background(KipitaCardBg),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(place.emoji, fontSize = 26.sp)
@@ -650,37 +587,34 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
             }
             Spacer(Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                // Name + Open/Closed badge
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier                = Modifier.fillMaxWidth(),
+                    horizontalArrangement   = Arrangement.SpaceBetween,
+                    verticalAlignment       = Alignment.CenterVertically
                 ) {
                     Text(
                         place.name,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = KipitaOnSurface,
+                        style    = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color    = KipitaOnSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
                         if (place.isOpen) "OPEN" else "CLOSED",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = if (place.isOpen) KipitaGreenAccent else KipitaRed,
+                        style    = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color    = if (place.isOpen) KipitaGreenAccent else KipitaRed,
                         modifier = Modifier.padding(start = 6.dp)
                     )
                 }
-                // Category
                 Text(
                     place.category.label,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = KipitaTextSecondary,
+                    style    = MaterialTheme.typography.bodySmall,
+                    color    = KipitaTextSecondary,
                     modifier = Modifier.padding(top = 2.dp)
                 )
-                // Rating + price + distance
                 Row(
-                    modifier = Modifier.padding(top = 4.dp),
+                    modifier          = Modifier.padding(top = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     if (place.rating > 0) {
@@ -701,11 +635,10 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
                         color = KipitaTextSecondary
                     )
                 }
-                // Address
                 Text(
                     place.address,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = KipitaTextSecondary,
+                    style    = MaterialTheme.typography.bodySmall,
+                    color    = KipitaTextSecondary,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 3.dp)
@@ -713,27 +646,18 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
             }
         }
 
-        // Divider
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(KipitaBorder)
-        )
+        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(KipitaBorder))
 
-        // Action buttons row
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier              = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             PlaceActionButton(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Call,
-                label = "CALL",
-                bgColor = Color(0xFF4CAF50),
-                onClick = {
+                icon     = Icons.Default.Call,
+                label    = "CALL",
+                bgColor  = Color(0xFF4CAF50),
+                onClick  = {
                     if (place.phone.isNotBlank()) {
                         runCatching {
                             val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${place.phone}"))
@@ -744,10 +668,10 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
             )
             PlaceActionButton(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.DirectionsWalk,
-                label = "DIRECTIONS",
-                bgColor = Color(0xFF2196F3),
-                onClick = {
+                icon     = Icons.Default.DirectionsWalk,
+                label    = "DIRECTIONS",
+                bgColor  = Color(0xFF2196F3),
+                onClick  = {
                     val lat = place.latitude ?: return@PlaceActionButton
                     val lon = place.longitude ?: return@PlaceActionButton
                     runCatching {
@@ -758,10 +682,10 @@ internal fun InlinePlaceCard(place: NearbyPlace) {
             )
             PlaceActionButton(
                 modifier = Modifier.weight(1f),
-                icon = Icons.Default.Info,
-                label = "MORE INFO",
-                bgColor = Color(0xFFFF5722),
-                onClick = {
+                icon     = Icons.Default.Info,
+                label    = "MORE INFO",
+                bgColor  = Color(0xFFFF5722),
+                onClick  = {
                     if (place.website.isNotBlank()) {
                         runCatching {
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(place.website))
@@ -785,36 +709,27 @@ private fun PlaceActionButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.94f else 1f,
+        targetValue  = if (isPressed) 0.94f else 1f,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "action-btn-press"
+        label        = "action-btn-press"
     )
     Row(
         modifier = modifier
             .scale(scale)
-            .shadow(
-                elevation = 5.dp,
-                shape = RoundedCornerShape(20.dp),
-                spotColor = bgColor.copy(alpha = 0.42f),
-                ambientColor = bgColor.copy(alpha = 0.16f)
-            )
+            .shadow(5.dp, RoundedCornerShape(20.dp), spotColor = bgColor.copy(alpha = 0.42f), ambientColor = bgColor.copy(alpha = 0.16f))
             .clip(RoundedCornerShape(20.dp))
             .background(bgColor)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick)
             .padding(horizontal = 6.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        verticalAlignment   = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
         Icon(icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(4.dp))
         Text(
             label,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
+            style    = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color    = Color.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

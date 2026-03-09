@@ -28,7 +28,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -46,7 +48,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -90,19 +91,38 @@ private val emergencyCategories = setOf(
     PlaceCategory.FITNESS
 )
 
-private data class ResultCategorySection(val label: String, val categories: List<PlaceCategory>)
 
-private val resultCategorySections = listOf(
-    ResultCategorySection("Food", listOf(
-        PlaceCategory.RESTAURANTS, PlaceCategory.CAFES, PlaceCategory.NIGHTLIFE
-    )),
-    ResultCategorySection("Travel", listOf(
-        PlaceCategory.HOTELS, PlaceCategory.TRANSPORT, PlaceCategory.BANKS_ATMS
-    )),
-    ResultCategorySection("Essentials", listOf(
-        PlaceCategory.SAFETY, PlaceCategory.URGENT_CARE, PlaceCategory.PHARMACIES
-    ))
-)
+// ---------------------------------------------------------------------------
+// Filter mode for sorting the result list
+// ---------------------------------------------------------------------------
+private enum class PlacesFilter(val label: String) {
+    ALL("All"),
+    OPEN_NOW("Open Now"),
+    BEST_RATED("Best Rated"),
+    NEAREST("Nearest")
+}
+
+private fun List<NearbyPlace>.applyFilter(filter: PlacesFilter): List<NearbyPlace> = when (filter) {
+    PlacesFilter.ALL        -> this
+    PlacesFilter.OPEN_NOW   -> filter { it.isOpen }
+    PlacesFilter.BEST_RATED -> sortedByDescending { it.rating }
+    PlacesFilter.NEAREST    -> sortedBy { it.distanceKm }
+}
+
+// Sibling categories to show as horizontal chips for 1-tap switching
+private fun siblingCategories(category: PlaceCategory): List<PlaceCategory> = when (category) {
+    PlaceCategory.RESTAURANTS, PlaceCategory.CAFES, PlaceCategory.NIGHTLIFE ->
+        listOf(PlaceCategory.RESTAURANTS, PlaceCategory.CAFES, PlaceCategory.NIGHTLIFE)
+    PlaceCategory.HOTELS, PlaceCategory.VACATION_RENTALS, PlaceCategory.TOURS, PlaceCategory.AIRPORTS ->
+        listOf(PlaceCategory.HOTELS, PlaceCategory.VACATION_RENTALS, PlaceCategory.TOURS, PlaceCategory.AIRPORTS)
+    PlaceCategory.TRANSPORT, PlaceCategory.CAR_RENTAL, PlaceCategory.EV_CHARGING, PlaceCategory.GAS_STATIONS ->
+        listOf(PlaceCategory.TRANSPORT, PlaceCategory.CAR_RENTAL, PlaceCategory.EV_CHARGING, PlaceCategory.GAS_STATIONS)
+    PlaceCategory.SAFETY, PlaceCategory.URGENT_CARE, PlaceCategory.PHARMACIES, PlaceCategory.FITNESS ->
+        listOf(PlaceCategory.SAFETY, PlaceCategory.URGENT_CARE, PlaceCategory.PHARMACIES, PlaceCategory.FITNESS)
+    PlaceCategory.ARTS, PlaceCategory.SHOPPING, PlaceCategory.PARKS, PlaceCategory.ENTERTAINMENT ->
+        listOf(PlaceCategory.ARTS, PlaceCategory.SHOPPING, PlaceCategory.PARKS, PlaceCategory.ENTERTAINMENT)
+    else -> listOf(PlaceCategory.BANKS_ATMS)
+}
 
 @Composable
 fun PlacesCategoryResultScreen(
@@ -116,15 +136,10 @@ fun PlacesCategoryResultScreen(
     val scope = rememberCoroutineScope()
     var visible by remember { mutableStateOf(false) }
     var currentCategory by rememberSaveable { mutableStateOf(category) }
-    var activeSectionIndex by rememberSaveable { mutableIntStateOf(0) }
-    val enabledSections = if (state.showDestinations) resultCategorySections
-    else resultCategorySections.map { section ->
-        if (section.label == "Travel") {
-            section.copy(categories = listOf(PlaceCategory.TRANSPORT, PlaceCategory.BANKS_ATMS, PlaceCategory.GAS_STATIONS))
-        } else section
-    }
-    val sections = sortSectionsForCurrentTime(enabledSections, labelOf = { it.label })
+    var activeFilter by rememberSaveable { mutableStateOf(PlacesFilter.ALL) }
     val uriHandler = LocalUriHandler.current
+    val siblings = siblingCategories(currentCategory)
+    val displayPlaces = state.filteredPlaces.applyFilter(activeFilter)
 
     val gpsLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -146,11 +161,6 @@ fun PlacesCategoryResultScreen(
             gpsLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
             viewModel.selectCategory(currentCategory)
         }
-    }
-
-    LaunchedEffect(sections, currentCategory) {
-        val idx = sections.indexOfFirst { currentCategory in it.categories }
-        if (idx >= 0) activeSectionIndex = idx
     }
 
     Column(
@@ -217,41 +227,61 @@ fun PlacesCategoryResultScreen(
             verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             item {
-                if (sections.isNotEmpty()) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
+                // ── Horizontal sibling-category chip strip ──────────────────
+                if (siblings.size > 1) {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        sections.forEachIndexed { index, section ->
-                            BigTab(
-                                modifier = Modifier.weight(1f),
-                                label = section.label,
-                                selected = activeSectionIndex == index,
-                                onClick = { activeSectionIndex = index }
-                            )
+                        items(siblings) { sibling ->
+                            val selected = sibling == currentCategory
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(999.dp))
+                                    .background(if (selected) Color(0xFF1A1A2E) else Color.White)
+                                    .border(1.dp, if (selected) Color(0xFF1A1A2E) else Color(0xFFE6E6E6), RoundedCornerShape(999.dp))
+                                    .clickable {
+                                        currentCategory = sibling
+                                        activeFilter = PlacesFilter.ALL
+                                        scope.launch { resolveLocationAndFetch(context, viewModel, sibling) }
+                                    }
+                                    .padding(horizontal = 14.dp, vertical = 9.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(sibling.emoji, fontSize = 15.sp)
+                                Spacer(Modifier.width(5.dp))
+                                Text(
+                                    sibling.label,
+                                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                    color = if (selected) Color.White else KipitaOnSurface
+                                )
+                            }
                         }
                     }
-                    val children = sections[activeSectionIndex].categories
-                    val selectedChild = children.indexOf(currentCategory).let { if (it >= 0) it else 0 }
-                    Spacer(Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        children.forEachIndexed { index, child ->
-                            BigTab(
-                                modifier = Modifier.weight(1f),
-                                label = "${child.emoji} ${child.label}",
-                                selected = selectedChild == index,
-                                onClick = {
-                                    currentCategory = child
-                                    scope.launch { resolveLocationAndFetch(context, viewModel, child) }
-                                }
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(10.dp))
                 }
+
+                // ── Filter pills ────────────────────────────────────────────
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    PlacesFilter.values().forEach { filter ->
+                        val sel = filter == activeFilter
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(999.dp))
+                                .background(if (sel) KipitaRed else Color.White)
+                                .border(1.dp, if (sel) KipitaRed else Color(0xFFE6E6E6), RoundedCornerShape(999.dp))
+                                .clickable { activeFilter = filter }
+                                .padding(horizontal = 12.dp, vertical = 7.dp)
+                        ) {
+                            Text(
+                                filter.label,
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (sel) Color.White else KipitaOnSurface
+                            )
+                        }
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier
@@ -333,7 +363,7 @@ fun PlacesCategoryResultScreen(
                 }
             }
 
-            if (!state.isLoading && state.filteredPlaces.isEmpty() && state.error == null) {
+            if (!state.isLoading && displayPlaces.isEmpty() && state.error == null) {
                 item {
                     Box(
                         modifier = Modifier
@@ -365,8 +395,8 @@ fun PlacesCategoryResultScreen(
                 }
             }
 
-            if (!state.isLoading && state.filteredPlaces.isNotEmpty()) {
-                itemsIndexed(state.filteredPlaces, key = { _, p -> p.id }) { index, place ->
+            if (!state.isLoading && displayPlaces.isNotEmpty()) {
+                itemsIndexed(displayPlaces, key = { _, p -> p.id }) { index, place ->
                     AnimatedVisibility(
                         visible = visible,
                         enter = fadeIn(tween(80 + index * 35)) + slideInVertically(tween(80 + index * 35)) { 20 }
@@ -556,31 +586,6 @@ private fun PlaceResultCard(
     }
 }
 
-@Composable
-private fun BigTab(
-    modifier: Modifier = Modifier,
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) Color(0xFF1A1A2E) else Color.White)
-            .border(1.dp, if (selected) Color(0xFF1A1A2E) else Color(0xFFE6E6E6), RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 14.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-            color = if (selected) Color.White else KipitaOnSurface,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
