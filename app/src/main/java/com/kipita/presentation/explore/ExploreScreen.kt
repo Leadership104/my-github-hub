@@ -740,12 +740,12 @@ private fun PlacesTab(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            group.categories.chunked(2).forEach { row ->
+                            group.categories.chunked(4).forEach { row ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     row.forEach { cat ->
                                         Box(modifier = Modifier.weight(1f)) {
@@ -756,9 +756,7 @@ private fun PlacesTab(
                                             )
                                         }
                                     }
-                                    if (row.size == 1) {
-                                        Spacer(modifier = Modifier.weight(1f))
-                                    }
+                                    repeat(4 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
                                 }
                             }
                             if (group.label == "Finance & Services") {
@@ -1120,18 +1118,18 @@ private fun PlaceCategoryChip(category: PlaceCategory, selected: Boolean, onClic
             .background(if (selected) KipitaRed else Color.White)
             .border(if (selected) 0.dp else 1.dp, KipitaBorder, RoundedCornerShape(14.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 18.dp),
+            .padding(horizontal = 6.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(category.emoji, fontSize = 26.sp)
-        Spacer(Modifier.height(8.dp))
+        Text(category.emoji, fontSize = 22.sp)
+        Spacer(Modifier.height(4.dp))
         Text(
             text = category.label,
-            style = MaterialTheme.typography.labelLarge.copy(
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
             ),
             color = if (selected) Color.White else KipitaOnSurface,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
     }

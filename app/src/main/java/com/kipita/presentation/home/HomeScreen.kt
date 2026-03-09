@@ -90,6 +90,8 @@ import com.kipita.presentation.trips.TripsViewModel
 import kotlinx.coroutines.delay
 import java.util.Calendar
 import java.util.Locale
+import com.kipita.data.api.PlaceCategory
+import com.kipita.presentation.theme.KipitaBorder
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -143,6 +145,7 @@ fun HomeScreen(
     onOpenPerks: () -> Unit = {},
     openSosSignal: Int = 0,
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
+    onOpenPlaces: (PlaceCategory) -> Unit = {},
     tripsViewModel: TripsViewModel = hiltViewModel(),
     weatherViewModel: WeatherViewModel = hiltViewModel()
 ) {
@@ -311,6 +314,61 @@ fun HomeScreen(
                                     }
                                     if (row.size < 3) {
                                         repeat(3 - row.size) { Spacer(modifier = Modifier.weight(1f)) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            // ── Explore Nearby quick tiles ───────────────────────────────────
+            item {
+                AnimatedVisibility(
+                    visible = visible,
+                    enter = fadeIn(tween(200)) + slideInVertically(tween(200)) { 20 }
+                ) {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
+                        Text(
+                            "Explore Nearby",
+                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = KipitaOnSurface,
+                            modifier = Modifier.padding(bottom = 12.dp)
+                        )
+                        val nearbyCategories = listOf(
+                            PlaceCategory.RESTAURANTS,
+                            PlaceCategory.HOTELS,
+                            PlaceCategory.SAFETY,
+                            PlaceCategory.TRANSPORT,
+                            PlaceCategory.CAFES,
+                            PlaceCategory.BANKS_ATMS
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            nearbyCategories.chunked(3).forEach { row ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    row.forEach { cat ->
+                                        Column(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .border(1.dp, KipitaBorder, androidx.compose.foundation.shape.RoundedCornerShape(14.dp))
+                                                .clickable { onOpenPlaces(cat) }
+                                                .padding(vertical = 12.dp),
+                                            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                                        ) {
+                                            Text(cat.emoji, fontSize = 24.sp)
+                                            Spacer(Modifier.height(4.dp))
+                                            Text(
+                                                cat.label,
+                                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+                                                color = KipitaOnSurface,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                        }
                                     }
                                 }
                             }

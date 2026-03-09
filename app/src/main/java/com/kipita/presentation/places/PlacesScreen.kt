@@ -41,6 +41,12 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -236,12 +242,22 @@ fun PlacesScreen(
     viewModel: PlacesViewModel = hiltViewModel(),
     onCategorySelected: (PlaceCategory) -> Unit = {},
     onAskKipita: () -> Unit = {},
-    onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> }
+    onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
+    initialCategoryName: String? = null,
+    onCategoryDeepLinkConsumed: () -> Unit = {}
 ) {
     // Store enum name so rememberSaveable can survive config change
     var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedCategory = selectedCategoryName?.let { name ->
         PlaceCategory.values().find { it.name == name }
+    }
+
+    // Consume deep-link once when initialCategoryName is set
+    LaunchedEffect(initialCategoryName) {
+        if (initialCategoryName != null) {
+            selectedCategoryName = initialCategoryName
+            onCategoryDeepLinkConsumed()
+        }
     }
 
     if (selectedCategory != null) {
@@ -282,6 +298,20 @@ private fun BrowseGrid(
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
     var visible by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    var searchActive by remember { mutableStateOf(false) }
+
+    // All subcategories flattened for search
+    val allSubCats: List<PlaceSubCategory> = remember {
+        placesSections.flatMap { it.subCategories }
+    }
+    val searchResults: List<PlaceSubCategory> = remember(searchQuery) {
+        if (searchQuery.isBlank()) emptyList()
+        else allSubCats.filter {
+            it.label.contains(searchQuery, ignoreCase = true) ||
+            it.baseCategory.label.contains(searchQuery, ignoreCase = true)
+        }.distinctBy { it.label }
+    }
 
     val gpsLauncher = rememberLauncherForActivityResult(RequestPermission()) { granted ->
         if (granted) {
@@ -318,7 +348,7 @@ private fun BrowseGrid(
     ) {
 
         // ----------------------------------------------------------------
-        // Search bar — tapping opens restaurants (most common intent)
+        // Search bar — live filter across all subcategories
         // ----------------------------------------------------------------
         item {
             AnimatedVisibility(visible = visible, enter = fadeIn() + slideInVertically { -16 }) {
@@ -329,25 +359,76 @@ private fun BrowseGrid(
                         .shadow(4.dp, RoundedCornerShape(28.dp), spotColor = Color.Black.copy(alpha = 0.08f))
                         .clip(RoundedCornerShape(28.dp))
                         .background(Color.White)
-                        .clickable { onNavigate(PlaceCategory.RESTAURANTS) }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Default.Search, contentDescription = null, tint = KipitaTextSecondary, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(10.dp))
-                    Text(
-                        "Search restaurants, parks, hotels…",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = KipitaTextSecondary
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it; searchActive = it.isNotBlank() },
+                        modifier = Modifier.weight(1f),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(color = KipitaOnSurface),
+                        cursorBrush = SolidColor(KipitaRed),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(onSearch = {
+                            searchResults.firstOrNull()?.let { onNavigate(it.baseCategory) }
+                        }),
+                        decorationBox = { inner ->
+                            if (searchQuery.isBlank()) {
+                                Text("Search restaurants, parks, hotels…", style = MaterialTheme.typography.bodyMedium, color = KipitaTextSecondary)
+                            } else inner()
+                        }
                     )
+                    if (searchQuery.isNotBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            "Clear",
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                            color = KipitaRed,
+                            modifier = Modifier.clickable { searchQuery = ""; searchActive = false }
+                        )
+                    }
                 }
             }
         }
 
         // ----------------------------------------------------------------
-        // Section label: Browse
+        // Search results (shown while typing, replaces grid)
         // ----------------------------------------------------------------
-        item {
+        if (searchActive && searchResults.isNotEmpty()) {
+            item {
+                Text(
+                    "${searchResults.size} results",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = KipitaTextSecondary,
+                    modifier = Modifier.padding(horizontal = 20.dp, bottom = 4.dp)
+                )
+            }
+            val searchRows = searchResults.chunked(4)
+            items(searchRows) { row ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    row.forEach { subCat ->
+                        SubCategoryTile(
+                            modifier = Modifier.weight(1f),
+                            subCat   = subCat,
+                            onClick  = { onNavigate(subCat.baseCategory) }
+                        )
+                    }
+                    repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+            item { Spacer(Modifier.height(16.dp)) }
+        }
+
+        // ----------------------------------------------------------------
+        // Section label: Browse  (hidden while searching)
+        // ----------------------------------------------------------------
+        if (!searchActive) item {
             AnimatedVisibility(visible = visible, enter = fadeIn(tween(120))) {
                 Text(
                     "Browse",
@@ -359,18 +440,18 @@ private fun BrowseGrid(
         }
 
         // ----------------------------------------------------------------
-        // Hero cards — one per main section (1 tap → results)
+        // Hero cards — one per main section (1 tap → results, hidden during search)
         // ----------------------------------------------------------------
-        items(placesSections) { section ->
+        if (!searchActive) items(placesSections) { section ->
             AnimatedVisibility(visible = visible, enter = fadeIn(tween(160)) + slideInVertically(tween(160)) { 24 }) {
                 SectionHeroCard(section = section, onClick = { onNavigate(section.baseCategory) })
             }
         }
 
         // ----------------------------------------------------------------
-        // Section label: Quick Access
+        // Section label: Quick Access  (hidden during search)
         // ----------------------------------------------------------------
-        item {
+        if (!searchActive) item {
             AnimatedVisibility(visible = visible, enter = fadeIn(tween(200))) {
                 Text(
                     "Quick Access",
@@ -382,10 +463,10 @@ private fun BrowseGrid(
         }
 
         // ----------------------------------------------------------------
-        // Popular subcategory grid — 4 columns, 3 rows (12 tiles)
+        // Popular subcategory grid — 4 columns, 3 rows (hidden during search)
         // ----------------------------------------------------------------
         val rows = popularSubCategories.chunked(4)
-        items(rows) { row ->
+        if (!searchActive) items(rows) { row ->
             AnimatedVisibility(visible = visible, enter = fadeIn(tween(220)) + slideInVertically(tween(220)) { 16 }) {
                 Row(
                     modifier = Modifier

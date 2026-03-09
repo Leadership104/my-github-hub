@@ -82,6 +82,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.kipita.data.api.PlaceCategory
 import com.kipita.data.local.TripEntity
 import com.kipita.domain.model.SampleData
 import com.kipita.domain.model.Trip
@@ -114,6 +115,7 @@ fun MyTripsScreen(
     onOpenTranslate: () -> Unit = {},
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
     onTripClick: (tripId: String) -> Unit = {},
+    onOpenPlaces: (PlaceCategory) -> Unit = {},
     viewModel: TripsViewModel = hiltViewModel()
 ) {
     var visible by remember { mutableStateOf(false) }
@@ -385,7 +387,13 @@ fun MyTripsScreen(
                                         Box(modifier = Modifier.weight(1f)) {
                                             TransportChip(
                                                 entry = entry,
-                                                onClick = { onOpenWebView(entry.url, entry.label) }
+                                                onClick = {
+                                                    when (entry.label) {
+                                                        "Hotels"     -> onOpenPlaces(PlaceCategory.HOTELS)
+                                                        "Car Rental" -> onOpenPlaces(PlaceCategory.CAR_RENTAL)
+                                                        else         -> onOpenWebView(entry.url, entry.label)
+                                                    }
+                                                }
                                             )
                                         }
                                     }

@@ -88,6 +88,7 @@ import com.kipita.presentation.home.HomeScreen
 import com.kipita.presentation.home.WeatherViewModel
 import com.kipita.presentation.perks.PerksScreen
 import com.kipita.presentation.map.MapScreen
+import com.kipita.data.api.PlaceCategory
 import com.kipita.presentation.places.PlacesScreen
 import com.kipita.presentation.profile.ProfileSetupScreen
 import com.kipita.presentation.settings.SettingsScreen
@@ -157,6 +158,8 @@ fun KipitaApp() {
     var showPerks by rememberSaveable { mutableStateOf(false) }
     var showWallet by rememberSaveable { mutableStateOf(false) }
     var openSosSignal by rememberSaveable { mutableStateOf(0) }
+    // Deep-link: name of PlaceCategory to open immediately when Places tab is shown
+    var placesDeepLinkCategory by rememberSaveable { mutableStateOf<String?>(null) }
     var currentLocationAddress by rememberSaveable { mutableStateOf("Detecting location...") }
     val topBarWeatherViewModel: WeatherViewModel = hiltViewModel()
     val topBarWeatherState by topBarWeatherViewModel.state.collectAsStateWithLifecycleCompat()
@@ -497,9 +500,7 @@ fun KipitaApp() {
                         MainRoute.HOME -> KipitaErrorBoundary("HomeScreen") { _ ->
                             HomeScreen(
                                 paddingValues    = padding,
-                                onOpenWallet     = {
-                                    showWallet = true
-                                },
+                                onOpenWallet     = { showWallet = true },
                                 onOpenMap        = { showMap = true },
                                 onOpenAI         = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
                                 onOpenSocial     = { showSocial = true },
@@ -510,16 +511,22 @@ fun KipitaApp() {
                                     webViewUrl = url
                                     webViewTitle = title
                                     showWebView = true
+                                },
+                                onOpenPlaces     = { cat ->
+                                    placesDeepLinkCategory = cat.name
+                                    route = MainRoute.PLACES
                                 }
                             )
                         }
 
                         MainRoute.PLACES -> KipitaErrorBoundary("PlacesScreen") { _ ->
                             PlacesScreen(
-                                paddingValues      = padding,
-                                onBack             = { route = MainRoute.HOME },
-                                onAskKipita        = { route = MainRoute.AI },
-                                onOpenWebView      = { url, title ->
+                                paddingValues               = padding,
+                                onBack                      = { route = MainRoute.HOME },
+                                onAskKipita                 = { route = MainRoute.AI },
+                                initialCategoryName         = placesDeepLinkCategory,
+                                onCategoryDeepLinkConsumed  = { placesDeepLinkCategory = null },
+                                onOpenWebView               = { url, title ->
                                     webViewUrl = url
                                     webViewTitle = title
                                     showWebView = true
@@ -538,20 +545,22 @@ fun KipitaApp() {
 
                         MainRoute.TRIPS -> KipitaErrorBoundary("MyTripsScreen") { _ ->
                             MyTripsScreen(
-                                paddingValues = padding,
-                                onBack        = { route = MainRoute.HOME },
-                                onAiSuggest  = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
-                                onOpenWallet = {
-                                    showWallet = true
-                                },
-                                onOpenMap    = { showMap = true },
+                                paddingValues   = padding,
+                                onBack          = { route = MainRoute.HOME },
+                                onAiSuggest     = { prompt -> aiPreFill = prompt; route = MainRoute.AI },
+                                onOpenWallet    = { showWallet = true },
+                                onOpenMap       = { showMap = true },
                                 onOpenTranslate = { showTranslate = true },
-                                onOpenWebView = { url, title ->
+                                onOpenWebView   = { url, title ->
                                     webViewUrl = url
                                     webViewTitle = title
                                     showWebView = true
                                 },
-                                onTripClick  = { tripId -> selectedTripId = tripId }
+                                onTripClick     = { tripId -> selectedTripId = tripId },
+                                onOpenPlaces    = { cat ->
+                                    placesDeepLinkCategory = cat.name
+                                    route = MainRoute.PLACES
+                                }
                             )
                         }
 
