@@ -24,15 +24,15 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.HealthAndSafety
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Luggage
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.TravelExplore
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.Flight
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.outlined.HealthAndSafety
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.TravelExplore
-import androidx.compose.material.icons.outlined.Warning
+import androidx.compose.material.icons.outlined.Luggage
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -115,10 +115,10 @@ private data class NavItem(
 )
 
 private val navItems = listOf(
-    NavItem(MainRoute.HOME,    "Home",    Icons.Filled.Home,          Icons.Outlined.Home),
-    NavItem(MainRoute.PLACES,  "Places",  Icons.Filled.TravelExplore, Icons.Outlined.TravelExplore),
-    NavItem(MainRoute.TRIPS,   "Trips",   Icons.Filled.Flight,        Icons.Outlined.Flight),
-    NavItem(MainRoute.ADVISORY, "Advisory", Icons.Filled.Warning, Icons.Outlined.Warning)
+    NavItem(MainRoute.HOME,     "Home",     Icons.Filled.Home,           Icons.Outlined.Home),
+    NavItem(MainRoute.ADVISORY, "Advisory", Icons.Filled.HealthAndSafety, Icons.Outlined.HealthAndSafety),
+    NavItem(MainRoute.TRIPS,    "Trips",    Icons.Filled.Luggage,         Icons.Outlined.Luggage),
+    NavItem(MainRoute.PLACES,   "Places",   Icons.Filled.Place,           Icons.Outlined.Place)
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
