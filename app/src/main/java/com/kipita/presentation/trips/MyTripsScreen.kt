@@ -1217,26 +1217,26 @@ private fun QuickToolCard(
     Column(
         modifier = modifier
             .scale(scale)
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(20.dp))
             .background(Color.White)
             .clickable { pressed = !pressed; onClick() }
-            .padding(20.dp),
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .size(72.dp)
+                .clip(RoundedCornerShape(18.dp))
                 .background(KipitaRedLight),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = label, tint = KipitaRed, modifier = Modifier.size(28.dp))
+            Icon(icon, contentDescription = label, tint = KipitaRed, modifier = Modifier.size(36.dp))
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.titleSmall,
+            style = MaterialTheme.typography.titleMedium,
             color = KipitaOnSurface,
             fontWeight = FontWeight.SemiBold
         )

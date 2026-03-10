@@ -224,14 +224,6 @@ private val placesSections = listOf(
 )
 
 // ---------------------------------------------------------------------------
-// Popular quick-access subcategories (top 4 from each section → 3 rows of 4)
-// ---------------------------------------------------------------------------
-private val popularSubCategories: List<PlaceSubCategory> =
-    restaurantSubCategories.take(4) +
-    entertainmentSubCategories.take(4) +
-    shoppingSubCategories.take(4)
-
-// ---------------------------------------------------------------------------
 // PlacesScreen — internal nav: browse grid ↔ category result screen
 // ---------------------------------------------------------------------------
 
@@ -263,10 +255,11 @@ fun PlacesScreen(
     if (selectedCategory != null) {
         // Click 1 complete → show results immediately
         PlacesCategoryResultScreen(
-            category     = selectedCategory,
-            onBack       = { selectedCategoryName = null },
+            category      = selectedCategory,
+            onBack        = { selectedCategoryName = null },
+            paddingValues = paddingValues,
             onOpenWebView = onOpenWebView,
-            viewModel    = viewModel
+            viewModel     = viewModel
         )
         return
     }
@@ -403,7 +396,7 @@ private fun BrowseGrid(
                     "${searchResults.size} results",
                     style = MaterialTheme.typography.labelSmall,
                     color = KipitaTextSecondary,
-                    modifier = Modifier.padding(horizontal = 20.dp, bottom = 4.dp)
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
                 )
             }
             val searchRows = searchResults.chunked(4)
@@ -440,52 +433,17 @@ private fun BrowseGrid(
         }
 
         // ----------------------------------------------------------------
-        // Hero cards — one per main section (1 tap → results, hidden during search)
+        // Hero cards — one per main section (hidden during search)
+        // Header tap → full category results (click 1)
+        // Subcategory chip tap → specific sub-results (click 1)
         // ----------------------------------------------------------------
         if (!searchActive) items(placesSections) { section ->
             AnimatedVisibility(visible = visible, enter = fadeIn(tween(160)) + slideInVertically(tween(160)) { 24 }) {
-                SectionHeroCard(section = section, onClick = { onNavigate(section.baseCategory) })
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // Section label: Quick Access  (hidden during search)
-        // ----------------------------------------------------------------
-        if (!searchActive) item {
-            AnimatedVisibility(visible = visible, enter = fadeIn(tween(200))) {
-                Text(
-                    "Quick Access",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = KipitaOnSurface,
-                    modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 4.dp)
+                SectionHeroCard(
+                    section           = section,
+                    onSectionClick    = { onNavigate(section.baseCategory) },
+                    onSubCategoryClick = { onNavigate(it.baseCategory) }
                 )
-            }
-        }
-
-        // ----------------------------------------------------------------
-        // Popular subcategory grid — 4 columns, 3 rows (hidden during search)
-        // ----------------------------------------------------------------
-        val rows = popularSubCategories.chunked(4)
-        if (!searchActive) items(rows) { row ->
-            AnimatedVisibility(visible = visible, enter = fadeIn(tween(220)) + slideInVertically(tween(220)) { 16 }) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    row.forEach { subCat ->
-                        SubCategoryTile(
-                            modifier  = Modifier.weight(1f),
-                            subCat    = subCat,
-                            onClick   = { onNavigate(subCat.baseCategory) }
-                        )
-                    }
-                    // Pad remaining slots so grid stays aligned
-                    repeat(4 - row.size) {
-                        Spacer(Modifier.weight(1f))
-                    }
-                }
             }
         }
 
@@ -528,59 +486,64 @@ private fun BrowseGrid(
 }
 
 // ---------------------------------------------------------------------------
-// Section hero card — full-width, gradient bg, emoji + label + subcategory preview
+// Section hero card — gradient header (tap = full category) +
+//                     inline chip strip (tap = specific sub-result)
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun SectionHeroCard(section: PlacesSection, onClick: () -> Unit) {
-    Box(
+private fun SectionHeroCard(
+    section: PlacesSection,
+    onSectionClick: () -> Unit,
+    onSubCategoryClick: (PlaceSubCategory) -> Unit
+) {
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 6.dp)
             .shadow(6.dp, RoundedCornerShape(20.dp), spotColor = section.gradientStart.copy(alpha = 0.30f))
             .clip(RoundedCornerShape(20.dp))
-            .background(Brush.linearGradient(listOf(section.gradientStart, section.gradientEnd)))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        // Gradient header — 1 tap → full category results
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Brush.linearGradient(listOf(section.gradientStart, section.gradientEnd)))
+                .clickable(onClick = onSectionClick)
+                .padding(horizontal = 20.dp, vertical = 20.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    section.label,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White
-                )
-                Spacer(Modifier.height(4.dp))
-                // Preview: first 4 subcategory labels
-                Text(
-                    section.subCategories.take(4).joinToString(" · ") { it.emoji + " " + it.label },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.75f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(999.dp))
-                        .background(Color.White.copy(alpha = 0.22f))
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.LocationOn, contentDescription = null, tint = Color.White, modifier = Modifier.size(12.dp))
-                    Spacer(Modifier.width(4.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Near you  →",
-                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        section.label,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
                     )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        section.subCategories.take(3).joinToString(" · ") { it.label },
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color.White.copy(alpha = 0.70f)
+                    )
                 }
+                Spacer(Modifier.width(16.dp))
+                Text(section.emoji, fontSize = 52.sp)
             }
-            Spacer(Modifier.width(16.dp))
-            Text(section.emoji, fontSize = 56.sp)
+        }
+
+        // Subcategory chip strip — white bg, horizontal scroll, 1 tap → sub-result
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color.White)
+                .padding(horizontal = 12.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            items(section.subCategories) { subCat ->
+                SubCategoryChip(subCat = subCat, onClick = { onSubCategoryClick(subCat) })
+            }
         }
     }
 }
@@ -613,6 +576,37 @@ private fun SubCategoryTile(
             color = KipitaOnSurface,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Subcategory chip — accessible size, press-scale motion
+// ---------------------------------------------------------------------------
+@Composable
+private fun SubCategoryChip(subCat: PlaceSubCategory, onClick: () -> Unit) {
+    var pressed by remember { mutableStateOf(false) }
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.92f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
+        label = "chip-scale"
+    )
+    Row(
+        modifier = Modifier
+            .scale(scale)
+            .clip(RoundedCornerShape(999.dp))
+            .background(KipitaCardBg)
+            .border(1.dp, KipitaBorder, RoundedCornerShape(999.dp))
+            .clickable { pressed = !pressed; onClick() }
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(subCat.emoji, fontSize = 18.sp)
+        Spacer(Modifier.width(6.dp))
+        Text(
+            subCat.label,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = KipitaOnSurface
         )
     }
 }

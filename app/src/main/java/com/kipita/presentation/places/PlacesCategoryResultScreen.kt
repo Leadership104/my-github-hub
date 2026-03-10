@@ -7,6 +7,11 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
@@ -91,6 +96,80 @@ private val emergencyCategories = setOf(
     PlaceCategory.FITNESS
 )
 
+// ---------------------------------------------------------------------------
+// Example placeholder places shown while real results are loading / unavailable
+// ---------------------------------------------------------------------------
+private data class ExamplePlace(val emoji: String, val name: String, val detail: String)
+
+private val examplePlacesByCategory: Map<PlaceCategory, List<ExamplePlace>> = mapOf(
+    PlaceCategory.SAFETY to listOf(
+        ExamplePlace("🚓", "Central Police Station", "0.4 km · Emergency services"),
+        ExamplePlace("🏥", "City General Hospital", "0.8 km · 24hr Emergency"),
+        ExamplePlace("🚒", "Fire Station No. 3", "1.1 km · Fire & Rescue"),
+        ExamplePlace("🚑", "Metro Ambulance Hub", "1.5 km · EMS Services")
+    ),
+    PlaceCategory.URGENT_CARE to listOf(
+        ExamplePlace("🏥", "Metro Urgent Care Center", "0.3 km · Walk-ins welcome"),
+        ExamplePlace("🏥", "CityMed 24hr Clinic", "0.7 km · Open now"),
+        ExamplePlace("🏥", "QuickCare Medical", "1.2 km · No appointment needed"),
+        ExamplePlace("🏥", "Riverside Emergency Clinic", "1.8 km · 24hr")
+    ),
+    PlaceCategory.PHARMACIES to listOf(
+        ExamplePlace("💊", "CVS Pharmacy", "0.2 km · Open 24hrs"),
+        ExamplePlace("💊", "Walgreens", "0.5 km · Drive-thru available"),
+        ExamplePlace("💊", "Rite Aid", "0.9 km · Pharmacist on duty"),
+        ExamplePlace("💊", "Community Pharmacy", "1.3 km · Local & independent")
+    ),
+    PlaceCategory.FITNESS to listOf(
+        ExamplePlace("🏋️", "Planet Fitness", "0.3 km · Open 24hrs"),
+        ExamplePlace("🏋️", "LA Fitness", "0.7 km · Pool & classes"),
+        ExamplePlace("🧘", "YogaWorks Studio", "0.9 km · All levels"),
+        ExamplePlace("🏃", "CrossFit Metro", "1.4 km · Group training")
+    ),
+    PlaceCategory.RESTAURANTS to listOf(
+        ExamplePlace("🍕", "Slice of Heaven Pizzeria", "0.2 km · Italian · $$"),
+        ExamplePlace("🍔", "The Burger Joint", "0.4 km · American · $"),
+        ExamplePlace("🍜", "Pho Saigon Noodle House", "0.6 km · Vietnamese · $"),
+        ExamplePlace("🥗", "Fresh Garden Bistro", "0.9 km · Healthy · $$")
+    ),
+    PlaceCategory.CAFES to listOf(
+        ExamplePlace("☕", "Blue Bottle Coffee", "0.1 km · Specialty coffee"),
+        ExamplePlace("☕", "The Daily Grind", "0.3 km · Pastries & espresso"),
+        ExamplePlace("🧋", "Boba & Beyond", "0.5 km · Bubble tea"),
+        ExamplePlace("🍰", "Crumbs Bakery Café", "0.8 km · Cakes & coffee")
+    ),
+    PlaceCategory.HOTELS to listOf(
+        ExamplePlace("🏨", "Grand Hyatt Downtown", "0.5 km · ★★★★★"),
+        ExamplePlace("🏨", "Marriott City Center", "0.8 km · ★★★★"),
+        ExamplePlace("🏨", "Holiday Inn Express", "1.2 km · ★★★"),
+        ExamplePlace("🏠", "Airbnb Loft Suite", "0.3 km · Entire place")
+    ),
+    PlaceCategory.SHOPPING to listOf(
+        ExamplePlace("🛍️", "Westfield Mall", "0.6 km · 200+ stores"),
+        ExamplePlace("👕", "H&M Fashion", "0.4 km · Clothing"),
+        ExamplePlace("📱", "Apple Store", "0.7 km · Electronics"),
+        ExamplePlace("📚", "Barnes & Noble", "1.0 km · Books & gifts")
+    ),
+    PlaceCategory.ENTERTAINMENT to listOf(
+        ExamplePlace("🎬", "AMC Cinemas 16", "0.5 km · Movies"),
+        ExamplePlace("🎳", "Bowlero Lanes", "0.8 km · Bowling"),
+        ExamplePlace("🎭", "City Arts Center", "1.0 km · Live shows"),
+        ExamplePlace("🎲", "Dave & Buster's", "1.3 km · Arcade & dining")
+    ),
+    PlaceCategory.PARKS to listOf(
+        ExamplePlace("🌳", "Riverside City Park", "0.3 km · 50 acres"),
+        ExamplePlace("🌿", "Botanical Gardens", "0.7 km · Free entry"),
+        ExamplePlace("🥾", "Heritage Trail Head", "1.1 km · 5mi loop"),
+        ExamplePlace("⛲", "Downtown Plaza", "0.2 km · Fountains & benches")
+    ),
+    PlaceCategory.TRANSPORT to listOf(
+        ExamplePlace("🚆", "Central Train Station", "0.4 km · All lines"),
+        ExamplePlace("🚌", "Metro Bus Terminal", "0.2 km · 12 routes"),
+        ExamplePlace("✈️", "International Airport", "8.5 km · Terminal 1–4"),
+        ExamplePlace("🚕", "Rideshare Pick-up Zone", "0.1 km · Uber & Lyft")
+    )
+)
+
 
 // ---------------------------------------------------------------------------
 // Filter mode for sorting the result list
@@ -128,6 +207,7 @@ private fun siblingCategories(category: PlaceCategory): List<PlaceCategory> = wh
 fun PlacesCategoryResultScreen(
     category: PlaceCategory,
     onBack: () -> Unit,
+    paddingValues: PaddingValues = PaddingValues(),
     onOpenWebView: (url: String, title: String) -> Unit = { _, _ -> },
     viewModel: PlacesViewModel = hiltViewModel()
 ) {
@@ -167,6 +247,7 @@ fun PlacesCategoryResultScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFFF5F5F5))
+            .padding(top = paddingValues.calculateTopPadding())
     ) {
         Box(
             modifier = Modifier
@@ -206,16 +287,25 @@ fun PlacesCategoryResultScreen(
             }
 
             if (currentCategory in emergencyCategories) {
+                val pulse = rememberInfiniteTransition(label = "badge-pulse")
+                val pulseAlpha by pulse.animateFloat(
+                    initialValue = 0.75f, targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(700, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                        repeatMode = RepeatMode.Reverse
+                    ),
+                    label = "badge-alpha"
+                )
                 Box(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFFB71C1C).copy(alpha = 0.85f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .background(Color(0xFFB71C1C).copy(alpha = pulseAlpha))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
                 ) {
                     Text(
-                        "Emergency",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        "⚠ Emergency",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = Color.White
                     )
                 }
@@ -326,31 +416,45 @@ fun PlacesCategoryResultScreen(
                 Spacer(Modifier.height(10.dp))
             }
 
-            if (state.isLoading) {
+            // Show example places while loading or when no real results yet
+            val examples = examplePlacesByCategory[currentCategory]
+            if ((state.isLoading || displayPlaces.isEmpty()) && !examples.isNullOrEmpty()) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = KipitaRed, modifier = Modifier.size(36.dp))
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "Finding ${currentCategory.label} near you...",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = KipitaTextSecondary
+                    Row(
+                        modifier = Modifier.padding(bottom = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        if (state.isLoading) {
+                            CircularProgressIndicator(
+                                color = KipitaRed,
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp
                             )
+                            Spacer(Modifier.width(8.dp))
                         }
+                        Text(
+                            if (state.isLoading) "Finding nearby — example places below"
+                            else "Example ${currentCategory.label} near you",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = KipitaTextSecondary
+                        )
                     }
+                }
+                items(examples) { ex ->
+                    ExamplePlaceCard(ex = ex)
+                    Spacer(Modifier.height(8.dp))
                 }
             }
 
-            if (state.error != null && !state.isLoading) {
+            if (state.error != null && !state.isLoading && displayPlaces.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp)
+                            .padding(vertical = 12.dp)
                             .clip(RoundedCornerShape(16.dp))
                             .background(Color.White)
-                            .padding(20.dp),
+                            .padding(16.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -359,38 +463,6 @@ fun PlacesCategoryResultScreen(
                             color = KipitaRed,
                             textAlign = TextAlign.Center
                         )
-                    }
-                }
-            }
-
-            if (!state.isLoading && displayPlaces.isEmpty() && state.error == null) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(Color.White)
-                            .padding(28.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(currentCategory.emoji, fontSize = 40.sp)
-                            Spacer(Modifier.height(12.dp))
-                            Text(
-                                "No ${currentCategory.label} found nearby",
-                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                                color = KipitaOnSurface,
-                                textAlign = TextAlign.Center
-                            )
-                            Text(
-                                "Try enabling location access or check your Google Places API key in local.properties.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = KipitaTextSecondary,
-                                modifier = Modifier.padding(top = 6.dp),
-                                textAlign = TextAlign.Center
-                            )
-                        }
                     }
                 }
             }
@@ -631,6 +703,51 @@ private fun ActionPill(
             label,
             style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
             color = if (enabled) KipitaOnSurface else KipitaTextSecondary
+        )
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Example place card — shown while real data is loading
+// ---------------------------------------------------------------------------
+@Composable
+private fun ExamplePlaceCard(ex: ExamplePlace) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(2.dp, RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.85f))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(52.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(KipitaCardBg),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(ex.emoji, fontSize = 24.sp)
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                ex.name,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = KipitaOnSurface
+            )
+            Text(
+                ex.detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = KipitaTextSecondary,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        Text(
+            "Example",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Medium),
+            color = KipitaTextSecondary.copy(alpha = 0.6f)
         )
     }
 }
