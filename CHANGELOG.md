@@ -4,6 +4,35 @@ All notable changes to Kipita are documented here.
 
 ---
 
+## [v0.8.0] — 2026-03-12 — Pre-Launch Release
+
+### Live Safety Level Bar
+- `SafetyLevelBar` in the top bar is now **data-driven** — level (1–4) and label text are computed from real advisory notices via `AdvisoryViewModel`
+- Level mapping: 1 = Normal Precautions (green), 2 = Increased Caution (yellow), 3 = Reconsider Travel (orange), 4 = Do Not Travel (red)
+- Label updates automatically when advisory data loads (e.g. "Exercise normal precautions", "Do not travel")
+
+### Bug Fixes
+- Fixed `FIREBASE_PROJECT_ID` BuildConfig: was `kipita-a1694`, corrected to `kipita-99351`
+- Fixed `animateColorAsState` import in `AuthScreen` (wrong package: `animation.core` → `animation`)
+
+### Next Steps Required Before Public Launch
+> **Google Sign-In** — `oauth_client` is currently empty in all `google-services.json` files.
+> Google Sign-In button shows a "not configured" toast until this is resolved.
+> Steps:
+> 1. Firebase Console → **kipita-99351** → Authentication → Sign-in method → Google → **Enable**
+> 2. Download the updated `google-services.json` and replace `app/src/dev/`, `app/src/staging/`, `app/src/prod/`
+> 3. Re-run `./gradlew assembleDevDebug` — the `default_web_client_id` string will be auto-populated
+
+> **Release Signing** — Set `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD` in `local.properties` before running `assembleProdRelease` for Play Store submission.
+
+> **SHA-1 Fingerprint** — Register the debug keystore SHA-1 (`debug.keystore`) in Firebase Console → Project Settings → Android apps → `com.kipita.dev` to enable Firebase Auth on the emulator.
+
+> **Dwaat API Auth** — Confirm `DWAAT_BASE_URL=https://api.dwaat.com/` is reachable and any required auth tokens are provisioned for prod flavor.
+
+> **Maps Billing** — Ensure Google Cloud billing is enabled for the `MAPS_API_KEY` and `GOOGLE_PLACES_API_KEY` projects before launch (Places API + Maps SDK require billing).
+
+---
+
 ## [v0.7.0] — 2026-02-28
 
 ### 📍 GPS-Sorted Destinations (Explore)
