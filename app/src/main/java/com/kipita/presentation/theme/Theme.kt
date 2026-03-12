@@ -10,10 +10,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.Font
-import androidx.compose.ui.text.googlefonts.GoogleFont
 import androidx.compose.ui.unit.sp
-import com.kipita.R
 
 // ---------------------------------------------------------------------------
 // Kipita Brand Colors — exact hex values from brand guidelines
@@ -42,25 +39,7 @@ val KipitaNavBg        = Color(0xFFFFFFFF)
 val KipitaGreenAccent  = Color(0xFF44BC44)   // updated to brand green
 val KipitaBlueAccent   = Color(0xFF56ACF9)   // updated to brand blue
 
-// ---------------------------------------------------------------------------
-// Montserrat — brand typeface via Google Fonts provider
-// ---------------------------------------------------------------------------
-private val fontProvider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage   = "com.google.android.gms",
-    certificates      = R.array.com_google_android_gms_fonts_certs
-)
-
-private val montserrat = GoogleFont("Montserrat")
-
-val MontserratFontFamily = FontFamily(
-    Font(googleFont = montserrat, fontProvider = fontProvider, weight = FontWeight.Light),
-    Font(googleFont = montserrat, fontProvider = fontProvider, weight = FontWeight.Normal),
-    Font(googleFont = montserrat, fontProvider = fontProvider, weight = FontWeight.Medium),
-    Font(googleFont = montserrat, fontProvider = fontProvider, weight = FontWeight.SemiBold),
-    Font(googleFont = montserrat, fontProvider = fontProvider, weight = FontWeight.Bold),
-    Font(googleFont = montserrat, fontProvider = fontProvider, weight = FontWeight.ExtraBold),
-)
+val MontserratFontFamily = FontFamily.SansSerif
 
 // ---------------------------------------------------------------------------
 // Material 3 color schemes
@@ -72,6 +51,12 @@ private val KipitaDarkColors = darkColorScheme(
     onPrimaryContainer = Color(0xFFFFCDD2),
     secondary          = BrandBlue,
     onSecondary        = Color(0xFF0D2137),
+    secondaryContainer = Color(0xFF1A3A59),
+    onSecondaryContainer = Color(0xFFD9EEFF),
+    tertiary           = BrandGreen,
+    onTertiary         = Color(0xFF062B06),
+    tertiaryContainer  = BrandTeal.copy(alpha = 0.35f),
+    onTertiaryContainer = Color(0xFFE9FFF6),
     background         = Color(0xFF121212),
     onBackground       = Color(0xFFE8E8E8),
     surface            = Color(0xFF1E1E1E),
@@ -90,6 +75,12 @@ private val KipitaLightColors = lightColorScheme(
     onPrimaryContainer = KipitaRedDark,
     secondary          = BrandBlue,
     onSecondary        = Color.White,
+    secondaryContainer = Color(0xFFDCEEFF),
+    onSecondaryContainer = Color(0xFF0D2137),
+    tertiary           = BrandGreen,
+    onTertiary         = Color.White,
+    tertiaryContainer  = BrandTeal.copy(alpha = 0.24f),
+    onTertiaryContainer = Color(0xFF0B3B2B),
     background         = KipitaBackground,
     onBackground       = KipitaOnSurface,
     surface            = KipitaSurface,
@@ -114,9 +105,9 @@ private val KipitaTypography = Typography(
     ),
     displayMedium = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.SemiBold,
-        fontSize     = 28.sp,
-        lineHeight   = 36.sp,
+        fontWeight   = FontWeight.Bold,
+        fontSize     = 30.sp,
+        lineHeight   = 38.sp,
         letterSpacing = (-0.25).sp
     ),
     headlineLarge = TextStyle(
@@ -129,8 +120,8 @@ private val KipitaTypography = Typography(
     headlineMedium = TextStyle(
         fontFamily   = MontserratFontFamily,
         fontWeight   = FontWeight.Bold,
-        fontSize     = 20.sp,
-        lineHeight   = 28.sp,
+        fontSize     = 22.sp,
+        lineHeight   = 30.sp,
         letterSpacing = 0.sp
     ),
     headlineSmall = TextStyle(
@@ -141,65 +132,65 @@ private val KipitaTypography = Typography(
     ),
     titleLarge = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.SemiBold,
-        fontSize     = 16.sp,
-        lineHeight   = 22.sp,
+        fontWeight   = FontWeight.Bold,
+        fontSize     = 18.sp,
+        lineHeight   = 24.sp,
         letterSpacing = 0.sp
     ),
     titleMedium = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.Medium,
-        fontSize     = 14.sp,
-        lineHeight   = 20.sp,
+        fontWeight   = FontWeight.SemiBold,
+        fontSize     = 16.sp,
+        lineHeight   = 22.sp,
         letterSpacing = 0.1.sp
     ),
     titleSmall = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.Medium,
-        fontSize     = 12.sp,
-        lineHeight   = 16.sp,
+        fontWeight   = FontWeight.SemiBold,
+        fontSize     = 14.sp,
+        lineHeight   = 18.sp,
         letterSpacing = 0.1.sp
     ),
     bodyLarge = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.Normal,
-        fontSize     = 16.sp,
-        lineHeight   = 24.sp,
+        fontWeight   = FontWeight.Medium,
+        fontSize     = 18.sp,
+        lineHeight   = 26.sp,
         letterSpacing = 0.15.sp
     ),
     bodyMedium = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.Normal,
-        fontSize     = 14.sp,
-        lineHeight   = 20.sp,
+        fontWeight   = FontWeight.Medium,
+        fontSize     = 16.sp,
+        lineHeight   = 24.sp,
         letterSpacing = 0.25.sp
     ),
     bodySmall = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.Normal,
-        fontSize     = 12.sp,
-        lineHeight   = 16.sp,
+        fontWeight   = FontWeight.Medium,
+        fontSize     = 14.sp,
+        lineHeight   = 20.sp,
         letterSpacing = 0.4.sp
     ),
     labelLarge = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.SemiBold,
-        fontSize     = 14.sp,
-        lineHeight   = 20.sp,
+        fontWeight   = FontWeight.Bold,
+        fontSize     = 16.sp,
+        lineHeight   = 22.sp,
         letterSpacing = 0.1.sp
     ),
     labelMedium = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.Medium,
-        fontSize     = 12.sp,
-        lineHeight   = 16.sp,
+        fontWeight   = FontWeight.SemiBold,
+        fontSize     = 14.sp,
+        lineHeight   = 18.sp,
         letterSpacing = 0.5.sp
     ),
     labelSmall = TextStyle(
         fontFamily   = MontserratFontFamily,
-        fontWeight   = FontWeight.Medium,
-        fontSize     = 10.sp,
-        lineHeight   = 14.sp,
+        fontWeight   = FontWeight.SemiBold,
+        fontSize     = 12.sp,
+        lineHeight   = 16.sp,
         letterSpacing = 0.5.sp
     )
 )

@@ -1,10 +1,20 @@
 package com.kipita.presentation.main
 
 import android.content.Intent
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -103,6 +113,11 @@ import com.kipita.presentation.theme.KipitaRed
 import com.kipita.presentation.theme.KipitaRedLight
 import com.kipita.presentation.theme.KipitaTextSecondary
 import com.kipita.presentation.theme.KipitaTextTertiary
+import com.kipita.presentation.theme.BrandGreen
+import com.kipita.presentation.theme.BrandRed
+import com.kipita.presentation.theme.BrandTeal
+import com.kipita.presentation.theme.KipitaSuccess
+import com.kipita.presentation.theme.KipitaWarning
 import com.kipita.presentation.map.collectAsStateWithLifecycleCompat
 import com.kipita.presentation.translate.TranslateScreen
 import com.kipita.presentation.trips.MyTripsScreen
@@ -226,14 +241,14 @@ fun KipitaApp() {
                         .shadow(
                             elevation = 24.dp,
                             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.05f),
-                            spotColor = Color.Black.copy(alpha = 0.09f)
+                            ambientColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.05f),
+                            spotColor = MaterialTheme.colorScheme.scrim.copy(alpha = 0.09f)
                         )
                         .background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(
-                                    Color.White.copy(alpha = 0.88f),
-                                    Color.White.copy(alpha = 0.96f)
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.96f)
                                 )
                             ),
                             shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
@@ -248,7 +263,7 @@ fun KipitaApp() {
                                 brush = Brush.horizontalGradient(
                                     colors = listOf(
                                         Color.Transparent,
-                                        Color.White.copy(alpha = 0.85f),
+                                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.16f),
                                         Color.Transparent
                                     )
                                 )
@@ -358,7 +373,7 @@ fun KipitaApp() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFFAFAFA))
+                .background(MaterialTheme.colorScheme.background)
         ) {
             when {
                 showWebView -> KipitaErrorBoundary("InAppBrowserScreen") { _ ->
@@ -494,8 +509,18 @@ fun KipitaApp() {
                     )
                 }
 
-                else -> Crossfade(
+                else -> AnimatedContent(
                     targetState = route,
+                    transitionSpec = {
+                        val forward = targetState.ordinal >= initialState.ordinal
+                        if (forward) {
+                            (fadeIn(tween(180)) + slideInHorizontally(tween(220)) { it / 6 }) togetherWith
+                                (fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { -it / 8 })
+                        } else {
+                            (fadeIn(tween(180)) + slideInHorizontally(tween(220)) { -it / 6 }) togetherWith
+                                (fadeOut(tween(140)) + slideOutHorizontally(tween(180)) { it / 8 })
+                        }
+                    },
                     label = "route-transition"
                 ) { destination ->
                     when (destination) {
@@ -608,7 +633,7 @@ fun KipitaApp() {
                 ModalBottomSheet(
                     onDismissRequest = { showProfileMenu = false },
                     sheetState = sheetState,
-                    containerColor = Color.White,
+                    containerColor = MaterialTheme.colorScheme.surface,
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
                     ProfileMenuContent(
@@ -648,13 +673,32 @@ private fun KipitaTopBar(
 ) {
     // Convert °C → °F for display
     val weatherTempF = weatherTempC?.let { (it * 9 / 5) + 32 }
+    val sosPulse = rememberInfiniteTransition(label = "sos-pulse")
+    val sosScale by sosPulse.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "sos-scale"
+    )
+    val sosGlow by sosPulse.animateFloat(
+        initialValue = 0.16f,
+        targetValue = 0.34f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "sos-glow"
+    )
 
     Column(modifier = Modifier.fillMaxWidth()) {
         // ── Row 1: Avatar + greeting | Weather | Change Location ─────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(MaterialTheme.colorScheme.surface)
                 .padding(horizontal = 14.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -677,13 +721,13 @@ private fun KipitaTopBar(
                     isGuest || userName.isBlank() -> Icon(
                         Icons.Default.Person,
                         contentDescription = "Profile",
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(20.dp)
                     )
                     else -> Text(
                         text = userName.first().uppercaseChar().toString(),
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -693,7 +737,7 @@ private fun KipitaTopBar(
             Text(
                 text = if (isGuest || userName.isBlank()) "Hi, Traveler..." else "Hi, ${userName.split(" ").firstOrNull() ?: userName}...",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFF1A1A1A),
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
                 maxLines = 1
             )
@@ -702,7 +746,7 @@ private fun KipitaTopBar(
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFFF2F2F2))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
                     .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -711,7 +755,7 @@ private fun KipitaTopBar(
                 Text(
                     text = weatherTempF?.let { "$it°F" } ?: "--°F",
                     style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color(0xFF1A1A1A)
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
 
@@ -726,7 +770,7 @@ private fun KipitaTopBar(
                 Text(
                     text = "Change\nLocation",
                     style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color(0xFF555555),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                     lineHeight = 13.sp
                 )
@@ -738,14 +782,14 @@ private fun KipitaTopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp)
-                .background(Color(0xFFE0E0E0))
+                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.35f))
         )
 
         // ── Row 2: Flag + address | Safety level + SOS siren ─────────────────
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF1A1A2E))
+                .background(MaterialTheme.colorScheme.secondaryContainer)
                 .padding(horizontal = 14.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -759,7 +803,7 @@ private fun KipitaTopBar(
                 Text(
                     text = currentLocationAddress,
                     style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
-                    color = Color.White,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
                     maxLines = 2,
                     lineHeight = 16.sp
                 )
@@ -773,11 +817,11 @@ private fun KipitaTopBar(
                 Text(
                     text = "Exercise increased\ncaution",
                     style = MaterialTheme.typography.labelSmall,
-                    color = Color.White.copy(alpha = 0.90f),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.90f),
                     textAlign = TextAlign.End,
                     lineHeight = 13.sp
                 )
-                Text("▶", fontSize = 9.sp, color = Color.White.copy(alpha = 0.55f))
+                Text("▶", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.55f))
                 SafetyLevelBar(level = 2)
                 Spacer(Modifier.width(6.dp))
 
@@ -785,8 +829,15 @@ private fun KipitaTopBar(
                 Box(
                     modifier = Modifier
                         .size(34.dp)
+                        .scale(sosScale)
+                        .shadow(
+                            elevation = 8.dp,
+                            shape = CircleShape,
+                            ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = sosGlow * 0.6f),
+                            spotColor = MaterialTheme.colorScheme.primary.copy(alpha = sosGlow)
+                        )
                         .clip(CircleShape)
-                        .background(Color(0xFFD32F2F))
+                        .background(MaterialTheme.colorScheme.primary)
                         .clickable(onClick = onEmergencyClick),
                     contentAlignment = Alignment.Center
                 ) {
@@ -810,10 +861,10 @@ private fun KipitaTopBar(
 @Composable
 private fun SafetyLevelBar(level: Int = 2) {
     val segments = listOf(
-        Color(0xFFC62828), // level 4 — red (top)
-        Color(0xFFF57C00), // level 3 — orange
-        Color(0xFFF9A825), // level 2 — yellow
-        Color(0xFF2E7D32)  // level 1 — green (bottom)
+        BrandRed,       // level 4 — red (top)
+        KipitaWarning,  // level 3 — orange
+        BrandTeal,      // level 2 — caution accent
+        BrandGreen      // level 1 — green (bottom)
     )
     Column(
         modifier = Modifier
@@ -1048,7 +1099,7 @@ private fun ProfileMenuItem(
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = if (isDestructive) Color(0xFFE53935) else KipitaOnSurface
+            color = if (isDestructive) MaterialTheme.colorScheme.error else KipitaOnSurface
         )
         Icon(
             Icons.AutoMirrored.Filled.ArrowBack,
