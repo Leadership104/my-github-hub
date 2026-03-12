@@ -42,7 +42,7 @@ android {
         versionName = "1.0.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
-        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"kipita-a1694\"")
+        buildConfigField("String", "FIREBASE_PROJECT_ID", "\"kipita-99351\"")
         val mapsKey = localProp("MAPS_API_KEY", "").ifBlank { localProp("GOOGLE_PLACES_API_KEY", "") }
         manifestPlaceholders["MAPS_API_KEY"] = mapsKey
         buildConfigField("String", "GOOGLE_PLACES_API_KEY", "\"${localProp("GOOGLE_PLACES_API_KEY")}\"")

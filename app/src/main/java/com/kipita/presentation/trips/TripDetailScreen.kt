@@ -271,6 +271,8 @@ fun TripDetailScreen(
                                     onOpenWebView(url, "Flights")
                                 }
                             )
+
+
                         }
                         // 🏨 Hotels
                         item {

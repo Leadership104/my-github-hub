@@ -96,6 +96,7 @@ import com.kipita.presentation.common.KipitaErrorBoundary
 import com.kipita.presentation.community.NearbyTravelersScreen
 import com.kipita.presentation.community.TravelGroupsScreen
 import com.kipita.presentation.advisory.AdvisoryScreen
+import com.kipita.presentation.advisory.AdvisoryViewModel
 import com.kipita.presentation.home.HomeScreen
 import com.kipita.presentation.home.WeatherViewModel
 import com.kipita.presentation.perks.PerksScreen
@@ -180,6 +181,8 @@ fun KipitaApp() {
     var currentLocationAddress by rememberSaveable { mutableStateOf("Detecting location...") }
     val topBarWeatherViewModel: WeatherViewModel = hiltViewModel()
     val topBarWeatherState by topBarWeatherViewModel.state.collectAsStateWithLifecycleCompat()
+    val advisoryVm: AdvisoryViewModel = hiltViewModel()
+    val advisoryState by advisoryVm.state.collectAsStateWithLifecycleCompat()
 
     // Sync avatar from AuthViewModel whenever the current user changes
     val currentUser by authVm.currentUser.collectAsStateWithLifecycleCompat()
@@ -224,6 +227,8 @@ fun KipitaApp() {
                 weatherTempC = topBarWeatherState.current?.temperatureC?.toInt(),
                 currentLocationAddress = currentLocationAddress,
                 onChangeLocation = { showMap = true },
+                safetyLevel = advisoryState.safetyLevel,
+                safetyLevelLabel = advisoryState.safetyLevelLabel,
                 onEmergencyClick = {
                     route = MainRoute.HOME
                     openSosSignal += 1
@@ -669,6 +674,8 @@ private fun KipitaTopBar(
     weatherTempC: Int?,
     currentLocationAddress: String = "Detecting location...",
     onChangeLocation: () -> Unit = {},
+    safetyLevel: Int = 2,
+    safetyLevelLabel: String = "Exercise increased\ncaution",
     onEmergencyClick: () -> Unit
 ) {
     // Convert °C → °F for display
@@ -815,14 +822,14 @@ private fun KipitaTopBar(
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = "Exercise increased\ncaution",
+                    text = safetyLevelLabel,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.90f),
                     textAlign = TextAlign.End,
                     lineHeight = 13.sp
                 )
                 Text("▶", fontSize = 9.sp, color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.55f))
-                SafetyLevelBar(level = 2)
+                SafetyLevelBar(level = safetyLevel)
                 Spacer(Modifier.width(6.dp))
 
                 // Emergency SOS — mini red siren button
