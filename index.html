@@ -286,59 +286,16 @@
           <button class="scope-pill" data-scope="national" onclick="App.setExploreScope('national',this)">🗺️ National</button>
           <button class="scope-pill" data-scope="global" onclick="App.setExploreScope('global',this)">🌍 Global</button>
         </div>
-        <div class="explore-tab-row">
-          <button class="etab active" data-places-tab="dest" onclick="App.placesTab('dest',this)">
-            🌍 Destinations
-          </button>
-          <button class="etab" data-places-tab="places" onclick="App.placesTab('places',this)">
-            📍 Places
-          </button>
-        </div>
       </div>
 
       <div class="scr-scroll explore-body">
-        <!-- DESTINATIONS TAB -->
-        <div id="tab-dest" class="places-tab-body">
-          <!-- Open Interactive Map card -->
-          <button class="explore-map-card" onclick="App.switchTab('maps')">
-            <div class="emc-left">
-              <div class="emc-icon-wrap">
-                <span class="ms" style="font-size:22px;color:#fff">grid_view</span>
-              </div>
-              <div>
-                <div class="emc-title">Open Interactive Map</div>
-                <div class="emc-sub">Google Places · BTC merchants · Nomad hubs</div>
-              </div>
-            </div>
-            <span class="ms" style="font-size:20px;color:rgba(255,255,255,.6)">chevron_right</span>
-          </button>
-
-          <!-- AI Explore card -->
-          <div class="ai-explore-card">
-            <div class="ai-explore-top">
-              <div class="ai-explore-title">✨ AI Explore</div>
-              <button class="ai-explore-scope-btn">🏙️ City</button>
-            </div>
-            <div class="ai-explore-chips">
-              <button class="ai-xchip" onclick="App.aiExplore('nomad')">⭐ Best for nomads</button>
-              <button class="ai-xchip" onclick="App.aiExplore('hotels')">🏨 Hotels</button>
-              <button class="ai-xchip" onclick="App.aiExplore('safety')">🛡️ Safety</button>
-              <button class="ai-xchip" onclick="App.aiExplore('cost')">💰 Cost of living</button>
-            </div>
-          </div>
-
-          <!-- Destination count + sort -->
-          <div class="dest-count-row">
-            <span class="dest-count-label" id="dest-count-label">8 destinations</span>
-            <span class="sort-info" id="sort-info"></span>
-          </div>
-
-          <!-- Enhanced destination cards -->
+        <!-- DESTINATIONS TAB (hidden — future build) -->
+        <div id="tab-dest" class="places-tab-body hidden">
           <div id="dest-grid"></div>
         </div>
 
-        <!-- PLACES TAB -->
-        <div id="tab-places" class="places-tab-body hidden">
+        <!-- PLACES TAB (always shown) -->
+        <div id="tab-places" class="places-tab-body">
           <div class="time-greeting" id="time-greeting">🍳 Good Morning</div>
           <div class="cat-grid" id="cat-grid"></div>
         </div>
@@ -374,12 +331,6 @@
           <button onclick="App.mapScreenSearch()"><span class="ms">search</span></button>
           <button onclick="App.detectLocation()" title="My location"><span class="ms">my_location</span></button>
         </div>
-        <div class="btc-source-pills" id="btc-source-pills">
-          <span class="bsp-label">Source:</span>
-          <button class="bsp active" data-src="both"    onclick="App.setBtcSource('both',this)">🌐 Both</button>
-          <button class="bsp"        data-src="btcmap"  onclick="App.setBtcSource('btcmap',this)">🗺 BTCMap</button>
-          <button class="bsp"        data-src="cashapp" onclick="App.setBtcSource('cashapp',this)">💚 Cash App</button>
-        </div>
         <div id="leaflet-map-screen" class="leaflet-map-screen"></div>
 
         <!-- Nearby Places Bottom Sheet -->
@@ -388,10 +339,11 @@
           <div class="map-nearby-hdr">
             <span class="map-nearby-title">Nearby Places</span>
             <div class="map-nearby-pills" id="map-nearby-pills">
-              <button class="mnpill active" data-f="btc" onclick="App.mapScreenFilter('btc',this)">₿ BTC</button>
-              <button class="mnpill" data-f="food" onclick="App.mapScreenFilter('food',this)">🍜 Food</button>
-              <button class="mnpill" data-f="cafe" onclick="App.mapScreenFilter('cafe',this)">☕ Cafe</button>
-              <button class="mnpill" data-f="shop" onclick="App.mapScreenFilter('shop',this)">🛍 Shops</button>
+              <button class="mnpill active" data-f="btc"     onclick="App.mapScreenFilter('btc',this)">₿ BTC</button>
+              <button class="mnpill"        data-f="cashapp" onclick="App.mapScreenFilter('cashapp',this)">💚 Cash App</button>
+              <button class="mnpill"        data-f="food"    onclick="App.mapScreenFilter('food',this)">🍜 Food</button>
+              <button class="mnpill"        data-f="cafe"    onclick="App.mapScreenFilter('cafe',this)">☕ Cafe</button>
+              <button class="mnpill"        data-f="shop"    onclick="App.mapScreenFilter('shop',this)">🛍 Shops</button>
             </div>
           </div>
           <div class="map-nearby-list" id="map-nearby-list">
@@ -464,12 +416,19 @@
           <span class="live-badge"><span class="live-dot"></span>Live</span>
         </div>
         <div class="crypto-prices-grid" id="ws-prices-grid">
+          <!-- Crypto -->
+          <div class="cpc"><div class="cpc-sym">₿ BTC</div><div class="cpc-price" id="ws-btc">—</div><div class="cc-chg" id="ws-btc-chg">—</div></div>
+          <div class="cpc"><div class="cpc-sym">Ξ ETH</div><div class="cpc-price" id="ws-eth">—</div><div class="cpc-sub">Ethereum</div></div>
+          <div class="cpc"><div class="cpc-sym">◎ SOL</div><div class="cpc-price" id="ws-sol">—</div><div class="cpc-sub">Solana</div></div>
+          <!-- Metals -->
+          <div class="cpc"><div class="cpc-sym">🥇 Gold</div><div class="cpc-price" id="ws-xau">—</div><div class="cpc-sub">per troy oz</div></div>
+          <div class="cpc"><div class="cpc-sym">🥈 Silver</div><div class="cpc-price" id="ws-xag">—</div><div class="cpc-sub">per troy oz</div></div>
+          <div class="cpc"><div class="cpc-sym">⬜ Platinum</div><div class="cpc-price" id="ws-xpt">—</div><div class="cpc-sub">per troy oz</div></div>
+          <!-- Forex -->
           <div class="cpc"><div class="cpc-sym">🇪🇺 EUR</div><div class="cpc-price" id="ws-eur">—</div><div class="cpc-sub">vs USD</div></div>
           <div class="cpc"><div class="cpc-sym">🇬🇧 GBP</div><div class="cpc-price" id="ws-gbp">—</div><div class="cpc-sub">vs USD</div></div>
           <div class="cpc"><div class="cpc-sym">🇯🇵 JPY</div><div class="cpc-price" id="ws-jpy">—</div><div class="cpc-sub">per USD</div></div>
           <div class="cpc"><div class="cpc-sym">🇨🇳 CNY</div><div class="cpc-price" id="ws-cny">—</div><div class="cpc-sub">per USD</div></div>
-          <div class="cpc"><div class="cpc-sym">🥇 Gold</div><div class="cpc-price" id="ws-xau">—</div><div class="cpc-sub">per troy oz</div></div>
-          <div class="cpc"><div class="cpc-sym">₿ BTC</div><div class="cpc-price" id="ws-btc">—</div><div class="cc-chg" id="ws-btc-chg">—</div></div>
         </div>
 
         <!-- BTC Merchants Map -->
@@ -546,20 +505,22 @@
 
   </main>
 
-  <!-- ── BOTTOM NAV (6 tabs) ── -->
+  <!-- ── BOTTOM NAV (7 tabs) ── -->
   <nav id="bottom-nav">
     <button class="nav-btn active" data-tab="home" onclick="App.switchTab('home')">
       <span class="ms nav-icon">home</span>
       <span class="nav-lbl">Home</span>
     </button>
+    <button class="nav-btn" data-tab="maps" onclick="App.switchTab('maps')">
+      <span class="ms nav-icon">map</span>
+      <span class="nav-lbl">Maps</span>
+    </button>
     <button class="nav-btn" data-tab="places" onclick="App.switchTab('places')">
       <span class="ms nav-icon">travel_explore</span>
       <span class="nav-lbl">Explore</span>
     </button>
-    <button class="nav-btn nav-ai-btn" data-tab="ai" onclick="App.switchTab('ai')">
-      <div class="nav-ai-circle">
-        <span class="ms" style="font-size:26px;color:#fff;vertical-align:middle">auto_awesome</span>
-      </div>
+    <button class="nav-btn" data-tab="ai" onclick="App.switchTab('ai')">
+      <span class="ms nav-icon">auto_awesome</span>
       <span class="nav-lbl">AI</span>
     </button>
     <button class="nav-btn" data-tab="trips" onclick="App.switchTab('trips')">
@@ -768,7 +729,19 @@
     <button class="modal-x" onclick="App.closeModal('plan-trip')"><span class="ms">close</span></button>
   </div>
   <div class="modal-body">
-    <div class="form-group"><label>Destination *</label><input type="text" id="pt-dest" placeholder="e.g. Tokyo, Japan"/></div>
+    <!-- Destination photo hero -->
+    <div id="pt-photo-hero" class="pt-photo-hero hidden"></div>
+
+    <!-- AI Quick-Plan bar -->
+    <div class="pt-ai-bar">
+      <span class="ms" style="color:var(--red);font-size:22px;flex-shrink:0">auto_awesome</span>
+      <input type="text" id="pt-ai-input" placeholder="Describe your trip… AI fills the form"/>
+      <button class="pt-ai-go" onclick="App.aiPlanTripForm()">Plan</button>
+    </div>
+    <div id="pt-ai-result" class="pt-ai-result hidden"></div>
+    <div class="pt-divider">— or fill manually —</div>
+
+    <div class="form-group"><label>Destination *</label><input type="text" id="pt-dest" placeholder="e.g. Tokyo, Japan" oninput="App.onDestInput(this.value)"/></div>
     <div class="form-row">
       <div class="form-group"><label>Start Date</label><input type="date" id="pt-start"/></div>
       <div class="form-group"><label>End Date</label><input type="date" id="pt-end"/></div>

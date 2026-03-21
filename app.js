@@ -262,7 +262,8 @@ const App = (() => {
     fetchCrypto();
     fetchFxRates();
     fetchAllDestPhotos();
-    setInterval(fetchCrypto, 60000);
+    // Refresh all live data every 60 seconds
+    setInterval(() => { fetchCrypto(); fetchFxRates(); }, 60000);
   }
 
   /* ── DESTINATION PHOTOS (Wikimedia 800px) ───────────────────── */
@@ -391,31 +392,38 @@ const App = (() => {
 
   /* ── LOCATION ───────────────────────────────────────────────── */
   function detectLocation() {
-    if (!('geolocation' in navigator)) { snack('Geolocation not supported'); return; }
-    navigator.geolocation.getCurrentPosition(
-      pos => {
-        state.location.lat = pos.coords.latitude;
-        state.location.lng = pos.coords.longitude;
-        reverseGeocode(state.location.lat, state.location.lng);
-        fetchWeather(state.location.lat, state.location.lng);
-        sortDestsByDistance();
-        // Re-fetch BTC merchants with location for bbox filtering
-        fetchBTCMerchants();
-        generateCashAppMerchants();
-        // Re-center maps if already open
-        if (state.mapScreen) {
-          state.mapScreen.setView([state.location.lat, state.location.lng], 13);
-        }
-        if (state.walletMap) {
-          state.walletMap.setView([state.location.lat, state.location.lng], 13);
-        }
-      },
-      () => {
-        state.location.name = 'Location unavailable';
-        document.getElementById('location-text').textContent = 'Location unavailable';
-      },
-      { timeout: 10000 }
-    );
+    const onGot = (lat, lng) => {
+      state.location.lat = lat;
+      state.location.lng = lng;
+      reverseGeocode(lat, lng);
+      fetchWeather(lat, lng);
+      sortDestsByDistance();
+      fetchBTCMerchants();
+      generateCashAppMerchants();
+      if (state.mapScreen) state.mapScreen.setView([lat, lng], 13);
+      if (state.walletMap) state.walletMap.setView([lat, lng], 13);
+    };
+
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        pos => onGot(pos.coords.latitude, pos.coords.longitude),
+        async () => {
+          // IP-based fallback
+          try {
+            const r = await fetch('https://ip-api.com/json');
+            const d = await r.json();
+            if (d.status === 'success') {
+              onGot(d.lat, d.lon);
+              state.location.name = `${d.city}, ${d.countryCode}`;
+              document.getElementById('location-text').textContent = state.location.name;
+            }
+          } catch {
+            document.getElementById('location-text').textContent = 'Location unavailable';
+          }
+        },
+        { timeout: 8000 }
+      );
+    }
   }
 
   async function reverseGeocode(lat, lng) {
@@ -466,18 +474,19 @@ const App = (() => {
     } catch {}
   }
 
-  /* ── CRYPTO (BTC only) ───────────────────────────────────────── */
+  /* ── CRYPTO + METALS ────────────────────────────────────────── */
+  const setEl = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
+  const fmtUSD = (n, dec = 0) => '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+
   async function fetchCrypto() {
     try {
       const r = await fetch(
-        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true'
+        'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd&include_24hr_change=true'
       );
       const d = await r.json();
       if (d.bitcoin) {
         state.btcPrice = d.bitcoin.usd;
-        const setEl = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-        const price = '$' + d.bitcoin.usd.toLocaleString('en-US', { maximumFractionDigits: 0 });
-        setEl('ws-btc', price);
+        setEl('ws-btc', fmtUSD(d.bitcoin.usd));
         const chg = d.bitcoin.usd_24h_change;
         const chgEl = document.getElementById('ws-btc-chg');
         if (chgEl) {
@@ -487,7 +496,27 @@ const App = (() => {
         }
         convertCurrency();
       }
+      if (d.ethereum)  setEl('ws-eth', fmtUSD(d.ethereum.usd));
+      if (d.solana)    setEl('ws-sol', fmtUSD(d.solana.usd, 2));
     } catch {}
+    fetchGoldAndMetals();
+  }
+
+  async function fetchGoldAndMetals() {
+    try {
+      // metals.live — free, no key required
+      const r = await fetch('https://api.metals.live/v1/spot');
+      const d = await r.json();
+      const spot = Array.isArray(d) ? d[0] : d;
+      if (spot?.gold)     setEl('ws-xau', fmtUSD(spot.gold, 2) + ' / oz');
+      if (spot?.silver)   setEl('ws-xag', fmtUSD(spot.silver, 2) + ' / oz');
+      if (spot?.platinum) setEl('ws-xpt', fmtUSD(spot.platinum, 2) + ' / oz');
+    } catch {
+      // Fallback approximate prices
+      setEl('ws-xau', '~$3,050 / oz');
+      setEl('ws-xag', '~$33 / oz');
+      setEl('ws-xpt', '~$980 / oz');
+    }
   }
 
   /* ── SAFETY UI ──────────────────────────────────────────────── */
@@ -694,9 +723,93 @@ const App = (() => {
   }
 
   function clearPlanForm() {
-    ['pt-dest','pt-start','pt-end','pt-notes','pt-invites'].forEach(id => {
+    ['pt-dest','pt-start','pt-end','pt-notes','pt-invites','pt-ai-input'].forEach(id => {
       const el = document.getElementById(id); if (el) el.value = '';
     });
+    const r = document.getElementById('pt-ai-result');
+    if (r) { r.innerHTML = ''; r.classList.add('hidden'); }
+  }
+
+  async function fetchDestPhoto(cityName) {
+    try {
+      const r = await fetch(
+        `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(cityName)}&prop=pageimages&pithumbsize=800&format=json&origin=*`
+      );
+      const j = await r.json();
+      const pages = j.query?.pages || {};
+      return Object.values(pages)[0]?.thumbnail?.source || null;
+    } catch { return null; }
+  }
+
+  function showPlanTripPhoto(url) {
+    const hero = document.getElementById('pt-photo-hero');
+    if (!hero) return;
+    if (url) {
+      hero.style.backgroundImage = `url('${url}')`;
+      hero.classList.remove('hidden');
+    } else {
+      hero.classList.add('hidden');
+    }
+  }
+
+  let _destInputTimer;
+  function onDestInput(val) {
+    clearTimeout(_destInputTimer);
+    const city = val.split(',')[0].trim();
+    if (city.length < 3) { showPlanTripPhoto(null); return; }
+    // Check known destinations first (instant)
+    const photo = destPhotoForCity(city);
+    if (photo) { showPlanTripPhoto(photo); return; }
+    // Otherwise debounce Wikimedia fetch
+    _destInputTimer = setTimeout(async () => {
+      const url = await fetchDestPhoto(city);
+      showPlanTripPhoto(url);
+    }, 600);
+  }
+
+  async function aiPlanTripForm() {
+    const aiInput   = document.getElementById('pt-ai-input');
+    const destInput = document.getElementById('pt-dest');
+    const prompt    = (aiInput?.value || destInput?.value || '').trim();
+    if (!prompt) { snack('✨ Tell AI where you want to go'); aiInput?.focus(); return; }
+
+    const resultEl = document.getElementById('pt-ai-result');
+    resultEl.innerHTML = `<div class="pt-ai-loading"><div class="spinner-sm"></div>✨ Planning your trip…</div>`;
+    resultEl.classList.remove('hidden');
+
+    // Extract clean destination
+    const dest = prompt
+      .replace(/plan|a|my|trip|to|travel|for|in|visit|itinerary|i want to go|\?/gi, ' ')
+      .replace(/\s+/g, ' ').trim() || prompt;
+    const destClean = dest.split(',')[0].trim().replace(/\b\w/g, c => c.toUpperCase()) +
+      (dest.includes(',') ? ', ' + dest.split(',').slice(1).join(',').trim() : '');
+    if (destInput) destInput.value = destClean;
+
+    // Fetch photo immediately
+    const photo = destPhotoForCity(destClean) || await fetchDestPhoto(destClean.split(',')[0].trim());
+    showPlanTripPhoto(photo);
+
+    // Default dates: 14 days out, 7-day trip
+    const start = new Date(Date.now() + 14 * 86400000);
+    const end   = new Date(Date.now() + 21 * 86400000);
+    document.getElementById('pt-start').value = start.toISOString().slice(0, 10);
+    document.getElementById('pt-end').value   = end.toISOString().slice(0, 10);
+
+    setTimeout(() => {
+      const fullResponse = AI_RESPONSES.plan(destClean);
+      const noteLines = fullResponse
+        .split('\n')
+        .filter(l => l.match(/^(Day|\*|•|-|\d)/) && l.trim().length > 2)
+        .slice(0, 6)
+        .map(l => l.replace(/\*\*/g, '').trim())
+        .join('\n');
+      document.getElementById('pt-notes').value = noteLines ||
+        `AI-planned trip to ${destClean}. Open the AI tab for a full itinerary.`;
+
+      state.aiLastTrip = { dest: destClean, days: 7 };
+      resultEl.innerHTML = `<div class="pt-ai-success">✅ Form filled — review and tap Create Trip!</div>`;
+      setTimeout(() => resultEl.classList.add('hidden'), 3000);
+    }, 1200);
   }
 
   function markTripComplete(id) {
@@ -853,17 +966,10 @@ const App = (() => {
   function initExploreScreen() {
     const el = document.getElementById('explore-location-text');
     if (el) el.textContent = state.location.name || 'Detecting…';
-    // Default to Destinations tab (left)
-    const destTab   = document.getElementById('tab-dest');
-    const placesTab = document.getElementById('tab-places');
-    if (destTab && destTab.classList.contains('hidden')) {
-      destTab.classList.remove('hidden');
-      if (placesTab) placesTab.classList.add('hidden');
-      document.querySelectorAll('.etab').forEach(b => b.classList.remove('active'));
-      const destBtn = document.querySelector('.etab[data-places-tab="dest"]');
-      if (destBtn) destBtn.classList.add('active');
-    }
-    renderDestinations();
+    // Destinations hidden (future build) — always show Places
+    document.getElementById('tab-dest')?.classList.add('hidden');
+    document.getElementById('tab-places')?.classList.remove('hidden');
+    renderCategories();
   }
 
   function toggleSaved(id) {
@@ -1093,11 +1199,64 @@ const App = (() => {
     }, 1400 + Math.random() * 800);
   }
 
+  /* ── AI CONTEXT BUILDER ─────────────────────────────────────── */
+  function buildAiContext() {
+    const lines = [];
+    if (state.user?.name) lines.push(`User: ${state.user.name}`);
+    if (state.location.name && state.location.name !== 'Detecting…')
+      lines.push(`Current location: ${state.location.name}`);
+    if (state.weather.temp !== '--')
+      lines.push(`Weather: ${state.weather.emoji} ${state.weather.temp}° ${state.weather.desc}`);
+    const upcoming = state.trips.filter(t => t.status === 'upcoming');
+    if (upcoming.length) {
+      lines.push(`Upcoming trips: ${upcoming.map(t =>
+        `${t.dest} (${formatDate(t.start)} – ${formatDate(t.end)})`).join(', ')}`);
+    }
+    if (state.btcPrice)
+      lines.push(`Live BTC price: $${state.btcPrice.toLocaleString()}`);
+    return lines.join('\n');
+  }
+
   function getAiResponse(msg) {
-    const m = msg.toLowerCase();
-    if (m.includes('plan') && (m.includes('trip') || m.includes('travel') || m.includes('visit') || m.includes('itinerary'))) {
-      const dest = msg.replace(/plan|a|my|trip|to|travel|for|in|visit|itinerary|\?/gi,'').trim();
-      return AI_RESPONSES.plan(dest);
+    const m   = msg.toLowerCase();
+    const ctx = buildAiContext();
+    const upcoming = state.trips.filter(t => t.status === 'upcoming');
+
+    // If user asks about one of their planned destinations
+    for (const trip of upcoming) {
+      const tripCity = trip.dest.split(',')[0].toLowerCase();
+      if (m.includes(tripCity)) {
+        return `✈️ **Your ${trip.dest} Trip**\n\n` +
+          `You're heading to **${trip.dest}** from **${formatDate(trip.start)}** to **${formatDate(trip.end)}**.\n\n` +
+          AI_RESPONSES.plan(trip.dest);
+      }
+    }
+
+    // Context-aware "my trips" query
+    if (m.includes('my trip') || m.includes('my itinerary') || m.includes('my plan')) {
+      if (!upcoming.length) return `📅 You don't have any upcoming trips yet! Tap **Plan a Trip** or tell me where you want to go and I'll plan it.`;
+      return `📅 **Your Upcoming Trips**\n\n${upcoming.map((t,i) =>
+        `${i+1}. **${t.dest}** — ${formatDate(t.start)} to ${formatDate(t.end)}${t.notes ? '\n   *' + t.notes.slice(0,80) + '…*' : ''}`
+      ).join('\n\n')}\n\nWant me to plan the itinerary for any of these?`;
+    }
+
+    // Location-aware "what should I do" / "recommend"
+    if (m.includes('recommend') || m.includes('what to do') || m.includes('near me') || m.includes('nearby')) {
+      const loc = state.location.name && state.location.name !== 'Detecting…' ? state.location.name : 'your current area';
+      return `📍 **Recommendations Near ${loc}**\n\n• Open the **Maps** tab → filter by Food, Café, or BTC to see live places\n• Use **Places** tab to find restaurants, gyms, pharmacies\n• Current weather: ${state.weather.emoji} ${state.weather.temp !== '--' ? state.weather.temp+'°' : 'loading…'}\n\nWant me to plan a trip from here?`;
+    }
+
+    if (m.includes('weather')) {
+      const loc = state.location.name || 'your location';
+      return state.weather.temp !== '--'
+        ? `🌤️ **Live Weather for ${loc}**\n\n${state.weather.emoji} **${state.weather.temp}°** — ${state.weather.desc}\n\nBest for travel: clear skies expected for the next few days. Pack light layers.`
+        : `Weather data loading… Make sure location access is enabled for live weather.`;
+    }
+
+    if ((m.includes('plan') || m.includes('go to') || m.includes('visit')) &&
+        (m.includes('trip') || m.includes('travel') || m.includes('itinerary') || m.includes('days'))) {
+      const dest = msg.replace(/plan|a|my|trip|to|travel|for|in|visit|itinerary|how|do|i|\?/gi,'').trim();
+      return AI_RESPONSES.plan(dest || state.location.name);
     }
     if (m.includes('safe') || m.includes('danger') || m.includes('risk') || m.includes('crime'))
       return AI_RESPONSES.safety(state.location.name);
@@ -1105,10 +1264,17 @@ const App = (() => {
       return AI_RESPONSES.advisories();
     if (m.includes('phrase') || m.includes('language') || m.includes('speak') || m.includes('translate'))
       return AI_RESPONSES.phrases();
-    if (m.includes('bitcoin') || m.includes('btc') || m.includes('crypto') || m.includes('wallet'))
-      return '₿ **Bitcoin Travel Tips**\n\nKipita makes Bitcoin travel easy:\n\n• Use **BTC Map** tab to find thousands of merchants worldwide\n• Your **Wallet** tab shows live prices for BTC, ETH, SOL + more\n• Find **Bitcoin ATMs** in Places → ATM/BTC\n• Most BTC-friendly countries: El Salvador 🇸🇻, Portugal 🇵🇹, Switzerland 🇨🇭, UAE 🇦🇪, Japan 🇯🇵\n\n*Tip: Always keep some local cash as backup!*';
+    if (m.includes('gold') || m.includes('silver') || m.includes('metal') || m.includes('price')) {
+      const goldEl = document.getElementById('ws-xau');
+      const btcEl  = document.getElementById('ws-btc');
+      return `🥇 **Live Commodity & Crypto Prices**\n\n• Gold: ${goldEl?.textContent || 'loading…'}\n• BTC: ${btcEl?.textContent || 'loading…'}\n\nCheck the **Wallet** tab for live ETH, SOL, silver, platinum + currency converter.`;
+    }
+    if (m.includes('bitcoin') || m.includes('btc') || m.includes('crypto'))
+      return `₿ **Bitcoin Travel Tips**\n\nKipita makes Bitcoin travel easy:\n\n• **Maps** tab — thousands of live BTC merchants via BTCMap\n• **Wallet** tab — live BTC price: ${state.btcPrice ? '$'+state.btcPrice.toLocaleString() : 'loading…'}\n• **Places** tab → ATM/BTC — find Bitcoin ATMs near you\n• Most BTC-friendly: El Salvador 🇸🇻, Portugal 🇵🇹, Japan 🇯🇵, UAE 🇦🇪`;
     if (m.includes('visa') || m.includes('passport') || m.includes('requirement'))
-      return '🛂 **Visa & Entry Requirements**\n\nEntry requirements vary by country:\n\n• Thailand: 30-60 days visa on arrival\n• Bali (Indonesia): 30 days extendable\n• Portugal: Schengen 90 days\n• UAE: 30-90 days on arrival\n\n**Always verify** before booking — policies change frequently.\n\n📋 See Advisory tab for real-time updates.';
+      return '🛂 **Visa & Entry Requirements**\n\nEntry requirements vary:\n\n• Thailand: 30–60 days visa on arrival\n• Indonesia (Bali): 30 days extendable\n• Portugal (Schengen): 90/180 days\n• UAE: 30–90 days on arrival\n• Japan: 90 days (most Western passports)\n\n**Always verify** on your country\'s official embassy site before booking.';
+    if (m.includes('currency') || m.includes('exchange') || m.includes('convert'))
+      return `💱 **Currency & Exchange**\n\nLive rates are in your **Wallet** tab.\n\n${ctx.includes('BTC') ? `BTC is at ${state.btcPrice ? '$'+state.btcPrice.toLocaleString() : 'loading'}. ` : ''}Use the converter to calculate any currency pair instantly.`;
     return AI_RESPONSES.default(msg.slice(0, 50));
   }
 
@@ -1155,9 +1321,6 @@ const App = (() => {
     }
     fetchBTCMerchants();
     generateCashAppMerchants();
-    // Show BTC source pills since BTC is default filter
-    const srcPills = document.getElementById('btc-source-pills');
-    if (srcPills) srcPills.classList.add('visible');
     renderMapNearbyPlaces('btc');
   }
 
@@ -1240,7 +1403,7 @@ const App = (() => {
       addLabeledMarker(
         state.walletMap, mlat, mlng,
         '₿', '#F7931A', name,
-        makePopupHtml(name, ti.emoji, ti.label, '₿ BTCMap', '#F7931A', mlat, mlng),
+        makePopupHtml(name, ti.emoji, ti.label, tags),
         state.walletMapMarkers
       );
     });
@@ -1251,22 +1414,12 @@ const App = (() => {
     document.querySelectorAll('#map-screen-pills .mpill, #map-nearby-pills .mnpill').forEach(p => p.classList.remove('active'));
     // Sync both pill rows
     document.querySelectorAll(`[data-f="${filter}"]`).forEach(p => p.classList.add('active'));
-    // Show / hide BTC source sub-pills
-    const srcPills = document.getElementById('btc-source-pills');
-    if (srcPills) srcPills.classList.toggle('visible', filter === 'btc');
     renderMapScreenMarkers();
     renderMapNearbyPlaces(filter);
     if (filter === 'btc') {
       if (state.btcMerchants.length === 0) fetchBTCMerchants();
       if (state.cashAppMerchants.length === 0) generateCashAppMerchants();
     }
-  }
-
-  function setBtcSource(src, btn) {
-    state.btcSource = src;
-    document.querySelectorAll('#btc-source-pills .bsp').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    renderMapScreenMarkers();
   }
 
   function generateCashAppMerchants() {
@@ -1376,23 +1529,41 @@ const App = (() => {
       </div>`;
   }
 
-  function makePopupHtml(name, typeEmoji, typeLabel, sourceBadge, sourceBg, lat, lng) {
-    const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  function makePopupHtml(name, typeEmoji, typeLabel, tags) {
+    const website = tags?.website || tags?.['contact:website'] || tags?.url || '';
+    const phone   = tags?.phone   || tags?.['contact:phone']   || '';
+    const hours   = tags?.opening_hours || '';
+    const desc    = tags?.description   || tags?.brand         || tags?.operator || '';
+    const cuisine = tags?.cuisine ? ' · ' + tags.cuisine.replace(/_/g,' ') : '';
     return `
-      <div style="min-width:190px;max-width:230px;font-family:'Montserrat',sans-serif">
+      <div style="min-width:220px;max-width:270px;font-family:'Montserrat',sans-serif;padding:2px 0">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <div style="background:#f5f5f5;border-radius:12px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${typeEmoji}</div>
           <div style="min-width:0">
-            <div style="font-size:13px;font-weight:700;color:#1a1a2e;line-height:1.35;word-break:break-word">${name}</div>
-            <div style="font-size:11px;color:#888;margin-top:2px">${typeLabel}</div>
+            <div style="font-size:14px;font-weight:800;color:#1a1a2e;line-height:1.25;word-break:break-word">${escHtml(name)}</div>
+            <div style="font-size:11px;color:#888;margin-top:2px">${typeLabel}${cuisine}</div>
           </div>
         </div>
-        <div style="margin-bottom:10px">
-          <span style="background:${sourceBg};color:#fff;padding:3px 9px;border-radius:10px;font-size:10px;font-weight:700">${sourceBadge}</span>
+        ${desc  ? `<p style="font-size:12px;color:#444;line-height:1.55;margin-bottom:8px">${escHtml(desc)}</p>` : ''}
+        ${hours ? `<div style="font-size:11px;color:#555;margin-bottom:6px">🕐 ${escHtml(hours)}</div>` : ''}
+        ${phone ? `<div style="font-size:11px;margin-bottom:8px">📞 <a href="tel:${escHtml(phone)}" style="color:#DD3B49;text-decoration:none;font-weight:600">${escHtml(phone)}</a></div>` : ''}
+        <div style="display:flex;gap:6px;margin-top:10px">
+          ${website
+            ? `<a href="${escHtml(website)}" target="_blank" rel="noopener"
+                 style="flex:1;text-align:center;background:#DD3B49;color:#fff;padding:9px 6px;border-radius:10px;font-size:11px;font-weight:700;text-decoration:none">
+                 🌐 Website
+               </a>`
+            : `<a href="https://www.google.com/maps/search/${encodeURIComponent(name)}" target="_blank" rel="noopener"
+                 style="flex:1;text-align:center;background:#f0f0f0;color:#333;padding:9px 6px;border-radius:10px;font-size:11px;font-weight:700;text-decoration:none">
+                 📍 Directions
+               </a>`}
+          ${website
+            ? `<a href="https://www.google.com/maps/search/${encodeURIComponent(name)}" target="_blank" rel="noopener"
+                 style="flex:1;text-align:center;background:#f0f0f0;color:#333;padding:9px 6px;border-radius:10px;font-size:11px;font-weight:700;text-decoration:none">
+                 📍 Directions
+               </a>`
+            : ''}
         </div>
-        <a href="${mapsUrl}" target="_blank" style="display:block;text-align:center;background:#DD3B49;color:#fff;padding:7px;border-radius:8px;font-size:11px;font-weight:700;text-decoration:none">
-          📍 Open in Google Maps
-        </a>
       </div>`;
   }
 
@@ -1428,66 +1599,83 @@ const App = (() => {
     const { lat, lng } = state.location;
 
     if (filter === 'btc') {
-      const src = state.btcSource;
-
-      // BTCMap merchants
-      if (src === 'btcmap' || src === 'both') {
-        state.btcMerchants.slice(0, 50).forEach(el => {
-          const mlat = el.osm_json.lat, mlng = el.osm_json.lon;
-          const tags = el.osm_json.tags || {};
-          const name = tags.name || 'BTC Merchant';
-          const ti   = getPlaceTypeInfo(tags);
-          addLabeledMarker(
-            state.mapScreen, mlat, mlng,
-            '₿', '#F7931A', name,
-            makePopupHtml(name, ti.emoji, ti.label, '₿ BTCMap', '#F7931A', mlat, mlng),
-            state.mapScreenMarkers
-          );
-        });
-      }
-
-      // Cash App merchants
-      if (src === 'cashapp' || src === 'both') {
-        if (state.cashAppMerchants.length === 0) generateCashAppMerchants();
-        state.cashAppMerchants.forEach(el => {
-          const mlat = el.osm_json.lat, mlng = el.osm_json.lon;
-          const tags = el.osm_json.tags || {};
-          const name = tags.name || 'Cash App Pay';
-          addLabeledMarker(
-            state.mapScreen, mlat, mlng,
-            '$', '#00D632', name,
-            makePopupHtml(name, '💚', 'Cash App Pay', '💚 Cash App', '#00A826', mlat, mlng),
-            state.mapScreenMarkers
-          );
-        });
-      }
-    } else if (lat) {
-      const cfgs = {
-        food: { ico:'🍜', bg:'#E53E3E', count:6, label:'Restaurant' },
-        cafe: { ico:'☕', bg:'#D69E2E', count:5, label:'Café' },
-        shop: { ico:'🛍', bg:'#805AD5', count:4, label:'Shop' },
-        atm:  { ico:'🏧', bg:'#38A169', count:4, label:'ATM' },
-      };
-      const cfg  = cfgs[filter] || cfgs.food;
-      const demoNames = {
-        food: ['Nomad Kitchen','Street Bites','The Wanderer Grill','Local Eats','Spice Route','Fusion Corner'],
-        cafe: ['Digital Nomad Café','Bean & Browse','The Grind','Pour Over Paradise','Roast & Relax'],
-        shop: ['Nomad Market','Travel Essentials','The Gear Store','Local Boutique'],
-        atm:  ['City ATM','Airport Exchange','Central Bank ATM','24h Cash Point'],
-      };
-      const names = demoNames[filter] || demoNames.food;
-      for (let i = 0; i < cfg.count; i++) {
-        const mlat = lat + (Math.random() - .5) * 0.04;
-        const mlng = lng + (Math.random() - .5) * 0.04;
-        const name = names[i % names.length];
+      // ₿ BTC filter — show BTCMap merchants
+      state.btcMerchants.slice(0, 50).forEach(el => {
+        const mlat = el.osm_json.lat, mlng = el.osm_json.lon;
+        const tags = el.osm_json.tags || {};
+        const name = tags.name || 'BTC Merchant';
+        const ti   = getPlaceTypeInfo(tags);
         addLabeledMarker(
           state.mapScreen, mlat, mlng,
-          cfg.ico, cfg.bg, name,
-          makePopupHtml(name, cfg.ico, cfg.label, cfg.label, cfg.bg, mlat, mlng),
+          '₿', '#F7931A', name,
+          makePopupHtml(name, ti.emoji, ti.label, tags),
           state.mapScreenMarkers
         );
-      }
+      });
+    } else if (filter === 'cashapp') {
+      // 💚 Cash App filter — show Cash App merchant locations
+      if (state.cashAppMerchants.length === 0) generateCashAppMerchants();
+      state.cashAppMerchants.forEach(el => {
+        const mlat = el.osm_json.lat, mlng = el.osm_json.lon;
+        const tags = el.osm_json.tags || {};
+        const name = tags.name || 'Cash App Pay';
+        addLabeledMarker(
+          state.mapScreen, mlat, mlng,
+          '$', '#00D632', name,
+          makePopupHtml(name, '💚', 'Cash App Pay', { website: 'https://cash.app', description: 'Accepts Cash App payments' }),
+          state.mapScreenMarkers
+        );
+      });
+    } else if (lat) {
+      fetchAndRenderOverpassMarkers(filter, lat, lng);
     }
+  }
+
+  /* ── OVERPASS REAL NEARBY PLACES ─────────────────────────────── */
+  const OVERPASS_CFGS = {
+    food: { tag:'"amenity"~"restaurant|fast_food|food_court"', ico:'🍜', bg:'#E53E3E', label:'Restaurant' },
+    cafe: { tag:'"amenity"~"cafe|coffee_shop"',                ico:'☕', bg:'#D69E2E', label:'Café' },
+    shop: { tag:'"shop"~"supermarket|convenience|mall"',       ico:'🛍', bg:'#805AD5', label:'Shop' },
+    atm:  { tag:'"amenity"="atm"',                             ico:'🏧', bg:'#38A169', label:'ATM' },
+  };
+
+  async function fetchAndRenderOverpassMarkers(filter, lat, lng) {
+    const cfg = OVERPASS_CFGS[filter]; if (!cfg) return;
+    try {
+      const q = `[out:json][timeout:15];node[${cfg.tag}](around:2000,${lat},${lng});out 12;`;
+      const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      const elements = (d.elements || []).filter(e => e.tags?.name);
+      if (!elements.length) { renderMapNearbyPlaces(filter); return; }
+      elements.forEach(e => {
+        const name = e.tags.name;
+        addLabeledMarker(
+          state.mapScreen, e.lat, e.lon,
+          cfg.ico, cfg.bg, name,
+          makePopupHtml(name, cfg.ico, cfg.label, e.tags),
+          state.mapScreenMarkers
+        );
+      });
+      const sheet = document.getElementById('map-nearby-list');
+      if (sheet) {
+        sheet.innerHTML = elements.map(e => {
+          const name = e.tags.name;
+          const addr = e.tags['addr:street'] ? `${e.tags['addr:housenumber'] || ''} ${e.tags['addr:street']}`.trim() : '';
+          const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(name)}`;
+          const dist = haversineKm(lat, lng, e.lat, e.lon);
+          return `<div class="map-nearby-item">
+            <div class="map-nearby-icon">${cfg.ico}</div>
+            <div class="map-nearby-info">
+              <div class="map-nearby-name">${escHtml(name)}</div>
+              <div class="map-nearby-meta">${addr ? escHtml(addr) + ' · ' : ''}${dist < 1 ? Math.round(dist*1000)+'m' : dist.toFixed(1)+'km'}</div>
+            </div>
+            <button class="map-nearby-dir" onclick="App.openBrowser('${mapsUrl}','Directions')">
+              <span class="ms" style="font-size:18px">directions</span>
+            </button>
+          </div>`;
+        }).join('');
+      }
+    } catch { renderMapNearbyPlaces(filter); }
   }
 
   /* ── CURRENCY CONVERTER ──────────────────────────────────────── */
@@ -1955,16 +2143,8 @@ const App = (() => {
 
   function openBrowser(url, title) {
     if (!url || url === '#') { snack('Coming soon!'); return; }
-    // Always open in-app iframe (never new tab)
-    document.getElementById('browser-title').textContent = title || 'Browser';
-    document.getElementById('browser-url-bar').textContent = url;
-    document.getElementById('browser-frame').src = url;
-    // Reset expanded state
-    const sheet = document.getElementById('modal-browser');
-    sheet.classList.remove('bs-expanded');
-    const expandIcon = document.querySelector('#browser-expand-btn .ms');
-    if (expandIcon) expandIcon.textContent = 'open_in_full';
-    openModal('browser');
+    // Open external links in a new tab (iframes blocked by most sites)
+    window.open(url, '_blank', 'noopener,noreferrer');
   }
 
   function toggleBrowserSize() {
@@ -1991,6 +2171,7 @@ const App = (() => {
     // Trips
     tripTab, createTrip, openTripDetail, markTripComplete,
     cancelTrip, recreateTrip, shareTrip, shareTripCard,
+    aiPlanFromTrips, aiPlanTripForm, onDestInput,
     // Places / Explore
     placesTab, filterDestinations, toggleSaved,
     openDestDetail, planTripTo, aiTripFor, openPlacesCat,
@@ -1998,7 +2179,7 @@ const App = (() => {
     // AI
     aiQuick, chatKeydown, chatResize, sendChat, addAiTrip,
     // Maps tab
-    mapScreenFilter, mapScreenSearch, mapScreenSearchKey, setBtcSource,
+    mapScreenFilter, mapScreenSearch, mapScreenSearchKey,
     // Wallet map
     initWalletMap,
     // Currency converter
