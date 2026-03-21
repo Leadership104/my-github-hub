@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DESTINATIONS, TRANSPORT_LINKS } from '../data';
+import { DESTINATIONS, TRANSPORT_LINKS, PERKS } from '../data';
 import type { TabId } from '../types';
 
 interface Props {
