@@ -1,8 +1,22 @@
 # Kipita Web App — Changelog & Launch Notes
 
-**Last updated:** 2026-03-21
+**Last updated:** 2026-03-21 (session 2)
 **Live at:** http://localhost:3000 · http://localhost:3001
 **Production:** https://leadership104.github.io/KipitaChatBuild/
+
+---
+
+## Latest Changes (2026-03-21, session 2)
+
+### Responsive UI — Mobile App + Desktop Web
+- **Mobile (<768px)**: `touch-action:manipulation` + `-webkit-tap-highlight-color:transparent` on all interactive elements — eliminates 300ms tap delay; `-webkit-touch-callout:none` on body prevents iOS callout popups; `#bottom-nav` safe-area bottom padding for notched phones
+- **Desktop (≥768px)**: Sidebar brand header added — "kipita" logo + tagline "Travel Smarter. Live Bolder." above nav links
+- **Desktop (≥1200px)**: Main content capped at 1100px max-width to prevent over-stretching on wide screens
+- Transferred to second repo: `https://github.com/Leadership104/my-github-hub.git` — `main` + `gh-pages` pushed
+
+### GitHub Pages — Both Repos Live
+- `https://leadership104.github.io/KipitaChatBuild/` — KipitaChatBuild repo
+- `https://leadership104.github.io/my-github-hub/` — my-github-hub repo (enable GitHub Pages → gh-pages branch in repo settings)
 
 ---
 
