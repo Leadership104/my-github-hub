@@ -66,6 +66,9 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
   // Advisories
   if (/\b(advisor|warning|alert|entry|restriction)\b/.test(m)) return AI_RESPONSES.advisories();
 
+  // Perks / deals / codes / discounts
+  if (/\b(perk|deal|discount|coupon|code|promo|offer|swan|fold|strike|river|affiliate)\b/.test(m)) return AI_RESPONSES.perks();
+
   // Phrases
   if (/\b(phrase|language|speak|translate|hello|thank you)\b/.test(m)) return AI_RESPONSES.phrases();
 
@@ -163,6 +166,7 @@ export default function AIScreen({ btcPrice, locationName }: Props) {
     { emoji: '🛡️', label: 'Safety', prompt: `What is the safety situation for ${locationName || 'my area'}?` },
     { emoji: '🏆', label: 'Top Cities', prompt: 'What are the best nomad cities in 2026?' },
     { emoji: '₿', label: 'BTC Travel', prompt: 'Find Bitcoin-friendly spots and BTC merchants near me' },
+    { emoji: '🎁', label: 'Perks', prompt: 'Show me all Kipita perks and deals' },
   ];
 
   const sendMessage = (text: string) => {
