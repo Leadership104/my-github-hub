@@ -80,28 +80,6 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
           <span className="ms text-white/40 text-xl">chevron_right</span>
         </button>
 
-        {/* Popular Destinations */}
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-bold text-foreground">Popular Destinations</h3>
-          <button onClick={() => onSwitchTab('places')} className="text-xs text-kipita-red font-semibold">See all</button>
-        </div>
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-          {DESTINATIONS.filter(d => d.popular).map(d => (
-            <div key={d.id} className="flex-shrink-0 w-44 bg-card border border-border rounded-kipita overflow-hidden hover:shadow-md transition-shadow">
-              <div className="h-24 bg-gradient-to-br from-kipita-navy to-kipita-red/60 flex items-center justify-center text-4xl">
-                {d.emoji}
-              </div>
-              <div className="p-3">
-                <div className="font-bold text-sm">{d.city}</div>
-                <div className="text-xs text-muted-foreground">{d.country}</div>
-                <div className="flex items-center gap-1 mt-1.5">
-                  <span className="text-xs text-kipita-btc font-bold">⭐ {d.rating}</span>
-                  <span className="text-xs text-muted-foreground">· ${d.monthlyCost}/mo</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

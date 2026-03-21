@@ -97,27 +97,6 @@ export default function WalletScreen({ prices, onOpenMaps }: Props) {
           <span className="ms text-lg">arrow_forward</span>
         </button>
 
-        {/* Transactions */}
-        <h3 className="font-bold text-sm mt-5 mb-3">Recent Transactions</h3>
-        <div className="bg-card border border-border rounded-kipita overflow-hidden">
-          {[
-            { type: 'received', label: 'Received BTC', amount: '+0.00142', usd: '+$91.20', time: '2h ago', icon: '↓' },
-            { type: 'sent', label: 'Sent to Café', amount: '-0.00008', usd: '-$5.12', time: 'Yesterday', icon: '↑' },
-            { type: 'received', label: 'Lightning Payment', amount: '+0.00021', usd: '+$13.44', time: '3 days ago', icon: '⚡' },
-          ].map((tx, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-3.5 border-b border-border last:border-b-0">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg flex-shrink-0 ${tx.type === 'received' ? 'bg-green-50' : 'bg-red-50'}`}>{tx.icon}</div>
-              <div className="flex-1">
-                <div className="text-sm font-semibold">{tx.label}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{tx.time}</div>
-              </div>
-              <div className="text-right">
-                <div className={`text-sm font-bold ${tx.type === 'received' ? 'text-kipita-green' : 'text-kipita-red'}`}>{tx.amount}</div>
-                <div className="text-[10px] text-muted-foreground">{tx.usd}</div>
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

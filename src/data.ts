@@ -32,6 +32,8 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
   food: [
     { label: 'American', query: 'american restaurant', emoji: '🍔' },
     { label: 'Bakery', query: 'bakery bread', emoji: '🥐' },
+    { label: 'Bar & Grill', query: 'bar grill', emoji: '🍺' },
+    { label: 'Burger', query: 'burger restaurant', emoji: '🍔' },
     { label: 'Chinese', query: 'chinese restaurant', emoji: '🥡' },
     { label: 'Fast Food', query: 'fast food', emoji: '🍟' },
     { label: 'Italian', query: 'italian restaurant', emoji: '🍝' },
@@ -40,12 +42,15 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Pizza', query: 'pizza restaurant', emoji: '🍕' },
     { label: 'Seafood', query: 'seafood restaurant', emoji: '🦞' },
     { label: 'Thai', query: 'thai restaurant', emoji: '🍜' },
+    { label: 'Vietnamese', query: 'vietnamese restaurant', emoji: '🍲' },
+    { label: 'Steak', query: 'steakhouse', emoji: '🥩' },
     { label: 'All Food', query: 'restaurants', emoji: '🍽️' },
   ],
   cafe: [
     { label: 'Coffee', query: 'coffee cafe', emoji: '☕' },
     { label: 'Boba / Tea', query: 'boba tea shop', emoji: '🧋' },
     { label: 'Coworking', query: 'coworking cafe wifi', emoji: '💻' },
+    { label: 'Bakery Café', query: 'bakery cafe', emoji: '🥐' },
     { label: 'Juice Bar', query: 'juice bar smoothie', emoji: '🧃' },
     { label: 'All Cafes', query: 'cafes', emoji: '🍵' },
   ],
@@ -54,6 +59,7 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Grocery', query: 'supermarket grocery', emoji: '🛒' },
     { label: 'Electronics', query: 'electronics store', emoji: '📱' },
     { label: 'Clothing', query: 'clothing store fashion', emoji: '👔' },
+    { label: 'Market', query: 'local market bazaar', emoji: '🏪' },
     { label: 'All Shops', query: 'shopping', emoji: '🛍️' },
   ],
   nightlife: [
@@ -61,6 +67,29 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Nightclub', query: 'nightclub dance', emoji: '🎉' },
     { label: 'Live Music', query: 'live music venue', emoji: '🎵' },
     { label: 'Rooftop', query: 'rooftop bar', emoji: '🌃' },
+    { label: 'Pub', query: 'pub sports bar', emoji: '🍺' },
+  ],
+  hotel: [
+    { label: 'Hotel', query: 'hotel', emoji: '🏨' },
+    { label: 'Hostel', query: 'hostel backpacker', emoji: '🛏️' },
+    { label: 'Airbnb', query: 'vacation rental', emoji: '🏠' },
+    { label: 'Resort', query: 'resort luxury', emoji: '🏖️' },
+    { label: 'Boutique', query: 'boutique hotel', emoji: '🌟' },
+  ],
+  transport: [
+    { label: 'Bus', query: 'bus station stop', emoji: '🚌' },
+    { label: 'Train / MRT', query: 'train station metro', emoji: '🚇' },
+    { label: 'Airport', query: 'airport', emoji: '✈️' },
+    { label: 'Taxi / Grab', query: 'taxi grab ride share', emoji: '🚕' },
+    { label: 'Ferry', query: 'ferry boat terminal', emoji: '⛴️' },
+    { label: 'Bike Share', query: 'bike rental bicycle', emoji: '🚲' },
+  ],
+  gym: [
+    { label: 'Gym', query: 'gym fitness center', emoji: '💪' },
+    { label: 'Yoga', query: 'yoga studio', emoji: '🧘' },
+    { label: 'Swimming', query: 'swimming pool', emoji: '🏊' },
+    { label: 'Muay Thai', query: 'muay thai boxing gym', emoji: '🥊' },
+    { label: 'Rock Climb', query: 'rock climbing gym', emoji: '🧗' },
   ],
 };
 
