@@ -80,6 +80,22 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
           <span className="ms text-white/40 text-xl">chevron_right</span>
         </button>
 
+        {/* Perks & Deals */}
+        <h3 className="text-sm font-bold text-foreground mb-3">🎁 Perks & Deals</h3>
+        <div className="space-y-2 mb-6">
+          {PERKS.filter(p => p.category === 'btc').slice(0, 3).map(p => (
+            <a key={p.title} href={p.url} target="_blank" rel="noopener noreferrer"
+              className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:shadow-md transition-all no-underline">
+              <span className="text-xl flex-shrink-0">{p.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-bold text-foreground">{p.title}</div>
+                <div className="text-[10px] text-muted-foreground truncate">{p.desc}</div>
+              </div>
+              <div className="bg-kipita-red-lt px-2 py-1 rounded text-[9px] font-bold text-kipita-red flex-shrink-0">{p.code}</div>
+            </a>
+          ))}
+        </div>
+
       </div>
     </div>
   );

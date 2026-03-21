@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Trip, ItineraryItem } from '../types';
+import { BOOKING_TILES, PERKS } from '../data';
 
 export default function TripsScreen() {
   const [trips, setTrips] = useState<Trip[]>(() => {
@@ -35,6 +36,7 @@ export default function TripsScreen() {
   };
 
   const filtered = trips.filter(t => tab === 'upcoming' ? t.status === 'upcoming' || t.status === 'active' : t.status === 'past' || t.status === 'cancelled');
+  const travelPerks = PERKS.filter(p => p.category === 'travel');
 
   if (selectedTrip) {
     const trip = trips.find(t => t.id === selectedTrip.id) || selectedTrip;
@@ -52,6 +54,36 @@ export default function TripsScreen() {
         </div>
         <div className="flex-1 overflow-y-auto p-5 pb-24">
           {trip.notes && <div className="bg-card border border-border rounded-kipita p-4 mb-4 text-sm text-muted-foreground">{trip.notes}</div>}
+
+          {/* Book for This Trip */}
+          <h3 className="font-bold text-sm mb-3">📦 Book for This Trip</h3>
+          <div className="grid grid-cols-4 gap-2 mb-5">
+            {BOOKING_TILES.slice(0, 8).map(b => (
+              <a key={b.label} href={b.url} target="_blank" rel="noopener noreferrer"
+                className="flex flex-col items-center gap-1.5 p-3 bg-card border border-border rounded-kipita-sm hover:shadow-md transition-all no-underline text-center">
+                <span className="text-xl">{b.emoji}</span>
+                <span className="text-[10px] font-semibold text-foreground leading-tight">{b.label}</span>
+              </a>
+            ))}
+          </div>
+
+          {/* Travel Perks */}
+          <h3 className="font-bold text-sm mb-3">🎁 Trip Perks</h3>
+          <div className="space-y-2 mb-5">
+            {travelPerks.map(p => (
+              <a key={p.title} href={p.url} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:shadow-md transition-all no-underline">
+                <span className="text-xl flex-shrink-0">{p.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-bold text-foreground">{p.title}</div>
+                  <div className="text-[10px] text-muted-foreground truncate">{p.desc}</div>
+                </div>
+                <div className="bg-kipita-red-lt px-2 py-1 rounded text-[9px] font-bold text-kipita-red flex-shrink-0">{p.code}</div>
+              </a>
+            ))}
+          </div>
+
+          {/* Itinerary */}
           <h3 className="font-bold text-sm mb-3">Itinerary</h3>
           {trip.items.length === 0 ? (
             <p className="text-sm text-muted-foreground">No items yet. Use Kipita AI to generate one!</p>
