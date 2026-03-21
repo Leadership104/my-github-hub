@@ -265,32 +265,35 @@ const App = (() => {
     setInterval(fetchCrypto, 60000);
   }
 
-  /* ── DESTINATION PHOTOS (Wikipedia thumbnails) ──────────────── */
+  /* ── DESTINATION PHOTOS (Wikimedia 800px) ───────────────────── */
   async function fetchAllDestPhotos() {
     await Promise.all(DESTINATIONS.map(async d => {
       if (state.destPhotos[d.id]) return;
       try {
+        // Wikimedia pageimages API — returns up to 800px wide thumbnails, CORS-friendly
         const r = await fetch(
-          `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(d.wikiTitle)}`,
-          { headers: { 'Api-User-Agent': 'Kipita/2.0 (travel app; contact@kipita.app)' } }
+          `https://en.wikipedia.org/w/api.php?action=query&titles=${encodeURIComponent(d.wikiTitle)}&prop=pageimages&pithumbsize=800&format=json&origin=*`
         );
         const j = await r.json();
-        const url = j.thumbnail?.source;
+        const pages = j.query?.pages || {};
+        const url = Object.values(pages)[0]?.thumbnail?.source;
         if (url) {
           state.destPhotos[d.id] = url;
-          // Update any already-rendered card hero (both old and new style)
-          const heroEl = document.querySelector(`.dest-hero[data-dest="${d.id}"], .edc-hero[data-dest="${d.id}"]`);
-          if (heroEl) {
-            heroEl.style.backgroundImage = `url('${url}')`;
-            heroEl.style.backgroundSize = 'cover';
-            heroEl.style.backgroundPosition = 'center';
-            const emojiEl = heroEl.querySelector('.edc-emoji');
-            if (emojiEl) emojiEl.style.display = 'none';
-          }
+          applyDestPhoto(d.id, url);
         }
       } catch {}
     }));
     renderDestinations();
+  }
+
+  function applyDestPhoto(id, url) {
+    const heroEl = document.querySelector(`.dest-hero[data-dest="${id}"], .edc-hero[data-dest="${id}"]`);
+    if (!heroEl) return;
+    heroEl.style.backgroundImage = `url('${url}')`;
+    heroEl.style.backgroundSize = 'cover';
+    heroEl.style.backgroundPosition = 'center';
+    const emojiEl = heroEl.querySelector('.edc-emoji');
+    if (emojiEl) emojiEl.style.display = 'none';
   }
 
   function setDestHeroPhoto(heroEl, url, alt) {
@@ -335,7 +338,7 @@ const App = (() => {
     document.querySelector(`.nav-btn[data-tab="${name}"]`).classList.add('active');
     closeProfileMenu();
 
-    if (name === 'places') { initExploreScreen(); renderCategories(); }
+    if (name === 'places') { initExploreScreen(); }
     if (name === 'trips')  renderTrips();
     if (name === 'maps')   initMapScreen();
     if (name === 'wallet') initWalletMap();
@@ -575,25 +578,48 @@ const App = (() => {
     });
   }
 
+  /* ── DEST PHOTO LOOKUP BY CITY STRING ──────────────────────── */
+  function destPhotoForCity(cityStr) {
+    if (!cityStr) return null;
+    const lower = cityStr.toLowerCase();
+    const dest = DESTINATIONS.find(d => lower.includes(d.city.toLowerCase()));
+    return dest ? (state.destPhotos[dest.id] || null) : null;
+  }
+
+  function aiPlanFromTrips() {
+    switchTab('ai');
+    setTimeout(() => {
+      const input = document.getElementById('chat-input');
+      if (input) { input.value = 'Plan a trip for me'; input.focus(); }
+    }, 300);
+  }
+
   function tripCardHTML(t, mini) {
     const statusLabels = { upcoming:'Upcoming', active:'Active', past:'Past', cancelled:'Cancelled' };
+    const photo = destPhotoForCity(t.dest);
+    const heroStyle = photo
+      ? `background-image:url('${photo}');background-size:cover;background-position:center;`
+      : `background:linear-gradient(135deg,#1a1a2e 0%,#16213e 60%,#0d1b2a 100%);`;
+    const emojis = ['✈️','🌍','🏖️','🏔️','🌺','🗼','🛕','🌴'];
+    const emoji  = emojis[Math.abs((t.id || '').charCodeAt(5) || 0) % emojis.length];
     return `
-      <div class="trip-card" onclick="App.openTripDetail('${t.id}')">
-        <div class="trip-card-header">
-          <div>
-            <div class="tc-dest">${escHtml(t.dest)}</div>
-            <div class="tc-dates">${formatDate(t.start)} → ${formatDate(t.end)}</div>
+      <div class="trip-card motion-card" onclick="App.openTripDetail('${t.id}')">
+        <div class="trip-card-hero" style="${heroStyle}">
+          ${!photo ? `<span class="trip-hero-emoji">${emoji}</span>` : ''}
+          <div class="trip-hero-overlay">
+            <div class="tc-dest-hero">${escHtml(t.dest)}</div>
+            <div class="tc-dates-hero">${formatDate(t.start)} – ${formatDate(t.end)}</div>
           </div>
-          <span class="tc-status ${t.status}">${statusLabels[t.status] || t.status}</span>
+          <span class="tc-status ${t.status} trip-status-badge">${statusLabels[t.status] || t.status}</span>
         </div>
-        <div class="trip-card-body">
+        ${!mini ? `<div class="trip-card-body">
           ${t.notes ? `<p class="tc-notes">${escHtml(t.notes)}</p>` : ''}
-          ${!mini ? `<div class="tc-actions">
+          <div class="tc-actions">
             <button class="btn-primary-sm" onclick="event.stopPropagation();App.openTripDetail('${t.id}')">View Details</button>
             <button class="btn-outline-xs" onclick="event.stopPropagation();App.shareTripCard('${t.id}')"><span class="ms" style="font-size:14px">share</span> Share</button>
             ${t.status === 'cancelled' ? `<button class="btn-outline-xs" onclick="event.stopPropagation();App.recreateTrip('${t.id}')">Recreate</button>` : ''}
-          </div>` : ''}
-        </div>
+          </div>
+        </div>` : ''}
       </div>`;
   }
 
@@ -604,10 +630,15 @@ const App = (() => {
     document.getElementById('tdl-title').textContent = trip.dest;
     const emojis = ['🗺️','✈️','🌍','🏖️','🏔️','🌺','🗼','🛕'];
     const emoji  = emojis[Math.floor(Math.random() * emojis.length)];
+    const heroPhoto = destPhotoForCity(trip.dest);
+    const heroStyle = heroPhoto
+      ? `background-image:url('${heroPhoto}');background-size:cover;background-position:center;`
+      : `background:linear-gradient(135deg,#1a1a2e,#16213e);`;
     document.getElementById('tdl-body').innerHTML = `
-      <div class="tdl-hero">
+      <div class="tdl-hero" style="${heroStyle}">
+        ${!heroPhoto ? `<span style="font-size:64px;position:relative;z-index:1">${emoji}</span>` : ''}
         <div class="tdl-hero-info">
-          <div class="tdl-dest">${escHtml(trip.dest)} ${emoji}</div>
+          <div class="tdl-dest">${escHtml(trip.dest)}</div>
           <div class="tdl-dates">${formatDate(trip.start)} → ${formatDate(trip.end)}</div>
         </div>
       </div>
@@ -763,7 +794,7 @@ const App = (() => {
         ? `background-image:url('${photo}');background-size:cover;background-position:center;`
         : '';
       return `
-        <div class="explore-dest-card" onclick="App.openDestDetail('${d.id}')">
+        <div class="explore-dest-card motion-card" style="animation-delay:${idx * 60}ms" onclick="App.openDestDetail('${d.id}')">
           <div class="edc-hero" data-dest="${d.id}" style="${photoStyle}background-color:#1a1a2e;">
             ${!photo ? `<span class="edc-emoji">${d.emoji}</span>` : ''}
             <div class="edc-rank">#${rank}</div>
@@ -820,11 +851,10 @@ const App = (() => {
   }
 
   function initExploreScreen() {
-    // Sync location text in explore header
     const el = document.getElementById('explore-location-text');
     if (el) el.textContent = state.location.name || 'Detecting…';
-    // Default to Destinations tab
-    const destTab = document.getElementById('tab-dest');
+    // Default to Destinations tab (left)
+    const destTab   = document.getElementById('tab-dest');
     const placesTab = document.getElementById('tab-places');
     if (destTab && destTab.classList.contains('hidden')) {
       destTab.classList.remove('hidden');
@@ -1054,9 +1084,10 @@ const App = (() => {
       container.scrollTop = container.scrollHeight;
       document.getElementById('ai-sub').textContent = 'Powered by Gemini 2.0';
 
-      if (msg.toLowerCase().includes('plan') && (msg.toLowerCase().includes('trip') || msg.toLowerCase().includes('travel'))) {
-        const dest = msg.replace(/plan|trip|to|a|my|travel|for|in|visit/gi,'').trim() || 'New Destination';
-        state.aiLastTrip = { dest, days: 5 };
+      const m2 = msg.toLowerCase();
+      if (m2.includes('plan') || m2.includes('trip') || m2.includes('travel') || m2.includes('visit') || m2.includes('itinerary') || m2.includes('go to')) {
+        const dest = msg.replace(/plan|a|my|trip|to|travel|for|in|visit|itinerary|how|do|i|get|there|\?/gi,'').trim() || 'New Destination';
+        state.aiLastTrip = { dest: dest || 'New Destination', days: 5 };
         document.getElementById('ai-add-trip').classList.remove('hidden');
       }
     }, 1400 + Math.random() * 800);
@@ -1293,16 +1324,18 @@ const App = (() => {
       }
       state.btcMerchants = merchants;
     } catch {
-      // Fallback demo markers near user
-      state.btcMerchants = [];
-      if (hasLoc) {
-        const { lat, lng } = state.location;
-        for (let i = 0; i < 6; i++) {
-          state.btcMerchants.push({
-            osm_json: { lat: lat + (Math.random()-.5)*0.05, lon: lng + (Math.random()-.5)*0.05, tags: { name: 'BTC Merchant ' + (i+1) } },
-          });
-        }
-      }
+      // Fallback demo markers — always generate even without GPS
+      const baseLat = state.location.lat || 13.7563;
+      const baseLng = state.location.lng || 100.5018;
+      const demoNames = ['Lightning Café','Satoshi Market','BTC Corner Shop','Crypto Bistro','Bitcoin Hub','Digital Pay'];
+      state.btcMerchants = demoNames.map((name, i) => ({
+        osm_json: {
+          lat: baseLat + (Math.random() - .5) * 0.05,
+          lon: baseLng + (Math.random() - .5) * 0.05,
+          tags: { name },
+        },
+        source: 'btcmap',
+      }));
     }
 
     // Update count badge
@@ -1364,6 +1397,15 @@ const App = (() => {
   }
 
   function addLabeledMarker(map, mlat, mlng, iconContent, bg, name, popupHtml, collection) {
+    // Hover tooltip for desktop
+    const tooltipHtml = (() => {
+      const dest = DESTINATIONS.find(d => name.toLowerCase().includes(d.city.toLowerCase()));
+      const photo = dest ? state.destPhotos[dest.id] : null;
+      return `<div style="display:flex;align-items:center;gap:8px;min-width:140px;max-width:200px;padding:2px 4px 2px 2px">
+        ${photo ? `<img src="${photo}" style="width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0" alt="">` : `<div style="width:44px;height:44px;border-radius:8px;background:${bg};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${iconContent}</div>`}
+        <div style="font-size:12px;font-weight:700;color:#1a1a2e;line-height:1.3">${name}</div>
+      </div>`;
+    })();
     const m = L.marker([mlat, mlng], {
       icon: L.divIcon({
         html: makeMarkerHtml(iconContent, bg, name),
@@ -1373,6 +1415,7 @@ const App = (() => {
       })
     }).addTo(map);
     m.bindPopup(popupHtml, { maxWidth: 240, className: 'kip-popup' });
+    m.bindTooltip(tooltipHtml, { direction: 'top', offset: [0, -20], opacity: 1, className: 'kip-tooltip' });
     collection.push(m);
   }
 
