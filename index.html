@@ -165,19 +165,17 @@
           </button>
         </div>
 
-        <!-- Ask Kipita AI -->
-        <div class="home-ai-hero">
-          <div class="home-ai-hdr">
-            <span class="home-ai-sparkle">✨</span>
-            <span class="home-ai-label">Ask Kipita AI</span>
+        <!-- Kipita AI -->
+        <button class="home-ai-btn" onclick="App.switchTab('ai')">
+          <div class="home-ai-icon-wrap">
+            <span class="ms" style="font-size:34px;color:#fff">auto_awesome</span>
           </div>
-          <div class="home-ai-chips">
-            <button class="home-ai-chip" onclick="App.aiQuick('plan')">✈️ Plan my next trip</button>
-            <button class="home-ai-chip" onclick="App.aiQuick('btc')">₿ Find Bitcoin-friendly spots</button>
-            <button class="home-ai-chip" onclick="App.aiQuick('safety')">🛡️ Travel safety report</button>
-            <button class="home-ai-chip" onclick="App.aiQuick('nomadcities')">🏆 Best nomad cities 2026</button>
+          <div class="home-ai-text">
+            <div class="home-ai-label">Kipita AI</div>
+            <div class="home-ai-sub">Plan trips · Safety · Bitcoin · Translate</div>
           </div>
-        </div>
+          <span class="ms" style="font-size:22px;color:rgba(255,255,255,.5)">chevron_right</span>
+        </button>
 
         <!-- Upcoming Trips -->
         <div class="sec-row">
@@ -239,6 +237,14 @@
           <button class="tab-btn" data-trip-tab="past" onclick="App.tripTab('past',this)">Past</button>
           <button class="tab-btn" data-trip-tab="cancelled" onclick="App.tripTab('cancelled',this)">Cancelled</button>
         </div>
+        <!-- AI Trip Planner card -->
+        <button class="trips-ai-banner" onclick="App.aiPlanFromTrips()">
+          <span class="ms" style="font-size:22px;color:#fff">auto_awesome</span>
+          <div class="trips-ai-text">
+            <div class="trips-ai-title">Plan with Kipita AI</div>
+            <div class="trips-ai-sub">Tell me where you want to go →</div>
+          </div>
+        </button>
         <div id="tlist-upcoming" class="trip-list"></div>
         <div id="tlist-past" class="trip-list hidden"></div>
         <div id="tlist-cancelled" class="trip-list hidden"></div>
