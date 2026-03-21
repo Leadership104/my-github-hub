@@ -63,7 +63,7 @@ export default function WalletScreen({ prices, metals, onOpenMaps }: Props) {
             </button>
           </div>
           <div className="flex gap-2 items-stretch">
-            <div className="flex-1 bg-kipita-red-lt rounded-kipita-sm px-3 py-3 text-xl font-extrabold text-kipita-red min-w-0 break-all flex items-center">
+            <div className="flex-1 bg-kipita-red-lt rounded-kipita-sm px-3 py-3 text-xl font-extrabold text-kipita-red min-w-0 overflow-hidden whitespace-nowrap text-ellipsis flex items-center">
               {result}
             </div>
             <select value={toCur} onChange={e => setToCur(e.target.value)}

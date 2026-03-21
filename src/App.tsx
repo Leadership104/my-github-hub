@@ -19,9 +19,21 @@ const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'groups', label: 'Groups', icon: 'groups' },
 ];
 
+const EMERGENCY_NUMBERS: { country: string; police: string; ambulance: string; fire: string }[] = [
+  { country: '🇺🇸 USA', police: '911', ambulance: '911', fire: '911' },
+  { country: '🇬🇧 UK', police: '999', ambulance: '999', fire: '999' },
+  { country: '🇪🇺 EU', police: '112', ambulance: '112', fire: '112' },
+  { country: '🇹🇭 Thailand', police: '191', ambulance: '1669', fire: '199' },
+  { country: '🇯🇵 Japan', police: '110', ambulance: '119', fire: '119' },
+  { country: '🇲🇽 Mexico', police: '911', ambulance: '911', fire: '911' },
+  { country: '🇧🇷 Brazil', police: '190', ambulance: '192', fire: '193' },
+  { country: '🇮🇩 Indonesia', police: '110', ambulance: '118', fire: '113' },
+];
+
 export default function App() {
   const [tab, setTab] = useState<TabId>('home');
   const [showProfile, setShowProfile] = useState(false);
+  const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
 
   const location = useLocation();
@@ -85,7 +97,8 @@ export default function App() {
             <span className="w-[7px] h-[7px] rounded-full bg-kipita-green" />
             <span className="w-[7px] h-[7px] rounded-full bg-border" />
           </div>
-          <button className="bg-kipita-red rounded-full w-9 h-9 flex items-center justify-center text-lg animate-sos flex-shrink-0"
+          <button onClick={() => setShowSOS(true)}
+            className="bg-kipita-red rounded-full w-9 h-9 flex items-center justify-center text-lg animate-sos flex-shrink-0"
             title="Emergency SOS">🚨</button>
           <button onClick={() => setShowProfile(!showProfile)}
             className="w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -93,6 +106,57 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* SOS Modal */}
+      {showSOS && (
+        <>
+          <div className="fixed inset-0 bg-black/60 z-[300]" onClick={() => setShowSOS(false)} />
+          <div className="fixed inset-x-4 top-[10%] max-w-md mx-auto bg-card rounded-2xl shadow-2xl z-[301] overflow-hidden max-h-[80vh] flex flex-col">
+            <div className="bg-kipita-red px-5 py-4 flex items-center gap-3">
+              <span className="text-3xl">🚨</span>
+              <div>
+                <h3 className="text-white font-extrabold text-lg">Emergency SOS</h3>
+                <p className="text-white/80 text-xs">Tap a number to call emergency services</p>
+              </div>
+              <button onClick={() => setShowSOS(false)} className="ml-auto text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <div className="overflow-y-auto p-4 space-y-3">
+              {EMERGENCY_NUMBERS.map(e => (
+                <div key={e.country} className="bg-muted rounded-xl p-3">
+                  <div className="font-bold text-sm mb-2">{e.country}</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <a href={`tel:${e.police}`} className="bg-card border border-border rounded-lg p-2 text-center hover:bg-kipita-red-lt transition-colors">
+                      <div className="text-[10px] text-muted-foreground">Police</div>
+                      <div className="font-extrabold text-sm text-kipita-red">{e.police}</div>
+                    </a>
+                    <a href={`tel:${e.ambulance}`} className="bg-card border border-border rounded-lg p-2 text-center hover:bg-kipita-red-lt transition-colors">
+                      <div className="text-[10px] text-muted-foreground">Ambulance</div>
+                      <div className="font-extrabold text-sm text-kipita-red">{e.ambulance}</div>
+                    </a>
+                    <a href={`tel:${e.fire}`} className="bg-card border border-border rounded-lg p-2 text-center hover:bg-kipita-red-lt transition-colors">
+                      <div className="text-[10px] text-muted-foreground">Fire</div>
+                      <div className="font-extrabold text-sm text-kipita-red">{e.fire}</div>
+                    </a>
+                  </div>
+                </div>
+              ))}
+              <div className="bg-kipita-red-lt rounded-xl p-3 text-center">
+                <p className="text-xs text-muted-foreground">📍 Share your location with emergency contacts</p>
+                <button onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: 'My Location', text: `I need help! My location: https://maps.google.com/?q=${location.lat},${location.lng}` });
+                  } else {
+                    navigator.clipboard.writeText(`https://maps.google.com/?q=${location.lat},${location.lng}`);
+                    alert('Location link copied to clipboard!');
+                  }
+                }} className="mt-2 bg-kipita-red text-white font-bold text-sm px-4 py-2 rounded-full">
+                  📤 Share Location
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Profile dropdown */}
       {showProfile && (
