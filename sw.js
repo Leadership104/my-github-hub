@@ -1,6 +1,6 @@
 // Kipita Service Worker v4
 const CACHE_NAME = 'kipita-v4';
-const PRECACHE = ['/', '/index.html', '/styles.css', '/app.js', '/manifest.json'];
+const PRECACHE = ['./', './index.html', './styles.css', './app.js', './manifest.json'];
 
 // Network-first API domains (always try live, fall back to cache)
 const NETWORK_FIRST = [
