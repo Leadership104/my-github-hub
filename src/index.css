@@ -1,0 +1,79 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --kipita-red: 4 79% 56%;
+  --kipita-red-dk: 4 70% 47%;
+  --kipita-red-lt: 4 86% 96%;
+  --kipita-navy: 218 56% 11%;
+  --kipita-navy-card: 218 47% 18%;
+  --kipita-green: 142 71% 45%;
+  --kipita-teal: 160 69% 62%;
+  --kipita-warning: 28 91% 48%;
+  --kipita-blue: 217 91% 60%;
+  --kipita-btc: 28 92% 53%;
+
+  --background: 210 25% 97%;
+  --foreground: 220 14% 10%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 14% 10%;
+  --border: 214 20% 91%;
+  --muted: 210 20% 96%;
+  --muted-foreground: 215 14% 46%;
+  --primary: 4 79% 56%;
+  --primary-foreground: 0 0% 100%;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'Montserrat', sans-serif;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Material Symbols */
+.ms {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal; font-style: normal; font-size: 24px; line-height: 1;
+  letter-spacing: normal; text-transform: none; display: inline-block;
+  white-space: nowrap; word-wrap: normal; direction: ltr;
+  -webkit-font-smoothing: antialiased; user-select: none; vertical-align: middle;
+}
+
+/* Animations */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes sos-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
+}
+@keyframes dot-pulse {
+  0%, 80%, 100% { transform: scale(0.8); opacity: 0.4; }
+  40% { transform: scale(1.2); opacity: 1; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-fadeSlideUp { animation: fadeSlideUp 0.4s cubic-bezier(.22,.68,0,1.2) both; }
+.animate-sos { animation: sos-pulse 2s ease-in-out infinite; }
+.animate-pulse-dot { animation: pulse-dot 2s infinite; }
+
+/* Scrollbar styling */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { scrollbar-width: none; }
+
+/* Leaflet overrides */
+.leaflet-container { font-family: 'Montserrat', sans-serif !important; }
