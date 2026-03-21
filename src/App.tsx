@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useLocation, useWeather, useCryptoPrices, useBTCMerchants } from './hooks';
+import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
 import type { TabId } from './types';
 import HomeScreen from './screens/HomeScreen';
 import AIScreen from './screens/AIScreen';
@@ -27,7 +27,10 @@ export default function App() {
   const location = useLocation();
   const weather = useWeather(location.lat, location.lng);
   const prices = useCryptoPrices();
+  const metals = useMetalPrices();
   const { merchants, loading: merchantsLoading } = useBTCMerchants(location.lat, location.lng);
+
+  const btcPrice = prices.find(p => p.symbol === 'BTC')?.price || 0;
 
   // Splash screen
   if (splash) {
@@ -50,11 +53,11 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home': return <HomeScreen weather={weather} locationName={location.name} onSwitchTab={setTab} />;
-      case 'ai': return <AIScreen />;
+      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={location.name} />;
       case 'trips': return <TripsScreen />;
-      case 'places': return <PlacesScreen />;
+      case 'places': return <PlacesScreen locationName={location.name} />;
       case 'maps': return <MapsScreen lat={location.lat} lng={location.lng} merchants={merchants} loading={merchantsLoading} />;
-      case 'wallet': return <WalletScreen prices={prices} onOpenMaps={() => setTab('maps')} />;
+      case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => setTab('maps')} />;
       case 'groups': return <GroupsScreen />;
     }
   };
@@ -106,6 +109,9 @@ export default function App() {
             <hr className="border-border" />
             <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
               <span className="ms text-lg text-muted-foreground">edit</span> Edit Profile
+            </button>
+            <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
+              <span className="ms text-lg text-muted-foreground">shield</span> Travel Safety
             </button>
             <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
               <span className="ms text-lg text-muted-foreground">settings</span> Settings

@@ -1,14 +1,14 @@
 import type { Destination, PlaceCategory, SubCategory, Group } from './types';
 
 export const DESTINATIONS: Destination[] = [
-  { id: 'chiangmai', city: 'Chiang Mai', country: 'Thailand', emoji: '🏔️', lat: 18.7883, lng: 98.9853, rating: 4.8, pop: '7M+ nomads', speed: 52, safetyScore: 8.2, monthlyCost: 1200, weatherDesc: 'Warm & Sunny', temp: 28, tags: ['Affordable', 'Digital Nomad'], popular: true, desc: 'Ancient temples, cool mountains, fast internet, and the most affordable nomad lifestyle in Asia.' },
-  { id: 'lisbon', city: 'Lisbon', country: 'Portugal', emoji: '🇵🇹', lat: 38.7169, lng: -9.1399, rating: 4.7, pop: '6M+ nomads', speed: 48, safetyScore: 8.7, monthlyCost: 1605, weatherDesc: 'Mild & Breezy', temp: 18, tags: ['Bitcoin-Friendly', 'Tax Perks'], popular: true, desc: 'Sunny capital with pastel streets, great food, crypto-friendly culture, and NHR tax regime.' },
-  { id: 'bali', city: 'Bali', country: 'Indonesia', emoji: '🌴', lat: -8.3405, lng: 115.0919, rating: 4.8, pop: '8M+ nomads', speed: 38, safetyScore: 7.9, monthlyCost: 1400, weatherDesc: 'Tropical & Lush', temp: 30, tags: ['Surf & Co-Work', 'Nomad Hub'], popular: true, desc: 'Tropical paradise with rice terraces, temples, and a world-class digital nomad community in Canggu.' },
-  { id: 'bangkok', city: 'Bangkok', country: 'Thailand', emoji: '🛕', lat: 13.7563, lng: 100.5018, rating: 4.7, pop: '11M+ nomads', speed: 45, safetyScore: 7.5, monthlyCost: 1100, weatherDesc: 'Hot & Vibrant', temp: 32, tags: ['Street Food', 'Nightlife'], popular: true, desc: 'Vibrant street food, temples, and a booming nomad scene.' },
-  { id: 'tokyo', city: 'Tokyo', country: 'Japan', emoji: '🗼', lat: 35.6762, lng: 139.6503, rating: 4.9, pop: '14M+ nomads', speed: 78, safetyScore: 9.4, monthlyCost: 2800, weatherDesc: 'Cool & Clear', temp: 16, tags: ['BTC Friendly', 'Ultra-Modern'], popular: false, desc: 'Ultra-modern city with ancient temples, perfect transit, and incredible food.' },
-  { id: 'barcelona', city: 'Barcelona', country: 'Spain', emoji: '🏖️', lat: 41.3851, lng: 2.1734, rating: 4.8, pop: '7M+ nomads', speed: 55, safetyScore: 7.8, monthlyCost: 2200, weatherDesc: 'Sunny & Warm', temp: 22, tags: ['Beach Life', 'Startup Hub'], popular: false, desc: "Architecture, beaches, and an incredible startup scene." },
-  { id: 'medellin', city: 'Medellín', country: 'Colombia', emoji: '🌺', lat: 6.2476, lng: -75.5658, rating: 4.6, pop: '5M+ nomads', speed: 32, safetyScore: 6.8, monthlyCost: 900, weatherDesc: 'Spring All Year', temp: 22, tags: ['Budget Pick', 'Crypto Scene'], popular: false, desc: 'The city of eternal spring. Growing crypto scene, affordable living.' },
-  { id: 'dubai', city: 'Dubai', country: 'UAE', emoji: '🏙️', lat: 25.2048, lng: 55.2708, rating: 4.7, pop: '9M+ nomads', speed: 62, safetyScore: 8.9, monthlyCost: 3200, weatherDesc: 'Sunny & Hot', temp: 35, tags: ['Tax-Free', 'Luxury'], popular: false, desc: 'Tax-free hub with world-class infrastructure and crypto-friendly regulations.' },
+  { id: 'chiangmai', city: 'Chiang Mai', country: 'Thailand', emoji: '🏔️', lat: 18.7883, lng: 98.9853, rating: 4.8, pop: '7M+ nomads', wikiTitle: 'Chiang Mai', speed: 52, safetyScore: 8.2, monthlyCost: 1200, weatherDesc: 'Warm & Sunny', temp: 28, tags: ['Affordable', 'Digital Nomad'], popular: true, desc: 'Ancient temples, cool mountains, fast internet, and the most affordable nomad lifestyle in Asia.' },
+  { id: 'lisbon', city: 'Lisbon', country: 'Portugal', emoji: '🇵🇹', lat: 38.7169, lng: -9.1399, rating: 4.7, pop: '6M+ nomads', wikiTitle: 'Lisbon', speed: 48, safetyScore: 8.7, monthlyCost: 1605, weatherDesc: 'Mild & Breezy', temp: 18, tags: ['Bitcoin-Friendly', 'Tax Perks'], popular: true, desc: 'Sunny capital with pastel streets, great food, crypto-friendly culture, and NHR tax regime.' },
+  { id: 'bali', city: 'Bali', country: 'Indonesia', emoji: '🌴', lat: -8.3405, lng: 115.0919, rating: 4.8, pop: '8M+ nomads', wikiTitle: 'Bali', speed: 38, safetyScore: 7.9, monthlyCost: 1400, weatherDesc: 'Tropical & Lush', temp: 30, tags: ['Surf & Co-Work', 'Nomad Hub'], popular: true, desc: 'Tropical paradise with rice terraces, temples, and a world-class digital nomad community in Canggu.' },
+  { id: 'bangkok', city: 'Bangkok', country: 'Thailand', emoji: '🛕', lat: 13.7563, lng: 100.5018, rating: 4.7, pop: '11M+ nomads', wikiTitle: 'Bangkok', speed: 45, safetyScore: 7.5, monthlyCost: 1100, weatherDesc: 'Hot & Vibrant', temp: 32, tags: ['Street Food', 'Nightlife'], popular: true, desc: 'Vibrant street food, temples, and a booming nomad scene. Low cost of living with fast fiber internet.' },
+  { id: 'tokyo', city: 'Tokyo', country: 'Japan', emoji: '🗼', lat: 35.6762, lng: 139.6503, rating: 4.9, pop: '14M+ nomads', wikiTitle: 'Tokyo', speed: 78, safetyScore: 9.4, monthlyCost: 2800, weatherDesc: 'Cool & Clear', temp: 16, tags: ['BTC Friendly', 'Ultra-Modern'], popular: false, desc: 'Ultra-modern city with ancient temples, perfect transit, and incredible food. Bitcoin-friendly with thousands of merchants.' },
+  { id: 'barcelona', city: 'Barcelona', country: 'Spain', emoji: '🏖️', lat: 41.3851, lng: 2.1734, rating: 4.8, pop: '7M+ nomads', wikiTitle: 'Barcelona', speed: 55, safetyScore: 7.8, monthlyCost: 2200, weatherDesc: 'Sunny & Warm', temp: 22, tags: ['Beach Life', 'Startup Hub'], popular: false, desc: "Architecture, beaches, and an incredible startup scene. One of Europe's top Bitcoin cities." },
+  { id: 'medellin', city: 'Medellín', country: 'Colombia', emoji: '🌺', lat: 6.2476, lng: -75.5658, rating: 4.6, pop: '5M+ nomads', wikiTitle: 'Medellín', speed: 32, safetyScore: 6.8, monthlyCost: 900, weatherDesc: 'Spring All Year', temp: 22, tags: ['Budget Pick', 'Crypto Scene'], popular: false, desc: 'The city of eternal spring. Growing crypto scene, affordable living, and a welcoming local culture.' },
+  { id: 'dubai', city: 'Dubai', country: 'UAE', emoji: '🏙️', lat: 25.2048, lng: 55.2708, rating: 4.7, pop: '9M+ nomads', wikiTitle: 'Dubai', speed: 62, safetyScore: 8.9, monthlyCost: 3200, weatherDesc: 'Sunny & Hot', temp: 35, tags: ['Tax-Free', 'Luxury'], popular: false, desc: 'Tax-free hub with world-class infrastructure, crypto-friendly regulations, and 0% income tax.' },
 ];
 
 const getHour = () => new Date().getHours();
@@ -96,36 +96,63 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
 export const PHRASES: Record<string, { label: string; phrases: { en: string; local: string; phon: string }[] }> = {
   es: { label: '🇪🇸 Spanish', phrases: [
     { en: 'Hello', local: 'Hola', phon: 'OH-lah' },
-    { en: 'Thank you', local: 'Gracias', phon: 'GRAH-see-ahs' },
-    { en: 'Where is…?', local: '¿Dónde está…?', phon: 'DOHN-deh eh-STAH' },
+    { en: 'Thank you', local: 'Gracias', phon: 'GRAH-syahs' },
+    { en: 'Where is…?', local: '¿Dónde está…?', phon: 'DON-day es-TAH' },
     { en: 'How much?', local: '¿Cuánto cuesta?', phon: 'KWAHN-toh KWES-tah' },
+    { en: 'I need a doctor', local: 'Necesito un médico', phon: 'neh-seh-SEE-toh oon MEH-dee-koh' },
     { en: 'Help!', local: '¡Ayuda!', phon: 'ah-YOO-dah' },
-    { en: 'Bathroom', local: 'Baño', phon: 'BAH-nyoh' },
-  ]},
-  ja: { label: '🇯🇵 Japanese', phrases: [
-    { en: 'Hello', local: 'こんにちは', phon: 'kon-NEE-chee-wah' },
-    { en: 'Thank you', local: 'ありがとう', phon: 'ah-ree-GAH-toh' },
-    { en: 'Where is…?', local: '…はどこですか？', phon: 'wa DOH-koh des-ka' },
-    { en: 'How much?', local: 'いくらですか？', phon: 'ee-KOO-rah des-ka' },
-    { en: 'Help!', local: '助けて！', phon: 'tah-SOO-keh-teh' },
-  ]},
-  th: { label: '🇹🇭 Thai', phrases: [
-    { en: 'Hello', local: 'สวัสดี', phon: 'sa-wat-DEE' },
-    { en: 'Thank you', local: 'ขอบคุณ', phon: 'kohp-KOON' },
-    { en: 'How much?', local: 'เท่าไหร่', phon: 'tao-RAI' },
-    { en: 'Help!', local: 'ช่วยด้วย', phon: 'CHOO-ay duay' },
-  ]},
-  pt: { label: '🇵🇹 Portuguese', phrases: [
-    { en: 'Hello', local: 'Olá', phon: 'oh-LAH' },
-    { en: 'Thank you', local: 'Obrigado/a', phon: 'oh-bree-GAH-doo' },
-    { en: 'Where is…?', local: 'Onde fica…?', phon: 'OHN-jee FEE-kah' },
-    { en: 'How much?', local: 'Quanto custa?', phon: 'KWAHN-too KOOS-tah' },
+    { en: 'Do you accept Bitcoin?', local: '¿Acepta Bitcoin?', phon: 'ah-SEP-tah Bitcoin' },
+    { en: 'Where is the airport?', local: '¿Dónde está el aeropuerto?', phon: 'DON-day es-TAH el ah-eh-roh-PWER-toh' },
   ]},
   fr: { label: '🇫🇷 French', phrases: [
     { en: 'Hello', local: 'Bonjour', phon: 'bohn-ZHOOR' },
     { en: 'Thank you', local: 'Merci', phon: 'mehr-SEE' },
-    { en: 'Where is…?', local: 'Où est…?', phon: 'oo EH' },
-    { en: 'Help!', local: 'Au secours!', phon: 'oh suh-KOOR' },
+    { en: 'Where is…?', local: 'Où est…?', phon: 'oo AY' },
+    { en: 'How much?', local: 'Combien ça coûte?', phon: 'kohm-BYEH sah KOOT' },
+    { en: 'I need a doctor', local: "J'ai besoin d'un médecin", phon: 'zhay buh-ZWEH dun med-SAN' },
+    { en: 'Help!', local: 'Au secours!', phon: 'oh skoor' },
+    { en: 'Do you accept Bitcoin?', local: 'Acceptez-vous Bitcoin?', phon: 'ak-sep-TAY voo Bitcoin' },
+    { en: 'Where is the airport?', local: "Où est l'aéroport?", phon: 'oo AY lay-ro-POUR' },
+  ]},
+  th: { label: '🇹🇭 Thai', phrases: [
+    { en: 'Hello', local: 'สวัสดี', phon: 'sa-wat-dee' },
+    { en: 'Thank you', local: 'ขอบคุณ', phon: 'khop khun' },
+    { en: 'Where is…?', local: '…อยู่ที่ไหน?', phon: '...yoo tee nai' },
+    { en: 'How much?', local: 'ราคาเท่าไหร่?', phon: 'ra-kaa tao-rai' },
+    { en: 'I need a doctor', local: 'ฉันต้องการหมอ', phon: 'chan dtong gaan mor' },
+    { en: 'Help!', local: 'ช่วยด้วย!', phon: 'chuay duay' },
+    { en: 'Do you accept Bitcoin?', local: 'รับ Bitcoin ไหม?', phon: 'rap Bitcoin mai' },
+    { en: 'Where is the airport?', local: 'สนามบินอยู่ที่ไหน?', phon: 'sa-naam bin yoo tee nai' },
+  ]},
+  ja: { label: '🇯🇵 Japanese', phrases: [
+    { en: 'Hello', local: 'こんにちは', phon: 'kon-nee-chee-wa' },
+    { en: 'Thank you', local: 'ありがとうございます', phon: 'a-ree-ga-toh go-zai-mas' },
+    { en: 'Where is…?', local: '…はどこですか?', phon: '...wa do-ko des-ka' },
+    { en: 'How much?', local: 'いくらですか?', phon: 'ee-koo-ra des-ka' },
+    { en: 'I need a doctor', local: '医者が必要です', phon: 'ee-sha ga hee-tsu-yo des' },
+    { en: 'Help!', local: '助けて!', phon: 'ta-soo-ke-te' },
+    { en: 'Do you accept Bitcoin?', local: 'ビットコインは使えますか?', phon: 'bit-to-ko-in wa tsoo-ka-e-mas-ka' },
+    { en: 'Where is the airport?', local: '空港はどこですか?', phon: 'koo-koh wa do-ko des-ka' },
+  ]},
+  pt: { label: '🇵🇹 Portuguese', phrases: [
+    { en: 'Hello', local: 'Olá', phon: 'oh-LAH' },
+    { en: 'Thank you', local: 'Obrigado / Obrigada', phon: 'oh-bree-GAH-doo' },
+    { en: 'Where is…?', local: 'Onde fica…?', phon: 'ON-jee FEE-kah' },
+    { en: 'How much?', local: 'Quanto custa?', phon: 'KWAHN-too KOO-stah' },
+    { en: 'I need a doctor', local: 'Preciso de um médico', phon: 'preh-SEE-zoo jee oong MEH-jee-koo' },
+    { en: 'Help!', local: 'Socorro!', phon: 'so-KOH-hoo' },
+    { en: 'Do you accept Bitcoin?', local: 'Aceita Bitcoin?', phon: 'ah-SAY-ta Bitcoin' },
+    { en: 'Where is the airport?', local: 'Onde fica o aeroporto?', phon: 'ON-jee FEE-kah oh ah-eh-roh-POR-too' },
+  ]},
+  de: { label: '🇩🇪 German', phrases: [
+    { en: 'Hello', local: 'Hallo', phon: 'HAL-oh' },
+    { en: 'Thank you', local: 'Danke schön', phon: 'DAHN-keh shern' },
+    { en: 'Where is…?', local: 'Wo ist…?', phon: 'voh ist' },
+    { en: 'How much?', local: 'Wie viel kostet das?', phon: 'vee feel KOS-tet dahs' },
+    { en: 'I need a doctor', local: 'Ich brauche einen Arzt', phon: 'ikh BROW-kheh eye-nen artst' },
+    { en: 'Help!', local: 'Hilfe!', phon: 'HIL-feh' },
+    { en: 'Do you accept Bitcoin?', local: 'Nehmen Sie Bitcoin?', phon: 'NAY-men zee Bitcoin' },
+    { en: 'Where is the airport?', local: 'Wo ist der Flughafen?', phon: 'voh ist dair FLOOK-hah-fen' },
   ]},
   id: { label: '🇮🇩 Indonesian', phrases: [
     { en: 'Hello', local: 'Halo', phon: 'HAH-loh' },
@@ -155,6 +182,24 @@ export const TRANSPORT_LINKS = [
   { emoji: '🛻', label: 'Lyft', url: 'https://lyft.com/' },
 ];
 
+export const PERKS = [
+  { icon: '✈️', title: 'Skyscanner', desc: '10% off flights when booked through Kipita.', code: 'KIPITA10', expiry: 'Dec 2026', url: 'https://www.skyscanner.com/' },
+  { icon: '🏨', title: 'Booking.com', desc: 'Genius Level 2 instant unlock — up to 20% off.', code: 'KIPITAGENI', expiry: 'Ongoing', url: 'https://www.booking.com/' },
+  { icon: '💻', title: 'NomadList Pro', desc: '3 months free NomadList Pro subscription.', code: 'KIPITANOMAD', expiry: 'Mar 2027', url: 'https://nomadlist.com/' },
+  { icon: '📶', title: 'Airalo eSIM', desc: '5% off any eSIM data plan worldwide.', code: 'KIPITA5', expiry: 'Jun 2026', url: 'https://www.airalo.com/' },
+  { icon: '🏋️', title: 'ClassPass', desc: 'First month free — access gyms, yoga and fitness globally.', code: 'KIPITAFIT', expiry: 'Ongoing', url: 'https://classpass.com/' },
+  { icon: '🔐', title: 'NordVPN', desc: '2-year plan at 70% off. Secure your connection.', code: 'KIPITAVPN', expiry: 'Dec 2026', url: 'https://nordvpn.com/' },
+];
+
+export const DEMO_REVIEWS = [
+  { id: 'r1', author: 'Alex M.', flag: '🇺🇸', dest: 'Bangkok', emoji: '🛕', rating: 5, wifi: 5, budget: 5, vibe: 4, text: "Bangkok is unreal for nomads. Lightning-fast fiber at every cafe, street food for $2, and you can pay BTC at loads of spots." },
+  { id: 'r2', author: 'Sara K.', flag: '🇬🇧', dest: 'Bali', emoji: '🌴', rating: 4, wifi: 3, budget: 4, vibe: 5, text: "Canggu has the best nomad community on earth. The vibe is incredible, co-working spaces everywhere." },
+  { id: 'r3', author: 'Marco B.', flag: '🇮🇹', dest: 'Lisbon', emoji: '🇵🇹', rating: 5, wifi: 4, budget: 3, vibe: 5, text: "Europe's best city for nomads right now. NHR tax regime, incredible food, great tech scene." },
+  { id: 'r4', author: 'Yuki T.', flag: '🇯🇵', dest: 'Tokyo', emoji: '🗼', rating: 5, wifi: 5, budget: 2, vibe: 5, text: "Tokyo is the most organised city in the world. Thousands of BTC merchants, insane food, 100% safe." },
+  { id: 'r5', author: 'Priya N.', flag: '🇮🇳', dest: 'Chiang Mai', emoji: '🏔️', rating: 5, wifi: 5, budget: 5, vibe: 4, text: "$800/month comfortable lifestyle. Best Internet cafes in the world." },
+  { id: 'r6', author: 'Leo C.', flag: '🇨🇦', dest: 'Medellín', emoji: '🌺', rating: 4, wifi: 4, budget: 5, vibe: 5, text: "Spring weather all year, incredible food, and a booming crypto scene." },
+];
+
 export const GROUPS: Group[] = [
   { id: '1', name: 'BTC Nomads 🌍', emoji: '₿', members: 342, lastMessage: 'Anyone know good BTC cafes in Lisbon?', unread: 3, messages: [
     { id: 'm1', sender: 'SatoshiTraveler', text: 'Anyone know good BTC cafes in Lisbon?', mine: false, time: '10:30 AM' },
@@ -163,7 +208,7 @@ export const GROUPS: Group[] = [
   ]},
   { id: '2', name: 'SE Asia Digital Nomads', emoji: '🌴', members: 1205, lastMessage: 'New coworking space opened in Canggu!', unread: 7, messages: [
     { id: 'm4', sender: 'BaliRemote', text: 'New coworking space opened in Canggu!', mine: false, time: '9:15 AM' },
-    { id: 'm5', sender: 'ChiangMaiDev', text: 'Nice! What\'s the day rate?', mine: false, time: '9:20 AM' },
+    { id: 'm5', sender: 'ChiangMaiDev', text: "What's the day rate?", mine: false, time: '9:20 AM' },
   ]},
   { id: '3', name: 'Safety Alerts Network', emoji: '🛡️', members: 890, lastMessage: 'Flooding advisory lifted for Bangkok', unread: 0, messages: [
     { id: 'm6', sender: 'SafetyBot', text: 'Flooding advisory lifted for Bangkok. All clear! ✅', mine: false, time: 'Yesterday' },
@@ -172,3 +217,59 @@ export const GROUPS: Group[] = [
     { id: 'm7', sender: 'BudgetKing', text: '$15/night hostels in Medellín 🔥', mine: false, time: '8:00 AM' },
   ]},
 ];
+
+/* ── AI RESPONSES (matching latest build) ───────────────────── */
+export const AI_RESPONSES = {
+  plan: (dest: string) => `✈️ **Trip Plan: ${dest || 'Your Dream Destination'}**\n\n**Day 1: Arrival & Orientation**\n• Check into your accommodation\n• Explore the local neighborhood on foot\n• Try street food or a local restaurant\n• Currency exchange and SIM card setup\n\n**Day 2: Culture & History**\n• Morning: Visit main historical landmarks\n• Afternoon: Local markets or museum\n• Evening: Sunset viewpoint + dinner\n\n**Day 3: Off the Beaten Path**\n• Day trip to nearby nature or town\n• Connect with local nomads at a co-working space\n• Try Bitcoin payments at local merchants\n\n**Day 4: Food & Community**\n• Cooking class or food tour\n• Social events / meetups\n• Evening: Night market or bar crawl\n\n**Day 5: Departure**\n• Final shopping and souvenirs\n• Airport transfer via local transport\n\n💡 *Tip: Use Kipita's BTC Map to find Bitcoin-friendly merchants!*`,
+
+  safety: (loc: string) => `🛡️ **Safety Overview — ${loc}**\n\n**General Safety Tips:**\n• Keep digital copies of all documents\n• Use a VPN on public WiFi\n• Register with your embassy\n• Share your itinerary with someone at home\n• Keep emergency numbers saved offline\n\n**Emergency Resources:**\n• 🚨 Local emergency: 911 / 112 / 191 (varies by country)\n• 🏥 Find nearest hospital in the **Places** tab\n• 📱 Offline maps available for download\n\n*Always check your government's travel advisory before traveling.*`,
+
+  advisories: () => `📋 **Current Travel Advisories (2026)**\n\n🟢 **Low Risk:** Japan, Singapore, Portugal, UAE, Iceland\n🟡 **Exercise Caution:** Thailand, Mexico, Colombia, India\n🟠 **Elevated Caution:** South Africa, Kenya, Turkey\n🔴 **Reconsider Travel:** Myanmar, Sudan, Haiti\n\n⚠️ *These are general advisories. Always check your government's official portal for the most current information.*`,
+
+  phrases: () => `🌐 **Essential Travel Phrases**\n\nOpen the **Places → Phrases** section for 15+ languages with pronunciation guides!\n\nQuick essentials:\n• Hello / Thank you / Help!\n• Where is…? / How much?\n• Do you accept Bitcoin?\n• Where is the airport?\n\n*Tip: Screenshot phrases for offline access!*`,
+
+  default: (topic: string) => `Great question about "${topic}"! As your AI travel companion, I can help with:\n\n✈️ **Trip Planning** — Custom itineraries with budgets\n🛡️ **Safety Info** — Real-time advisories & alerts\n₿ **Bitcoin** — Find BTC-friendly spots worldwide\n🌐 **Phrases** — Essential phrases in 15+ languages\n🗺️ **Destinations** — Nomad scores, costs, weather\n💱 **Currency** — Live exchange rates & converter\n🎒 **Packing** — Smart packing lists\n\nTry asking me to "Plan a trip to Tokyo" or "Is Bali safe?" 🌍`,
+};
+
+/* ── DEMO PLACE GENERATION (matching latest build) ───────── */
+const placeNames: Record<string, string[]> = {
+  food: ['Nomad Kitchen', 'Street Bites', 'The Wanderer Grill', 'Local Eats', 'Spice Route', 'Fusion Corner'],
+  cafe: ['Digital Nomad Café', 'Bean & Browse', 'The Grind', 'Pour Over Paradise', 'Roast & Relax', 'Brew Corner'],
+  hotel: ['Nomad Hostel', 'The Co-Living Hub', 'Modern Suites', 'Budget Inn', 'Artisan Rooms', 'City Stay'],
+  transport: ['City Metro', 'Express Bus', 'BTS Station', 'MRT Hub', 'Tuk-Tuk Stand', 'Grab Point'],
+  atm: ['BTC ATM', 'Lightning ATM', 'Crypto Kiosk', 'Exchange Point', 'Bitcoin Corner', 'Crypto ATM'],
+  shop: ['Local Market', 'Nomad Shop', 'Night Bazaar', 'Weekend Market', 'Tech Store', 'Street Market'],
+  gym: ['Nomad Gym', 'FitHub', 'Iron Zone', 'CrossFit Box', 'Yoga Studio', 'Sports Club'],
+  beach: ['Sunset Beach', 'Chill Cove', 'Digital Nomad Beach', 'Surf Spot', 'Kite Beach', 'Hidden Bay'],
+  nightlife: ['Rooftop Bar', 'Night Market', 'Jazz Lounge', 'Sky Bar', 'Night Club', 'Live Music Venue'],
+  default: ['Place 1', 'Place 2', 'Place 3', 'Place 4', 'Place 5', 'Place 6'],
+};
+const streets = ['Main Street', 'Market Ave', 'Digital Lane', 'Nomad Road', 'BTC Boulevard', 'Satoshi St'];
+
+export function generateDemoPlaces(query: string, label: string, count: number, locationName: string) {
+  const cat = query.includes('restaurant') || query.includes('food') ? 'food'
+    : query.includes('cafe') || query.includes('coffee') ? 'cafe'
+    : query.includes('hotel') || query.includes('hostel') ? 'hotel'
+    : query.includes('transit') || query.includes('transport') || query.includes('bus') || query.includes('metro') ? 'transport'
+    : query.includes('bitcoin') || query.includes('atm') || query.includes('crypto') ? 'atm'
+    : query.includes('shopping') || query.includes('market') ? 'shop'
+    : query.includes('gym') || query.includes('fitness') ? 'gym'
+    : query.includes('beach') ? 'beach'
+    : query.includes('nightlife') || query.includes('bar') ? 'nightlife'
+    : 'default';
+  const emojis: Record<string, string> = { food: '🍜', cafe: '☕', hotel: '🏨', transport: '🚇', atm: '₿', shop: '🛍', gym: '💪', beach: '🏖️', nightlife: '🎵', default: '📍' };
+  const names = placeNames[cat] || placeNames.default;
+  const cityStreets = locationName && locationName !== 'Detecting…'
+    ? streets.map(s => s + ', ' + locationName.split(',')[0])
+    : streets;
+  return Array.from({ length: count }, (_, i) => ({
+    emoji: emojis[cat],
+    name: names[i % names.length],
+    addr: `${Math.floor(Math.random() * 200) + 1} ${cityStreets[i % cityStreets.length]}`,
+    rating: (3.8 + Math.random() * 1.1).toFixed(1),
+    dist: (0.2 + Math.random() * 4).toFixed(1),
+    isOpen: Math.random() > 0.3,
+    reviews: Math.floor(20 + Math.random() * 200),
+    price: ['$', '$$', '$$$'][Math.floor(Math.random() * 3)],
+  }));
+}
