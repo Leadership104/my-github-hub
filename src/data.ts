@@ -182,13 +182,32 @@ export const TRANSPORT_LINKS = [
   { emoji: '🛻', label: 'Lyft', url: 'https://lyft.com/' },
 ];
 
+export const BOOKING_TILES = [
+  { emoji: '✈️', label: 'Flights', desc: 'Compare & book flights worldwide', url: 'https://www.skyscanner.com/', provider: 'Skyscanner' },
+  { emoji: '🏨', label: 'Hotels', desc: 'Best rates on 2M+ properties', url: 'https://www.booking.com/', provider: 'Booking.com' },
+  { emoji: '🏠', label: 'Stays', desc: 'Unique homes & apartments', url: 'https://www.airbnb.com/', provider: 'Airbnb' },
+  { emoji: '🚗', label: 'Car Rental', desc: 'Vehicles in 60,000+ locations', url: 'https://www.rentalcars.com/', provider: 'RentalCars' },
+  { emoji: '🚢', label: 'Cruises', desc: 'Deals on cruises worldwide', url: 'https://www.cruisecritic.com/', provider: 'CruiseCritic' },
+  { emoji: '🛡️', label: 'Insurance', desc: 'Travel insurance for nomads', url: 'https://www.worldnomads.com/', provider: 'World Nomads' },
+  { emoji: '📶', label: 'eSIM Data', desc: 'Instant data in 200+ countries', url: 'https://www.airalo.com/', provider: 'Airalo' },
+  { emoji: '🔐', label: 'VPN', desc: 'Secure connection worldwide', url: 'https://nordvpn.com/', provider: 'NordVPN' },
+];
+
 export const PERKS = [
-  { icon: '✈️', title: 'Skyscanner', desc: '10% off flights when booked through Kipita.', code: 'KIPITA10', expiry: 'Dec 2026', url: 'https://www.skyscanner.com/' },
-  { icon: '🏨', title: 'Booking.com', desc: 'Genius Level 2 instant unlock — up to 20% off.', code: 'KIPITAGENI', expiry: 'Ongoing', url: 'https://www.booking.com/' },
-  { icon: '💻', title: 'NomadList Pro', desc: '3 months free NomadList Pro subscription.', code: 'KIPITANOMAD', expiry: 'Mar 2027', url: 'https://nomadlist.com/' },
-  { icon: '📶', title: 'Airalo eSIM', desc: '5% off any eSIM data plan worldwide.', code: 'KIPITA5', expiry: 'Jun 2026', url: 'https://www.airalo.com/' },
-  { icon: '🏋️', title: 'ClassPass', desc: 'First month free — access gyms, yoga and fitness globally.', code: 'KIPITAFIT', expiry: 'Ongoing', url: 'https://classpass.com/' },
-  { icon: '🔐', title: 'NordVPN', desc: '2-year plan at 70% off. Secure your connection.', code: 'KIPITAVPN', expiry: 'Dec 2026', url: 'https://nordvpn.com/' },
+  { icon: '✈️', title: 'Skyscanner', desc: '10% off flights when booked through Kipita.', code: 'KIPITA10', expiry: 'Dec 2026', url: 'https://www.skyscanner.com/', category: 'travel' },
+  { icon: '🏨', title: 'Booking.com', desc: 'Genius Level 2 instant unlock — up to 20% off.', code: 'KIPITAGENI', expiry: 'Ongoing', url: 'https://www.booking.com/', category: 'travel' },
+  { icon: '🏠', title: 'Airbnb', desc: '$25 off your first stay with Kipita referral.', code: 'KIPITABNB', expiry: 'Mar 2027', url: 'https://www.airbnb.com/', category: 'travel' },
+  { icon: '🚢', title: 'CruiseCritic', desc: 'Exclusive nomad cruise deals + onboard credits.', code: 'KIPITACRUISE', expiry: 'Ongoing', url: 'https://www.cruisecritic.com/', category: 'travel' },
+  { icon: '🦢', title: 'Swan Bitcoin', desc: 'Auto-stack sats — $10 free Bitcoin on signup.', code: 'KIPITASWAN', expiry: 'Dec 2026', url: 'https://www.swanbitcoin.com/', category: 'btc' },
+  { icon: '💳', title: 'Fold Card', desc: 'Earn BTC rewards on every purchase. Spin the wheel daily.', code: 'KIPITAFOLD', expiry: 'Ongoing', url: 'https://foldapp.com/', category: 'btc' },
+  { icon: '⚡', title: 'Strike', desc: 'Send money globally via Lightning. Zero fees for Kipita users.', code: 'KIPITASTRIKE', expiry: 'Jun 2026', url: 'https://strike.me/', category: 'btc' },
+  { icon: '🏦', title: 'River', desc: 'Buy Bitcoin with zero spread. $5 free on first purchase.', code: 'KIPITARIVER', expiry: 'Dec 2026', url: 'https://river.com/', category: 'btc' },
+  { icon: '💻', title: 'NomadList Pro', desc: '3 months free NomadList Pro subscription.', code: 'KIPITANOMAD', expiry: 'Mar 2027', url: 'https://nomadlist.com/', category: 'tools' },
+  { icon: '📶', title: 'Airalo eSIM', desc: '5% off any eSIM data plan worldwide.', code: 'KIPITA5', expiry: 'Jun 2026', url: 'https://www.airalo.com/', category: 'tools' },
+  { icon: '🏋️', title: 'ClassPass', desc: 'First month free — access gyms, yoga and fitness globally.', code: 'KIPITAFIT', expiry: 'Ongoing', url: 'https://classpass.com/', category: 'tools' },
+  { icon: '🔐', title: 'NordVPN', desc: '2-year plan at 70% off. Secure your connection.', code: 'KIPITAVPN', expiry: 'Dec 2026', url: 'https://nordvpn.com/', category: 'tools' },
+  { icon: '🛡️', title: 'World Nomads', desc: 'Travel insurance built for nomads. 10% off with code.', code: 'KIPITASAFE', expiry: 'Ongoing', url: 'https://www.worldnomads.com/', category: 'tools' },
+  { icon: '💼', title: 'Wise', desc: 'Multi-currency account. First transfer free.', code: 'KIPITAWISE', expiry: 'Ongoing', url: 'https://wise.com/', category: 'tools' },
 ];
 
 export const DEMO_REVIEWS = [
