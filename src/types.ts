@@ -7,6 +7,7 @@ export interface Destination {
   lng: number;
   rating: number;
   pop: string;
+  wikiTitle?: string;
   speed: number;
   safetyScore: number;
   monthlyCost: number;
@@ -25,8 +26,11 @@ export interface Trip {
   start: string;
   end: string;
   notes: string;
-  status: 'upcoming' | 'active' | 'completed';
+  status: 'upcoming' | 'active' | 'past' | 'cancelled';
   items: ItineraryItem[];
+  invites?: string[];
+  isSample?: boolean;
+  createdAt?: number;
 }
 
 export interface ItineraryItem {
@@ -58,12 +62,25 @@ export interface CryptoPrice {
   icon: string;
 }
 
+export interface MetalPrice {
+  symbol: string;
+  label: string;
+  price: string;
+}
+
 export interface BTCMerchant {
   lat: number;
   lng: number;
   name: string;
   type: string;
   source: 'btcmap' | 'cashapp';
+  tags?: Record<string, string>;
+}
+
+export interface CashAppMerchant {
+  lat: number;
+  lng: number;
+  name: string;
 }
 
 export interface ChatMessage {
@@ -89,6 +106,17 @@ export interface GroupMessage {
   text: string;
   mine: boolean;
   time: string;
+}
+
+export interface DemoPlace {
+  emoji: string;
+  name: string;
+  addr: string;
+  rating: string;
+  dist: string;
+  isOpen: boolean;
+  reviews: number;
+  price: string;
 }
 
 export type TabId = 'home' | 'ai' | 'trips' | 'places' | 'maps' | 'wallet' | 'groups';

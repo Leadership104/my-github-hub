@@ -34,7 +34,7 @@ export default function TripsScreen() {
     save(trips.map(t => t.id === tripId ? { ...t, items: t.items.map(i => i.id === itemId ? { ...i, done: !i.done } : i) } : t));
   };
 
-  const filtered = trips.filter(t => tab === 'upcoming' ? t.status !== 'completed' : t.status === 'completed');
+  const filtered = trips.filter(t => tab === 'upcoming' ? t.status === 'upcoming' || t.status === 'active' : t.status === 'past' || t.status === 'cancelled');
 
   if (selectedTrip) {
     const trip = trips.find(t => t.id === selectedTrip.id) || selectedTrip;
