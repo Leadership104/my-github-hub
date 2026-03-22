@@ -139,7 +139,8 @@ async function placeDetails(placeId: string) {
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Google Places details error: ${res.status} ${err}`);
+    console.warn(`Google Places details ${res.status}:`, err);
+    return null;
   }
 
   return res.json();
