@@ -48,10 +48,15 @@ const EMERGENCY_NUMBERS: { country: string; police: string; ambulance: string; f
 
 export default function App() {
   const [tab, setTab] = useState<TabId>('home');
+  const [screenHint, setScreenHint] = useState<string | undefined>();
   const [showProfile, setShowProfile] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
-  const [showLocationPicker, setShowLocationPicker] = useState(false);
+
+  const switchTab = useCallback((t: TabId, hint?: string) => {
+    setTab(t);
+    setScreenHint(hint);
+  }, []);
   const [locationSearch, setLocationSearch] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState<LocationState[]>([]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
