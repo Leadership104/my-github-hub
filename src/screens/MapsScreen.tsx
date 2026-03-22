@@ -182,20 +182,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     return () => { map.remove(); mapRef.current = null; };
   }, []);
 
-  // Re-center map and reload data when location changes
-  const prevLatRef = useRef(lat);
-  const prevLngRef = useRef(lng);
-  useEffect(() => {
-    if (prevLatRef.current === lat && prevLngRef.current === lng) return;
-    prevLatRef.current = lat;
-    prevLngRef.current = lng;
-    if (mapRef.current) {
-      mapRef.current.setView([lat, lng], 13, { animate: true });
-    }
-    // Re-fetch current filter data for new location
-    if (filter === 'btc') renderBtcMarkers();
-    else fetchOverpassPlaces(filter);
-  }, [lat, lng, filter, renderBtcMarkers, fetchOverpassPlaces]);
+  const locationChangeHandledRef = useRef(false);
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach(m => m.remove());
