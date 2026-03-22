@@ -93,6 +93,15 @@ const OVERPASS_CFGS: Record<string, { tag: string; ico: string; bg: string; labe
 const SEARCH_RADIUS = 3500;
 const MAX_RESULTS_PER_QUERY = 30;
 
+function isValidUrl(url?: string): boolean {
+  if (!url) return false;
+  try { const u = new URL(url.startsWith('http') ? url : `https://${url}`); return !!u.hostname && u.hostname.includes('.'); } catch { return false; }
+}
+function isValidPhone(phone?: string): boolean {
+  if (!phone) return false;
+  return /[\d\+\-\(\)]{5,}/.test(phone);
+}
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return haversine(lat1, lng1, lat2, lng2);
 }
