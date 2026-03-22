@@ -178,8 +178,8 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home': return <HomeScreen weather={weather} locationName={locationName} onSwitchTab={switchTab} />;
-      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} />;
-      case 'trips': return <TripsScreen />;
+      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} />;
+      case 'trips': return <TripsScreen trips={trips} onSaveTrips={saveTrips} />;
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} />;
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} />;
