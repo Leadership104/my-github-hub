@@ -321,26 +321,32 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
     setPlacesLoading(false);
   }, [lat, lng, clearMarkers, addLabeledMarker]);
 
-  /* ── Fetch CoinMap.org venues via proxy (bypasses CORS) ── */
-  const fetchCoinMapVenues = useCallback(async (): Promise<NearbyPlace[]> => {
+  /* ── Fetch additional verified BTC merchants from Overpass (currency:XBT=yes) ── */
+  const fetchOverpassBtcMerchants = useCallback(async (): Promise<NearbyPlace[]> => {
     if (!lat || !lng) return [];
     try {
-      const { data, error } = await supabase.functions.invoke('places-proxy', {
-        body: { action: 'coinmap', lat, lng },
-      });
-      if (error) throw error;
-      const venues = Array.isArray(data) ? data : [];
-      return venues.filter((v: any) => v.name && v.name !== 'BTC Venue').map((v: any) => ({
-        lat: v.lat, lng: v.lng, name: v.name,
-        type: v.typeLabel || 'Bitcoin Merchant', icon: '₿',
-        source: 'CoinMap.org ✓',
-        distance: haversineKm(lat, lng, v.lat, v.lng),
-        website: v.website || '', phone: '', address: '',
-      }));
+      const q = `[out:json][timeout:15];node["currency:XBT"="yes"](around:15000,${lat},${lng});out 50;`;
+      const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+      const d = await r.json();
+      return (d.elements || [])
+        .filter((e: any) => e.tags?.name)
+        .map((e: any) => {
+          const details = extractPlaceDetails(e.tags || {});
+          const acceptsLN = e.tags['payment:lightning'] === 'yes';
+          const acceptsOnchain = e.tags['payment:onchain'] === 'yes';
+          return {
+            lat: e.lat, lng: e.lon, name: e.tags.name,
+            type: acceptsLN ? 'Lightning ⚡ + Onchain' : acceptsOnchain ? 'Onchain BTC' : 'Bitcoin Merchant',
+            icon: '₿',
+            source: 'OpenStreetMap ✓',
+            distance: haversineKm(lat, lng, e.lat, e.lon),
+            ...details,
+          };
+        });
     } catch { return []; }
   }, [lat, lng]);
 
-  // Render BTC markers from BTCMap + CoinMap
+  // Render BTC markers from BTCMap + Overpass verified BTC merchants
   const renderBtcMarkers = useCallback(async () => {
     clearMarkers();
     // BTCMap merchants - filter out unnamed/generic entries
