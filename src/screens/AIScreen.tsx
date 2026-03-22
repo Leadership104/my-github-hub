@@ -34,12 +34,23 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
   }
 
   // Cost / budget / affordable
-  if (/\b(cost|cheap|budget|affordable|expense|price)\b/.test(m)) {
+  if (/\b(cost|cheap|budget|affordable|expense|price|food|drink|entertainment|eat|dining)\b/.test(m)) {
     if (knownDest) {
+      const costs = CITY_COSTS[knownDest.city];
+      if (costs) {
+        const photoLine = `[PHOTO:${costs.photoUrl}:${costs.landmark}]\n\n`;
+        const foodLines = costs.food.map(f => `  • ${f.item}: **${f.price}**`).join('\n');
+        const drinkLines = costs.drinks.map(d => `  • ${d.item}: **${d.price}**`).join('\n');
+        const entLines = costs.entertainment.map(e => `  • ${e.item}: **${e.price}**`).join('\n');
+        return `${photoLine}💰 **Cost Guide — ${knownDest.city}, ${knownDest.country}** ${knownDest.emoji}\n📸 *${costs.landmark}*\n\n**Monthly estimate:** ~$${knownDest.monthlyCost.toLocaleString()}\n\n🍜 **Food:**\n${foodLines}\n\n🍹 **Drinks:**\n${drinkLines}\n\n🎉 **Entertainment:**\n${entLines}`;
+      }
       return `💰 **Cost of Living — ${knownDest.city}, ${knownDest.country}**\n\n**Monthly estimate:** ~$${knownDest.monthlyCost.toLocaleString()}\n\n• 🏠 Accommodation: ~$${Math.round(knownDest.monthlyCost * 0.4)}/mo\n• 🍜 Food: ~$${Math.round(knownDest.monthlyCost * 0.25)}/mo\n• 🚇 Transport: ~$${Math.round(knownDest.monthlyCost * 0.1)}/mo\n• 💻 Coworking: ~$${Math.round(knownDest.monthlyCost * 0.1)}/mo\n• 🎉 Entertainment: ~$${Math.round(knownDest.monthlyCost * 0.15)}/mo`;
     }
     const sorted = [...DESTINATIONS].sort((a, b) => a.monthlyCost - b.monthlyCost);
-    return `💰 **Most Affordable Nomad Destinations**\n\n${sorted.slice(0, 5).map((d, i) => `${i + 1}. **${d.city}** ${d.emoji} — $${d.monthlyCost.toLocaleString()}/month`).join('\n')}\n\n*Ask about any city for a full cost breakdown!*`;
+    return `💰 **Most Affordable Nomad Destinations**\n\n${sorted.slice(0, 5).map((d, i) => {
+      const c = CITY_COSTS[d.city];
+      return `${i + 1}. **${d.city}** ${d.emoji} — $${d.monthlyCost.toLocaleString()}/month${c ? ` · Street food from ${c.food[0]?.price}` : ''}`;
+    }).join('\n')}\n\n*Ask about any city for a full cost breakdown with photos!*`;
   }
 
   // WiFi / internet
