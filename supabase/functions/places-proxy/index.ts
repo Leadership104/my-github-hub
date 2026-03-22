@@ -50,7 +50,8 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Google Places API error: ${res.status} ${err}`);
+    console.warn(`Google Places nearby ${res.status}:`, err);
+    return { places: [] };
   }
 
   return res.json();
@@ -98,7 +99,8 @@ async function textSearch(query: string, lat?: number, lng?: number, radius = 50
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Google Places text search error: ${res.status} ${err}`);
+    console.warn(`Google Places text search ${res.status}:`, err);
+    return { places: [] };
   }
 
   return res.json();
@@ -137,7 +139,8 @@ async function placeDetails(placeId: string) {
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Google Places details error: ${res.status} ${err}`);
+    console.warn(`Google Places details ${res.status}:`, err);
+    return null;
   }
 
   return res.json();
@@ -223,9 +226,7 @@ serve(async (req) => {
       }
       case "details": {
         const data = await placeDetails(placeId);
-        result = {
-          ...normalizePlaces({ places: [data] })[0],
-        };
+        result = data ? normalizePlaces({ places: [data] })[0] : null;
         break;
       }
       default:
