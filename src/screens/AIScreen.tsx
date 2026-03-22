@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ChatMessage } from '../types';
-import { DESTINATIONS, AI_RESPONSES } from '../data';
+import { DESTINATIONS, AI_RESPONSES, CITY_COSTS } from '../data';
 
 function extractDestFromMsg(msg: string) {
   const known = DESTINATIONS.find(d => msg.toLowerCase().includes(d.city.toLowerCase()));
