@@ -96,6 +96,19 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
           ))}
         </div>
 
+        {/* Upside — Cash Back */}
+        <a href="https://upside.com/" target="_blank" rel="noopener noreferrer"
+          className="block w-full bg-gradient-to-r from-green-600 to-emerald-500 rounded-kipita p-4 mb-6 hover:opacity-90 transition-opacity no-underline">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">⛽</span>
+            <div className="flex-1">
+              <div className="text-white font-extrabold text-sm">Upside — Cash Back</div>
+              <div className="text-white/70 text-xs mt-0.5">Earn cash back on gas, food & groceries every time you fill up.</div>
+            </div>
+            <span className="ms text-white/60 text-xl">chevron_right</span>
+          </div>
+        </a>
+
       </div>
     </div>
   );
