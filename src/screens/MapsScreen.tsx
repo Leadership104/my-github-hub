@@ -543,7 +543,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   };
 
   const subs = CATEGORY_SUBS[filter] || [];
-  const sheetTitle = filter === 'btc' ? '₿ BTC Merchants (BTCMap + CoinMap)'
+  const sheetTitle = filter === 'btc' ? '₿ BTC Merchants (Verified Multi-Source)'
     : `${allFilters.find(f => f.id === filter)?.emoji || ''} ${allFilters.find(f => f.id === filter)?.label?.split(' ').slice(1).join(' ') || 'Places'} Nearby`;
 
   const renderStars = (rating: number | null | undefined) => {
