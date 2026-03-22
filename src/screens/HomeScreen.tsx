@@ -14,7 +14,7 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
 
   const quickTools = [
     { emoji: '🌐', label: 'Translate', tab: 'places' as TabId },
-    { emoji: '₿', label: 'BTC Map', tab: 'maps' as TabId },
+    { emoji: '🏧', label: 'ATM Finder', tab: 'maps' as TabId },
     { emoji: '💱', label: 'Currency', tab: 'wallet' as TabId },
     { emoji: '🛡️', label: 'Safety', tab: 'home' as TabId },
     { emoji: '📍', label: 'Nearby', tab: 'places' as TabId },
