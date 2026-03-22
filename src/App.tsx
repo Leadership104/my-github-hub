@@ -48,10 +48,9 @@ export default function App() {
   if (splash) {
     setTimeout(() => setSplash(false), 2000);
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white">
-        <img src={kipitaSplash} alt="Kipita" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-white/20" />
-        <div className="relative flex gap-2 justify-center mt-[60%]">
+      <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white">
+        <img src={kipitaSplash} alt="Kipita" className="w-full h-full object-contain p-4" />
+        <div className="absolute bottom-16 flex gap-2 justify-center">
           {[0, 1, 2].map(i => (
             <span key={i} className="w-2.5 h-2.5 rounded-full bg-kipita-red" style={{ animation: `dot-pulse 1.4s ease-in-out infinite`, animationDelay: `${i * 0.2}s` }} />
           ))}
