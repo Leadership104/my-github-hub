@@ -33,6 +33,8 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
     "places.types",
     "places.primaryTypeDisplayName",
     "places.googleMapsUri",
+    "places.editorialSummary",
+    "places.reviews",
   ].join(",");
 
   const res = await fetch(
