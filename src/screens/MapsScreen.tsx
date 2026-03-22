@@ -156,6 +156,9 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<NearbyPlace | null>(null);
+  const [suggestions, setSuggestions] = useState<{ name: string; address: string; lat: number; lng: number }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const allFilters = [
     { id: 'btc', label: '₿ BTC', emoji: '₿' },
@@ -353,8 +356,62 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     if (filter === 'btc' && merchants.length > 0) renderBtcMarkers();
   }, [merchants]);
 
+  // Autocomplete suggestions via Nominatim (debounced)
+  const handleSearchInput = useCallback((val: string) => {
+    setSearch(val);
+    if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+    if (val.trim().length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    suggestTimerRef.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+        const d = await r.json();
+        const items = d.map((item: any) => ({
+          name: item.display_name?.split(',')[0] || val,
+          address: item.display_name?.split(',').slice(1, 3).join(',').trim() || '',
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+        }));
+        setSuggestions(items);
+        setShowSuggestions(items.length > 0);
+      } catch { setSuggestions([]); }
+    }, 400);
+  }, []);
+
+  const selectSuggestion = useCallback((s: { name: string; address: string; lat: number; lng: number }) => {
+    setSearch(s.name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    if (mapRef.current) {
+      mapRef.current.setView([s.lat, s.lng], 15, { animate: true });
+    }
+    // Trigger full search at that location
+    (async () => {
+      setPlacesLoading(true);
+      clearMarkers();
+      try {
+        const googlePlaces = await fetchGooglePlaces('search', { query: s.name, lat: s.lat, lng: s.lng, radius: 5000 });
+        const q = `[out:json][timeout:20];node["amenity"](around:2000,${s.lat},${s.lng});out 20;`;
+        const or = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+        const od = await or.json();
+        const overpassPlaces: NearbyPlace[] = (od.elements || []).filter((e: any) => e.tags?.name).map((e: any) => {
+          const details = extractPlaceDetails(e.tags || {});
+          return { lat: e.lat, lng: e.lon, name: e.tags.name, type: e.tags.amenity?.replace(/_/g, ' ') || 'Place', icon: '📌', source: 'OpenStreetMap', distance: haversineKm(s.lat, s.lng, e.lat, e.lon), ...details };
+        });
+        const seen = new Set<string>();
+        const merged: NearbyPlace[] = [];
+        for (const gp of googlePlaces) { if (!gp.lat || !gp.lng) continue; const key = `${gp.lat.toFixed(4)},${gp.lng.toFixed(4)}`; if (seen.has(key)) continue; seen.add(key); gp.distance = haversineKm(s.lat, s.lng, gp.lat, gp.lng); gp.icon = '⭐'; merged.push(gp); }
+        for (const op of overpassPlaces) { const key = `${op.lat.toFixed(4)},${op.lng.toFixed(4)}`; if (seen.has(key)) continue; seen.add(key); merged.push(op); }
+        merged.sort((a, b) => (a.distance || 99) - (b.distance || 99));
+        setNearbyPlaces(merged);
+        merged.forEach(p => { const popup = buildRichPopup(p, { ico: p.icon, bg: p.source === 'Google Places' ? '#4285F4' : '#6B46C1', label: p.type }); addLabeledMarker(p.lat, p.lng, p.icon, p.source === 'Google Places' ? '#4285F4' : '#6B46C1', p.name, popup); });
+      } catch {}
+      setPlacesLoading(false);
+    })();
+  }, [clearMarkers, addLabeledMarker]);
+
   const doSearch = async () => {
     if (!search.trim() || !mapRef.current) return;
+    setShowSuggestions(false);
     setPlacesLoading(true);
     try {
       // Search via Google Places proxy for rich results
@@ -445,19 +502,44 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full relative">
-      {/* Search bar */}
-      <div className="absolute top-3 left-3 right-3 z-[500] flex gap-2">
-        <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && doSearch()}
-          placeholder="Search any location or place…"
-          className="flex-1 bg-card/95 backdrop-blur-sm border border-border rounded-kipita-sm px-3 py-2.5 text-sm shadow-md outline-none focus:border-kipita-red" />
-        <button onClick={() => { if (lat && mapRef.current) mapRef.current.setView([lat, lng], 14); }}
-          className="bg-card/95 backdrop-blur-sm border border-border px-3 rounded-kipita-sm shadow-md">
-          <span className="ms text-lg text-muted-foreground">my_location</span>
-        </button>
-        <button onClick={doSearch} className="bg-kipita-red text-white px-3 rounded-kipita-sm font-semibold text-sm shadow-md">
-          <span className="ms text-lg">search</span>
-        </button>
+    <div className="flex flex-col h-full relative" onClick={() => setShowSuggestions(false)}>
+      {/* Search bar with autocomplete */}
+      <div className="absolute top-3 left-3 right-3 z-[500]">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <input value={search} onChange={e => handleSearchInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { setShowSuggestions(false); doSearch(); } }}
+              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+              placeholder="Search any location or place…"
+              className="w-full bg-card/95 backdrop-blur-sm border border-border rounded-kipita-sm px-3 py-2.5 text-sm shadow-md outline-none focus:border-kipita-red" />
+            {search && (
+              <button onClick={() => { setSearch(''); setSuggestions([]); setShowSuggestions(false); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">✕</button>
+            )}
+            {/* Autocomplete dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-kipita-sm shadow-xl overflow-hidden z-[600]">
+                {suggestions.map((s, i) => (
+                  <button key={i} onClick={() => selectSuggestion(s)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted transition-colors text-left border-b border-border last:border-0">
+                    <span className="ms text-muted-foreground text-lg flex-shrink-0">location_on</span>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate">{s.name}</div>
+                      {s.address && <div className="text-[11px] text-muted-foreground truncate">{s.address}</div>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={() => { if (lat && mapRef.current) mapRef.current.setView([lat, lng], 14); }}
+            className="bg-card/95 backdrop-blur-sm border border-border px-3 rounded-kipita-sm shadow-md flex-shrink-0">
+            <span className="ms text-lg text-muted-foreground">my_location</span>
+          </button>
+          <button onClick={() => { setShowSuggestions(false); doSearch(); }} className="bg-kipita-red text-white px-3 rounded-kipita-sm font-semibold text-sm shadow-md flex-shrink-0">
+            <span className="ms text-lg">search</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter pills */}
