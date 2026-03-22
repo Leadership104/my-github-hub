@@ -67,7 +67,7 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
   if (/\b(advisor|warning|alert|entry|restriction)\b/.test(m)) return AI_RESPONSES.advisories();
 
   // Perks / deals / codes / discounts
-  if (/\b(perk|deal|discount|coupon|code|promo|offer|swan|fold|strike|river|affiliate)\b/.test(m)) return AI_RESPONSES.perks();
+  if (/\b(perks?|deals?|discounts?|coupons?|codes?|promos?|offers?|swan|fold|strike|river|kinesis|affiliate|upside)\b/.test(m)) return AI_RESPONSES.perks();
 
   // Phrases
   if (/\b(phrase|language|speak|translate|hello|thank you)\b/.test(m)) return AI_RESPONSES.phrases();
