@@ -174,38 +174,55 @@ export const PHRASES: Record<string, { label: string; phrases: { en: string; loc
 };
 
 export const TRANSPORT_LINKS = [
-  { emoji: '✈️', label: 'Flights', url: 'https://www.skyscanner.com/' },
-  { emoji: '🏨', label: 'Hotels', url: 'https://www.booking.com/' },
-  { emoji: '🚗', label: 'Car Rental', url: 'https://www.rentalcars.com/' },
-  { emoji: '🚢', label: 'Cruise', url: 'https://www.cruisecritic.com/' },
-  { emoji: '🚕', label: 'Uber', url: 'https://uber.com/' },
-  { emoji: '🛻', label: 'Lyft', url: 'https://lyft.com/' },
+  { emoji: '✈️', label: 'Flights', url: 'https://www.skyscanner.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA10' },
+  { emoji: '🏨', label: 'Hotels', url: 'https://www.hotels.com/affiliate/RrZ7bmg' },
+  { emoji: '🏨', label: 'Expedia', url: 'https://expedia.com/affiliate/eA2cKky' },
+  { emoji: '🚗', label: 'Car Rental', url: 'https://www.rentalcars.com/?utm_source=kipita&utm_medium=app' },
+  { emoji: '🚢', label: 'Cruise', url: 'https://www.cruisecritic.com/?utm_source=kipita&utm_medium=app' },
+  { emoji: '🚕', label: 'Uber', url: 'https://uber.com/?utm_source=kipita&utm_medium=app' },
+  { emoji: '🛻', label: 'Lyft', url: 'https://lyft.com/?utm_source=kipita&utm_medium=app' },
 ];
 
 export const BOOKING_TILES = [
-  { emoji: '✈️', label: 'Flights', desc: 'Compare & book flights worldwide', url: 'https://www.skyscanner.com/', provider: 'Skyscanner' },
-  { emoji: '🏨', label: 'Hotels', desc: 'Best rates on 2M+ properties', url: 'https://www.booking.com/', provider: 'Booking.com' },
+  { emoji: '✈️', label: 'Flights', desc: 'Compare & book flights worldwide', url: 'https://www.skyscanner.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA10', provider: 'Skyscanner' },
+  { emoji: '🏨', label: 'Hotels', desc: 'Best rates on 2M+ properties', url: 'https://www.booking.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAGENI', provider: 'Booking.com' },
+  { emoji: '🏨', label: 'Expedia', desc: 'Bundle deals on flights + hotels', url: 'https://expedia.com/affiliate/eA2cKky', provider: 'Expedia' },
+  { emoji: '🏨', label: 'Hotels.com', desc: 'Earn free nights on every 10 stays', url: 'https://www.hotels.com/affiliate/RrZ7bmg', provider: 'Hotels.com' },
   { emoji: '🏠', label: 'Stays', desc: 'Unique homes & apartments', url: 'https://www.airbnb.com/', provider: 'Airbnb' },
-  { emoji: '🚗', label: 'Car Rental', desc: 'Vehicles in 60,000+ locations', url: 'https://www.rentalcars.com/', provider: 'RentalCars' },
-  { emoji: '🚢', label: 'Cruises', desc: 'Deals on cruises worldwide', url: 'https://www.cruisecritic.com/', provider: 'CruiseCritic' },
+  { emoji: '🚗', label: 'Car Rental', desc: 'Vehicles in 60,000+ locations', url: 'https://www.rentalcars.com/?utm_source=kipita&utm_medium=app', provider: 'RentalCars' },
+  { emoji: '🚢', label: 'Cruises', desc: 'Deals on cruises worldwide', url: 'https://www.cruisecritic.com/?utm_source=kipita&utm_medium=app', provider: 'CruiseCritic' },
   { emoji: '🛡️', label: 'Insurance', desc: 'Travel insurance for nomads', url: 'https://www.worldnomads.com/', provider: 'World Nomads' },
-  { emoji: '📶', label: 'eSIM Data', desc: 'Instant data in 200+ countries', url: 'https://www.airalo.com/', provider: 'Airalo' },
-  { emoji: '🔐', label: 'VPN', desc: 'Secure connection worldwide', url: 'https://nordvpn.com/', provider: 'NordVPN' },
+  { emoji: '📶', label: 'eSIM Data', desc: 'Instant data in 200+ countries', url: 'https://www.airalo.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA5', provider: 'Airalo' },
+  { emoji: '🔐', label: 'VPN', desc: 'Secure connection worldwide', url: 'https://nordvpn.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAVPN', provider: 'NordVPN' },
+];
+
+export const SAVETRAVELDEALS = [
+  { emoji: '✈️', label: 'Flights & Hotels', desc: 'Search and book at the best prices', url: 'https://savetraveldeals.com/book-hotels-app/' },
+  { emoji: '🚗', label: 'Car Rental', desc: 'Rent a car anywhere in the world', url: 'https://savetraveldeals.com/car-rental-app/' },
+  { emoji: '🚐', label: 'Airport Transfers', desc: 'Reliable airport transfer services', url: 'https://savetraveldeals.com/airport-transfers/' },
+  { emoji: '🚲', label: 'Bike Rental', desc: 'Explore cities on two wheels', url: 'https://savetraveldeals.com/bike-rental-app/' },
 ];
 
 export const PERKS = [
-  { icon: '✈️', title: 'Skyscanner', desc: '10% off flights when booked through Kipita.', code: 'KIPITA10', expiry: 'Dec 2026', url: 'https://www.skyscanner.com/', category: 'travel' },
-  { icon: '🏨', title: 'Booking.com', desc: 'Genius Level 2 instant unlock — up to 20% off.', code: 'KIPITAGENI', expiry: 'Ongoing', url: 'https://www.booking.com/', category: 'travel' },
+  { icon: '✈️', title: 'Skyscanner', desc: '10% off flights when booked through Kipita.', code: 'KIPITA10', expiry: 'Dec 2026', url: 'https://www.skyscanner.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA10', category: 'travel' },
+  { icon: '🏨', title: 'Booking.com', desc: 'Genius Level 2 instant unlock — up to 20% off.', code: 'KIPITAGENI', expiry: 'Ongoing', url: 'https://www.booking.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAGENI', category: 'travel' },
+  { icon: '🏨', title: 'Expedia', desc: 'Bundle & save on flights + hotels.', code: '', expiry: 'Ongoing', url: 'https://expedia.com/affiliate/eA2cKky', category: 'travel' },
+  { icon: '🏨', title: 'Hotels.com', desc: 'Earn a free night for every 10 stays.', code: '', expiry: 'Ongoing', url: 'https://www.hotels.com/affiliate/RrZ7bmg', category: 'travel' },
   { icon: '🏠', title: 'Airbnb', desc: '$25 off your first stay with Kipita referral.', code: 'KIPITABNB', expiry: 'Mar 2027', url: 'https://www.airbnb.com/', category: 'travel' },
-  { icon: '🚢', title: 'CruiseCritic', desc: 'Exclusive nomad cruise deals + onboard credits.', code: 'KIPITACRUISE', expiry: 'Ongoing', url: 'https://www.cruisecritic.com/', category: 'travel' },
-  { icon: '🦢', title: 'Swan Bitcoin', desc: 'Auto-stack sats — $10 free Bitcoin on signup.', code: 'KIPITASWAN', expiry: 'Dec 2026', url: 'https://www.swanbitcoin.com/', category: 'btc' },
-  { icon: '💳', title: 'Fold Card', desc: 'Earn BTC rewards on every purchase. Spin the wheel daily.', code: 'KIPITAFOLD', expiry: 'Ongoing', url: 'https://foldapp.com/', category: 'btc' },
+  { icon: '🚢', title: 'CruiseCritic', desc: 'Exclusive nomad cruise deals + onboard credits.', code: 'KIPITACRUISE', expiry: 'Ongoing', url: 'https://www.cruisecritic.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
+  { icon: '🚕', title: 'Uber', desc: 'Rides worldwide — fast & reliable.', code: '', expiry: 'Ongoing', url: 'https://uber.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
+  { icon: '🛻', title: 'Lyft', desc: 'Affordable rides across North America.', code: '', expiry: 'Ongoing', url: 'https://lyft.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
+  { icon: '🦢', title: 'Swan Bitcoin', desc: 'Auto-stack sats — $10 free Bitcoin on signup.', code: 'KIPITASWAN', expiry: 'Dec 2026', url: 'https://www.swanbitcoin.com/kipita/', category: 'btc' },
+  { icon: '💳', title: 'Fold Card', desc: 'Earn BTC rewards on every purchase. Spin the wheel daily.', code: 'MAJL4MYU', expiry: 'Ongoing', url: 'https://use.foldapp.com/r/MAJL4MYU', category: 'btc' },
   { icon: '⚡', title: 'Strike', desc: 'Send money globally via Lightning. Zero fees for Kipita users.', code: 'KIPITASTRIKE', expiry: 'Jun 2026', url: 'https://strike.me/', category: 'btc' },
   { icon: '🏦', title: 'River', desc: 'Buy Bitcoin with zero spread. $5 free on first purchase.', code: 'KIPITARIVER', expiry: 'Dec 2026', url: 'https://river.com/', category: 'btc' },
-  { icon: '💻', title: 'NomadList Pro', desc: '3 months free NomadList Pro subscription.', code: 'KIPITANOMAD', expiry: 'Mar 2027', url: 'https://nomadlist.com/', category: 'tools' },
-  { icon: '📶', title: 'Airalo eSIM', desc: '5% off any eSIM data plan worldwide.', code: 'KIPITA5', expiry: 'Jun 2026', url: 'https://www.airalo.com/', category: 'tools' },
-  { icon: '🏋️', title: 'ClassPass', desc: 'First month free — access gyms, yoga and fitness globally.', code: 'KIPITAFIT', expiry: 'Ongoing', url: 'https://classpass.com/', category: 'tools' },
-  { icon: '🔐', title: 'NordVPN', desc: '2-year plan at 70% off. Secure your connection.', code: 'KIPITAVPN', expiry: 'Dec 2026', url: 'https://nordvpn.com/', category: 'tools' },
+  { icon: '🥇', title: 'Kinesis', desc: 'Gold & silver-backed digital currency. Trade precious metals.', code: 'KM00083150', expiry: 'Ongoing', url: 'https://kms.kinesis.money/signup/KM00083150', category: 'btc' },
+  { icon: '⛽', title: 'Upside', desc: 'Cash back on gas, food & groceries.', code: '', expiry: 'Ongoing', url: 'https://upside.com/', category: 'btc' },
+  { icon: '🗺️', title: 'BTCMap', desc: 'Find Bitcoin merchants worldwide.', code: '', expiry: 'Ongoing', url: 'https://btcmap.org/?utm_source=kipita&utm_medium=app', category: 'btc' },
+  { icon: '💻', title: 'NomadList Pro', desc: '3 months free NomadList Pro subscription.', code: 'KIPITANOMAD', expiry: 'Mar 2027', url: 'https://nomadlist.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITANOMAD', category: 'tools' },
+  { icon: '📶', title: 'Airalo eSIM', desc: '5% off any eSIM data plan worldwide.', code: 'KIPITA5', expiry: 'Jun 2026', url: 'https://www.airalo.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA5', category: 'tools' },
+  { icon: '🏋️', title: 'ClassPass', desc: 'First month free — access gyms, yoga and fitness globally.', code: 'KIPITAFIT', expiry: 'Ongoing', url: 'https://classpass.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAFIT', category: 'tools' },
+  { icon: '🔐', title: 'NordVPN', desc: '2-year plan at 70% off. Secure your connection.', code: 'KIPITAVPN', expiry: 'Dec 2026', url: 'https://nordvpn.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAVPN', category: 'tools' },
   { icon: '🛡️', title: 'World Nomads', desc: 'Travel insurance built for nomads. 10% off with code.', code: 'KIPITASAFE', expiry: 'Ongoing', url: 'https://www.worldnomads.com/', category: 'tools' },
   { icon: '💼', title: 'Wise', desc: 'Multi-currency account. First transfer free.', code: 'KIPITAWISE', expiry: 'Ongoing', url: 'https://wise.com/', category: 'tools' },
 ];
@@ -239,7 +256,7 @@ export const GROUPS: Group[] = [
 
 /* ── AI RESPONSES (matching latest build + deep trip integration) ── */
 export const AI_RESPONSES = {
-  plan: (dest: string) => `✈️ **Trip Plan: ${dest || 'Your Dream Destination'}**\n\n**Day 1: Arrival & Orientation**\n• Check into your accommodation\n• Explore the local neighborhood on foot\n• Try street food or a local restaurant\n• Currency exchange and SIM card setup\n\n**Day 2: Culture & History**\n• Morning: Visit main historical landmarks\n• Afternoon: Local markets or museum\n• Evening: Sunset viewpoint + dinner\n\n**Day 3: Off the Beaten Path**\n• Day trip to nearby nature or town\n• Connect with local nomads at a co-working space\n• Try Bitcoin payments at local merchants\n\n**Day 4: Food & Community**\n• Cooking class or food tour\n• Social events / meetups\n• Evening: Night market or bar crawl\n\n**Day 5: Departure**\n• Final shopping and souvenirs\n• Airport transfer via local transport\n\n📦 **Book Your Trip:**\n• ✈️ Flights → Skyscanner (code KIPITA10 for 10% off)\n• 🏨 Hotels → Booking.com (code KIPITAGENI for Genius unlock)\n• 📶 eSIM → Airalo (code KIPITA5 for 5% off)\n• 🛡️ Insurance → World Nomads (code KIPITASAFE)\n\n₿ **BTC Travel Tips:**\n• Use Kipita's BTC Map to find Bitcoin-friendly merchants!\n• Stack sats with Swan Bitcoin (code KIPITASWAN for $10 free)\n• Earn BTC rewards with Fold Card on every purchase`,
+  plan: (dest: string) => `✈️ **Trip Plan: ${dest || 'Your Dream Destination'}**\n\n**Day 1: Arrival & Orientation**\n• Check into your accommodation\n• Explore the local neighborhood on foot\n• Try street food or a local restaurant\n• Currency exchange and SIM card setup\n\n**Day 2: Culture & History**\n• Morning: Visit main historical landmarks\n• Afternoon: Local markets or museum\n• Evening: Sunset viewpoint + dinner\n\n**Day 3: Off the Beaten Path**\n• Day trip to nearby nature or town\n• Connect with local nomads at a co-working space\n• Try Bitcoin payments at local merchants (BTCMap)\n\n**Day 4: Food & Community**\n• Cooking class or food tour\n• Social events / meetups\n• Evening: Night market or bar crawl\n\n**Day 5: Departure**\n• Final shopping and souvenirs\n• Airport transfer via Uber/Lyft\n\n📦 **Book Your Trip:**\n• ✈️ Flights → Skyscanner (code KIPITA10)\n• 🏨 Hotels → Booking.com (KIPITAGENI) / Expedia / Hotels.com\n• 🚗 Car Rental → RentalCars\n• 🚢 Cruises → CruiseCritic\n• 📶 eSIM → Airalo (code KIPITA5)\n• 🛡️ Insurance → World Nomads (KIPITASAFE)\n\n₿ **BTC Travel Tips:**\n• Find BTC merchants on BTCMap\n• Stack sats with Swan Bitcoin (swanbitcoin.com/kipita/ — $10 free)\n• Earn BTC rewards with Fold Card (code MAJL4MYU)\n• Trade gold/silver on Kinesis (KM00083150)\n• Cash back on gas with Upside`,
 
   safety: (loc: string) => `🛡️ **Safety Overview — ${loc}**\n\n**General Safety Tips:**\n• Keep digital copies of all documents\n• Use a VPN on public WiFi (NordVPN code: KIPITAVPN — 70% off)\n• Register with your embassy\n• Share your itinerary with someone at home\n• Keep emergency numbers saved offline\n\n**Emergency Resources:**\n• 🚨 Tap the Emergency 🚨 button in the header for numbers\n• 🏥 Find nearest hospital in the **Places** tab\n• 📱 Offline maps available for download\n• 🛡️ Travel insurance: World Nomads (code KIPITASAFE)\n\n*Always check your government's travel advisory before traveling.*`,
 
@@ -247,9 +264,9 @@ export const AI_RESPONSES = {
 
   phrases: () => `🌐 **Essential Travel Phrases**\n\nOpen the **Places → Phrases** section for 15+ languages with pronunciation guides!\n\nQuick essentials:\n• Hello / Thank you / Help!\n• Where is…? / How much?\n• Do you accept Bitcoin?\n• Where is the airport?\n\n*Tip: Screenshot phrases for offline access!*`,
 
-  perks: () => `🎁 **Kipita Perks & Deals**\n\n**✈️ Travel:**\n• Skyscanner — 10% off flights (KIPITA10)\n• Booking.com — Genius Level 2 (KIPITAGENI)\n• Airbnb — $25 off first stay (KIPITABNB)\n• CruiseCritic — Onboard credits (KIPITACRUISE)\n• World Nomads — 10% off insurance (KIPITASAFE)\n\n**₿ Bitcoin & Finance:**\n• Swan Bitcoin — $10 free BTC (KIPITASWAN)\n• Fold Card — BTC rewards on purchases (KIPITAFOLD)\n• Strike — Zero-fee Lightning transfers (KIPITASTRIKE)\n• River — $5 free on first buy (KIPITARIVER)\n• Wise — First transfer free (KIPITAWISE)\n\n**🛠️ Nomad Tools:**\n• NomadList Pro — 3 months free (KIPITANOMAD)\n• Airalo eSIM — 5% off data (KIPITA5)\n• ClassPass — First month free (KIPITAFIT)\n• NordVPN — 70% off 2-year plan (KIPITAVPN)`,
+  perks: () => `🎁 **Kipita Perks & Deals**\n\n**✈️ Travel:**\n• Skyscanner — 10% off flights (KIPITA10)\n• Booking.com — Genius Level 2 (KIPITAGENI)\n• Expedia — Bundle deals (expedia.com/affiliate/eA2cKky)\n• Hotels.com — Free night every 10 stays\n• Airbnb — $25 off first stay (KIPITABNB)\n• CruiseCritic — Onboard credits (KIPITACRUISE)\n• World Nomads — 10% off insurance (KIPITASAFE)\n• Uber & Lyft — Rides worldwide\n\n**₿ Bitcoin & Finance:**\n• Swan Bitcoin — $10 free BTC (swanbitcoin.com/kipita/)\n• Fold Card — BTC rewards (use.foldapp.com/r/MAJL4MYU)\n• Strike — Zero-fee Lightning transfers (KIPITASTRIKE)\n• River — $5 free on first buy (KIPITARIVER)\n• Kinesis — Gold/silver trading (KM00083150)\n• BTCMap — Find BTC merchants worldwide\n• Upside — Cash back on gas & food\n• Wise — First transfer free (KIPITAWISE)\n\n**🛠️ Nomad Tools:**\n• NomadList Pro — 3 months free (KIPITANOMAD)\n• Airalo eSIM — 5% off data (KIPITA5)\n• ClassPass — First month free (KIPITAFIT)\n• NordVPN — 70% off 2-year plan (KIPITAVPN)`,
 
-  default: (topic: string) => `Great question about "${topic}"! As your AI travel companion, I can help with:\n\n✈️ **Trip Planning** — Custom itineraries with budgets & booking links\n🛡️ **Safety Info** — Real-time advisories & emergency contacts\n₿ **Bitcoin** — Find BTC-friendly spots + Swan, Fold, Strike deals\n🌐 **Phrases** — Essential phrases in 15+ languages\n🗺️ **Destinations** — Nomad scores, costs, weather\n💱 **Currency** — Live exchange rates & converter\n🎁 **Perks** — Exclusive codes for flights, hotels, insurance\n🎒 **Packing** — Smart packing lists\n\nTry asking me to "Plan a trip to Tokyo" or "Show me perks and deals" 🌍`,
+  default: (topic: string) => `Great question about "${topic}"! As your AI travel companion, I can help with:\n\n✈️ **Trip Planning** — Custom itineraries with budgets & booking links\n🛡️ **Safety Info** — Real-time advisories & emergency contacts\n₿ **Bitcoin** — Find BTC-friendly spots + Swan, Fold, Kinesis deals\n🌐 **Phrases** — Essential phrases in 15+ languages\n🗺️ **Destinations** — Nomad scores, costs, weather\n💱 **Currency** — Live exchange rates & converter\n🎁 **Perks** — Exclusive codes for flights, hotels, insurance\n🎒 **Packing** — Smart packing lists\n\nTry asking me to "Plan a trip to Tokyo" or "Show me perks and deals" 🌍`,
 };
 
 /* ── DEMO PLACE GENERATION (matching latest build) ───────── */
