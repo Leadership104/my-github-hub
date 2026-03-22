@@ -14,8 +14,6 @@ const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'ai', label: 'AI', icon: 'auto_awesome' },
   { id: 'trips', label: 'Trips', icon: 'flight_takeoff' },
   { id: 'places', label: 'Places', icon: 'explore' },
-  { id: 'maps', label: 'Maps', icon: 'map' },
-  { id: 'wallet', label: 'Wallet', icon: 'account_balance_wallet' },
   { id: 'groups', label: 'Groups', icon: 'groups' },
 ];
 
