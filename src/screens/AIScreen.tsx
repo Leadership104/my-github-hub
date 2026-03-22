@@ -62,8 +62,11 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
   // Plan/trip/travel/visit
   if (/\b(plan|trip|travel|visit|go to|itinerary|take me)\b/.test(m)) {
     const dest = knownDest ? `${knownDest.city}, ${knownDest.country}` : (extractDestFromMsg(msg) || locationName || 'New Destination');
+    const cityName = knownDest?.city || extractDestFromMsg(msg) || '';
+    const costs = CITY_COSTS[cityName];
+    const photoLine = costs ? `[PHOTO:${costs.photoUrl}:${costs.landmark}]\n\n` : '';
     const costNote = knownDest ? `\n\n💰 **Estimated cost:** ~$${Math.round(knownDest.monthlyCost / 30 * 7).toLocaleString()} for 7 days` : '';
-    return AI_RESPONSES.plan(dest) + costNote;
+    return photoLine + AI_RESPONSES.plan(dest) + costNote;
   }
 
   // Safety
