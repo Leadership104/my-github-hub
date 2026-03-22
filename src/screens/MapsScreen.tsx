@@ -911,13 +911,13 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
                 </div>
                 {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 50)}{p.openingHours.length > 50 ? '…' : ''}</div>}
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  {p.phone ? (
+                  {isValidPhone(p.phone) ? (
                     <a href={`tel:${p.phone}`} onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
                       📞 {p.phone}
                     </a>
                   ) : null}
-                  {p.website ? (
-                    <a href={p.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
+                  {isValidUrl(p.website) ? (
+                    <a href={p.website!.startsWith('http') ? p.website! : `https://${p.website}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
                       🌐 Website
                     </a>
                   ) : (
