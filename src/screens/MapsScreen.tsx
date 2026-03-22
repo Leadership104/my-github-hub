@@ -369,7 +369,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
     // Merge + deduplicate
     const seen = new Set<string>();
     const merged: NearbyPlace[] = [];
-    for (const p of [...btcPlaces, ...coinMapVenues]) {
+    for (const p of [...btcPlaces, ...overpassBtc]) {
       const key = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
       if (seen.has(key)) continue;
       seen.add(key);
