@@ -27,6 +27,7 @@ interface NearbyPlace {
   reviews?: { author: string; rating: number; text: string; time: string; photoUrl?: string | null }[];
   placeId?: string;
   summary?: string | null;
+  typeLabel?: string;
 }
 
 interface Props {
