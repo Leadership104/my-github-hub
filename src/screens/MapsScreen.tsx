@@ -156,6 +156,9 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [selectedPlace, setSelectedPlace] = useState<NearbyPlace | null>(null);
+  const [suggestions, setSuggestions] = useState<{ name: string; address: string; lat: number; lng: number }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const allFilters = [
     { id: 'btc', label: '₿ BTC', emoji: '₿' },
