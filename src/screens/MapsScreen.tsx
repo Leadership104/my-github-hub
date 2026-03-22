@@ -168,7 +168,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const center: [number, number] = [lat || 13.7563, lng || 100.5018];
+    const center: [number, number] = [lat || 40.7128, lng || -74.006];
     const map = L.map(containerRef.current).setView(center, 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
@@ -181,6 +181,21 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
   }, []);
+
+  // Re-center map and reload data when location changes
+  const prevLatRef = useRef(lat);
+  const prevLngRef = useRef(lng);
+  useEffect(() => {
+    if (prevLatRef.current === lat && prevLngRef.current === lng) return;
+    prevLatRef.current = lat;
+    prevLngRef.current = lng;
+    if (mapRef.current) {
+      mapRef.current.setView([lat, lng], 13, { animate: true });
+    }
+    // Re-fetch current filter data for new location
+    if (filter === 'btc') renderBtcMarkers();
+    else fetchOverpassPlaces(filter);
+  }, [lat, lng, filter, renderBtcMarkers, fetchOverpassPlaces]);
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach(m => m.remove());
