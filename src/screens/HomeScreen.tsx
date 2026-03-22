@@ -47,7 +47,7 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
         <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
         <div className="grid grid-cols-3 gap-3 mb-6">
           {quickTools.map(t => (
-            <button key={t.label} onClick={() => onSwitchTab(t.tab)}
+            <button key={t.label} onClick={t.action}
               className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
               <span className="text-2xl">{t.emoji}</span>
               <span className="text-xs font-semibold text-foreground">{t.label}</span>
