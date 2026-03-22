@@ -826,7 +826,16 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
                   {p.distance !== undefined ? ` · ${p.distance < 1 ? Math.round(p.distance * 1000) + 'm' : p.distance.toFixed(1) + 'km'}` : ''}
                 </div>
                 {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 50)}{p.openingHours.length > 50 ? '…' : ''}</div>}
-                {p.phone && <div className="text-[10px] text-muted-foreground/70">📞 {p.phone}</div>}
+                {p.phone && (
+                  <a href={`tel:${p.phone}`} onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium mt-0.5 inline-block">
+                    📞 {p.phone}
+                  </a>
+                )}
+                {p.website && (
+                  <a href={p.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium mt-0.5 ml-2 inline-block">
+                    🌐 Website
+                  </a>
+                )}
                 <div className="text-[9px] text-muted-foreground/50 mt-0.5">{p.source}</div>
               </div>
               <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`} target="_blank" rel="noopener noreferrer"
