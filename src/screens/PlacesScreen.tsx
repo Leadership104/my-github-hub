@@ -1,18 +1,58 @@
-import { useState } from 'react';
-import { getCategories, CATEGORY_SUBS, DESTINATIONS, PHRASES, generateDemoPlaces } from '../data';
-import type { DemoPlace } from '../types';
+import { useState, useCallback } from 'react';
+import { getCategories, CATEGORY_SUBS, DESTINATIONS, PHRASES } from '../data';
+import { supabase } from '@/integrations/supabase/client';
+
+interface LivePlace {
+  placeId: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  rating: number | null;
+  reviewCount: number;
+  priceLevel: string | null;
+  photoUrl: string | null;
+  photos: string[];
+  openNow: boolean | null;
+  hours: string[];
+  phone: string | null;
+  website: string | null;
+  types: string[];
+  typeLabel: string | null;
+  mapsUrl: string | null;
+  reviews: { author: string; rating: number; text: string; time: string; photoUrl?: string | null }[];
+  summary: string | null;
+  source: string;
+}
 
 interface Props {
   locationName?: string;
+  lat?: number;
+  lng?: number;
 }
 
-export default function PlacesScreen({ locationName = 'Current location' }: Props) {
-  const [view, setView] = useState<'main' | 'category' | 'subcategory' | 'destinations' | 'phrases'>('main');
+async function fetchGooglePlaces(action: string, params: Record<string, unknown>): Promise<LivePlace[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke('places-proxy', {
+      body: { action, ...params },
+    });
+    if (error) throw error;
+    return Array.isArray(data) ? data : data ? [data] : [];
+  } catch (e) {
+    console.warn('Google Places proxy error:', e);
+    return [];
+  }
+}
+
+export default function PlacesScreen({ locationName = 'Current location', lat = 13.7563, lng = 100.5018 }: Props) {
+  const [view, setView] = useState<'main' | 'category' | 'subcategory' | 'destinations' | 'phrases' | 'detail'>('main');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
+  const [selectedPlace, setSelectedPlace] = useState<LivePlace | null>(null);
   const [searchQ, setSearchQ] = useState('');
   const [lang, setLang] = useState('es');
-  const [demoPlaces, setDemoPlaces] = useState<DemoPlace[]>([]);
+  const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
+  const [loading, setLoading] = useState(false);
   const categories = getCategories();
 
   const hour = new Date().getHours();
@@ -20,11 +60,133 @@ export default function PlacesScreen({ locationName = 'Current location' }: Prop
 
   const openCategory = (catId: string) => { setSelectedCat(catId); setView('category'); };
 
-  const openSubResult = (label: string, query: string) => {
+  const openSubResult = useCallback(async (label: string, query: string) => {
     setSelectedSub({ label, query });
-    setDemoPlaces(generateDemoPlaces(query, label, 6, locationName));
     setView('subcategory');
-  };
+    setLoading(true);
+    const places = await fetchGooglePlaces('search', { query: `${label} near ${locationName}`, lat, lng, radius: 5000 });
+    setLivePlaces(places);
+    setLoading(false);
+  }, [lat, lng, locationName]);
+
+  const openPlaceDetail = useCallback(async (place: LivePlace) => {
+    setSelectedPlace(place);
+    setView('detail');
+    // Fetch full details if we have a placeId
+    if (place.placeId) {
+      const detailed = await fetchGooglePlaces('details', { placeId: place.placeId });
+      if (detailed.length > 0) setSelectedPlace(detailed[0]);
+    }
+  }, []);
+
+  // Place detail view
+  if (view === 'detail' && selectedPlace) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="flex-shrink-0">
+          <button onClick={() => setView('subcategory')} className="flex items-center gap-1 text-sm text-muted-foreground px-5 pt-5 mb-2">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+          {/* Photo gallery */}
+          {selectedPlace.photos && selectedPlace.photos.length > 0 ? (
+            <div className="flex overflow-x-auto scrollbar-hide gap-0.5">
+              {selectedPlace.photos.map((url, i) => (
+                <img key={i} src={url} alt={`${selectedPlace.name} ${i + 1}`}
+                  className="h-48 w-auto object-cover flex-shrink-0" />
+              ))}
+            </div>
+          ) : selectedPlace.photoUrl ? (
+            <img src={selectedPlace.photoUrl} alt={selectedPlace.name} className="w-full h-48 object-cover" />
+          ) : (
+            <div className="w-full h-32 bg-muted flex items-center justify-center text-4xl">📍</div>
+          )}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-4">
+          <h2 className="text-xl font-extrabold">{selectedPlace.name}</h2>
+          {selectedPlace.typeLabel && (
+            <span className="inline-block text-[10px] font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded-full mt-1">
+              {selectedPlace.typeLabel}
+            </span>
+          )}
+
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {selectedPlace.rating && (
+              <span className="flex items-center gap-1 text-sm font-bold text-amber-500">
+                ⭐ {selectedPlace.rating.toFixed(1)}
+              </span>
+            )}
+            {selectedPlace.reviewCount > 0 && <span className="text-xs text-muted-foreground">({selectedPlace.reviewCount.toLocaleString()} reviews)</span>}
+            {selectedPlace.openNow !== null && (
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedPlace.openNow ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                {selectedPlace.openNow ? '● Open Now' : '● Closed'}
+              </span>
+            )}
+            {selectedPlace.priceLevel && (
+              <span className="text-xs text-muted-foreground">💰 {selectedPlace.priceLevel.replace('PRICE_LEVEL_', '')}</span>
+            )}
+          </div>
+
+          {selectedPlace.address && <p className="text-sm text-muted-foreground mt-3">📍 {selectedPlace.address}</p>}
+          {selectedPlace.summary && <p className="text-sm text-muted-foreground/80 mt-2 italic">{selectedPlace.summary}</p>}
+
+          {/* Contact */}
+          <div className="flex gap-3 mt-3">
+            {selectedPlace.phone && (
+              <a href={`tel:${selectedPlace.phone}`} className="flex items-center gap-1 text-sm text-blue-600 font-semibold">
+                📞 {selectedPlace.phone}
+              </a>
+            )}
+          </div>
+
+          {/* Hours */}
+          {selectedPlace.hours && selectedPlace.hours.length > 0 && (
+            <div className="mt-4 bg-muted rounded-kipita p-3">
+              <p className="text-xs font-bold mb-2">🕐 Opening Hours</p>
+              <div className="space-y-1">
+                {selectedPlace.hours.map((h, i) => (
+                  <div key={i} className="text-xs text-muted-foreground">{h}</div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Reviews */}
+          {selectedPlace.reviews && selectedPlace.reviews.length > 0 && (
+            <div className="mt-4">
+              <p className="text-sm font-bold mb-2">Reviews</p>
+              <div className="space-y-3">
+                {selectedPlace.reviews.map((r, i) => (
+                  <div key={i} className="bg-muted rounded-kipita p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      {r.photoUrl && <img src={r.photoUrl} alt="" className="w-6 h-6 rounded-full" />}
+                      <span className="text-xs font-bold">{r.author}</span>
+                      <span className="text-amber-400 text-xs">{'★'.repeat(r.rating)}</span>
+                      {r.time && <span className="text-[10px] text-muted-foreground ml-auto">{r.time}</span>}
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{r.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div className="flex gap-2 mt-4">
+            {selectedPlace.mapsUrl && (
+              <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
+                className="flex-1 text-center text-sm bg-kipita-red text-white px-4 py-2.5 rounded-kipita-sm font-bold no-underline">📍 Directions</a>
+            )}
+            {selectedPlace.website && (
+              <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
+                className="flex-1 text-center text-sm bg-muted text-foreground px-4 py-2.5 rounded-kipita-sm font-bold no-underline">🌐 Website</a>
+            )}
+          </div>
+          <div className="text-[9px] text-muted-foreground/50 mt-3 text-center">via {selectedPlace.source}</div>
+        </div>
+      </div>
+    );
+  }
 
   if (view === 'phrases') {
     const phraseData = PHRASES[lang];
@@ -93,7 +255,7 @@ export default function PlacesScreen({ locationName = 'Current location' }: Prop
     );
   }
 
-  // Subcategory result view with demo places
+  // Subcategory result view with LIVE Google Places data
   if (view === 'subcategory' && selectedSub) {
     return (
       <div className="flex flex-col h-full overflow-hidden">
@@ -107,42 +269,52 @@ export default function PlacesScreen({ locationName = 'Current location' }: Prop
           </div>
         </div>
         <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
-          {demoPlaces.map((p, i) => (
-            <div key={i} className="bg-card border border-border rounded-kipita overflow-hidden">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-pulse text-sm text-muted-foreground">Searching nearby places…</div>
+            </div>
+          ) : livePlaces.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">No places found nearby.</div>
+          ) : livePlaces.map((p, i) => (
+            <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
+              className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
+              {p.photoUrl && (
+                <img src={p.photoUrl} alt={p.name} className="w-full h-32 object-cover" />
+              )}
               <div className="p-4">
                 <div className="flex items-start gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl flex-shrink-0">{p.emoji}</div>
+                  {!p.photoUrl && (
+                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl flex-shrink-0">📍</div>
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="font-bold text-sm">{p.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">{selectedSub.label}</div>
+                    {p.typeLabel && <div className="text-xs text-muted-foreground mt-0.5">{p.typeLabel}</div>}
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.isOpen ? 'bg-kipita-green/20 text-kipita-green' : 'bg-muted text-muted-foreground'}`}>
-                        {p.isOpen ? 'OPEN' : 'CLOSED'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">⭐ {p.rating}</span>
-                      <span className="text-xs text-muted-foreground">({p.reviews})</span>
-                      <span className="text-xs text-muted-foreground">{p.price}</span>
-                      <span className="text-xs text-muted-foreground">{p.dist}mi</span>
+                      {p.openNow !== null && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${p.openNow ? 'bg-kipita-green/20 text-kipita-green' : 'bg-muted text-muted-foreground'}`}>
+                          {p.openNow ? 'OPEN' : 'CLOSED'}
+                        </span>
+                      )}
+                      {p.rating && <span className="text-xs text-amber-500 font-bold">⭐ {p.rating}</span>}
+                      {p.reviewCount > 0 && <span className="text-xs text-muted-foreground">({p.reviewCount.toLocaleString()})</span>}
+                      {p.priceLevel && <span className="text-xs text-muted-foreground">{p.priceLevel.replace('PRICE_LEVEL_', '')}</span>}
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1">{p.addr}</div>
+                    {p.address && <div className="text-xs text-muted-foreground mt-1 truncate">{p.address}</div>}
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <a href={`https://www.google.com/maps/search/${encodeURIComponent(p.name)}`} target="_blank" rel="noopener noreferrer"
+                  <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}`} target="_blank" rel="noopener noreferrer"
+                    onClick={e => e.stopPropagation()}
                     className="flex-1 flex items-center justify-center gap-1 bg-muted text-foreground py-2 rounded-kipita-sm text-xs font-semibold no-underline">
                     <span className="ms text-sm">directions</span> DIRECTIONS
                   </a>
-                  <button className="flex-1 flex items-center justify-center gap-1 bg-muted text-foreground py-2 rounded-kipita-sm text-xs font-semibold">
+                  <span className="flex-1 flex items-center justify-center gap-1 bg-muted text-foreground py-2 rounded-kipita-sm text-xs font-semibold">
                     <span className="ms text-sm">info</span> MORE INFO
-                  </button>
+                  </span>
                 </div>
               </div>
-            </div>
+            </button>
           ))}
-          <a href={`https://www.google.com/maps/search/${encodeURIComponent(selectedSub.query)}${''}`} target="_blank" rel="noopener noreferrer"
-            className="block text-center text-kipita-red text-sm font-bold py-3 no-underline">
-            See more on Google Maps →
-          </a>
         </div>
       </div>
     );
