@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { haversine } from '../hooks';
 import { supabase } from '@/integrations/supabase/client';
-import type { BTCMerchant } from '../types';
+import type { BTCMerchant, Trip } from '../types';
 
 interface NearbyPlace {
   lat: number;
@@ -93,6 +93,15 @@ const OVERPASS_CFGS: Record<string, { tag: string; ico: string; bg: string; labe
 const SEARCH_RADIUS = 3500;
 const MAX_RESULTS_PER_QUERY = 30;
 
+function isValidUrl(url?: string): boolean {
+  if (!url) return false;
+  try { const u = new URL(url.startsWith('http') ? url : `https://${url}`); return !!u.hostname && u.hostname.includes('.'); } catch { return false; }
+}
+function isValidPhone(phone?: string): boolean {
+  if (!phone) return false;
+  return /[\d\+\-\(\)]{5,}/.test(phone);
+}
+
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
   return haversine(lat1, lng1, lat2, lng2);
 }
@@ -160,6 +169,31 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   const [suggestions, setSuggestions] = useState<{ name: string; address: string; lat: number; lng: number }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showTripPicker, setShowTripPicker] = useState(false);
+  const [tripAddSuccess, setTripAddSuccess] = useState<string | null>(null);
+
+  // Load trips from localStorage
+  const getTrips = useCallback((): Trip[] => {
+    try { const s = localStorage.getItem('kip_trips'); return s ? JSON.parse(s) : []; } catch { return []; }
+  }, []);
+
+  const addPlaceToTrip = useCallback((tripId: string, place: NearbyPlace) => {
+    const trips = getTrips();
+    const trip = trips.find(t => t.id === tripId);
+    if (!trip) return;
+    const newItem = {
+      id: `place-${Date.now()}`,
+      day: 1,
+      time: '12:00',
+      title: `${place.icon || '📍'} ${place.name}${place.address ? ' – ' + place.address : ''}`,
+      done: false,
+    };
+    trip.items = [...(trip.items || []), newItem];
+    localStorage.setItem('kip_trips', JSON.stringify(trips));
+    setTripAddSuccess(trip.dest);
+    setShowTripPicker(false);
+    setTimeout(() => setTripAddSuccess(null), 2500);
+  }, [getTrips]);
 
   const allFilters = [
     { id: 'btc', label: '₿ BTC', emoji: '₿' },
@@ -744,9 +778,9 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
             )}
 
             {/* Contact */}
-            {(selectedPlace.phone || selectedPlace.website) && (
+            {(isValidPhone(selectedPlace.phone) || isValidUrl(selectedPlace.website)) && (
               <div className="flex gap-3 mt-3">
-                {selectedPlace.phone && (
+                {isValidPhone(selectedPlace.phone) && (
                   <a href={`tel:${selectedPlace.phone}`} className="flex items-center gap-1 text-xs text-blue-600 font-semibold">
                     📞 {selectedPlace.phone}
                   </a>
@@ -775,18 +809,56 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
             )}
 
             {/* Action buttons */}
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-3 flex-wrap">
               {selectedPlace.mapsUrl && (
                 <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
                   className="flex-1 text-center text-xs bg-kipita-red text-white px-3 py-2 rounded-full font-bold">📍 Directions</a>
               )}
-              {selectedPlace.website && (
-                <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
+              {isValidUrl(selectedPlace.website) ? (
+                <a href={selectedPlace.website!.startsWith('http') ? selectedPlace.website! : `https://${selectedPlace.website}`} target="_blank" rel="noopener noreferrer"
                   className="flex-1 text-center text-xs bg-muted text-foreground px-3 py-2 rounded-full font-bold">🌐 Website</a>
+              ) : (
+                <span className="flex-1 text-center text-xs bg-muted text-muted-foreground/50 px-3 py-2 rounded-full font-medium italic">🌐 Website not available</span>
               )}
+              <button onClick={() => setShowTripPicker(true)}
+                className="flex-1 text-center text-xs bg-kipita-navy text-white px-3 py-2 rounded-full font-bold">✈️ Add to Trip</button>
             </div>
             <div className="text-[9px] text-muted-foreground/50 mt-2 text-center">via {selectedPlace.source}</div>
           </div>
+
+          {/* Trip Picker Modal */}
+          {showTripPicker && (
+            <div className="absolute inset-0 bg-black/40 z-10 flex items-end rounded-2xl overflow-hidden">
+              <div className="bg-card w-full rounded-t-2xl p-4 max-h-[60%] overflow-y-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-extrabold text-sm">Add to Trip</h4>
+                  <button onClick={() => setShowTripPicker(false)} className="text-muted-foreground text-lg leading-none">&times;</button>
+                </div>
+                {getTrips().filter(t => t.status === 'upcoming' || t.status === 'active').length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No upcoming trips. Create a trip first!</p>
+                ) : (
+                  getTrips().filter(t => t.status === 'upcoming' || t.status === 'active').map(trip => (
+                    <button key={trip.id} onClick={() => addPlaceToTrip(trip.id, selectedPlace)}
+                      className="w-full flex items-center gap-3 py-3 border-b border-border text-left hover:bg-muted transition-colors rounded-lg px-2">
+                      <span className="text-2xl">{trip.emoji}</span>
+                      <div>
+                        <div className="text-sm font-bold">{trip.dest}, {trip.country}</div>
+                        <div className="text-[10px] text-muted-foreground">{trip.start} → {trip.end}</div>
+                      </div>
+                      <span className="ms text-muted-foreground ml-auto">add_circle</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Success toast */}
+      {tripAddSuccess && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[600] bg-kipita-green text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg animate-in fade-in slide-in-from-top-2">
+          ✅ Added to {tripAddSuccess} trip!
         </div>
       )}
 
@@ -839,13 +911,13 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
                 </div>
                 {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 50)}{p.openingHours.length > 50 ? '…' : ''}</div>}
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  {p.phone ? (
+                  {isValidPhone(p.phone) ? (
                     <a href={`tel:${p.phone}`} onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
                       📞 {p.phone}
                     </a>
                   ) : null}
-                  {p.website ? (
-                    <a href={p.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
+                  {isValidUrl(p.website) ? (
+                    <a href={p.website!.startsWith('http') ? p.website! : `https://${p.website}`} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
                       🌐 Website
                     </a>
                   ) : (
