@@ -343,16 +343,19 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   // Render BTC markers from BTCMap + CoinMap
   const renderBtcMarkers = useCallback(async () => {
     clearMarkers();
-    // BTCMap merchants
-    const btcPlaces: NearbyPlace[] = merchants.slice(0, 80).map(m => {
-      const details = extractPlaceDetails(m.tags || {});
-      return {
-        lat: m.lat, lng: m.lng, name: m.name, type: m.type, icon: '₿',
-        source: 'BTCMap.org ✓',
-        distance: lat ? haversineKm(lat, lng, m.lat, m.lng) : undefined,
-        ...details,
-      };
-    });
+    // BTCMap merchants - filter out unnamed/generic entries
+    const btcPlaces: NearbyPlace[] = merchants
+      .filter(m => m.name && m.name !== 'BTC Merchant' && m.name.trim().length > 1)
+      .slice(0, 80)
+      .map(m => {
+        const details = extractPlaceDetails(m.tags || {});
+        return {
+          lat: m.lat, lng: m.lng, name: m.name, type: m.type, icon: '₿',
+          source: 'BTCMap.org ✓',
+          distance: lat ? haversineKm(lat, lng, m.lat, m.lng) : undefined,
+          ...details,
+        };
+      });
 
     // CoinMap venues
     const coinMapVenues = await fetchCoinMapVenues();
