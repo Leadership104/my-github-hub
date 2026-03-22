@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Trip, ItineraryItem } from '../types';
 import { BOOKING_TILES, PERKS } from '../data';
+import AIScreen from './AIScreen';
 
 export default function TripsScreen() {
   const [trips, setTrips] = useState<Trip[]>(() => {
