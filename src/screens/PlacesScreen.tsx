@@ -219,7 +219,7 @@ export default function PlacesScreen({ locationName = 'Current location' }: Prop
           <button onClick={() => setView('phrases')}
             className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-left">
             <span className="text-2xl">🌐</span>
-            <div><div className="text-white font-bold text-sm">Phrases</div><div className="text-white/50 text-[10px]">15+ languages</div></div>
+            <div><div className="text-white font-bold text-sm">Phrases</div><div className="text-white/50 text-[10px]">10 languages · 20+ phrases</div></div>
           </button>
         </div>
 
