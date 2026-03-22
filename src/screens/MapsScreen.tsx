@@ -388,7 +388,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       popup += `<a href="https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z" target="_blank" style="font-size:12px;color:#E53935;font-weight:600">📍 Directions</a>`;
       addLabeledMarker(p.lat, p.lng, '₿', '#F7931A', p.name, popup);
     });
-  }, [merchants, lat, lng, clearMarkers, addLabeledMarker, fetchCoinMapVenues]);
+  }, [merchants, lat, lng, clearMarkers, addLabeledMarker, fetchOverpassBtcMerchants]);
 
   // React to filter changes
   useEffect(() => {
