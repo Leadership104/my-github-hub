@@ -3,7 +3,7 @@ import L from 'leaflet';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { haversine } from '../hooks';
 import { supabase } from '@/integrations/supabase/client';
-import type { BTCMerchant } from '../types';
+import type { BTCMerchant, Trip } from '../types';
 
 interface NearbyPlace {
   lat: number;
