@@ -6,7 +6,8 @@ import AIScreen from './AIScreen';
 export default function TripsScreen() {
   const [trips, setTrips] = useState<Trip[]>(() => {
     const saved = localStorage.getItem('kip_trips');
-    return saved ? JSON.parse(saved) : [
+    if (saved) return JSON.parse(saved);
+    const defaults: Trip[] = [
       { id: '1', dest: 'Tokyo', country: 'Japan', emoji: '🗼', start: '2026-04-10', end: '2026-04-17', notes: 'Visit Shibuya, Akihabara, try ramen!', status: 'upcoming', items: [
         { id: 'i1', day: 1, time: '10:00', title: 'Arrive Narita Airport', done: false },
         { id: 'i2', day: 1, time: '14:00', title: 'Check in Shinjuku hotel', done: false },
@@ -14,6 +15,8 @@ export default function TripsScreen() {
       ]},
       { id: '2', dest: 'Bali', country: 'Indonesia', emoji: '🌴', start: '2026-05-01', end: '2026-05-10', notes: 'Canggu coworking + surf', status: 'upcoming', items: [] },
     ];
+    localStorage.setItem('kip_trips', JSON.stringify(defaults));
+    return defaults;
   });
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
