@@ -546,41 +546,106 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
       {/* Map */}
       <div ref={containerRef} className="flex-1 z-0" />
 
-      {/* Place detail card */}
+      {/* Enhanced Place detail card */}
       {selectedPlace && (
-        <div className="absolute bottom-[210px] left-3 right-3 z-[501] bg-card rounded-2xl shadow-xl border border-border p-4 animate-in slide-in-from-bottom-4">
-          <button onClick={() => setSelectedPlace(null)} className="absolute top-2 right-2 text-muted-foreground text-sm">✕</button>
-          {selectedPlace.photoUrl && (
-            <img src={selectedPlace.photoUrl} alt={selectedPlace.name} className="w-full h-28 object-cover rounded-xl mb-2" />
-          )}
-          <h4 className="font-bold text-sm">{selectedPlace.name}</h4>
-          <div className="flex items-center gap-2 mt-1">
-            {renderStars(selectedPlace.rating)}
-            {selectedPlace.reviewCount ? <span className="text-[10px] text-muted-foreground">({selectedPlace.reviewCount})</span> : null}
-            {selectedPlace.openNow !== null && selectedPlace.openNow !== undefined && (
-              <span className={`text-[10px] font-semibold ${selectedPlace.openNow ? 'text-green-600' : 'text-red-500'}`}>
-                {selectedPlace.openNow ? '● Open' : '● Closed'}
-              </span>
-            )}
-          </div>
-          {selectedPlace.address && <p className="text-xs text-muted-foreground mt-1">{selectedPlace.address}</p>}
-          {selectedPlace.summary && <p className="text-xs text-muted-foreground/80 mt-1 italic">{selectedPlace.summary}</p>}
-          {selectedPlace.reviews && selectedPlace.reviews.length > 0 && (
-            <div className="mt-2 border-t border-border pt-2">
-              <p className="text-[10px] font-semibold mb-1">Top Review</p>
-              <p className="text-[10px] text-muted-foreground">"{selectedPlace.reviews[0].text.slice(0, 120)}{selectedPlace.reviews[0].text.length > 120 ? '…' : ''}"</p>
-              <p className="text-[9px] text-muted-foreground/60 mt-0.5">— {selectedPlace.reviews[0].author}</p>
+        <div className="absolute bottom-[210px] left-3 right-3 z-[501] bg-card rounded-2xl shadow-xl border border-border overflow-hidden animate-in slide-in-from-bottom-4 max-h-[55vh] flex flex-col">
+          <button onClick={() => setSelectedPlace(null)} className="absolute top-2 right-2 z-10 bg-black/40 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">✕</button>
+
+          {/* Photo gallery */}
+          {selectedPlace.photos && selectedPlace.photos.length > 0 ? (
+            <div className="flex overflow-x-auto scrollbar-hide flex-shrink-0">
+              {selectedPlace.photos.map((url, i) => (
+                <img key={i} src={url} alt={`${selectedPlace.name} photo ${i + 1}`}
+                  className="h-36 w-auto object-cover flex-shrink-0 first:rounded-tl-2xl last:rounded-tr-2xl" />
+              ))}
             </div>
-          )}
-          <div className="flex gap-2 mt-2">
-            {selectedPlace.mapsUrl && (
-              <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
-                className="text-xs bg-kipita-red text-white px-3 py-1 rounded-full font-semibold">📍 Directions</a>
+          ) : selectedPlace.photoUrl ? (
+            <img src={selectedPlace.photoUrl} alt={selectedPlace.name} className="w-full h-36 object-cover flex-shrink-0" />
+          ) : null}
+
+          <div className="p-4 overflow-y-auto flex-1">
+            <h4 className="font-extrabold text-base">{selectedPlace.name}</h4>
+            {selectedPlace.typeLabel || selectedPlace.type ? (
+              <span className="inline-block text-[10px] font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded-full mt-1">
+                {selectedPlace.typeLabel || selectedPlace.type}
+              </span>
+            ) : null}
+
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              {selectedPlace.rating && (
+                <span className="flex items-center gap-1 text-sm font-bold text-amber-500">
+                  ⭐ {selectedPlace.rating.toFixed(1)}
+                </span>
+              )}
+              {selectedPlace.reviewCount ? <span className="text-xs text-muted-foreground">({selectedPlace.reviewCount.toLocaleString()} reviews)</span> : null}
+              {selectedPlace.openNow !== null && selectedPlace.openNow !== undefined && (
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${selectedPlace.openNow ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                  {selectedPlace.openNow ? '● Open Now' : '● Closed'}
+                </span>
+              )}
+              {selectedPlace.priceLevel && (
+                <span className="text-xs text-muted-foreground">💰 {selectedPlace.priceLevel.replace('PRICE_LEVEL_', '')}</span>
+              )}
+            </div>
+
+            {selectedPlace.address && <p className="text-xs text-muted-foreground mt-2">📍 {selectedPlace.address}</p>}
+            {selectedPlace.summary && <p className="text-xs text-muted-foreground/80 mt-1 italic">{selectedPlace.summary}</p>}
+
+            {/* Opening hours */}
+            {selectedPlace.openingHours && (
+              <details className="mt-3">
+                <summary className="text-xs font-semibold text-foreground cursor-pointer">🕐 Opening Hours</summary>
+                <div className="mt-1 space-y-0.5">
+                  {selectedPlace.openingHours.split(', ').map((h, i) => (
+                    <div key={i} className="text-[10px] text-muted-foreground">{h}</div>
+                  ))}
+                </div>
+              </details>
             )}
-            {selectedPlace.website && (
-              <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
-                className="text-xs bg-muted px-3 py-1 rounded-full font-semibold">🌐 Website</a>
+
+            {/* Contact */}
+            {(selectedPlace.phone || selectedPlace.website) && (
+              <div className="flex gap-3 mt-3">
+                {selectedPlace.phone && (
+                  <a href={`tel:${selectedPlace.phone}`} className="flex items-center gap-1 text-xs text-blue-600 font-semibold">
+                    📞 {selectedPlace.phone}
+                  </a>
+                )}
+              </div>
             )}
+
+            {/* Reviews */}
+            {selectedPlace.reviews && selectedPlace.reviews.length > 0 && (
+              <div className="mt-3 border-t border-border pt-3">
+                <p className="text-xs font-bold mb-2">Reviews</p>
+                <div className="space-y-2">
+                  {selectedPlace.reviews.map((r, i) => (
+                    <div key={i} className="bg-muted rounded-lg p-2.5">
+                      <div className="flex items-center gap-2 mb-1">
+                        {r.photoUrl && <img src={r.photoUrl} alt="" className="w-5 h-5 rounded-full" />}
+                        <span className="text-[11px] font-bold">{r.author}</span>
+                        <span className="text-amber-400 text-[10px]">{'★'.repeat(r.rating)}</span>
+                        {r.time && <span className="text-[9px] text-muted-foreground ml-auto">{r.time}</span>}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{r.text.slice(0, 200)}{r.text.length > 200 ? '…' : ''}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action buttons */}
+            <div className="flex gap-2 mt-3">
+              {selectedPlace.mapsUrl && (
+                <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 text-center text-xs bg-kipita-red text-white px-3 py-2 rounded-full font-bold">📍 Directions</a>
+              )}
+              {selectedPlace.website && (
+                <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
+                  className="flex-1 text-center text-xs bg-muted text-foreground px-3 py-2 rounded-full font-bold">🌐 Website</a>
+              )}
+            </div>
+            <div className="text-[9px] text-muted-foreground/50 mt-2 text-center">via {selectedPlace.source}</div>
           </div>
         </div>
       )}
