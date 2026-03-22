@@ -778,9 +778,9 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
             )}
 
             {/* Contact */}
-            {(selectedPlace.phone || selectedPlace.website) && (
+            {(isValidPhone(selectedPlace.phone) || isValidUrl(selectedPlace.website)) && (
               <div className="flex gap-3 mt-3">
-                {selectedPlace.phone && (
+                {isValidPhone(selectedPlace.phone) && (
                   <a href={`tel:${selectedPlace.phone}`} className="flex items-center gap-1 text-xs text-blue-600 font-semibold">
                     📞 {selectedPlace.phone}
                   </a>
@@ -809,18 +809,56 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
             )}
 
             {/* Action buttons */}
-            <div className="flex gap-2 mt-3">
+            <div className="flex gap-2 mt-3 flex-wrap">
               {selectedPlace.mapsUrl && (
                 <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
                   className="flex-1 text-center text-xs bg-kipita-red text-white px-3 py-2 rounded-full font-bold">📍 Directions</a>
               )}
-              {selectedPlace.website && (
-                <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
+              {isValidUrl(selectedPlace.website) ? (
+                <a href={selectedPlace.website!.startsWith('http') ? selectedPlace.website! : `https://${selectedPlace.website}`} target="_blank" rel="noopener noreferrer"
                   className="flex-1 text-center text-xs bg-muted text-foreground px-3 py-2 rounded-full font-bold">🌐 Website</a>
+              ) : (
+                <span className="flex-1 text-center text-xs bg-muted text-muted-foreground/50 px-3 py-2 rounded-full font-medium italic">🌐 Website not available</span>
               )}
+              <button onClick={() => setShowTripPicker(true)}
+                className="flex-1 text-center text-xs bg-kipita-navy text-white px-3 py-2 rounded-full font-bold">✈️ Add to Trip</button>
             </div>
             <div className="text-[9px] text-muted-foreground/50 mt-2 text-center">via {selectedPlace.source}</div>
           </div>
+
+          {/* Trip Picker Modal */}
+          {showTripPicker && (
+            <div className="absolute inset-0 bg-black/40 z-10 flex items-end rounded-2xl overflow-hidden">
+              <div className="bg-card w-full rounded-t-2xl p-4 max-h-[60%] overflow-y-auto">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-extrabold text-sm">Add to Trip</h4>
+                  <button onClick={() => setShowTripPicker(false)} className="text-muted-foreground text-lg leading-none">&times;</button>
+                </div>
+                {getTrips().filter(t => t.status === 'upcoming' || t.status === 'active').length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-4">No upcoming trips. Create a trip first!</p>
+                ) : (
+                  getTrips().filter(t => t.status === 'upcoming' || t.status === 'active').map(trip => (
+                    <button key={trip.id} onClick={() => addPlaceToTrip(trip.id, selectedPlace)}
+                      className="w-full flex items-center gap-3 py-3 border-b border-border text-left hover:bg-muted transition-colors rounded-lg px-2">
+                      <span className="text-2xl">{trip.emoji}</span>
+                      <div>
+                        <div className="text-sm font-bold">{trip.dest}, {trip.country}</div>
+                        <div className="text-[10px] text-muted-foreground">{trip.start} → {trip.end}</div>
+                      </div>
+                      <span className="ms text-muted-foreground ml-auto">add_circle</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Success toast */}
+      {tripAddSuccess && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[600] bg-kipita-green text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg animate-in fade-in slide-in-from-top-2">
+          ✅ Added to {tripAddSuccess} trip!
         </div>
       )}
 
