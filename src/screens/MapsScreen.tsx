@@ -356,8 +356,62 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     if (filter === 'btc' && merchants.length > 0) renderBtcMarkers();
   }, [merchants]);
 
+  // Autocomplete suggestions via Nominatim (debounced)
+  const handleSearchInput = useCallback((val: string) => {
+    setSearch(val);
+    if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
+    if (val.trim().length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    suggestTimerRef.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+        const d = await r.json();
+        const items = d.map((item: any) => ({
+          name: item.display_name?.split(',')[0] || val,
+          address: item.display_name?.split(',').slice(1, 3).join(',').trim() || '',
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+        }));
+        setSuggestions(items);
+        setShowSuggestions(items.length > 0);
+      } catch { setSuggestions([]); }
+    }, 400);
+  }, []);
+
+  const selectSuggestion = useCallback((s: { name: string; address: string; lat: number; lng: number }) => {
+    setSearch(s.name);
+    setSuggestions([]);
+    setShowSuggestions(false);
+    if (mapRef.current) {
+      mapRef.current.setView([s.lat, s.lng], 15, { animate: true });
+    }
+    // Trigger full search at that location
+    (async () => {
+      setPlacesLoading(true);
+      clearMarkers();
+      try {
+        const googlePlaces = await fetchGooglePlaces('search', { query: s.name, lat: s.lat, lng: s.lng, radius: 5000 });
+        const q = `[out:json][timeout:20];node["amenity"](around:2000,${s.lat},${s.lng});out 20;`;
+        const or = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+        const od = await or.json();
+        const overpassPlaces: NearbyPlace[] = (od.elements || []).filter((e: any) => e.tags?.name).map((e: any) => {
+          const details = extractPlaceDetails(e.tags || {});
+          return { lat: e.lat, lng: e.lon, name: e.tags.name, type: e.tags.amenity?.replace(/_/g, ' ') || 'Place', icon: '📌', source: 'OpenStreetMap', distance: haversineKm(s.lat, s.lng, e.lat, e.lon), ...details };
+        });
+        const seen = new Set<string>();
+        const merged: NearbyPlace[] = [];
+        for (const gp of googlePlaces) { if (!gp.lat || !gp.lng) continue; const key = `${gp.lat.toFixed(4)},${gp.lng.toFixed(4)}`; if (seen.has(key)) continue; seen.add(key); gp.distance = haversineKm(s.lat, s.lng, gp.lat, gp.lng); gp.icon = '⭐'; merged.push(gp); }
+        for (const op of overpassPlaces) { const key = `${op.lat.toFixed(4)},${op.lng.toFixed(4)}`; if (seen.has(key)) continue; seen.add(key); merged.push(op); }
+        merged.sort((a, b) => (a.distance || 99) - (b.distance || 99));
+        setNearbyPlaces(merged);
+        merged.forEach(p => { const popup = buildRichPopup(p, { ico: p.icon, bg: p.source === 'Google Places' ? '#4285F4' : '#6B46C1', label: p.type }); addLabeledMarker(p.lat, p.lng, p.icon, p.source === 'Google Places' ? '#4285F4' : '#6B46C1', p.name, popup); });
+      } catch {}
+      setPlacesLoading(false);
+    })();
+  }, [clearMarkers, addLabeledMarker]);
+
   const doSearch = async () => {
     if (!search.trim() || !mapRef.current) return;
+    setShowSuggestions(false);
     setPlacesLoading(true);
     try {
       // Search via Google Places proxy for rich results
