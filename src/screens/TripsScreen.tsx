@@ -20,6 +20,15 @@ interface Props {
 export default function TripsScreen({ trips, onSaveTrips }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
+  const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
+  const [showForm, setShowForm] = useState(false);
+  const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [showAiPlanner, setShowAiPlanner] = useState(false);
+  const [showBookingForm, setShowBookingForm] = useState(false);
+  const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
+  const [form, setForm] = useState({ dest: '', country: '', start: '', end: '', notes: '' });
+  const [detailTab, setDetailTab] = useState<'bookings' | 'itinerary' | 'book'>('bookings');
+
   const createTrip = () => {
     if (!form.dest) return;
     const emoji = ['🏔️', '🌴', '🏖️', '🌺', '🗼', '🏙️'][Math.floor(Math.random() * 6)];
