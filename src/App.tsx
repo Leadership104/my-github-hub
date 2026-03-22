@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
 import type { TabId } from './types';
 import kipitaSplash from './assets/kipita-splash.jpeg';
-import kipitaLogo from './assets/kipita-logo.png';
+import kipitaLogo from './assets/kipita-icon.png';
 import HomeScreen from './screens/HomeScreen';
 import AIScreen from './screens/AIScreen';
 import TripsScreen from './screens/TripsScreen';
