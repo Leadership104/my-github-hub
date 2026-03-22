@@ -190,7 +190,7 @@ export const BOOKING_TILES = [
   { emoji: '🏨', label: 'Hotels.com', desc: 'Earn free nights on every 10 stays', url: 'https://www.hotels.com/affiliate/RrZ7bmg', provider: 'Hotels.com' },
   { emoji: '🏠', label: 'Stays', desc: 'Unique homes & apartments', url: 'https://www.airbnb.com/', provider: 'Airbnb' },
   { emoji: '🚗', label: 'Car Rental', desc: 'Vehicles in 60,000+ locations', url: 'https://www.rentalcars.com/?utm_source=kipita&utm_medium=app', provider: 'RentalCars' },
-  { emoji: '🚢', label: 'Cruises', desc: 'Deals on cruises worldwide', url: 'https://www.cruisecritic.com/?utm_source=kipita&utm_medium=app', provider: 'CruiseCritic' },
+  { emoji: '🚢', label: 'Cruises', desc: 'Deals on cruises worldwide', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w', provider: 'Expedia Cruises' },
   { emoji: '🛡️', label: 'Insurance', desc: 'Travel insurance for nomads', url: 'https://www.worldnomads.com/', provider: 'World Nomads' },
   { emoji: '📶', label: 'eSIM Data', desc: 'Instant data in 200+ countries', url: 'https://www.airalo.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA5', provider: 'Airalo' },
   { emoji: '🔐', label: 'VPN', desc: 'Secure connection worldwide', url: 'https://nordvpn.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAVPN', provider: 'NordVPN' },
