@@ -503,18 +503,43 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
 
   return (
     <div className="flex flex-col h-full relative">
-      {/* Search bar */}
-      <div className="absolute top-3 left-3 right-3 z-[500] flex gap-2">
-        <input value={search} onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && doSearch()}
-          placeholder="Search any location or place…"
-          className="flex-1 bg-card/95 backdrop-blur-sm border border-border rounded-kipita-sm px-3 py-2.5 text-sm shadow-md outline-none focus:border-kipita-red" />
-        <button onClick={() => { if (lat && mapRef.current) mapRef.current.setView([lat, lng], 14); }}
-          className="bg-card/95 backdrop-blur-sm border border-border px-3 rounded-kipita-sm shadow-md">
-          <span className="ms text-lg text-muted-foreground">my_location</span>
-        </button>
-        <button onClick={doSearch} className="bg-kipita-red text-white px-3 rounded-kipita-sm font-semibold text-sm shadow-md">
-          <span className="ms text-lg">search</span>
-        </button>
+      {/* Search bar with autocomplete */}
+      <div className="absolute top-3 left-3 right-3 z-[500]">
+        <div className="flex gap-2">
+          <div className="flex-1 relative">
+            <input value={search} onChange={e => handleSearchInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { setShowSuggestions(false); doSearch(); } }}
+              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+              placeholder="Search any location or place…"
+              className="w-full bg-card/95 backdrop-blur-sm border border-border rounded-kipita-sm px-3 py-2.5 text-sm shadow-md outline-none focus:border-kipita-red" />
+            {search && (
+              <button onClick={() => { setSearch(''); setSuggestions([]); setShowSuggestions(false); }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">✕</button>
+            )}
+            {/* Autocomplete dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border rounded-kipita-sm shadow-xl overflow-hidden z-[600]">
+                {suggestions.map((s, i) => (
+                  <button key={i} onClick={() => selectSuggestion(s)}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-muted transition-colors text-left border-b border-border last:border-0">
+                    <span className="ms text-muted-foreground text-lg flex-shrink-0">location_on</span>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold truncate">{s.name}</div>
+                      {s.address && <div className="text-[11px] text-muted-foreground truncate">{s.address}</div>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <button onClick={() => { if (lat && mapRef.current) mapRef.current.setView([lat, lng], 14); }}
+            className="bg-card/95 backdrop-blur-sm border border-border px-3 rounded-kipita-sm shadow-md flex-shrink-0">
+            <span className="ms text-lg text-muted-foreground">my_location</span>
+          </button>
+          <button onClick={() => { setShowSuggestions(false); doSearch(); }} className="bg-kipita-red text-white px-3 rounded-kipita-sm font-semibold text-sm shadow-md flex-shrink-0">
+            <span className="ms text-lg">search</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter pills */}
