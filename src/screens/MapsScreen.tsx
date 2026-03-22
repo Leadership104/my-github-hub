@@ -363,8 +363,8 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         };
       });
 
-    // CoinMap venues
-    const coinMapVenues = await fetchCoinMapVenues();
+    // Overpass verified BTC merchants (currency:XBT=yes)
+    const overpassBtc = await fetchOverpassBtcMerchants();
 
     // Merge + deduplicate
     const seen = new Set<string>();
