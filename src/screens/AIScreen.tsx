@@ -19,10 +19,12 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
     return `Here's more on **${dest}**:\n\n${AI_RESPONSES.plan(dest)}`;
   }
 
-  // Destination info query
+  // Destination info query — now includes photo + detailed costs
   if (knownDest && /\b(about|info|tell|what|like|describe|nomad|stats|overview|how is|worth)\b/.test(m) && !/\b(plan|trip|visit|go|travel|itinerary)\b/.test(m)) {
     const d = knownDest;
-    return `🌍 **${d.city}, ${d.country}** ${d.emoji}\n\n⭐ **${d.rating}/5** · 📶 ${d.speed} Mbps · 🛡️ Safety ${d.safetyScore}/10\n💰 **$${d.monthlyCost.toLocaleString()}/month** · ${d.weatherDesc} ${d.temp}°C\n\n${d.desc}\n\n**Tags:** ${d.tags.join(', ')}\n\n**Nomad population:** ${d.pop}`;
+    const costs = CITY_COSTS[d.city];
+    const photoLine = costs ? `[PHOTO:${costs.photoUrl}:${costs.landmark}]\n\n` : '';
+    return `${photoLine}🌍 **${d.city}, ${d.country}** ${d.emoji}\n\n⭐ **${d.rating}/5** · 📶 ${d.speed} Mbps · 🛡️ Safety ${d.safetyScore}/10\n💰 **$${d.monthlyCost.toLocaleString()}/month** · ${d.weatherDesc} ${d.temp}°C\n\n${d.desc}\n\n**Tags:** ${d.tags.join(', ')}\n\n**Nomad population:** ${d.pop}`;
   }
 
   // Best cities / nomad cities / compare
