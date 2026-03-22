@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import L from 'leaflet';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { haversine } from '../hooks';
+import { supabase } from '@/integrations/supabase/client';
 import type { BTCMerchant } from '../types';
 
 interface NearbyPlace {
@@ -16,6 +17,16 @@ interface NearbyPlace {
   phone?: string;
   website?: string;
   openingHours?: string;
+  rating?: number | null;
+  reviewCount?: number;
+  priceLevel?: string | null;
+  photoUrl?: string | null;
+  photos?: string[];
+  openNow?: boolean | null;
+  mapsUrl?: string | null;
+  reviews?: { author: string; rating: number; text: string; time: string; photoUrl?: string | null }[];
+  placeId?: string;
+  summary?: string | null;
 }
 
 interface Props {
@@ -77,7 +88,7 @@ const OVERPASS_CFGS: Record<string, { tag: string; ico: string; bg: string; labe
   ],
 };
 
-const SEARCH_RADIUS = 3500; // meters
+const SEARCH_RADIUS = 3500;
 const MAX_RESULTS_PER_QUERY = 30;
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number) {
@@ -95,6 +106,42 @@ function extractPlaceDetails(tags: Record<string, string>) {
   };
 }
 
+/* ── Google Places proxy helper ── */
+async function fetchGooglePlaces(action: string, params: Record<string, unknown>): Promise<NearbyPlace[]> {
+  try {
+    const { data, error } = await supabase.functions.invoke('places-proxy', {
+      body: { action, ...params },
+    });
+    if (error) throw error;
+    const places = Array.isArray(data) ? data : [data];
+    return places.map((p: any) => ({
+      lat: p.lat,
+      lng: p.lng,
+      name: p.name || 'Unknown',
+      type: p.typeLabel || p.types?.[0]?.replace(/_/g, ' ') || 'Place',
+      icon: '📍',
+      address: p.address || '',
+      source: 'Google Places',
+      phone: p.phone || '',
+      website: p.website || '',
+      openingHours: p.hours?.join(', ') || '',
+      rating: p.rating,
+      reviewCount: p.reviewCount || 0,
+      priceLevel: p.priceLevel,
+      photoUrl: p.photoUrl,
+      photos: p.photos || [],
+      openNow: p.openNow,
+      mapsUrl: p.mapsUrl,
+      reviews: p.reviews || [],
+      placeId: p.placeId,
+      summary: p.summary,
+    }));
+  } catch (e) {
+    console.warn('Google Places proxy error:', e);
+    return [];
+  }
+}
+
 export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -107,6 +154,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState<NearbyPlace[]>([]);
   const [placesLoading, setPlacesLoading] = useState(false);
+  const [selectedPlace, setSelectedPlace] = useState<NearbyPlace | null>(null);
 
   const allFilters = [
     { id: 'btc', label: '₿ BTC', emoji: '₿' },
@@ -149,18 +197,31 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     markersRef.current.push(marker);
   }, []);
 
-  const buildPopup = (p: NearbyPlace, cfg: { ico: string; bg: string; label: string }) => {
+  const buildRichPopup = (p: NearbyPlace, cfg: { ico: string; bg: string; label: string }) => {
     let popup = `<div style="font-weight:700;font-size:14px">${p.name}</div>`;
-    popup += `<div style="font-size:12px;color:#666;margin:2px 0">${cfg.label}${p.address ? ' · ' + p.address : ''}</div>`;
-    if (p.openingHours) popup += `<div style="font-size:11px;color:#888">🕐 ${p.openingHours}</div>`;
+    popup += `<div style="font-size:12px;color:#666;margin:2px 0">${p.type}${p.address ? ' · ' + p.address : ''}</div>`;
+    if (p.rating) {
+      popup += `<div style="font-size:12px;color:#F59E0B;font-weight:600">⭐ ${p.rating}${p.reviewCount ? ` (${p.reviewCount} reviews)` : ''}</div>`;
+    }
+    if (p.openNow !== null && p.openNow !== undefined) {
+      popup += `<div style="font-size:11px;color:${p.openNow ? '#16A34A' : '#DC2626'};font-weight:600">${p.openNow ? '✅ Open now' : '❌ Closed'}</div>`;
+    }
+    if (p.priceLevel) popup += `<div style="font-size:11px;color:#888">💰 ${p.priceLevel}</div>`;
+    if (p.openingHours) popup += `<div style="font-size:11px;color:#888">🕐 ${p.openingHours.slice(0, 60)}${p.openingHours.length > 60 ? '…' : ''}</div>`;
     if (p.phone) popup += `<div style="font-size:11px"><a href="tel:${p.phone}" style="color:#3182CE">📞 ${p.phone}</a></div>`;
     if (p.website) popup += `<div style="font-size:11px"><a href="${p.website}" target="_blank" style="color:#3182CE">🌐 Website</a></div>`;
-    popup += `<div style="font-size:11px;color:#999;margin-top:2px">via ${p.source || 'OpenStreetMap'}</div>`;
-    popup += `<a href="https://www.google.com/maps/search/${encodeURIComponent(p.name + ' ' + (p.address || ''))}/@${p.lat},${p.lng},17z" target="_blank" style="font-size:12px;color:#E53935;font-weight:600">📍 Directions</a>`;
+    if (p.photoUrl) popup += `<img src="${p.photoUrl}" style="width:100%;max-height:100px;object-fit:cover;border-radius:8px;margin:4px 0" />`;
+    if (p.reviews && p.reviews.length > 0) {
+      const r = p.reviews[0];
+      popup += `<div style="font-size:10px;color:#666;margin-top:4px;border-top:1px solid #eee;padding-top:4px">"${r.text.slice(0, 80)}${r.text.length > 80 ? '…' : ''}" — <b>${r.author}</b></div>`;
+    }
+    popup += `<div style="font-size:10px;color:#999;margin-top:2px">via ${p.source || 'OpenStreetMap'}</div>`;
+    const dirUrl = p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name + ' ' + (p.address || ''))}/@${p.lat},${p.lng},17z`;
+    popup += `<a href="${dirUrl}" target="_blank" style="font-size:12px;color:#E53935;font-weight:600">📍 Directions</a>`;
     return popup;
   };
 
-  // Fetch real places from Overpass with parallel multi-tag queries
+  // Fetch places: Overpass + Google Places proxy in parallel
   const fetchOverpassPlaces = useCallback(async (filterId: string) => {
     const cfgs = OVERPASS_CFGS[filterId];
     if (!cfgs || !lat) return;
@@ -169,43 +230,59 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     clearMarkers();
 
     try {
-      // Fire all tag queries in parallel for maximum data coverage
-      const promises = cfgs.map(async (cfg) => {
-        const q = `[out:json][timeout:20];node[${cfg.tag}](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
-        const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
-        const d = await r.json();
-        return { cfg, elements: (d.elements || []).filter((e: any) => e.tags?.name) };
+      // Fire Overpass + Google Places proxy in parallel
+      const overpassPromise = (async () => {
+        const promises = cfgs.map(async (cfg) => {
+          const q = `[out:json][timeout:20];node[${cfg.tag}](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
+          const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+          const d = await r.json();
+          return { cfg, elements: (d.elements || []).filter((e: any) => e.tags?.name) };
+        });
+        return Promise.allSettled(promises);
+      })();
+
+      const googlePromise = fetchGooglePlaces('nearby', {
+        lat, lng, category: filterId, radius: SEARCH_RADIUS,
       });
 
-      const results = await Promise.allSettled(promises);
+      const [overpassResults, googlePlaces] = await Promise.all([overpassPromise, googlePromise]);
+
       const allPlaces: NearbyPlace[] = [];
       const seen = new Set<string>();
 
-      for (const result of results) {
+      // Process Overpass results
+      for (const result of overpassResults) {
         if (result.status !== 'fulfilled') continue;
         const { cfg, elements } = result.value;
         for (const e of elements) {
           const key = `${e.lat.toFixed(5)},${e.lon.toFixed(5)}`;
           if (seen.has(key)) continue;
           seen.add(key);
-
           const details = extractPlaceDetails(e.tags || {});
           const place: NearbyPlace = {
-            lat: e.lat,
-            lng: e.lon,
-            name: e.tags.name,
-            type: cfg.label,
-            icon: cfg.ico,
-            source: 'OpenStreetMap',
+            lat: e.lat, lng: e.lon, name: e.tags.name,
+            type: cfg.label, icon: cfg.ico, source: 'OpenStreetMap',
             distance: haversineKm(lat, lng, e.lat, e.lon),
             ...details,
           };
           allPlaces.push(place);
-          addLabeledMarker(place.lat, place.lng, cfg.ico, cfg.bg, place.name, buildPopup(place, cfg));
+          addLabeledMarker(place.lat, place.lng, cfg.ico, cfg.bg, place.name, buildRichPopup(place, cfg));
         }
       }
 
-      // Also search via Nominatim for additional real places
+      // Process Google Places results (enriched with ratings, photos, reviews)
+      for (const gp of googlePlaces) {
+        if (!gp.lat || !gp.lng) continue;
+        const key = `${gp.lat.toFixed(5)},${gp.lng.toFixed(5)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        gp.distance = haversineKm(lat, lng, gp.lat, gp.lng);
+        gp.icon = cfgs[0].ico;
+        allPlaces.push(gp);
+        addLabeledMarker(gp.lat, gp.lng, '⭐', cfgs[0].bg, gp.name, buildRichPopup(gp, cfgs[0]));
+      }
+
+      // Nominatim supplementary
       try {
         const primaryLabel = cfgs[0].label.toLowerCase();
         const nomQ = `${primaryLabel} near ${lat},${lng}`;
@@ -220,14 +297,12 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
           const place: NearbyPlace = {
             lat: nLat, lng: nLng,
             name: r.display_name?.split(',')[0] || 'Unknown',
-            type: cfgs[0].label,
-            icon: cfgs[0].ico,
-            source: 'Nominatim',
+            type: cfgs[0].label, icon: cfgs[0].ico, source: 'Nominatim',
             address: r.display_name?.split(',').slice(1, 3).join(',').trim() || '',
             distance: haversineKm(lat, lng, nLat, nLng),
           };
           allPlaces.push(place);
-          addLabeledMarker(place.lat, place.lng, cfgs[0].ico, cfgs[0].bg, place.name, buildPopup(place, cfgs[0]));
+          addLabeledMarker(place.lat, place.lng, cfgs[0].ico, cfgs[0].bg, place.name, buildRichPopup(place, cfgs[0]));
         }
       } catch { /* Nominatim supplementary — non-critical */ }
 
@@ -239,7 +314,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     setPlacesLoading(false);
   }, [lat, lng, clearMarkers, addLabeledMarker]);
 
-  // Render BTC markers (real data from btcmap.org)
+  // Render BTC markers
   const renderBtcMarkers = useCallback(() => {
     clearMarkers();
     const places: NearbyPlace[] = merchants.slice(0, 80).map(m => {
@@ -267,6 +342,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   // React to filter changes
   useEffect(() => {
     setSubFilter(null);
+    setSelectedPlace(null);
     if (filter === 'btc') renderBtcMarkers();
     else fetchOverpassPlaces(filter);
   }, [filter]);
@@ -278,47 +354,94 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
 
   const doSearch = async () => {
     if (!search.trim() || !mapRef.current) return;
+    setPlacesLoading(true);
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&limit=5&addressdetails=1`);
-      const d = await r.json();
-      if (d[0]) {
-        const sLat = parseFloat(d[0].lat);
-        const sLng = parseFloat(d[0].lon);
+      // Search via Google Places proxy for rich results
+      const googlePlaces = await fetchGooglePlaces('search', {
+        query: search, lat, lng, radius: 10000,
+      });
+
+      // Also Nominatim for geocoding
+      const nomR = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&limit=5&addressdetails=1`);
+      const nomD = await nomR.json();
+
+      if (nomD[0]) {
+        const sLat = parseFloat(nomD[0].lat);
+        const sLng = parseFloat(nomD[0].lon);
         mapRef.current.setView([sLat, sLng], 14);
-
-        // Also search for POIs at the searched location
-        clearMarkers();
-        const q = `[out:json][timeout:20];node["amenity"](around:2000,${sLat},${sLng});out 30;`;
-        const or = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
-        const od = await or.json();
-        const searchPlaces: NearbyPlace[] = (od.elements || [])
-          .filter((e: any) => e.tags?.name)
-          .map((e: any) => {
-            const details = extractPlaceDetails(e.tags || {});
-            return {
-              lat: e.lat, lng: e.lon,
-              name: e.tags.name,
-              type: e.tags.amenity?.replace(/_/g, ' ') || 'Place',
-              icon: '📌',
-              source: 'OpenStreetMap',
-              distance: haversineKm(sLat, sLng, e.lat, e.lon),
-              ...details,
-            };
-          })
-          .sort((a: NearbyPlace, b: NearbyPlace) => (a.distance || 99) - (b.distance || 99));
-
-        setNearbyPlaces(searchPlaces);
-        searchPlaces.forEach(p => {
-          addLabeledMarker(p.lat, p.lng, '📌', '#6B46C1', p.name,
-            `<div style="font-weight:700">${p.name}</div><div style="font-size:12px;color:#666">${p.type}${p.address ? ' · ' + p.address : ''}</div><a href="https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z" target="_blank" style="font-size:12px;color:#E53935">📍 Directions</a>`);
-        });
+      } else if (googlePlaces.length > 0) {
+        mapRef.current.setView([googlePlaces[0].lat, googlePlaces[0].lng], 14);
       }
+
+      clearMarkers();
+
+      // Overpass fallback
+      const sLat = nomD[0] ? parseFloat(nomD[0].lat) : lat;
+      const sLng = nomD[0] ? parseFloat(nomD[0].lon) : lng;
+      const q = `[out:json][timeout:20];node["amenity"](around:2000,${sLat},${sLng});out 30;`;
+      const or = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
+      const od = await or.json();
+      const overpassPlaces: NearbyPlace[] = (od.elements || [])
+        .filter((e: any) => e.tags?.name)
+        .map((e: any) => {
+          const details = extractPlaceDetails(e.tags || {});
+          return {
+            lat: e.lat, lng: e.lon,
+            name: e.tags.name,
+            type: e.tags.amenity?.replace(/_/g, ' ') || 'Place',
+            icon: '📌', source: 'OpenStreetMap',
+            distance: haversineKm(sLat, sLng, e.lat, e.lon),
+            ...details,
+          };
+        });
+
+      // Merge: Google first (richer data), then Overpass
+      const seen = new Set<string>();
+      const merged: NearbyPlace[] = [];
+
+      for (const gp of googlePlaces) {
+        if (!gp.lat || !gp.lng) continue;
+        const key = `${gp.lat.toFixed(4)},${gp.lng.toFixed(4)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        gp.distance = haversineKm(sLat, sLng, gp.lat, gp.lng);
+        gp.icon = '⭐';
+        merged.push(gp);
+      }
+
+      for (const op of overpassPlaces) {
+        const key = `${op.lat.toFixed(4)},${op.lng.toFixed(4)}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push(op);
+      }
+
+      merged.sort((a, b) => (a.distance || 99) - (b.distance || 99));
+      setNearbyPlaces(merged);
+
+      merged.forEach(p => {
+        const popup = buildRichPopup(p, { ico: p.icon, bg: p.source === 'Google Places' ? '#4285F4' : '#6B46C1', label: p.type });
+        addLabeledMarker(p.lat, p.lng, p.icon, p.source === 'Google Places' ? '#4285F4' : '#6B46C1', p.name, popup);
+      });
     } catch {}
+    setPlacesLoading(false);
   };
 
   const subs = CATEGORY_SUBS[filter] || [];
   const sheetTitle = filter === 'btc' ? '₿ BTC Merchants Nearby'
     : `${allFilters.find(f => f.id === filter)?.emoji || ''} ${allFilters.find(f => f.id === filter)?.label?.split(' ').slice(1).join(' ') || 'Places'} Nearby`;
+
+  const renderStars = (rating: number | null | undefined) => {
+    if (!rating) return null;
+    const full = Math.floor(rating);
+    const half = rating - full >= 0.5;
+    return (
+      <span className="text-amber-400 text-xs">
+        {'★'.repeat(full)}{half ? '½' : ''}
+        <span className="text-muted-foreground ml-1">{rating.toFixed(1)}</span>
+      </span>
+    );
+  };
 
   return (
     <div className="flex flex-col h-full relative">
@@ -352,23 +475,30 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
           {subs.map(s => (
             <button key={s.label} onClick={() => {
               setSubFilter(s.query);
-              // Trigger specific Overpass search for this sub-filter
               const subSearch = async () => {
                 setPlacesLoading(true);
                 clearMarkers();
                 try {
-                  const q = `[out:json][timeout:20];node["amenity"="${s.query}"](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
-                  const altQ = `[out:json][timeout:20];node["name"~"${s.label}",i](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
+                  // Parallel: Overpass + Google text search
+                  const overpassP = (async () => {
+                    const q = `[out:json][timeout:20];node["amenity"="${s.query}"](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
+                    const altQ = `[out:json][timeout:20];node["name"~"${s.label}",i](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
+                    return Promise.allSettled([
+                      fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`).then(r => r.json()),
+                      fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(altQ)}`).then(r => r.json()),
+                    ]);
+                  })();
 
-                  const [r1, r2] = await Promise.allSettled([
-                    fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`).then(r => r.json()),
-                    fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(altQ)}`).then(r => r.json()),
-                  ]);
+                  const googleP = fetchGooglePlaces('search', {
+                    query: s.label, lat, lng, radius: SEARCH_RADIUS,
+                  });
+
+                  const [overpassResults, googlePlaces] = await Promise.all([overpassP, googleP]);
 
                   const seen = new Set<string>();
                   const places: NearbyPlace[] = [];
 
-                  for (const result of [r1, r2]) {
+                  for (const result of overpassResults) {
                     if (result.status !== 'fulfilled') continue;
                     for (const e of (result.value.elements || []).filter((e: any) => e.tags?.name)) {
                       const key = `${e.lat.toFixed(5)},${e.lon.toFixed(5)}`;
@@ -384,11 +514,22 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
                     }
                   }
 
+                  for (const gp of googlePlaces) {
+                    if (!gp.lat || !gp.lng) continue;
+                    const key = `${gp.lat.toFixed(5)},${gp.lng.toFixed(5)}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    gp.distance = haversineKm(lat, lng, gp.lat, gp.lng);
+                    gp.icon = s.emoji;
+                    places.push(gp);
+                  }
+
                   places.sort((a, b) => (a.distance || 99) - (b.distance || 99));
                   setNearbyPlaces(places);
                   places.forEach(p => {
-                    addLabeledMarker(p.lat, p.lng, s.emoji, '#E53935', p.name,
-                      `<div style="font-weight:700">${p.name}</div><div style="font-size:12px;color:#666">${s.label}${p.address ? ' · ' + p.address : ''}</div>${p.openingHours ? `<div style="font-size:11px;color:#888">🕐 ${p.openingHours}</div>` : ''}<a href="https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z" target="_blank" style="font-size:12px;color:#E53935">📍 Directions</a>`);
+                    const popup = buildRichPopup(p, { ico: s.emoji, bg: '#E53935', label: s.label });
+                    addLabeledMarker(p.lat, p.lng, p.source === 'Google Places' ? '⭐' : s.emoji,
+                      p.source === 'Google Places' ? '#4285F4' : '#E53935', p.name, popup);
                   });
                 } catch { setNearbyPlaces([]); }
                 setPlacesLoading(false);
@@ -405,6 +546,45 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
       {/* Map */}
       <div ref={containerRef} className="flex-1 z-0" />
 
+      {/* Place detail card */}
+      {selectedPlace && (
+        <div className="absolute bottom-[210px] left-3 right-3 z-[501] bg-card rounded-2xl shadow-xl border border-border p-4 animate-in slide-in-from-bottom-4">
+          <button onClick={() => setSelectedPlace(null)} className="absolute top-2 right-2 text-muted-foreground text-sm">✕</button>
+          {selectedPlace.photoUrl && (
+            <img src={selectedPlace.photoUrl} alt={selectedPlace.name} className="w-full h-28 object-cover rounded-xl mb-2" />
+          )}
+          <h4 className="font-bold text-sm">{selectedPlace.name}</h4>
+          <div className="flex items-center gap-2 mt-1">
+            {renderStars(selectedPlace.rating)}
+            {selectedPlace.reviewCount ? <span className="text-[10px] text-muted-foreground">({selectedPlace.reviewCount})</span> : null}
+            {selectedPlace.openNow !== null && selectedPlace.openNow !== undefined && (
+              <span className={`text-[10px] font-semibold ${selectedPlace.openNow ? 'text-green-600' : 'text-red-500'}`}>
+                {selectedPlace.openNow ? '● Open' : '● Closed'}
+              </span>
+            )}
+          </div>
+          {selectedPlace.address && <p className="text-xs text-muted-foreground mt-1">{selectedPlace.address}</p>}
+          {selectedPlace.summary && <p className="text-xs text-muted-foreground/80 mt-1 italic">{selectedPlace.summary}</p>}
+          {selectedPlace.reviews && selectedPlace.reviews.length > 0 && (
+            <div className="mt-2 border-t border-border pt-2">
+              <p className="text-[10px] font-semibold mb-1">Top Review</p>
+              <p className="text-[10px] text-muted-foreground">"{selectedPlace.reviews[0].text.slice(0, 120)}{selectedPlace.reviews[0].text.length > 120 ? '…' : ''}"</p>
+              <p className="text-[9px] text-muted-foreground/60 mt-0.5">— {selectedPlace.reviews[0].author}</p>
+            </div>
+          )}
+          <div className="flex gap-2 mt-2">
+            {selectedPlace.mapsUrl && (
+              <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
+                className="text-xs bg-kipita-red text-white px-3 py-1 rounded-full font-semibold">📍 Directions</a>
+            )}
+            {selectedPlace.website && (
+              <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
+                className="text-xs bg-muted px-3 py-1 rounded-full font-semibold">🌐 Website</a>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Bottom sheet */}
       <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[60%]' : 'h-[200px]'}`}>
         <button onClick={() => setExpanded(!expanded)} className="w-full flex flex-col items-center py-2">
@@ -413,7 +593,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
         </button>
         <div className="px-4 pb-2 flex items-center justify-between">
           <h3 className="text-sm font-bold">{sheetTitle}</h3>
-          <span className="text-xs text-muted-foreground">{nearbyPlaces.length} found · real-time</span>
+          <span className="text-xs text-muted-foreground">{nearbyPlaces.length} found · multi-source</span>
         </div>
         <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ maxHeight: expanded ? 'calc(100% - 80px)' : '120px' }}>
           {(loading && filter === 'btc') || placesLoading ? (
@@ -423,19 +603,35 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
           ) : nearbyPlaces.length === 0 ? (
             <div className="text-center text-sm text-muted-foreground py-4">No places found nearby. Try searching a different location.</div>
           ) : nearbyPlaces.slice(0, 50).map((p, i) => (
-            <button key={`${p.lat}-${p.lng}-${i}`} onClick={() => mapRef.current?.setView([p.lat, p.lng], 16, { animate: true })}
+            <button key={`${p.lat}-${p.lng}-${i}`} onClick={() => {
+              mapRef.current?.setView([p.lat, p.lng], 16, { animate: true });
+              if (p.source === 'Google Places') setSelectedPlace(p);
+            }}
               className="w-full flex items-center gap-3 py-3 border-b border-border text-left">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg flex-shrink-0">{p.icon}</div>
+              {p.photoUrl ? (
+                <img src={p.photoUrl} alt={p.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-lg flex-shrink-0">{p.icon}</div>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold truncate">{p.name}</div>
+                <div className="flex items-center gap-1.5">
+                  {p.rating && renderStars(p.rating)}
+                  {p.reviewCount ? <span className="text-[9px] text-muted-foreground">({p.reviewCount})</span> : null}
+                  {p.openNow !== null && p.openNow !== undefined && (
+                    <span className={`text-[9px] font-bold ${p.openNow ? 'text-green-600' : 'text-red-500'}`}>
+                      {p.openNow ? 'Open' : 'Closed'}
+                    </span>
+                  )}
+                </div>
                 <div className="text-xs text-muted-foreground">
                   {p.type}{p.address ? ` · ${p.address}` : ''}
                   {p.distance !== undefined ? ` · ${p.distance < 1 ? Math.round(p.distance * 1000) + 'm' : p.distance.toFixed(1) + 'km'}` : ''}
                 </div>
-                {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours}</div>}
+                {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 40)}</div>}
                 <div className="text-[9px] text-muted-foreground/50">{p.source}</div>
               </div>
-              <a href={`https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`} target="_blank" rel="noopener noreferrer"
+              <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`} target="_blank" rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()} className="ms text-muted-foreground text-lg">directions</a>
             </button>
           ))}
