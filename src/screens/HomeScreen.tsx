@@ -5,7 +5,7 @@ import type { TabId } from '../types';
 interface Props {
   weather: { emoji: string; temp: string; desc: string };
   locationName: string;
-  onSwitchTab: (tab: TabId) => void;
+  onSwitchTab: (tab: TabId, hint?: string) => void;
 }
 
 export default function HomeScreen({ weather, locationName, onSwitchTab }: Props) {
@@ -13,12 +13,12 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
   const greeting = hour < 12 ? 'Good morning ✈️' : hour < 18 ? 'Good afternoon 🌤️' : 'Good evening 🌙';
 
   const quickTools = [
-    { emoji: '🌐', label: 'Translate', tab: 'places' as TabId },
-    { emoji: '🏧', label: 'ATM Finder', tab: 'maps' as TabId },
-    { emoji: '💱', label: 'Currency', tab: 'wallet' as TabId },
-    { emoji: '🛡️', label: 'Safety', tab: 'home' as TabId },
-    { emoji: '🗺️', label: 'Maps', tab: 'maps' as TabId },
-    { emoji: '👥', label: 'Groups', tab: 'groups' as TabId },
+    { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
+    { emoji: '🏧', label: 'ATM Finder', action: () => onSwitchTab('maps', 'atm') },
+    { emoji: '💱', label: 'Currency', action: () => onSwitchTab('wallet') },
+    { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('maps', 'safety') },
+    { emoji: '🗺️', label: 'Maps', action: () => onSwitchTab('maps') },
+    { emoji: '👥', label: 'Groups', action: () => onSwitchTab('groups') },
   ];
 
   return (
