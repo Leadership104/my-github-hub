@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Trip, ItineraryItem } from '../types';
 import { BOOKING_TILES, PERKS } from '../data';
+import AIScreen from './AIScreen';
 
 export default function TripsScreen() {
   const [trips, setTrips] = useState<Trip[]>(() => {
@@ -18,6 +19,7 @@ export default function TripsScreen() {
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [showForm, setShowForm] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [showAiPlanner, setShowAiPlanner] = useState(false);
   const [form, setForm] = useState({ dest: '', country: '', start: '', end: '', notes: '' });
 
   const save = (updated: Trip[]) => { setTrips(updated); localStorage.setItem('kip_trips', JSON.stringify(updated)); };
@@ -124,13 +126,26 @@ export default function TripsScreen() {
 
       <div className="flex-1 overflow-y-auto px-5 pb-24">
         {/* AI Banner */}
-        <button className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-4 text-left">
+        <button onClick={() => setShowAiPlanner(true)} className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-4 text-left">
           <span className="text-2xl">✨</span>
           <div className="flex-1">
             <div className="text-white font-extrabold text-sm">Plan with AI</div>
             <div className="text-white/60 text-xs">Generate itineraries instantly</div>
           </div>
         </button>
+
+        {/* AI Planner Modal */}
+        {showAiPlanner && (
+          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+            <div className="flex items-center gap-2 p-3 border-b border-border bg-card flex-shrink-0">
+              <button onClick={() => setShowAiPlanner(false)} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
+              <h3 className="font-bold text-sm flex-1">AI Trip Planner</h3>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <AIScreen />
+            </div>
+          </div>
+        )}
 
         {filtered.map(trip => (
           <button key={trip.id} onClick={() => setSelectedTrip(trip)}
