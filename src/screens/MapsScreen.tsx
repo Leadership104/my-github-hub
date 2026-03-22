@@ -321,17 +321,20 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
     setPlacesLoading(false);
   }, [lat, lng, clearMarkers, addLabeledMarker]);
 
-  /* ── Fetch CoinMap.org venues ── */
+  /* ── Fetch CoinMap.org venues via proxy (bypasses CORS) ── */
   const fetchCoinMapVenues = useCallback(async (): Promise<NearbyPlace[]> => {
     if (!lat || !lng) return [];
     try {
-      const r = await fetch(`https://coinmap.org/api/v1/venues/?lat1=${lat - 0.15}&lat2=${lat + 0.15}&lon1=${lng - 0.15}&lon2=${lng + 0.15}`);
-      const d = await r.json();
-      return (d.venues || []).slice(0, 40).map((v: any) => ({
-        lat: v.lat, lng: v.lon, name: v.name || 'BTC Venue',
-        type: v.category || 'Bitcoin Merchant', icon: '₿',
-        source: 'CoinMap.org',
-        distance: haversineKm(lat, lng, v.lat, v.lon),
+      const { data, error } = await supabase.functions.invoke('places-proxy', {
+        body: { action: 'coinmap', lat, lng },
+      });
+      if (error) throw error;
+      const venues = Array.isArray(data) ? data : [];
+      return venues.filter((v: any) => v.name && v.name !== 'BTC Venue').map((v: any) => ({
+        lat: v.lat, lng: v.lng, name: v.name,
+        type: v.typeLabel || 'Bitcoin Merchant', icon: '₿',
+        source: 'CoinMap.org ✓',
+        distance: haversineKm(lat, lng, v.lat, v.lng),
         website: v.website || '', phone: '', address: '',
       }));
     } catch { return []; }
