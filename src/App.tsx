@@ -64,7 +64,7 @@ export default function App() {
       case 'home': return <HomeScreen weather={weather} locationName={location.name} onSwitchTab={setTab} />;
       case 'ai': return <AIScreen btcPrice={btcPrice} locationName={location.name} />;
       case 'trips': return <TripsScreen />;
-      case 'places': return <PlacesScreen locationName={location.name} />;
+      case 'places': return <PlacesScreen locationName={location.name} lat={location.lat} lng={location.lng} />;
       case 'maps': return <MapsScreen lat={location.lat} lng={location.lng} merchants={merchants} loading={merchantsLoading} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => setTab('maps')} />;
       case 'groups': return <GroupsScreen />;
