@@ -16,7 +16,7 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
     { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
     { emoji: '🏧', label: 'ATM Finder', action: () => onSwitchTab('maps', 'atm') },
     { emoji: '💱', label: 'Currency', action: () => onSwitchTab('wallet') },
-    { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('maps', 'safety') },
+    { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('maps', 'hospital') },
     { emoji: '🗺️', label: 'Maps', action: () => onSwitchTab('maps') },
     { emoji: '👥', label: 'Groups', action: () => onSwitchTab('groups') },
   ];
