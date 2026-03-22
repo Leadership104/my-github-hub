@@ -57,6 +57,7 @@ export default function App() {
     setTab(t);
     setScreenHint(hint);
   }, []);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState<LocationState[]>([]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
