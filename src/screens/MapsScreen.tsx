@@ -321,30 +321,62 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
     setPlacesLoading(false);
   }, [lat, lng, clearMarkers, addLabeledMarker]);
 
-  // Render BTC markers
-  const renderBtcMarkers = useCallback(() => {
+  /* ── Fetch CoinMap.org venues ── */
+  const fetchCoinMapVenues = useCallback(async (): Promise<NearbyPlace[]> => {
+    if (!lat || !lng) return [];
+    try {
+      const r = await fetch(`https://coinmap.org/api/v1/venues/?lat1=${lat - 0.15}&lat2=${lat + 0.15}&lon1=${lng - 0.15}&lon2=${lng + 0.15}`);
+      const d = await r.json();
+      return (d.venues || []).slice(0, 40).map((v: any) => ({
+        lat: v.lat, lng: v.lon, name: v.name || 'BTC Venue',
+        type: v.category || 'Bitcoin Merchant', icon: '₿',
+        source: 'CoinMap.org',
+        distance: haversineKm(lat, lng, v.lat, v.lon),
+        website: v.website || '', phone: '', address: '',
+      }));
+    } catch { return []; }
+  }, [lat, lng]);
+
+  // Render BTC markers from BTCMap + CoinMap
+  const renderBtcMarkers = useCallback(async () => {
     clearMarkers();
-    const places: NearbyPlace[] = merchants.slice(0, 80).map(m => {
+    // BTCMap merchants
+    const btcPlaces: NearbyPlace[] = merchants.slice(0, 80).map(m => {
       const details = extractPlaceDetails(m.tags || {});
       return {
         lat: m.lat, lng: m.lng, name: m.name, type: m.type, icon: '₿',
-        source: 'BTCMap.org',
+        source: 'BTCMap.org ✓',
         distance: lat ? haversineKm(lat, lng, m.lat, m.lng) : undefined,
         ...details,
       };
     });
-    setNearbyPlaces(places);
-    places.forEach(p => {
+
+    // CoinMap venues
+    const coinMapVenues = await fetchCoinMapVenues();
+
+    // Merge + deduplicate
+    const seen = new Set<string>();
+    const merged: NearbyPlace[] = [];
+    for (const p of [...btcPlaces, ...coinMapVenues]) {
+      const key = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      merged.push(p);
+    }
+    merged.sort((a, b) => (a.distance || 99) - (b.distance || 99));
+
+    setNearbyPlaces(merged);
+    merged.forEach(p => {
       let popup = `<div style="font-weight:700">${p.name}</div>`;
       popup += `<div style="font-size:12px;color:#F7931A;font-weight:600">${p.type}</div>`;
       if (p.openingHours) popup += `<div style="font-size:11px;color:#888">🕐 ${p.openingHours}</div>`;
       if (p.phone) popup += `<div style="font-size:11px"><a href="tel:${p.phone}" style="color:#3182CE">📞 ${p.phone}</a></div>`;
       if (p.website) popup += `<div style="font-size:11px"><a href="${p.website}" target="_blank" style="color:#3182CE">🌐 Website</a></div>`;
-      popup += `<div style="font-size:11px;color:#999;margin-top:2px">via BTCMap.org (verified)</div>`;
+      popup += `<div style="font-size:11px;color:#999;margin-top:2px">via ${p.source} (verified)</div>`;
       popup += `<a href="https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z" target="_blank" style="font-size:12px;color:#E53935;font-weight:600">📍 Directions</a>`;
       addLabeledMarker(p.lat, p.lng, '₿', '#F7931A', p.name, popup);
     });
-  }, [merchants, lat, lng, clearMarkers, addLabeledMarker]);
+  }, [merchants, lat, lng, clearMarkers, addLabeledMarker, fetchCoinMapVenues]);
 
   // React to filter changes
   useEffect(() => {
