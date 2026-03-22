@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
+import type { Trip, Booking } from './types';
 import type { TabId } from './types';
 import type { LocationState } from './hooks';
 import kipitaSplash from './assets/kipita-splash.jpeg';
