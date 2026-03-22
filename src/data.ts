@@ -178,7 +178,7 @@ export const TRANSPORT_LINKS = [
   { emoji: '🏨', label: 'Hotels', url: 'https://www.hotels.com/affiliate/RrZ7bmg' },
   { emoji: '🏨', label: 'Expedia', url: 'https://expedia.com/affiliate/eA2cKky' },
   { emoji: '🚗', label: 'Car Rental', url: 'https://www.rentalcars.com/?utm_source=kipita&utm_medium=app' },
-  { emoji: '🚢', label: 'Cruise', url: 'https://www.cruisecritic.com/?utm_source=kipita&utm_medium=app' },
+  { emoji: '🚢', label: 'Cruise', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w' },
   { emoji: '🚕', label: 'Uber', url: 'https://uber.com/?utm_source=kipita&utm_medium=app' },
   { emoji: '🛻', label: 'Lyft', url: 'https://lyft.com/?utm_source=kipita&utm_medium=app' },
 ];
