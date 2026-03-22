@@ -48,15 +48,13 @@ export default function App() {
   if (splash) {
     setTimeout(() => setSplash(false), 2000);
     return (
-      <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-kipita-red-dk flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="text-6xl font-extrabold tracking-tight">ki<span className="text-kipita-red">pi</span>ta</div>
-          <p className="mt-3 text-base font-medium text-white/70">Your Ultimate Travel Companion</p>
-          <div className="flex gap-2 justify-center mt-10">
-            {[0, 1, 2].map(i => (
-              <span key={i} className="w-2 h-2 rounded-full bg-white/40" style={{ animation: `dot-pulse 1.4s ease-in-out infinite`, animationDelay: `${i * 0.2}s` }} />
-            ))}
-          </div>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white">
+        <img src={kipitaSplash} alt="Kipita" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-white/20" />
+        <div className="relative flex gap-2 justify-center mt-[60%]">
+          {[0, 1, 2].map(i => (
+            <span key={i} className="w-2.5 h-2.5 rounded-full bg-kipita-red" style={{ animation: `dot-pulse 1.4s ease-in-out infinite`, animationDelay: `${i * 0.2}s` }} />
+          ))}
         </div>
       </div>
     );
