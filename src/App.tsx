@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
 import type { TabId } from './types';
+import type { LocationState } from './hooks';
 import kipitaSplash from './assets/kipita-splash.jpeg';
 import kipitaLogo from './assets/kipita-icon.png';
 import HomeScreen from './screens/HomeScreen';
@@ -19,6 +20,21 @@ const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'groups', label: 'Groups', icon: 'groups' },
 ];
 
+const PRESET_LOCATIONS: LocationState[] = [
+  { lat: 40.7128, lng: -74.006, name: 'New York, US' },
+  { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, US' },
+  { lat: 41.8781, lng: -87.6298, name: 'Chicago, US' },
+  { lat: 29.7604, lng: -95.3698, name: 'Houston, US' },
+  { lat: 25.7617, lng: -80.1918, name: 'Miami, US' },
+  { lat: 51.5074, lng: -0.1278, name: 'London, UK' },
+  { lat: 48.8566, lng: 2.3522, name: 'Paris, FR' },
+  { lat: 35.6762, lng: 139.6503, name: 'Tokyo, JP' },
+  { lat: 13.7563, lng: 100.5018, name: 'Bangkok, TH' },
+  { lat: 1.3521, lng: 103.8198, name: 'Singapore, SG' },
+  { lat: -33.8688, lng: 151.2093, name: 'Sydney, AU' },
+  { lat: 19.4326, lng: -99.1332, name: 'Mexico City, MX' },
+];
+
 const EMERGENCY_NUMBERS: { country: string; police: string; ambulance: string; fire: string }[] = [
   { country: '🇺🇸 USA', police: '911', ambulance: '911', fire: '911' },
   { country: '🇬🇧 UK', police: '999', ambulance: '999', fire: '999' },
@@ -35,14 +51,67 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [locationSearch, setLocationSearch] = useState('');
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationState[]>([]);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const location = useLocation();
-  const weather = useWeather(location.lat, location.lng);
+  const { lat, lng, name: locationName, updateLocation } = useLocation();
+  const weather = useWeather(lat, lng);
   const prices = useCryptoPrices();
   const metals = useMetalPrices();
-  const { merchants, loading: merchantsLoading } = useBTCMerchants(location.lat, location.lng);
+  const { merchants, loading: merchantsLoading } = useBTCMerchants(lat, lng);
 
   const btcPrice = prices.find(p => p.symbol === 'BTC')?.price || 0;
+
+  const handleLocationSearch = useCallback((val: string) => {
+    setLocationSearch(val);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (val.trim().length < 2) { setLocationSuggestions([]); return; }
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+        const d = await r.json();
+        setLocationSuggestions(d.map((item: any) => ({
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon),
+          name: (() => {
+            const city = item.address?.city || item.address?.town || item.address?.village || item.display_name?.split(',')[0] || val;
+            const country = item.address?.country_code?.toUpperCase() || '';
+            return city + (country ? `, ${country}` : '');
+          })(),
+        })));
+      } catch { setLocationSuggestions([]); }
+    }, 400);
+  }, []);
+
+  const selectLocation = useCallback((loc: LocationState) => {
+    updateLocation(loc);
+    setShowLocationPicker(false);
+    setLocationSearch('');
+    setLocationSuggestions([]);
+  }, [updateLocation]);
+
+  const detectCurrentLocation = useCallback(() => {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lt, longitude: lg } = pos.coords;
+        try {
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lt}&lon=${lg}&format=json`);
+          const d = await r.json();
+          const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || '';
+          const country = d.address?.country_code?.toUpperCase() || '';
+          const n = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
+          selectLocation({ lat: lt, lng: lg, name: n });
+        } catch {
+          selectLocation({ lat: lt, lng: lg, name: 'Current Location' });
+        }
+      },
+      () => {},
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  }, [selectLocation]);
 
   // Splash screen
   if (splash) {
@@ -61,15 +130,19 @@ export default function App() {
 
   const renderScreen = () => {
     switch (tab) {
-      case 'home': return <HomeScreen weather={weather} locationName={location.name} onSwitchTab={setTab} />;
-      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={location.name} />;
+      case 'home': return <HomeScreen weather={weather} locationName={locationName} onSwitchTab={setTab} />;
+      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} />;
       case 'trips': return <TripsScreen />;
-      case 'places': return <PlacesScreen locationName={location.name} lat={location.lat} lng={location.lng} />;
-      case 'maps': return <MapsScreen lat={location.lat} lng={location.lng} merchants={merchants} loading={merchantsLoading} />;
+      case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} />;
+      case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => setTab('maps')} />;
       case 'groups': return <GroupsScreen />;
     }
   };
+
+  const filteredPresets = locationSearch.trim()
+    ? PRESET_LOCATIONS.filter(l => l.name.toLowerCase().includes(locationSearch.toLowerCase()))
+    : PRESET_LOCATIONS;
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden bg-background">
@@ -78,10 +151,11 @@ export default function App() {
         <div className="flex-shrink-0">
           <img src={kipitaLogo} alt="Kipita" className="h-9 w-auto" />
         </div>
-        <button onClick={() => setTab('maps')}
+        <button onClick={() => setShowLocationPicker(true)}
           className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-muted rounded-full px-4 py-2.5 text-sm font-semibold text-muted-foreground overflow-hidden min-w-0">
           <span className="ms text-kipita-red text-lg flex-shrink-0">location_on</span>
-          <span className="truncate">{location.name}</span>
+          <span className="truncate">{locationName}</span>
+          <span className="ms text-xs text-muted-foreground flex-shrink-0">expand_more</span>
         </button>
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <button className="flex items-center gap-1 px-2.5 py-2 rounded-kipita-sm text-xs font-bold text-muted-foreground hover:bg-muted transition-colors">
@@ -103,6 +177,74 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* Location Picker Modal */}
+      {showLocationPicker && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-[300]" onClick={() => setShowLocationPicker(false)} />
+          <div className="fixed inset-x-4 top-[8%] max-w-md mx-auto bg-card rounded-2xl shadow-2xl z-[301] overflow-hidden max-h-[80vh] flex flex-col">
+            <div className="px-5 pt-5 pb-3 flex-shrink-0">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-extrabold">Change Location</h3>
+                <button onClick={() => setShowLocationPicker(false)} className="text-muted-foreground text-xl leading-none">&times;</button>
+              </div>
+              <div className="flex items-center gap-2 bg-muted rounded-kipita-sm px-3 py-2.5">
+                <span className="ms text-muted-foreground text-lg">search</span>
+                <input value={locationSearch} onChange={e => handleLocationSearch(e.target.value)}
+                  placeholder="Search city or address…" autoFocus
+                  className="flex-1 bg-transparent outline-none text-sm" />
+                {locationSearch && (
+                  <button onClick={() => { setLocationSearch(''); setLocationSuggestions([]); }} className="text-muted-foreground text-sm">✕</button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 pb-5">
+              {/* Use current location button */}
+              <button onClick={detectCurrentLocation}
+                className="w-full flex items-center gap-3 px-3 py-3 rounded-kipita hover:bg-muted transition-colors text-left mb-2">
+                <span className="ms text-kipita-red text-xl">my_location</span>
+                <div>
+                  <div className="text-sm font-bold">Use Current Location</div>
+                  <div className="text-[10px] text-muted-foreground">Detect via GPS</div>
+                </div>
+              </button>
+
+              <hr className="border-border my-2" />
+
+              {/* Search results */}
+              {locationSuggestions.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Search Results</p>
+                  {locationSuggestions.map((s, i) => (
+                    <button key={i} onClick={() => selectLocation(s)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors text-left">
+                      <span className="ms text-muted-foreground text-lg">location_on</span>
+                      <span className="text-sm font-semibold">{s.name}</span>
+                    </button>
+                  ))}
+                  <hr className="border-border my-2" />
+                </div>
+              )}
+
+              {/* Preset locations */}
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Popular Cities</p>
+              <div className="space-y-0.5">
+                {filteredPresets.map(loc => (
+                  <button key={loc.name} onClick={() => selectLocation(loc)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors text-left ${
+                      locationName === loc.name ? 'bg-kipita-red/10' : ''
+                    }`}>
+                    <span className="ms text-muted-foreground text-lg">location_city</span>
+                    <span className={`text-sm font-semibold ${locationName === loc.name ? 'text-kipita-red' : ''}`}>{loc.name}</span>
+                    {locationName === loc.name && <span className="ms text-kipita-red text-sm ml-auto">check</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* SOS Modal */}
       {showSOS && (
@@ -141,9 +283,9 @@ export default function App() {
                 <p className="text-xs text-muted-foreground">📍 Share your location with emergency contacts</p>
                 <button onClick={() => {
                   if (navigator.share) {
-                    navigator.share({ title: 'My Location', text: `I need help! My location: https://maps.google.com/?q=${location.lat},${location.lng}` });
+                    navigator.share({ title: 'My Location', text: `I need help! My location: https://maps.google.com/?q=${lat},${lng}` });
                   } else {
-                    navigator.clipboard.writeText(`https://maps.google.com/?q=${location.lat},${location.lng}`);
+                    navigator.clipboard.writeText(`https://maps.google.com/?q=${lat},${lng}`);
                     alert('Location link copied to clipboard!');
                   }
                 }} className="mt-2 bg-kipita-red text-white font-bold text-sm px-4 py-2 rounded-full">
