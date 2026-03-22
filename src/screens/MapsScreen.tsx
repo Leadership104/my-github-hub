@@ -321,43 +321,55 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
     setPlacesLoading(false);
   }, [lat, lng, clearMarkers, addLabeledMarker]);
 
-  /* ── Fetch CoinMap.org venues ── */
-  const fetchCoinMapVenues = useCallback(async (): Promise<NearbyPlace[]> => {
+  /* ── Fetch additional verified BTC merchants from Overpass (currency:XBT=yes) ── */
+  const fetchOverpassBtcMerchants = useCallback(async (): Promise<NearbyPlace[]> => {
     if (!lat || !lng) return [];
     try {
-      const r = await fetch(`https://coinmap.org/api/v1/venues/?lat1=${lat - 0.15}&lat2=${lat + 0.15}&lon1=${lng - 0.15}&lon2=${lng + 0.15}`);
+      const q = `[out:json][timeout:15];node["currency:XBT"="yes"](around:15000,${lat},${lng});out 50;`;
+      const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
       const d = await r.json();
-      return (d.venues || []).slice(0, 40).map((v: any) => ({
-        lat: v.lat, lng: v.lon, name: v.name || 'BTC Venue',
-        type: v.category || 'Bitcoin Merchant', icon: '₿',
-        source: 'CoinMap.org',
-        distance: haversineKm(lat, lng, v.lat, v.lon),
-        website: v.website || '', phone: '', address: '',
-      }));
+      return (d.elements || [])
+        .filter((e: any) => e.tags?.name)
+        .map((e: any) => {
+          const details = extractPlaceDetails(e.tags || {});
+          const acceptsLN = e.tags['payment:lightning'] === 'yes';
+          const acceptsOnchain = e.tags['payment:onchain'] === 'yes';
+          return {
+            lat: e.lat, lng: e.lon, name: e.tags.name,
+            type: acceptsLN ? 'Lightning ⚡ + Onchain' : acceptsOnchain ? 'Onchain BTC' : 'Bitcoin Merchant',
+            icon: '₿',
+            source: 'OpenStreetMap ✓',
+            distance: haversineKm(lat, lng, e.lat, e.lon),
+            ...details,
+          };
+        });
     } catch { return []; }
   }, [lat, lng]);
 
-  // Render BTC markers from BTCMap + CoinMap
+  // Render BTC markers from BTCMap + Overpass verified BTC merchants
   const renderBtcMarkers = useCallback(async () => {
     clearMarkers();
-    // BTCMap merchants
-    const btcPlaces: NearbyPlace[] = merchants.slice(0, 80).map(m => {
-      const details = extractPlaceDetails(m.tags || {});
-      return {
-        lat: m.lat, lng: m.lng, name: m.name, type: m.type, icon: '₿',
-        source: 'BTCMap.org ✓',
-        distance: lat ? haversineKm(lat, lng, m.lat, m.lng) : undefined,
-        ...details,
-      };
-    });
+    // BTCMap merchants - filter out unnamed/generic entries
+    const btcPlaces: NearbyPlace[] = merchants
+      .filter(m => m.name && m.name !== 'BTC Merchant' && m.name.trim().length > 1)
+      .slice(0, 80)
+      .map(m => {
+        const details = extractPlaceDetails(m.tags || {});
+        return {
+          lat: m.lat, lng: m.lng, name: m.name, type: m.type, icon: '₿',
+          source: 'BTCMap.org ✓',
+          distance: lat ? haversineKm(lat, lng, m.lat, m.lng) : undefined,
+          ...details,
+        };
+      });
 
-    // CoinMap venues
-    const coinMapVenues = await fetchCoinMapVenues();
+    // Overpass verified BTC merchants (currency:XBT=yes)
+    const overpassBtc = await fetchOverpassBtcMerchants();
 
     // Merge + deduplicate
     const seen = new Set<string>();
     const merged: NearbyPlace[] = [];
-    for (const p of [...btcPlaces, ...coinMapVenues]) {
+    for (const p of [...btcPlaces, ...overpassBtc]) {
       const key = `${p.lat.toFixed(4)},${p.lng.toFixed(4)}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -376,7 +388,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       popup += `<a href="https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z" target="_blank" style="font-size:12px;color:#E53935;font-weight:600">📍 Directions</a>`;
       addLabeledMarker(p.lat, p.lng, '₿', '#F7931A', p.name, popup);
     });
-  }, [merchants, lat, lng, clearMarkers, addLabeledMarker, fetchCoinMapVenues]);
+  }, [merchants, lat, lng, clearMarkers, addLabeledMarker, fetchOverpassBtcMerchants]);
 
   // React to filter changes
   useEffect(() => {
@@ -531,7 +543,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   };
 
   const subs = CATEGORY_SUBS[filter] || [];
-  const sheetTitle = filter === 'btc' ? '₿ BTC Merchants (BTCMap + CoinMap)'
+  const sheetTitle = filter === 'btc' ? '₿ BTC Merchants (Verified Multi-Source)'
     : `${allFilters.find(f => f.id === filter)?.emoji || ''} ${allFilters.find(f => f.id === filter)?.label?.split(' ').slice(1).join(' ') || 'Places'} Nearby`;
 
   const renderStars = (rating: number | null | undefined) => {
@@ -826,17 +838,28 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
                   {p.distance !== undefined ? ` · ${p.distance < 1 ? Math.round(p.distance * 1000) + 'm' : p.distance.toFixed(1) + 'km'}` : ''}
                 </div>
                 {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 50)}{p.openingHours.length > 50 ? '…' : ''}</div>}
-                {p.phone && (
-                  <a href={`tel:${p.phone}`} onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium mt-0.5 inline-block">
-                    📞 {p.phone}
-                  </a>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {p.phone ? (
+                    <a href={`tel:${p.phone}`} onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
+                      📞 {p.phone}
+                    </a>
+                  ) : null}
+                  {p.website ? (
+                    <a href={p.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
+                      🌐 Website
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground/50 italic">🌐 Website not available</span>
+                  )}
+                </div>
+                {/* BTC verification badge for BTC filter */}
+                {filter === 'btc' && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">₿ Accepts Bitcoin</span>
+                    <span className="text-[9px] text-muted-foreground/50">{p.source}</span>
+                  </div>
                 )}
-                {p.website && (
-                  <a href={p.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium mt-0.5 ml-2 inline-block">
-                    🌐 Website
-                  </a>
-                )}
-                <div className="text-[9px] text-muted-foreground/50 mt-0.5">{p.source}</div>
+                {filter !== 'btc' && <div className="text-[9px] text-muted-foreground/50 mt-0.5">{p.source}</div>}
               </div>
               <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`} target="_blank" rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()} className="ms text-muted-foreground text-lg">directions</a>
