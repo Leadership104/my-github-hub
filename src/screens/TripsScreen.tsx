@@ -19,6 +19,7 @@ export default function TripsScreen() {
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [showForm, setShowForm] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [showAiPlanner, setShowAiPlanner] = useState(false);
   const [form, setForm] = useState({ dest: '', country: '', start: '', end: '', notes: '' });
 
   const save = (updated: Trip[]) => { setTrips(updated); localStorage.setItem('kip_trips', JSON.stringify(updated)); };
