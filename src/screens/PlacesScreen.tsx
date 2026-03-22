@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { getCategories, CATEGORY_SUBS, DESTINATIONS, PHRASES } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 

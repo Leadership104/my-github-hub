@@ -358,7 +358,17 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     if (filter === 'btc' && merchants.length > 0) renderBtcMarkers();
   }, [merchants]);
 
-  // Autocomplete suggestions via Nominatim (debounced)
+  // Re-center map and reload data when location (lat/lng props) changes
+  useEffect(() => {
+    if (!locationChangeHandledRef.current) { locationChangeHandledRef.current = true; return; }
+    if (mapRef.current) {
+      mapRef.current.setView([lat, lng], 13, { animate: true });
+    }
+    if (filter === 'btc') renderBtcMarkers();
+    else fetchOverpassPlaces(filter);
+  }, [lat, lng]);
+
+
   const handleSearchInput = useCallback((val: string) => {
     setSearch(val);
     if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
