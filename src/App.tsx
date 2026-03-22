@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
 import type { TabId } from './types';
+import kipitaSplash from './assets/kipita-splash.jpeg';
+import kipitaLogo from './assets/kipita-logo.png';
 import HomeScreen from './screens/HomeScreen';
 import AIScreen from './screens/AIScreen';
 import TripsScreen from './screens/TripsScreen';
@@ -46,15 +48,13 @@ export default function App() {
   if (splash) {
     setTimeout(() => setSplash(false), 2000);
     return (
-      <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-[#1a1a2e] via-[#16213e] to-kipita-red-dk flex items-center justify-center">
-        <div className="text-center text-white">
-          <div className="text-6xl font-extrabold tracking-tight">ki<span className="text-kipita-red">pi</span>ta</div>
-          <p className="mt-3 text-base font-medium text-white/70">Your Ultimate Travel Companion</p>
-          <div className="flex gap-2 justify-center mt-10">
-            {[0, 1, 2].map(i => (
-              <span key={i} className="w-2 h-2 rounded-full bg-white/40" style={{ animation: `dot-pulse 1.4s ease-in-out infinite`, animationDelay: `${i * 0.2}s` }} />
-            ))}
-          </div>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white">
+        <img src={kipitaSplash} alt="Kipita" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-white/20" />
+        <div className="relative flex gap-2 justify-center mt-[60%]">
+          {[0, 1, 2].map(i => (
+            <span key={i} className="w-2.5 h-2.5 rounded-full bg-kipita-red" style={{ animation: `dot-pulse 1.4s ease-in-out infinite`, animationDelay: `${i * 0.2}s` }} />
+          ))}
         </div>
       </div>
     );
@@ -77,7 +77,7 @@ export default function App() {
       {/* Top Bar */}
       <header className="h-[72px] bg-card border-b border-border shadow-sm flex items-center px-4 gap-3 relative z-[100] flex-shrink-0">
         <div className="flex-shrink-0">
-          <span className="text-2xl font-extrabold tracking-tight">ki<span className="text-kipita-red">pi</span>ta</span>
+          <img src={kipitaLogo} alt="Kipita" className="h-9 w-auto" />
         </div>
         <button onClick={() => setTab('maps')}
           className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-muted rounded-full px-4 py-2.5 text-sm font-semibold text-muted-foreground overflow-hidden min-w-0">
