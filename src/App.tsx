@@ -77,7 +77,7 @@ export default function App() {
       {/* Top Bar */}
       <header className="h-[72px] bg-card border-b border-border shadow-sm flex items-center px-4 gap-3 relative z-[100] flex-shrink-0">
         <div className="flex-shrink-0">
-          <span className="text-2xl font-extrabold tracking-tight">ki<span className="text-kipita-red">pi</span>ta</span>
+          <img src={kipitaLogo} alt="Kipita" className="h-9 w-auto" />
         </div>
         <button onClick={() => setTab('maps')}
           className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-muted rounded-full px-4 py-2.5 text-sm font-semibold text-muted-foreground overflow-hidden min-w-0">
