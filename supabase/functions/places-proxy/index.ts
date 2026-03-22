@@ -99,7 +99,8 @@ async function textSearch(query: string, lat?: number, lng?: number, radius = 50
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Google Places text search error: ${res.status} ${err}`);
+    console.warn(`Google Places text search ${res.status}:`, err);
+    return { places: [] };
   }
 
   return res.json();
