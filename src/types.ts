@@ -18,6 +18,23 @@ export interface Destination {
   desc: string;
 }
 
+export interface Booking {
+  id: string;
+  type: 'flight' | 'hotel' | 'cruise' | 'car' | 'insurance' | 'esim';
+  provider: string;
+  name: string;
+  confirmationCode?: string;
+  checkIn?: string;
+  checkOut?: string;
+  departureTime?: string;
+  arrivalTime?: string;
+  flightNumber?: string;
+  address?: string;
+  notes?: string;
+  affiliateUrl?: string;
+  bookedAt: number;
+}
+
 export interface Trip {
   id: string;
   dest: string;
@@ -28,6 +45,7 @@ export interface Trip {
   notes: string;
   status: 'upcoming' | 'active' | 'past' | 'cancelled';
   items: ItineraryItem[];
+  bookings?: Booking[];
   invites?: string[];
   isSample?: boolean;
   createdAt?: number;
