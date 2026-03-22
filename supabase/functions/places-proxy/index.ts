@@ -226,9 +226,7 @@ serve(async (req) => {
       }
       case "details": {
         const data = await placeDetails(placeId);
-        result = {
-          ...normalizePlaces({ places: [data] })[0],
-        };
+        result = data ? normalizePlaces({ places: [data] })[0] : null;
         break;
       }
       default:
