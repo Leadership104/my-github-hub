@@ -50,8 +50,8 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
 
   if (!res.ok) {
     const err = await res.text();
-    console.warn(`Google Places nearby ${res.status}:`, err);
-    return { places: [] };
+    console.error(`Google Places nearby ${res.status}:`, err);
+    return { places: [], _debug: { status: res.status, error: err } };
   }
 
   return res.json();
