@@ -829,17 +829,28 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
                   {p.distance !== undefined ? ` · ${p.distance < 1 ? Math.round(p.distance * 1000) + 'm' : p.distance.toFixed(1) + 'km'}` : ''}
                 </div>
                 {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 50)}{p.openingHours.length > 50 ? '…' : ''}</div>}
-                {p.phone && (
-                  <a href={`tel:${p.phone}`} onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium mt-0.5 inline-block">
-                    📞 {p.phone}
-                  </a>
+                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                  {p.phone ? (
+                    <a href={`tel:${p.phone}`} onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
+                      📞 {p.phone}
+                    </a>
+                  ) : null}
+                  {p.website ? (
+                    <a href={p.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium inline-block">
+                      🌐 Website
+                    </a>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground/50 italic">🌐 Website not available</span>
+                  )}
+                </div>
+                {/* BTC verification badge for BTC filter */}
+                {filter === 'btc' && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[9px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">₿ Accepts Bitcoin</span>
+                    <span className="text-[9px] text-muted-foreground/50">{p.source}</span>
+                  </div>
                 )}
-                {p.website && (
-                  <a href={p.website} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} className="text-[10px] text-blue-500 font-medium mt-0.5 ml-2 inline-block">
-                    🌐 Website
-                  </a>
-                )}
-                <div className="text-[9px] text-muted-foreground/50 mt-0.5">{p.source}</div>
+                {filter !== 'btc' && <div className="text-[9px] text-muted-foreground/50 mt-0.5">{p.source}</div>}
               </div>
               <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`} target="_blank" rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()} className="ms text-muted-foreground text-lg">directions</a>
