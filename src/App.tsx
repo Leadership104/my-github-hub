@@ -48,9 +48,15 @@ const EMERGENCY_NUMBERS: { country: string; police: string; ambulance: string; f
 
 export default function App() {
   const [tab, setTab] = useState<TabId>('home');
+  const [screenHint, setScreenHint] = useState<string | undefined>();
   const [showProfile, setShowProfile] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
+
+  const switchTab = useCallback((t: TabId, hint?: string) => {
+    setTab(t);
+    setScreenHint(hint);
+  }, []);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState<LocationState[]>([]);
@@ -130,12 +136,12 @@ export default function App() {
 
   const renderScreen = () => {
     switch (tab) {
-      case 'home': return <HomeScreen weather={weather} locationName={locationName} onSwitchTab={setTab} />;
+      case 'home': return <HomeScreen weather={weather} locationName={locationName} onSwitchTab={switchTab} />;
       case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} />;
       case 'trips': return <TripsScreen />;
-      case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} />;
-      case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} />;
-      case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => setTab('maps')} />;
+      case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} />;
+      case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} />;
+      case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} />;
       case 'groups': return <GroupsScreen />;
     }
   };
@@ -336,7 +342,7 @@ export default function App() {
       <nav className="h-[84px] bg-card/95 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_rgba(0,0,0,.06)] flex items-stretch flex-shrink-0 z-[100] overflow-x-auto scrollbar-hide"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {NAV_ITEMS.map(item => (
-          <button key={item.id} onClick={() => setTab(item.id)}
+          <button key={item.id} onClick={() => switchTab(item.id)}
             className={`flex-1 min-w-[60px] flex flex-col items-center justify-center gap-1 py-2.5 px-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
               tab === item.id ? 'text-kipita-red' : 'text-muted-foreground'
             }`}>

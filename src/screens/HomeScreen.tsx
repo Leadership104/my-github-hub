@@ -5,7 +5,7 @@ import type { TabId } from '../types';
 interface Props {
   weather: { emoji: string; temp: string; desc: string };
   locationName: string;
-  onSwitchTab: (tab: TabId) => void;
+  onSwitchTab: (tab: TabId, hint?: string) => void;
 }
 
 export default function HomeScreen({ weather, locationName, onSwitchTab }: Props) {
@@ -13,12 +13,12 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
   const greeting = hour < 12 ? 'Good morning ✈️' : hour < 18 ? 'Good afternoon 🌤️' : 'Good evening 🌙';
 
   const quickTools = [
-    { emoji: '🌐', label: 'Translate', tab: 'places' as TabId },
-    { emoji: '🏧', label: 'ATM Finder', tab: 'maps' as TabId },
-    { emoji: '💱', label: 'Currency', tab: 'wallet' as TabId },
-    { emoji: '🛡️', label: 'Safety', tab: 'home' as TabId },
-    { emoji: '🗺️', label: 'Maps', tab: 'maps' as TabId },
-    { emoji: '👥', label: 'Groups', tab: 'groups' as TabId },
+    { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
+    { emoji: '🏧', label: 'ATM Finder', action: () => onSwitchTab('maps', 'atm') },
+    { emoji: '💱', label: 'Currency', action: () => onSwitchTab('wallet') },
+    { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('maps', 'hospital') },
+    { emoji: '🗺️', label: 'Maps', action: () => onSwitchTab('maps') },
+    { emoji: '👥', label: 'Groups', action: () => onSwitchTab('groups') },
   ];
 
   return (
@@ -47,7 +47,7 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
         <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
         <div className="grid grid-cols-3 gap-3 mb-6">
           {quickTools.map(t => (
-            <button key={t.label} onClick={() => onSwitchTab(t.tab)}
+            <button key={t.label} onClick={t.action}
               className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
               <span className="text-2xl">{t.emoji}</span>
               <span className="text-xs font-semibold text-foreground">{t.label}</span>

@@ -35,6 +35,7 @@ interface Props {
   lng: number;
   merchants: BTCMerchant[];
   loading: boolean;
+  initialFilter?: string;
 }
 
 /* ── Overpass tag configs for every category ── */
@@ -143,13 +144,13 @@ async function fetchGooglePlaces(action: string, params: Record<string, unknown>
   }
 }
 
-export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
+export default function MapsScreen({ lat, lng, merchants, loading, initialFilter }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const categories = getCategories();
 
-  const [filter, setFilter] = useState('btc');
+  const [filter, setFilter] = useState(initialFilter || 'btc');
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -776,21 +777,25 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
               )}
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold truncate">{p.name}</div>
-                <div className="flex items-center gap-1.5">
+                {p.typeLabel && <div className="text-[10px] text-muted-foreground font-medium">{p.typeLabel}</div>}
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                   {p.rating && renderStars(p.rating)}
-                  {p.reviewCount ? <span className="text-[9px] text-muted-foreground">({p.reviewCount})</span> : null}
+                  {p.reviewCount ? <span className="text-[9px] text-muted-foreground">({p.reviewCount.toLocaleString()})</span> : null}
                   {p.openNow !== null && p.openNow !== undefined && (
                     <span className={`text-[9px] font-bold ${p.openNow ? 'text-green-600' : 'text-red-500'}`}>
-                      {p.openNow ? 'Open' : 'Closed'}
+                      {p.openNow ? '● Open' : '● Closed'}
                     </span>
                   )}
+                  {p.priceLevel && <span className="text-[9px] text-muted-foreground">💰 {p.priceLevel.replace('PRICE_LEVEL_', '')}</span>}
                 </div>
-                <div className="text-xs text-muted-foreground">
+                {p.summary && <div className="text-[10px] text-muted-foreground/80 mt-0.5 line-clamp-2 italic">{p.summary}</div>}
+                <div className="text-[10px] text-muted-foreground mt-0.5">
                   {p.type}{p.address ? ` · ${p.address}` : ''}
                   {p.distance !== undefined ? ` · ${p.distance < 1 ? Math.round(p.distance * 1000) + 'm' : p.distance.toFixed(1) + 'km'}` : ''}
                 </div>
-                {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 40)}</div>}
-                <div className="text-[9px] text-muted-foreground/50">{p.source}</div>
+                {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 50)}{p.openingHours.length > 50 ? '…' : ''}</div>}
+                {p.phone && <div className="text-[10px] text-muted-foreground/70">📞 {p.phone}</div>}
+                <div className="text-[9px] text-muted-foreground/50 mt-0.5">{p.source}</div>
               </div>
               <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`} target="_blank" rel="noopener noreferrer"
                 onClick={e => e.stopPropagation()} className="ms text-muted-foreground text-lg">directions</a>
