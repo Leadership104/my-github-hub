@@ -209,7 +209,7 @@ export const PERKS = [
   { icon: '🏨', title: 'Expedia', desc: 'Bundle & save on flights + hotels.', code: '', expiry: 'Ongoing', url: 'https://expedia.com/affiliate/eA2cKky', category: 'travel' },
   { icon: '🏨', title: 'Hotels.com', desc: 'Earn a free night for every 10 stays.', code: '', expiry: 'Ongoing', url: 'https://www.hotels.com/affiliate/RrZ7bmg', category: 'travel' },
   { icon: '🏠', title: 'Airbnb', desc: '$25 off your first stay with Kipita referral.', code: 'KIPITABNB', expiry: 'Mar 2027', url: 'https://www.airbnb.com/', category: 'travel' },
-  { icon: '🚢', title: 'CruiseCritic', desc: 'Exclusive nomad cruise deals + onboard credits.', code: 'KIPITACRUISE', expiry: 'Ongoing', url: 'https://www.cruisecritic.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
+  { icon: '🚢', title: 'Expedia Cruises', desc: 'Exclusive nomad cruise deals + onboard credits.', code: 'KIPITACRUISE', expiry: 'Ongoing', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w', category: 'travel' },
   { icon: '🚕', title: 'Uber', desc: 'Rides worldwide — fast & reliable.', code: '', expiry: 'Ongoing', url: 'https://uber.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
   { icon: '🛻', title: 'Lyft', desc: 'Affordable rides across North America.', code: '', expiry: 'Ongoing', url: 'https://lyft.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
   { icon: '🦢', title: 'Swan Bitcoin', desc: 'Auto-stack sats — $10 free Bitcoin on signup.', code: 'KIPITASWAN', expiry: 'Dec 2026', url: 'https://www.swanbitcoin.com/kipita/', category: 'btc' },
