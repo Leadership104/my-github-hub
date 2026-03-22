@@ -169,6 +169,31 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   const [suggestions, setSuggestions] = useState<{ name: string; address: string; lat: number; lng: number }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showTripPicker, setShowTripPicker] = useState(false);
+  const [tripAddSuccess, setTripAddSuccess] = useState<string | null>(null);
+
+  // Load trips from localStorage
+  const getTrips = useCallback((): Trip[] => {
+    try { const s = localStorage.getItem('kip_trips'); return s ? JSON.parse(s) : []; } catch { return []; }
+  }, []);
+
+  const addPlaceToTrip = useCallback((tripId: string, place: NearbyPlace) => {
+    const trips = getTrips();
+    const trip = trips.find(t => t.id === tripId);
+    if (!trip) return;
+    const newItem = {
+      id: `place-${Date.now()}`,
+      day: 1,
+      time: '12:00',
+      title: `${place.icon || '📍'} ${place.name}${place.address ? ' – ' + place.address : ''}`,
+      done: false,
+    };
+    trip.items = [...(trip.items || []), newItem];
+    localStorage.setItem('kip_trips', JSON.stringify(trips));
+    setTripAddSuccess(trip.dest);
+    setShowTripPicker(false);
+    setTimeout(() => setTripAddSuccess(null), 2500);
+  }, [getTrips]);
 
   const allFilters = [
     { id: 'btc', label: '₿ BTC', emoji: '₿' },
