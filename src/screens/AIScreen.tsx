@@ -244,7 +244,14 @@ export default function AIScreen({ btcPrice, locationName }: Props) {
                 ? 'bg-kipita-red text-white rounded-br-sm'
                 : 'bg-card border border-border text-foreground rounded-bl-sm'
             }`}>
-              {msg.text.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+              {msg.text.split(/(\[PHOTO:.*?\]|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+                const photoMatch = part.match(/^\[PHOTO:(.*?):(.*?)\]$/);
+                if (photoMatch) return (
+                  <div key={i} className="my-2 rounded-xl overflow-hidden">
+                    <img src={photoMatch[1]} alt={photoMatch[2]} className="w-full h-36 object-cover rounded-xl" loading="lazy" />
+                    <p className="text-[10px] text-muted-foreground mt-1 italic">📸 {photoMatch[2]}</p>
+                  </div>
+                );
                 const boldMatch = part.match(/^\*\*(.+?)\*\*$/);
                 if (boldMatch) return <strong key={i}>{boldMatch[1]}</strong>;
                 const linkMatch = part.match(/^\[(.+?)\]\((.+?)\)$/);
