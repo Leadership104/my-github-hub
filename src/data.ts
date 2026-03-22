@@ -1,5 +1,231 @@
 import type { Destination, PlaceCategory, SubCategory, Group } from './types';
 
+/* ── Destination-specific cost data (realistic 2026 prices in USD) ── */
+export const CITY_COSTS: Record<string, {
+  photoUrl: string;
+  landmark: string;
+  food: { item: string; price: string }[];
+  drinks: { item: string; price: string }[];
+  entertainment: { item: string; price: string }[];
+}> = {
+  'Chiang Mai': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Wat_Phra_That_Doi_Suthep_-_Chiang_Mai.jpg/1280px-Wat_Phra_That_Doi_Suthep_-_Chiang_Mai.jpg',
+    landmark: 'Wat Phra That Doi Suthep',
+    food: [
+      { item: 'Pad Thai (street stall)', price: '$1.50' },
+      { item: 'Khao Soi (curry noodle soup)', price: '$2.00' },
+      { item: 'Mango sticky rice', price: '$1.00' },
+      { item: 'Meal at local restaurant', price: '$3–5' },
+      { item: 'Western café meal', price: '$6–9' },
+      { item: 'Fine dining entrée', price: '$12–20' },
+    ],
+    drinks: [
+      { item: 'Iced coffee (local café)', price: '$1.00' },
+      { item: 'Fresh fruit smoothie', price: '$1.50' },
+      { item: 'Local beer (Chang/Leo)', price: '$1.50' },
+      { item: 'Craft cocktail at bar', price: '$4–6' },
+      { item: 'Boba tea', price: '$2.00' },
+    ],
+    entertainment: [
+      { item: 'Night Bazaar shopping', price: 'Free–$20' },
+      { item: 'Thai cooking class (half day)', price: '$25–35' },
+      { item: 'Doi Suthep temple entry', price: '$1.00' },
+      { item: 'Full-day trekking tour', price: '$25–40' },
+      { item: 'Muay Thai class', price: '$8–12' },
+      { item: 'Movie theater ticket', price: '$4–6' },
+    ],
+  },
+  'Lisbon': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/Lisbon_%2836831596786%29_%28cropped%29.jpg/1280px-Lisbon_%2836831596786%29_%28cropped%29.jpg',
+    landmark: 'Belém Tower & Tram 28',
+    food: [
+      { item: 'Pastel de nata (custard tart)', price: '$1.20' },
+      { item: 'Bifana sandwich', price: '$3.50' },
+      { item: 'Meal at tascas (local tavern)', price: '$8–12' },
+      { item: 'Seafood restaurant entrée', price: '$15–25' },
+      { item: 'Lunch menu of the day', price: '$7–10' },
+      { item: 'Fine dining (Michelin)', price: '$50–80' },
+    ],
+    drinks: [
+      { item: 'Espresso (bica)', price: '$0.80' },
+      { item: 'Glass of Vinho Verde', price: '$2.50' },
+      { item: 'Craft beer (local)', price: '$3–5' },
+      { item: 'Ginjinha (cherry liqueur shot)', price: '$1.50' },
+      { item: 'Cocktail at rooftop bar', price: '$8–12' },
+    ],
+    entertainment: [
+      { item: 'Fado show at Alfama', price: '$15–25' },
+      { item: 'Tram 28 ride', price: '$3.50' },
+      { item: 'Jerónimos Monastery entry', price: '$12' },
+      { item: 'Surf lesson at Costa da Caparica', price: '$35–50' },
+      { item: 'Day trip to Sintra', price: '$15–25' },
+      { item: 'LX Factory market browse', price: 'Free' },
+    ],
+  },
+  'Bali': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/Tanah-Lot_Bali_Indonesia_Pura-Tanah-Lot-01.jpg/1280px-Tanah-Lot_Bali_Indonesia_Pura-Tanah-Lot-01.jpg',
+    landmark: 'Tanah Lot Temple',
+    food: [
+      { item: 'Nasi Goreng (fried rice)', price: '$1.50–3' },
+      { item: 'Babi Guling (suckling pig)', price: '$3–5' },
+      { item: 'Warung meal (local)', price: '$2–4' },
+      { item: 'Smoothie bowl (Canggu café)', price: '$5–7' },
+      { item: 'Western restaurant meal', price: '$8–15' },
+      { item: 'Beach club dinner', price: '$20–40' },
+    ],
+    drinks: [
+      { item: 'Bintang beer', price: '$1.50–2' },
+      { item: 'Fresh coconut', price: '$1.00' },
+      { item: 'Iced latte (café)', price: '$2.50–4' },
+      { item: 'Cocktail at beach bar', price: '$5–8' },
+      { item: 'Fresh juice', price: '$1.50–3' },
+    ],
+    entertainment: [
+      { item: 'Ubud Monkey Forest entry', price: '$4.50' },
+      { item: 'Tegallalang rice terrace', price: '$1.50' },
+      { item: 'Surf lesson (2 hrs)', price: '$20–30' },
+      { item: 'Full-day scooter rental', price: '$5–7' },
+      { item: 'Balinese spa massage (1 hr)', price: '$10–15' },
+      { item: 'Uluwatu Kecak fire dance', price: '$7' },
+    ],
+  },
+  'Bangkok': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Wat_Arun%2C_Bangkok_%28I%29.jpg/800px-Wat_Arun%2C_Bangkok_%28I%29.jpg',
+    landmark: 'Wat Arun (Temple of Dawn)',
+    food: [
+      { item: 'Street Pad Thai', price: '$1.00–2' },
+      { item: 'Som Tam (papaya salad)', price: '$1.00' },
+      { item: 'Rice & curry plate', price: '$1.50–2.50' },
+      { item: 'Yaowarat (Chinatown) street food', price: '$2–4' },
+      { item: 'Mid-range restaurant', price: '$6–12' },
+      { item: 'Rooftop restaurant', price: '$25–50' },
+    ],
+    drinks: [
+      { item: 'Thai iced tea', price: '$0.75' },
+      { item: 'Chang/Singha beer', price: '$1.50' },
+      { item: 'Fresh coconut water', price: '$0.75' },
+      { item: 'Rooftop bar cocktail', price: '$8–15' },
+      { item: 'Café latte', price: '$2.50–4' },
+    ],
+    entertainment: [
+      { item: 'Grand Palace entry', price: '$16' },
+      { item: 'Wat Pho (reclining Buddha)', price: '$7' },
+      { item: 'Chatuchak Weekend Market', price: 'Free entry' },
+      { item: 'Muay Thai ringside ticket', price: '$30–60' },
+      { item: 'River boat day pass (Chao Phraya)', price: '$1–3' },
+      { item: 'Thai massage (1 hr)', price: '$6–10' },
+    ],
+  },
+  'Tokyo': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Skyscrapers_of_Shinjuku_2009_January.jpg/1280px-Skyscrapers_of_Shinjuku_2009_January.jpg',
+    landmark: 'Shinjuku Skyline & Senso-ji Temple',
+    food: [
+      { item: 'Ramen bowl', price: '$7–10' },
+      { item: 'Conveyor belt sushi (10 pcs)', price: '$8–12' },
+      { item: 'Onigiri (convenience store)', price: '$1.20' },
+      { item: 'Bento box (station)', price: '$5–8' },
+      { item: 'Izakaya dinner (per person)', price: '$15–25' },
+      { item: 'Omakase sushi (mid-range)', price: '$60–120' },
+    ],
+    drinks: [
+      { item: 'Vending machine coffee', price: '$1.00' },
+      { item: 'Draft beer at izakaya', price: '$3–5' },
+      { item: 'Sake (glass)', price: '$4–6' },
+      { item: 'Café latte (Blue Bottle/etc)', price: '$4–5' },
+      { item: 'Highball cocktail', price: '$3–5' },
+    ],
+    entertainment: [
+      { item: 'Senso-ji Temple', price: 'Free' },
+      { item: 'Shibuya Sky observation', price: '$15' },
+      { item: 'Tsukiji Outer Market food tour', price: '$40–60' },
+      { item: 'TeamLab Borderless', price: '$25' },
+      { item: 'Onsen day pass', price: '$10–20' },
+      { item: 'Karaoke (1 hr per person)', price: '$5–10' },
+    ],
+  },
+  'Barcelona': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/SF_-_Pair.jpg/800px-SF_-_Pair.jpg',
+    landmark: 'Sagrada Família',
+    food: [
+      { item: 'Patatas bravas (tapas)', price: '$4–6' },
+      { item: 'Pintxos (each)', price: '$2–3' },
+      { item: 'Menú del día (lunch set)', price: '$10–14' },
+      { item: 'Paella for two', price: '$25–40' },
+      { item: 'Jamón Ibérico plate', price: '$12–18' },
+      { item: 'Fine dining entrée', price: '$30–50' },
+    ],
+    drinks: [
+      { item: 'Café con leche', price: '$1.50–2' },
+      { item: 'Glass of cava', price: '$3–5' },
+      { item: 'Sangria pitcher', price: '$8–12' },
+      { item: 'Caña (small draft beer)', price: '$2–3' },
+      { item: 'Cocktail at beach bar', price: '$8–14' },
+    ],
+    entertainment: [
+      { item: 'Sagrada Família ticket', price: '$28' },
+      { item: 'Park Güell entry', price: '$12' },
+      { item: 'Flamenco show (Tablao)', price: '$30–50' },
+      { item: 'Barceloneta beach', price: 'Free' },
+      { item: 'Camp Nou stadium tour', price: '$28' },
+      { item: 'La Boqueria market browse', price: 'Free' },
+    ],
+  },
+  'Medellín': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Medellin_Skyline.jpg/1280px-Medellin_Skyline.jpg',
+    landmark: 'Medellín Skyline & Comuna 13',
+    food: [
+      { item: 'Bandeja Paisa (national dish)', price: '$3–5' },
+      { item: 'Arepa con queso', price: '$1.00' },
+      { item: 'Empanadas (3 pcs)', price: '$1.00' },
+      { item: 'Corrientazo (set lunch)', price: '$2.50–4' },
+      { item: 'Mid-range restaurant', price: '$8–15' },
+      { item: 'Upscale restaurant dinner', price: '$20–35' },
+    ],
+    drinks: [
+      { item: 'Tinto (black coffee)', price: '$0.30' },
+      { item: 'Fresh fruit juice (natural)', price: '$1.00' },
+      { item: 'Aguardiente shot', price: '$0.75' },
+      { item: 'Club Colombia beer', price: '$1.00–2' },
+      { item: 'Craft cocktail', price: '$4–7' },
+    ],
+    entertainment: [
+      { item: 'Comuna 13 graffiti tour', price: '$10–15' },
+      { item: 'Metrocable ride (one way)', price: '$0.75' },
+      { item: 'Botanical Garden entry', price: 'Free' },
+      { item: 'Paragliding', price: '$40–60' },
+      { item: 'Guatapé day trip (inc. El Peñón)', price: '$20–30' },
+      { item: 'Salsa class', price: '$5–10' },
+    ],
+  },
+  'Dubai': {
+    photoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Dubai_Marina_Skyline.jpg/1280px-Dubai_Marina_Skyline.jpg',
+    landmark: 'Burj Khalifa & Dubai Marina',
+    food: [
+      { item: 'Shawarma wrap (street)', price: '$2–3' },
+      { item: 'Karak chai', price: '$1.00' },
+      { item: 'Al Machboos rice platter', price: '$5–8' },
+      { item: 'Food court meal (mall)', price: '$7–12' },
+      { item: 'Mid-range restaurant', price: '$20–35' },
+      { item: 'Fine dining (Burj)', price: '$80–200' },
+    ],
+    drinks: [
+      { item: 'Fresh juice (mango/orange)', price: '$2–3' },
+      { item: 'Arabic coffee (qahwa)', price: '$2–4' },
+      { item: 'Beer at licensed venue', price: '$10–14' },
+      { item: 'Cocktail at sky bar', price: '$18–30' },
+      { item: 'Café latte (specialty)', price: '$5–7' },
+    ],
+    entertainment: [
+      { item: 'Burj Khalifa observation deck', price: '$40–55' },
+      { item: 'Dubai Mall (inc. aquarium)', price: '$35' },
+      { item: 'Desert safari (half day)', price: '$40–70' },
+      { item: 'Dubai Frame entry', price: '$14' },
+      { item: 'Dhow dinner cruise', price: '$30–60' },
+      { item: 'Museum of the Future', price: '$40' },
+    ],
+  },
+};
+
 export const DESTINATIONS: Destination[] = [
   { id: 'chiangmai', city: 'Chiang Mai', country: 'Thailand', emoji: '🏔️', lat: 18.7883, lng: 98.9853, rating: 4.8, pop: '7M+ nomads', wikiTitle: 'Chiang Mai', speed: 52, safetyScore: 8.2, monthlyCost: 1200, weatherDesc: 'Warm & Sunny', temp: 28, tags: ['Affordable', 'Digital Nomad'], popular: true, desc: 'Ancient temples, cool mountains, fast internet, and the most affordable nomad lifestyle in Asia.' },
   { id: 'lisbon', city: 'Lisbon', country: 'Portugal', emoji: '🇵🇹', lat: 38.7169, lng: -9.1399, rating: 4.7, pop: '6M+ nomads', wikiTitle: 'Lisbon', speed: 48, safetyScore: 8.7, monthlyCost: 1605, weatherDesc: 'Mild & Breezy', temp: 18, tags: ['Bitcoin-Friendly', 'Tax Perks'], popular: true, desc: 'Sunny capital with pastel streets, great food, crypto-friendly culture, and NHR tax regime.' },

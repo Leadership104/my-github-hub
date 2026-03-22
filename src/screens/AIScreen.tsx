@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import type { ChatMessage } from '../types';
-import { DESTINATIONS, AI_RESPONSES } from '../data';
+import { DESTINATIONS, AI_RESPONSES, CITY_COSTS } from '../data';
 
 function extractDestFromMsg(msg: string) {
   const known = DESTINATIONS.find(d => msg.toLowerCase().includes(d.city.toLowerCase()));
@@ -19,10 +19,12 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
     return `Here's more on **${dest}**:\n\n${AI_RESPONSES.plan(dest)}`;
   }
 
-  // Destination info query
+  // Destination info query — now includes photo + detailed costs
   if (knownDest && /\b(about|info|tell|what|like|describe|nomad|stats|overview|how is|worth)\b/.test(m) && !/\b(plan|trip|visit|go|travel|itinerary)\b/.test(m)) {
     const d = knownDest;
-    return `🌍 **${d.city}, ${d.country}** ${d.emoji}\n\n⭐ **${d.rating}/5** · 📶 ${d.speed} Mbps · 🛡️ Safety ${d.safetyScore}/10\n💰 **$${d.monthlyCost.toLocaleString()}/month** · ${d.weatherDesc} ${d.temp}°C\n\n${d.desc}\n\n**Tags:** ${d.tags.join(', ')}\n\n**Nomad population:** ${d.pop}`;
+    const costs = CITY_COSTS[d.city];
+    const photoLine = costs ? `[PHOTO:${costs.photoUrl}:${costs.landmark}]\n\n` : '';
+    return `${photoLine}🌍 **${d.city}, ${d.country}** ${d.emoji}\n\n⭐ **${d.rating}/5** · 📶 ${d.speed} Mbps · 🛡️ Safety ${d.safetyScore}/10\n💰 **$${d.monthlyCost.toLocaleString()}/month** · ${d.weatherDesc} ${d.temp}°C\n\n${d.desc}\n\n**Tags:** ${d.tags.join(', ')}\n\n**Nomad population:** ${d.pop}`;
   }
 
   // Best cities / nomad cities / compare
@@ -32,12 +34,23 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
   }
 
   // Cost / budget / affordable
-  if (/\b(cost|cheap|budget|affordable|expense|price)\b/.test(m)) {
+  if (/\b(cost|cheap|budget|affordable|expense|price|food|drink|entertainment|eat|dining)\b/.test(m)) {
     if (knownDest) {
+      const costs = CITY_COSTS[knownDest.city];
+      if (costs) {
+        const photoLine = `[PHOTO:${costs.photoUrl}:${costs.landmark}]\n\n`;
+        const foodLines = costs.food.map(f => `  • ${f.item}: **${f.price}**`).join('\n');
+        const drinkLines = costs.drinks.map(d => `  • ${d.item}: **${d.price}**`).join('\n');
+        const entLines = costs.entertainment.map(e => `  • ${e.item}: **${e.price}**`).join('\n');
+        return `${photoLine}💰 **Cost Guide — ${knownDest.city}, ${knownDest.country}** ${knownDest.emoji}\n📸 *${costs.landmark}*\n\n**Monthly estimate:** ~$${knownDest.monthlyCost.toLocaleString()}\n\n🍜 **Food:**\n${foodLines}\n\n🍹 **Drinks:**\n${drinkLines}\n\n🎉 **Entertainment:**\n${entLines}`;
+      }
       return `💰 **Cost of Living — ${knownDest.city}, ${knownDest.country}**\n\n**Monthly estimate:** ~$${knownDest.monthlyCost.toLocaleString()}\n\n• 🏠 Accommodation: ~$${Math.round(knownDest.monthlyCost * 0.4)}/mo\n• 🍜 Food: ~$${Math.round(knownDest.monthlyCost * 0.25)}/mo\n• 🚇 Transport: ~$${Math.round(knownDest.monthlyCost * 0.1)}/mo\n• 💻 Coworking: ~$${Math.round(knownDest.monthlyCost * 0.1)}/mo\n• 🎉 Entertainment: ~$${Math.round(knownDest.monthlyCost * 0.15)}/mo`;
     }
     const sorted = [...DESTINATIONS].sort((a, b) => a.monthlyCost - b.monthlyCost);
-    return `💰 **Most Affordable Nomad Destinations**\n\n${sorted.slice(0, 5).map((d, i) => `${i + 1}. **${d.city}** ${d.emoji} — $${d.monthlyCost.toLocaleString()}/month`).join('\n')}\n\n*Ask about any city for a full cost breakdown!*`;
+    return `💰 **Most Affordable Nomad Destinations**\n\n${sorted.slice(0, 5).map((d, i) => {
+      const c = CITY_COSTS[d.city];
+      return `${i + 1}. **${d.city}** ${d.emoji} — $${d.monthlyCost.toLocaleString()}/month${c ? ` · Street food from ${c.food[0]?.price}` : ''}`;
+    }).join('\n')}\n\n*Ask about any city for a full cost breakdown with photos!*`;
   }
 
   // WiFi / internet
@@ -49,8 +62,11 @@ function getAiResponse(msg: string, lastAi: string, btcPrice?: number, locationN
   // Plan/trip/travel/visit
   if (/\b(plan|trip|travel|visit|go to|itinerary|take me)\b/.test(m)) {
     const dest = knownDest ? `${knownDest.city}, ${knownDest.country}` : (extractDestFromMsg(msg) || locationName || 'New Destination');
+    const cityName = knownDest?.city || extractDestFromMsg(msg) || '';
+    const costs = CITY_COSTS[cityName];
+    const photoLine = costs ? `[PHOTO:${costs.photoUrl}:${costs.landmark}]\n\n` : '';
     const costNote = knownDest ? `\n\n💰 **Estimated cost:** ~$${Math.round(knownDest.monthlyCost / 30 * 7).toLocaleString()} for 7 days` : '';
-    return AI_RESPONSES.plan(dest) + costNote;
+    return photoLine + AI_RESPONSES.plan(dest) + costNote;
   }
 
   // Safety
@@ -228,7 +244,14 @@ export default function AIScreen({ btcPrice, locationName }: Props) {
                 ? 'bg-kipita-red text-white rounded-br-sm'
                 : 'bg-card border border-border text-foreground rounded-bl-sm'
             }`}>
-              {msg.text.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+              {msg.text.split(/(\[PHOTO:.*?\]|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+                const photoMatch = part.match(/^\[PHOTO:(.*?):(.*?)\]$/);
+                if (photoMatch) return (
+                  <div key={i} className="my-2 rounded-xl overflow-hidden">
+                    <img src={photoMatch[1]} alt={photoMatch[2]} className="w-full h-36 object-cover rounded-xl" loading="lazy" />
+                    <p className="text-[10px] text-muted-foreground mt-1 italic">📸 {photoMatch[2]}</p>
+                  </div>
+                );
                 const boldMatch = part.match(/^\*\*(.+?)\*\*$/);
                 if (boldMatch) return <strong key={i}>{boldMatch[1]}</strong>;
                 const linkMatch = part.match(/^\[(.+?)\]\((.+?)\)$/);
