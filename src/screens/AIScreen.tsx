@@ -228,9 +228,13 @@ export default function AIScreen({ btcPrice, locationName }: Props) {
                 ? 'bg-kipita-red text-white rounded-br-sm'
                 : 'bg-card border border-border text-foreground rounded-bl-sm'
             }`}>
-              {msg.text.split(/\*\*(.+?)\*\*/g).map((part, i) =>
-                i % 2 === 1 ? <strong key={i}>{part}</strong> : <span key={i}>{part}</span>
-              )}
+              {msg.text.split(/(\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+                const boldMatch = part.match(/^\*\*(.+?)\*\*$/);
+                if (boldMatch) return <strong key={i}>{boldMatch[1]}</strong>;
+                const linkMatch = part.match(/^\[(.+?)\]\((.+?)\)$/);
+                if (linkMatch) return <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-semibold">{linkMatch[1]}</a>;
+                return <span key={i}>{part}</span>;
+              })}
             </div>
           </div>
         ))}
