@@ -502,7 +502,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   };
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full relative" onClick={() => setShowSuggestions(false)}>
       {/* Search bar with autocomplete */}
       <div className="absolute top-3 left-3 right-3 z-[500]">
         <div className="flex gap-2">
