@@ -214,7 +214,7 @@ export const PERKS = [
   { icon: '🛻', title: 'Lyft', desc: 'Affordable rides across North America.', code: '', expiry: 'Ongoing', url: 'https://lyft.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
   { icon: '🦢', title: 'Swan Bitcoin', desc: 'Auto-stack sats — $10 free Bitcoin on signup.', code: 'KIPITASWAN', expiry: 'Dec 2026', url: 'https://www.swanbitcoin.com/kipita/', category: 'btc' },
   { icon: '💳', title: 'Fold Card', desc: 'Earn BTC rewards on every purchase. Spin the wheel daily.', code: 'MAJL4MYU', expiry: 'Ongoing', url: 'https://use.foldapp.com/r/MAJL4MYU', category: 'btc' },
-  { icon: '⚡', title: 'Strike', desc: 'Send money globally via Lightning. Zero fees for Kipita users.', code: 'KIPITASTRIKE', expiry: 'Jun 2026', url: 'https://strike.me/', category: 'btc' },
+  
   { icon: '🏦', title: 'River', desc: 'Buy Bitcoin with zero spread. $5 free on first purchase.', code: 'KIPITARIVER', expiry: 'Dec 2026', url: 'https://river.com/', category: 'btc' },
   { icon: '🥇', title: 'Kinesis', desc: 'Gold & silver-backed digital currency. Trade precious metals.', code: 'KM00083150', expiry: 'Ongoing', url: 'https://kms.kinesis.money/signup/KM00083150', category: 'btc' },
   { icon: '⛽', title: 'Upside', desc: 'Cash back on gas, food & groceries.', code: '', expiry: 'Ongoing', url: 'https://upside.com/', category: 'btc' },
