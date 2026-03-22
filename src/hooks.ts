@@ -1,10 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { CryptoPrice, BTCMerchant, MetalPrice } from './types';
 
+// Default to New York, USA instead of Bangkok
+const DEFAULT_LOCATION = { lat: 40.7128, lng: -74.006, name: 'New York, US' };
+
+export interface LocationState {
+  lat: number;
+  lng: number;
+  name: string;
+}
+
 export function useLocation() {
-  const [location, setLocation] = useState({ lat: 0, lng: 0, name: 'Detecting…' });
+  const [location, setLocation] = useState<LocationState>({ lat: 0, lng: 0, name: 'Detecting…' });
+  const [detected, setDetected] = useState(false);
+
   useEffect(() => {
-    if (!navigator.geolocation) { setLocation({ lat: 13.7563, lng: 100.5018, name: 'Bangkok' }); return; }
+    if (!navigator.geolocation) { setLocation(DEFAULT_LOCATION); setDetected(true); return; }
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
@@ -16,25 +27,31 @@ export function useLocation() {
           const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
           setLocation({ lat, lng, name });
         } catch { setLocation({ lat, lng, name: 'GPS Active' }); }
+        setDetected(true);
       },
       async () => {
-        // IP-based fallback
         try {
           const r = await fetch('https://ip-api.com/json');
           const d = await r.json();
           if (d.status === 'success') {
             setLocation({ lat: d.lat, lng: d.lon, name: `${d.city}, ${d.countryCode}` });
           } else {
-            setLocation({ lat: 13.7563, lng: 100.5018, name: 'Bangkok (default)' });
+            setLocation(DEFAULT_LOCATION);
           }
         } catch {
-          setLocation({ lat: 13.7563, lng: 100.5018, name: 'Bangkok (default)' });
+          setLocation(DEFAULT_LOCATION);
         }
+        setDetected(true);
       },
       { enableHighAccuracy: true, timeout: 8000 }
     );
   }, []);
-  return location;
+
+  const updateLocation = useCallback((newLoc: LocationState) => {
+    setLocation(newLoc);
+  }, []);
+
+  return { ...location, detected, updateLocation };
 }
 
 const WX_CODES: Record<number, [string, string]> = {
@@ -129,9 +146,8 @@ export function useBTCMerchants(lat: number, lng: number) {
         setMerchants(els.slice(0, 100));
       })
       .catch(() => {
-        // Fallback demo markers
-        const baseLat = lat || 13.7563;
-        const baseLng = lng || 100.5018;
+        const baseLat = lat || 40.7128;
+        const baseLng = lng || -74.006;
         const demoNames = ['Lightning Café', 'Satoshi Market', 'BTC Corner Shop', 'Crypto Bistro', 'Bitcoin Hub', 'Digital Pay'];
         setMerchants(demoNames.map(name => ({
           lat: baseLat + (Math.random() - .5) * 0.05,
@@ -173,7 +189,6 @@ export function useCurrencyConverter() {
       .then(r => r.json())
       .then(d => setRates(d.rates || {}))
       .catch(() => {
-        // Fallback approximate rates
         setRates({ USD: 1, EUR: 0.92, GBP: 0.78, JPY: 149.5, CNY: 7.25, CHF: 0.89, THB: 34.5, IDR: 16300, BRL: 5.85, AED: 3.67, SGD: 1.35 });
       });
   }, []);
@@ -192,7 +207,7 @@ export function useCurrencyConverter() {
 }
 
 export function generateCashAppMerchants(lat: number, lng: number) {
-  const baseLat = lat || 13.7563, baseLng = lng || 100.5018;
+  const baseLat = lat || 40.7128, baseLng = lng || -74.006;
   const names = ['Cash App Merchant', 'Local Shop', 'Street Market', 'Digital Café', 'Tech Store', 'Food Court', 'Book Store', 'BTC Bistro', 'Crypto Corner', 'Pay Market'];
   return Array.from({ length: 12 }, (_, i) => ({
     lat: baseLat + (Math.random() - .5) * .06,
