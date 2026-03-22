@@ -144,13 +144,13 @@ async function fetchGooglePlaces(action: string, params: Record<string, unknown>
   }
 }
 
-export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
+export default function MapsScreen({ lat, lng, merchants, loading, initialFilter }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);
   const categories = getCategories();
 
-  const [filter, setFilter] = useState('btc');
+  const [filter, setFilter] = useState(initialFilter || 'btc');
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(false);
