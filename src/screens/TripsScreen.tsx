@@ -12,24 +12,13 @@ const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
   esim: { emoji: '📶', label: 'eSIM' },
 };
 
-export default function TripsScreen() {
-  const [trips, setTrips] = useState<Trip[]>(() => {
-    const saved = localStorage.getItem('kip_trips');
-    if (saved) return JSON.parse(saved);
-    const defaults: Trip[] = [
-      { id: '1', dest: 'Tokyo', country: 'Japan', emoji: '🗼', start: '2026-04-10', end: '2026-04-17', notes: 'Visit Shibuya, Akihabara, try ramen!', status: 'upcoming', items: [
-        { id: 'i1', day: 1, time: '10:00', title: 'Arrive Narita Airport', done: false },
-        { id: 'i2', day: 1, time: '14:00', title: 'Check in Shinjuku hotel', done: false },
-        { id: 'i3', day: 2, time: '09:00', title: 'Meiji Shrine visit', done: false },
-      ], bookings: [
-        { id: 'b1', type: 'flight', provider: 'Expedia', name: 'LAX → NRT (ANA)', flightNumber: 'NH105', departureTime: '2026-04-10 11:30', arrivalTime: '2026-04-11 15:30', confirmationCode: 'EXP-7842', affiliateUrl: 'https://expedia.com/affiliate/eA2cKky', bookedAt: Date.now() },
-        { id: 'b2', type: 'hotel', provider: 'Hotels.com', name: 'Hotel Gracery Shinjuku', checkIn: '2026-04-11', checkOut: '2026-04-17', confirmationCode: 'HTL-3291', address: '1-19-1 Kabukicho, Shinjuku', affiliateUrl: 'https://www.hotels.com/affiliate/RrZ7bmg', bookedAt: Date.now() },
-      ]},
-      { id: '2', dest: 'Bali', country: 'Indonesia', emoji: '🌴', start: '2026-05-01', end: '2026-05-10', notes: 'Canggu coworking + surf', status: 'upcoming', items: [], bookings: [] },
-    ];
-    localStorage.setItem('kip_trips', JSON.stringify(defaults));
-    return defaults;
-  });
+interface Props {
+  trips: Trip[];
+  onSaveTrips: (updated: Trip[]) => void;
+}
+
+export default function TripsScreen({ trips, onSaveTrips }: Props) {
+  const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [showForm, setShowForm] = useState(false);
@@ -39,8 +28,6 @@ export default function TripsScreen() {
   const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
   const [form, setForm] = useState({ dest: '', country: '', start: '', end: '', notes: '' });
   const [detailTab, setDetailTab] = useState<'bookings' | 'itinerary' | 'book'>('bookings');
-
-  const save = (updated: Trip[]) => { setTrips(updated); localStorage.setItem('kip_trips', JSON.stringify(updated)); };
 
   const createTrip = () => {
     if (!form.dest) return;

@@ -347,7 +347,7 @@ export default function AIScreen({ btcPrice, locationName, trips, onCreateTrip, 
                 ? 'bg-kipita-red text-white rounded-br-sm'
                 : 'bg-card border border-border text-foreground rounded-bl-sm'
             }`}>
-              {msg.text.split(/(\[PHOTO:.*?\]|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+              {msg.text.split(/(\[PHOTO:.*?\]|\*\*\[.*?\]\(.*?\)\*\*|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
                 const photoMatch = part.match(/^\[PHOTO:(.*?):(.*?)\]$/);
                 if (photoMatch) return (
                   <div key={i} className="my-2 rounded-xl overflow-hidden">
@@ -355,6 +355,9 @@ export default function AIScreen({ btcPrice, locationName, trips, onCreateTrip, 
                     <p className="text-[10px] text-muted-foreground mt-1 italic">📸 {photoMatch[2]}</p>
                   </div>
                 );
+                // Bold link: **[Text](url)**
+                const boldLinkMatch = part.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
+                if (boldLinkMatch) return <a key={i} href={boldLinkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-bold">{boldLinkMatch[1]}</a>;
                 const boldMatch = part.match(/^\*\*(.+?)\*\*$/);
                 if (boldMatch) return <strong key={i}>{boldMatch[1]}</strong>;
                 const linkMatch = part.match(/^\[(.+?)\]\((.+?)\)$/);

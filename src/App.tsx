@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
+import type { Trip, Booking } from './types';
 import type { TabId } from './types';
 import type { LocationState } from './hooks';
 import kipitaSplash from './assets/kipita-splash.jpeg';
@@ -46,9 +47,49 @@ const EMERGENCY_NUMBERS: { country: string; police: string; ambulance: string; f
   { country: '🇮🇩 Indonesia', police: '110', ambulance: '118', fire: '113' },
 ];
 
+function loadTrips(): Trip[] {
+  const saved = localStorage.getItem('kip_trips');
+  if (saved) return JSON.parse(saved);
+  const defaults: Trip[] = [
+    { id: '1', dest: 'Tokyo', country: 'Japan', emoji: '🗼', start: '2026-04-10', end: '2026-04-17', notes: 'Visit Shibuya, Akihabara, try ramen!', status: 'upcoming', items: [
+      { id: 'i1', day: 1, time: '10:00', title: 'Arrive Narita Airport', done: false },
+      { id: 'i2', day: 1, time: '14:00', title: 'Check in Shinjuku hotel', done: false },
+      { id: 'i3', day: 2, time: '09:00', title: 'Meiji Shrine visit', done: false },
+    ], bookings: [
+      { id: 'b1', type: 'flight', provider: 'Expedia', name: 'LAX → NRT (ANA)', flightNumber: 'NH105', departureTime: '2026-04-10 11:30', arrivalTime: '2026-04-11 15:30', confirmationCode: 'EXP-7842', affiliateUrl: 'https://expedia.com/affiliate/eA2cKky', bookedAt: Date.now() },
+      { id: 'b2', type: 'hotel', provider: 'Hotels.com', name: 'Hotel Gracery Shinjuku', checkIn: '2026-04-11', checkOut: '2026-04-17', confirmationCode: 'HTL-3291', address: '1-19-1 Kabukicho, Shinjuku', affiliateUrl: 'https://www.hotels.com/affiliate/RrZ7bmg', bookedAt: Date.now() },
+    ]},
+    { id: '2', dest: 'Bali', country: 'Indonesia', emoji: '🌴', start: '2026-05-01', end: '2026-05-10', notes: 'Canggu coworking + surf', status: 'upcoming', items: [], bookings: [] },
+  ];
+  localStorage.setItem('kip_trips', JSON.stringify(defaults));
+  return defaults;
+}
+
 export default function App() {
   const [tab, setTab] = useState<TabId>('home');
   const [screenHint, setScreenHint] = useState<string | undefined>();
+  const [trips, setTrips] = useState<Trip[]>(loadTrips);
+
+  const saveTrips = useCallback((updated: Trip[]) => {
+    setTrips(updated);
+    localStorage.setItem('kip_trips', JSON.stringify(updated));
+  }, []);
+
+  const handleCreateTrip = useCallback((dest: string, country: string, days: number) => {
+    const emoji = ['🏔️', '🌴', '🏖️', '🌺', '🗼', '🏙️'][Math.floor(Math.random() * 6)];
+    const start = new Date(); start.setDate(start.getDate() + 14);
+    const end = new Date(start); end.setDate(end.getDate() + days);
+    const t: Trip = {
+      id: Date.now().toString(), dest, country, emoji,
+      start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0],
+      notes: `AI-planned ${days}-day trip`, status: 'upcoming', items: [], bookings: [], createdAt: Date.now(),
+    };
+    saveTrips([t, ...trips]);
+  }, [trips, saveTrips]);
+
+  const handleAddBooking = useCallback((tripId: string, booking: Booking) => {
+    saveTrips(trips.map(t => t.id === tripId ? { ...t, bookings: [...(t.bookings || []), booking] } : t));
+  }, [trips, saveTrips]);
   const [showProfile, setShowProfile] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
@@ -137,8 +178,8 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home': return <HomeScreen weather={weather} locationName={locationName} onSwitchTab={switchTab} />;
-      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} />;
-      case 'trips': return <TripsScreen />;
+      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} />;
+      case 'trips': return <TripsScreen trips={trips} onSaveTrips={saveTrips} />;
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} />;
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} />;
