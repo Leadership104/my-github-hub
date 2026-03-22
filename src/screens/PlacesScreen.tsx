@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { getCategories, CATEGORY_SUBS, DESTINATIONS, PHRASES } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -44,7 +44,7 @@ async function fetchGooglePlaces(action: string, params: Record<string, unknown>
   }
 }
 
-export default function PlacesScreen({ locationName = 'Current location', lat = 13.7563, lng = 100.5018 }: Props) {
+export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006 }: Props) {
   const [view, setView] = useState<'main' | 'category' | 'subcategory' | 'destinations' | 'phrases' | 'detail'>('main');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
@@ -54,6 +54,22 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
   const [loading, setLoading] = useState(false);
   const categories = getCategories();
+
+  // Auto-refresh results when location changes while viewing a subcategory
+  const prevLocRef = React.useRef({ lat, lng });
+  React.useEffect(() => {
+    if (prevLocRef.current.lat === lat && prevLocRef.current.lng === lng) return;
+    prevLocRef.current = { lat, lng };
+    if (view === 'subcategory' && selectedSub) {
+      // Re-fetch with new location
+      (async () => {
+        setLoading(true);
+        const places = await fetchGooglePlaces('search', { query: `${selectedSub.label} near ${locationName}`, lat, lng, radius: 5000 });
+        setLivePlaces(places);
+        setLoading(false);
+      })();
+    }
+  }, [lat, lng, locationName, view, selectedSub]);
 
   const hour = new Date().getHours();
   const greet = hour < 5 ? '🌙 Late Night' : hour < 10 ? '🍳 Good Morning' : hour < 14 ? '☀️ Good Afternoon' : hour < 18 ? '🌤️ Afternoon' : '🌆 Good Evening';

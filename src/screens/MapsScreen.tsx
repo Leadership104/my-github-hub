@@ -168,7 +168,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
   // Init map
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return;
-    const center: [number, number] = [lat || 13.7563, lng || 100.5018];
+    const center: [number, number] = [lat || 40.7128, lng || -74.006];
     const map = L.map(containerRef.current).setView(center, 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap',
@@ -181,6 +181,8 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
   }, []);
+
+  const locationChangeHandledRef = useRef(false);
 
   const clearMarkers = useCallback(() => {
     markersRef.current.forEach(m => m.remove());
@@ -356,7 +358,17 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
     if (filter === 'btc' && merchants.length > 0) renderBtcMarkers();
   }, [merchants]);
 
-  // Autocomplete suggestions via Nominatim (debounced)
+  // Re-center map and reload data when location (lat/lng props) changes
+  useEffect(() => {
+    if (!locationChangeHandledRef.current) { locationChangeHandledRef.current = true; return; }
+    if (mapRef.current) {
+      mapRef.current.setView([lat, lng], 13, { animate: true });
+    }
+    if (filter === 'btc') renderBtcMarkers();
+    else fetchOverpassPlaces(filter);
+  }, [lat, lng]);
+
+
   const handleSearchInput = useCallback((val: string) => {
     setSearch(val);
     if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
