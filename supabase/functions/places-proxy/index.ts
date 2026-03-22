@@ -201,6 +201,31 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   pharmacy: "pharmacy",
 };
 
+/* ── CoinMap proxy (bypasses CORS) ── */
+async function coinmapVenues(lat: number, lng: number) {
+  const r = 0.15;
+  const url = `https://coinmap.org/api/v1/venues/?lat1=${lat - r}&lat2=${lat + r}&lon1=${lng - r}&lon2=${lng + r}`;
+  const res = await fetch(url);
+  if (!res.ok) { console.warn(`CoinMap ${res.status}`); return []; }
+  const data = await res.json();
+  return (data.venues || []).slice(0, 50).map((v: any) => ({
+    placeId: `coinmap-${v.id}`,
+    name: v.name || "BTC Venue",
+    address: "",
+    lat: v.lat,
+    lng: v.lon,
+    rating: null, reviewCount: 0, priceLevel: null,
+    photoUrl: null, photos: [], openNow: null, hours: [],
+    phone: null,
+    website: v.website || null,
+    types: ["bitcoin_merchant"],
+    typeLabel: v.category || "Bitcoin Merchant",
+    mapsUrl: null, reviews: [], summary: null,
+    source: "CoinMap.org ✓",
+    btcVerified: true,
+  }));
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -231,9 +256,13 @@ serve(async (req) => {
         result = data ? normalizePlaces({ places: [data] })[0] : null;
         break;
       }
+      case "coinmap": {
+        result = await coinmapVenues(lat, lng);
+        break;
+      }
       default:
         return new Response(
-          JSON.stringify({ error: "Invalid action. Use: nearby, search, details" }),
+          JSON.stringify({ error: "Invalid action. Use: nearby, search, details, coinmap" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
     }
