@@ -672,6 +672,7 @@ export default function MapsScreen({ lat, lng, merchants, loading }: Props) {
             <button key={`${p.lat}-${p.lng}-${i}`} onClick={() => {
               mapRef.current?.setView([p.lat, p.lng], 16, { animate: true });
               if (p.source === 'Google Places') setSelectedPlace(p);
+              else setSelectedPlace(p);
             }}
               className="w-full flex items-center gap-3 py-3 border-b border-border text-left">
               {p.photoUrl ? (
