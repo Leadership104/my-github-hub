@@ -252,6 +252,7 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'btcatm', label: 'BTC ATM', emoji: '₿', query: 'bitcoin atm cryptocurrency' },
   { id: 'hospital', label: 'Medical', emoji: '🏥', query: 'hospital' },
   { id: 'pharmacy', label: 'Pharmacy', emoji: '💊', query: 'pharmacy' },
+  { id: 'auto', label: 'Auto Care', emoji: '🔧', query: 'auto repair car maintenance' },
 ];
 
 export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
