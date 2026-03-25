@@ -318,6 +318,17 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Muay Thai', query: 'muay thai boxing gym', emoji: '🥊' },
     { label: 'Rock Climb', query: 'rock climbing gym', emoji: '🧗' },
   ],
+  auto: [
+    { label: 'Oil Change', query: 'oil change auto service', emoji: '🛢️' },
+    { label: 'Tire Shop', query: 'tire shop tire service', emoji: '🛞' },
+    { label: 'Body Shop', query: 'auto body shop collision repair', emoji: '🚗' },
+    { label: 'Mechanic', query: 'auto mechanic car repair', emoji: '🔧' },
+    { label: 'Car Wash', query: 'car wash detailing', emoji: '🧽' },
+    { label: 'Brakes', query: 'brake repair service', emoji: '🛑' },
+    { label: 'Transmission', query: 'transmission repair service', emoji: '⚙️' },
+    { label: 'Towing', query: 'towing service roadside assistance', emoji: '🚛' },
+    { label: 'All Auto', query: 'auto repair car maintenance', emoji: '🔧' },
+  ],
 };
 
 export const PHRASES: Record<string, { label: string; phrases: { en: string; local: string; phon: string }[] }> = {
