@@ -252,6 +252,7 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'btcatm', label: 'BTC ATM', emoji: '₿', query: 'bitcoin atm cryptocurrency' },
   { id: 'hospital', label: 'Medical', emoji: '🏥', query: 'hospital' },
   { id: 'pharmacy', label: 'Pharmacy', emoji: '💊', query: 'pharmacy' },
+  { id: 'auto', label: 'Auto Care', emoji: '🔧', query: 'auto repair car maintenance' },
 ];
 
 export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
@@ -316,6 +317,17 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Swimming', query: 'swimming pool', emoji: '🏊' },
     { label: 'Muay Thai', query: 'muay thai boxing gym', emoji: '🥊' },
     { label: 'Rock Climb', query: 'rock climbing gym', emoji: '🧗' },
+  ],
+  auto: [
+    { label: 'Oil Change', query: 'oil change auto service', emoji: '🛢️' },
+    { label: 'Tire Shop', query: 'tire shop tire service', emoji: '🛞' },
+    { label: 'Body Shop', query: 'auto body shop collision repair', emoji: '🚗' },
+    { label: 'Mechanic', query: 'auto mechanic car repair', emoji: '🔧' },
+    { label: 'Car Wash', query: 'car wash detailing', emoji: '🧽' },
+    { label: 'Brakes', query: 'brake repair service', emoji: '🛑' },
+    { label: 'Transmission', query: 'transmission repair service', emoji: '⚙️' },
+    { label: 'Towing', query: 'towing service roadside assistance', emoji: '🚛' },
+    { label: 'All Auto', query: 'auto repair car maintenance', emoji: '🔧' },
   ],
 };
 
