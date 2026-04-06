@@ -28,6 +28,8 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
   const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
   const [form, setForm] = useState({ dest: '', country: '', start: '', end: '', notes: '' });
   const [detailTab, setDetailTab] = useState<'bookings' | 'itinerary' | 'book'>('bookings');
+  const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases'>('main');
+  const [lang, setLang] = useState('es');
 
   const createTrip = () => {
     if (!form.dest) return;
