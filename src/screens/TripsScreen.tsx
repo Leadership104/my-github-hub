@@ -453,17 +453,22 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
           </div>
         </button>
 
-        {/* Destinations & Phrases buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Destinations, Phrases & Groups buttons */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <button onClick={() => setTripsView('destinations')}
-            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-left">
-            <span className="text-2xl">🌍</span>
-            <div><div className="text-white font-bold text-sm">Destinations</div><div className="text-white/50 text-[10px]">Nomad scores</div></div>
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-center">
+            <span className="text-xl">🌍</span>
+            <div className="text-white font-bold text-[11px]">Destinations</div>
           </button>
           <button onClick={() => setTripsView('phrases')}
-            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-left">
-            <span className="text-2xl">🌐</span>
-            <div><div className="text-white font-bold text-sm">Phrases</div><div className="text-white/50 text-[10px]">10 languages · 20+ phrases</div></div>
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-center">
+            <span className="text-xl">🌐</span>
+            <div className="text-white font-bold text-[11px]">Phrases</div>
+          </button>
+          <button onClick={() => setTripsView('groups')}
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-kipita text-center">
+            <span className="text-xl">👥</span>
+            <div className="text-white font-bold text-[11px]">Groups</div>
           </button>
         </div>
 
