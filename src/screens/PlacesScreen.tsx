@@ -91,7 +91,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setView('subcategory');
     setLoading(true);
     const places = await fetchGooglePlaces('search', { query: `${label} near ${locationName}`, lat, lng, radius: 5000 });
-    setLivePlaces(places);
+    // Sort: open places first, then by distance (lat/lng proximity)
+    const sorted = [...places].sort((a, b) => {
+      if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
+      const distA = a.lat && a.lng ? Math.hypot(a.lat - lat, a.lng - lng) : 999;
+      const distB = b.lat && b.lng ? Math.hypot(b.lat - lat, b.lng - lng) : 999;
+      return distA - distB;
+    });
+    setLivePlaces(sorted);
     setLoading(false);
   }, [lat, lng, locationName]);
 
