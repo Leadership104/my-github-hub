@@ -405,19 +405,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           ))}
         </div>
 
-        {/* Feature buttons */}
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => setView('destinations')}
-            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-left">
-            <span className="text-2xl">🌍</span>
-            <div><div className="text-white font-bold text-sm">Destinations</div><div className="text-white/50 text-[10px]">Nomad scores</div></div>
-          </button>
-          <button onClick={() => setView('phrases')}
-            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-left">
-            <span className="text-2xl">🌐</span>
-            <div><div className="text-white font-bold text-sm">Phrases</div><div className="text-white/50 text-[10px]">10 languages · 20+ phrases</div></div>
-          </button>
-        </div>
       </div>
     </div>
   );
