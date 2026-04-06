@@ -49,6 +49,7 @@ async function fetchGooglePlaces(action: string, params: Record<string, unknown>
 export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView }: Props) {
   const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'destinations' | 'phrases' | 'detail'>(initialView || 'main');
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<LivePlace | null>(null);
   const [searchQ, setSearchQ] = useState('');
@@ -56,6 +57,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
   const [loading, setLoading] = useState(false);
   const categories = getCategories();
+
+  const BIG_SECTIONS = [
+    { id: 'restaurants', label: 'Restaurants', icon: UtensilsCrossed, color: 'from-orange-500 to-red-500', catIds: ['food', 'cafe'] },
+    { id: 'entertainment', label: 'Entertainment', icon: PartyPopper, color: 'from-purple-500 to-pink-500', catIds: ['nightlife', 'beach', 'gym'] },
+    { id: 'shopping', label: 'Shopping', icon: ShoppingBag, color: 'from-blue-500 to-cyan-500', catIds: ['shop', 'atm', 'btcatm', 'auto'] },
+    { id: 'travel', label: 'Travel', icon: Plane, color: 'from-emerald-500 to-teal-500', catIds: ['hotel', 'transport', 'hospital', 'pharmacy'] },
+  ];
 
   // Auto-refresh results when location changes while viewing a subcategory
   const prevLocRef = React.useRef({ lat, lng });
