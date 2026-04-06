@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, PartyPopper, ShoppingBag, Plane } from 'lucide-react';
+import { UtensilsCrossed, Music, ShoppingBag, Briefcase } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 
