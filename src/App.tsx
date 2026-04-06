@@ -16,9 +16,8 @@ import GroupsScreen from './screens/GroupsScreen';
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'ai', label: 'AI', icon: 'auto_awesome' },
-  { id: 'trips', label: 'Trips', icon: 'flight_takeoff' },
+  { id: 'trips', label: 'Travel', icon: 'flight_takeoff' },
   { id: 'places', label: 'Places', icon: 'explore' },
-  { id: 'groups', label: 'Groups', icon: 'groups' },
 ];
 
 const PRESET_LOCATIONS: LocationState[] = [
