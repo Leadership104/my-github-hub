@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Trip, ItineraryItem, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import AIScreen from './AIScreen';
+import GroupsScreen from './GroupsScreen';
 
 const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
   flight: { emoji: '✈️', label: 'Flight' },
