@@ -183,7 +183,6 @@ export default function App() {
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} />;
     }
-    }
   };
 
   const filteredPresets = locationSearch.trim()
