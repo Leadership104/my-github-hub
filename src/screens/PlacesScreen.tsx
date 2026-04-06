@@ -47,7 +47,7 @@ async function fetchGooglePlaces(action: string, params: Record<string, unknown>
 }
 
 export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView }: Props) {
-  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'destinations' | 'phrases' | 'detail'>(initialView || 'main');
+  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail'>(initialView === 'phrases' || initialView === 'destinations' ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
