@@ -412,9 +412,41 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     );
   }
 
-  // Main places view
-  const filteredCats = searchQ ? categories.filter(c => c.label.toLowerCase().includes(searchQ.toLowerCase())) : categories;
+  // Section view — shows categories within a big section
+  if (view === 'section' && selectedSection) {
+    const section = BIG_SECTIONS.find(s => s.id === selectedSection);
+    const sectionCats = categories.filter(c => section?.catIds.includes(c.id));
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <button onClick={() => { setView('main'); setSelectedSection(null); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+          <div className="flex items-center gap-3">
+            {section && <section.icon className="w-7 h-7 text-foreground" />}
+            <h2 className="text-xl font-extrabold">{section?.label}</h2>
+          </div>
+          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+            <span className="ms text-sm">location_on</span> {locationName}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
+          <p className="text-sm text-muted-foreground mb-4">Choose a category:</p>
+          <div className="grid grid-cols-2 gap-3">
+            {sectionCats.map(cat => (
+              <button key={cat.id} onClick={() => openCategory(cat.id)}
+                className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-kipita hover:shadow-md transition-all text-center">
+                <span className="text-3xl">{cat.emoji}</span>
+                <span className="text-sm font-bold text-foreground">{cat.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
+  // Main places view
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
@@ -422,18 +454,24 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
           <span className="ms text-sm">location_on</span> {locationName}
         </div>
-        <div className="flex items-center gap-2 bg-card border border-border rounded-kipita-sm px-3 py-2.5">
-          <span className="ms text-muted-foreground text-lg">search</span>
-          <input value={searchQ} onChange={e => setSearchQ(e.target.value)} placeholder="Search categories…"
-            className="flex-1 bg-transparent outline-none text-sm" />
-        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
 
+        {/* 4 Big Category Buttons */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {BIG_SECTIONS.map(section => (
+            <button key={section.id} onClick={() => { setSelectedSection(section.id); setView('section'); }}
+              className={`flex flex-col items-center justify-center gap-3 p-6 bg-gradient-to-br ${section.color} rounded-kipita text-white shadow-lg hover:shadow-xl transition-all active:scale-95`}>
+              <section.icon className="w-10 h-10" />
+              <span className="text-base font-extrabold tracking-wide">{section.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* Feature buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="grid grid-cols-2 gap-3">
           <button onClick={() => setView('destinations')}
             className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-left">
             <span className="text-2xl">🌍</span>
@@ -444,18 +482,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <span className="text-2xl">🌐</span>
             <div><div className="text-white font-bold text-sm">Phrases</div><div className="text-white/50 text-[10px]">10 languages · 20+ phrases</div></div>
           </button>
-        </div>
-
-        {/* Category grid */}
-        <h3 className="text-sm font-bold mb-3">Nearby Places</h3>
-        <div className="grid grid-cols-3 gap-3">
-          {filteredCats.map(cat => (
-            <button key={cat.id} onClick={() => openCategory(cat.id)}
-              className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
-              <span className="text-2xl">{cat.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{cat.label}</span>
-            </button>
-          ))}
         </div>
       </div>
     </div>
