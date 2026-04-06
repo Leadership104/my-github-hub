@@ -221,72 +221,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     );
   }
 
-  if (view === 'phrases') {
-    const phraseData = PHRASES[lang];
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex-shrink-0">
-          <button onClick={() => setView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-            <span className="ms text-lg">arrow_back</span> Back
-          </button>
-          <h2 className="text-xl font-extrabold">Travel Phrases</h2>
-          <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
-            {Object.entries(PHRASES).map(([key, val]) => (
-              <button key={key} onClick={() => setLang(key)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${lang === key ? 'bg-kipita-red text-white' : 'bg-muted text-muted-foreground'}`}>
-                {val.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
-          {phraseData?.phrases.map((p, i) => (
-            <div key={i} className="bg-card border border-border rounded-kipita p-4 mb-3">
-              <div className="text-xs text-muted-foreground font-semibold mb-1">English</div>
-              <div className="text-sm font-bold mb-2">{p.en}</div>
-              <div className="text-xs text-muted-foreground font-semibold mb-1">{phraseData.label.split(' ')[1]}</div>
-              <div className="text-lg font-extrabold text-kipita-red">{p.local}</div>
-              <div className="text-xs text-muted-foreground mt-1 italic">🔊 {p.phon}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
-  if (view === 'destinations') {
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex-shrink-0">
-          <button onClick={() => setView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
-            <span className="ms text-lg">arrow_back</span> Back
-          </button>
-          <h2 className="text-xl font-extrabold">Nomad Destinations</h2>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
-          {DESTINATIONS.map(d => (
-            <div key={d.id} className="bg-card border border-border rounded-kipita p-4 hover:shadow-md transition-shadow">
-              <div className="flex items-start gap-3">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-kipita-navy to-kipita-red/40 flex items-center justify-center text-2xl flex-shrink-0">{d.emoji}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-bold text-base">{d.city}, {d.country}</div>
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
-                    {d.tags.map(t => <span key={t} className="bg-muted text-muted-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">{t}</span>)}
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
-                    <div><span className="text-muted-foreground">Safety</span><div className="font-bold text-kipita-green">{d.safetyScore}/10</div></div>
-                    <div><span className="text-muted-foreground">WiFi</span><div className="font-bold">{d.speed} Mbps</div></div>
-                    <div><span className="text-muted-foreground">Cost</span><div className="font-bold">${d.monthlyCost}/mo</div></div>
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{d.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   // Subcategory result view with LIVE Google Places data
   if (view === 'subcategory' && selectedSub) {
