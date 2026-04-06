@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Trip, ItineraryItem, Booking } from '../types';
-import { BOOKING_TILES, PERKS } from '../data';
+import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import AIScreen from './AIScreen';
 
 const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
@@ -28,6 +28,8 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
   const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
   const [form, setForm] = useState({ dest: '', country: '', start: '', end: '', notes: '' });
   const [detailTab, setDetailTab] = useState<'bookings' | 'itinerary' | 'book'>('bookings');
+  const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases'>('main');
+  const [lang, setLang] = useState('es');
 
   const createTrip = () => {
     if (!form.dest) return;
@@ -357,6 +359,75 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
     );
   }
 
+  // Destinations view
+  if (tripsView === 'destinations') {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <button onClick={() => setTripsView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+          <h2 className="text-xl font-extrabold">Nomad Destinations</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          {DESTINATIONS.map(d => (
+            <div key={d.id} className="bg-card border border-border rounded-kipita p-4 hover:shadow-md transition-shadow">
+              <div className="flex items-start gap-3">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-kipita-navy to-kipita-red/40 flex items-center justify-center text-2xl flex-shrink-0">{d.emoji}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-base">{d.city}, {d.country}</div>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {d.tags.map(t => <span key={t} className="bg-muted text-muted-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">{t}</span>)}
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
+                    <div><span className="text-muted-foreground">Safety</span><div className="font-bold text-kipita-green">{d.safetyScore}/10</div></div>
+                    <div><span className="text-muted-foreground">WiFi</span><div className="font-bold">{d.speed} Mbps</div></div>
+                    <div><span className="text-muted-foreground">Cost</span><div className="font-bold">${d.monthlyCost}/mo</div></div>
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 leading-relaxed">{d.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Phrases view
+  if (tripsView === 'phrases') {
+    const phraseData = PHRASES[lang];
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <button onClick={() => setTripsView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+          <h2 className="text-xl font-extrabold">Travel Phrases</h2>
+          <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
+            {Object.entries(PHRASES).map(([key, val]) => (
+              <button key={key} onClick={() => setLang(key)}
+                className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${lang === key ? 'bg-kipita-red text-white' : 'bg-muted text-muted-foreground'}`}>
+                {val.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
+          {phraseData?.phrases.map((p, i) => (
+            <div key={i} className="bg-card border border-border rounded-kipita p-4 mb-3">
+              <div className="text-xs text-muted-foreground font-semibold mb-1">English</div>
+              <div className="text-sm font-bold mb-2">{p.en}</div>
+              <div className="text-xs text-muted-foreground font-semibold mb-1">{phraseData.label.split(' ')[1]}</div>
+              <div className="text-lg font-extrabold text-kipita-red">{p.local}</div>
+              <div className="text-xs text-muted-foreground mt-1 italic">🔊 {p.phon}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
@@ -380,6 +451,20 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
             <div className="text-white/60 text-xs">Generate itineraries, book hotels, flights & more</div>
           </div>
         </button>
+
+        {/* Destinations & Phrases buttons */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <button onClick={() => setTripsView('destinations')}
+            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-left">
+            <span className="text-2xl">🌍</span>
+            <div><div className="text-white font-bold text-sm">Destinations</div><div className="text-white/50 text-[10px]">Nomad scores</div></div>
+          </button>
+          <button onClick={() => setTripsView('phrases')}
+            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-left">
+            <span className="text-2xl">🌐</span>
+            <div><div className="text-white font-bold text-sm">Phrases</div><div className="text-white/50 text-[10px]">10 languages · 20+ phrases</div></div>
+          </button>
+        </div>
 
         {/* AI Planner Modal */}
         {showAiPlanner && (
