@@ -53,7 +53,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<LivePlace | null>(null);
   const [searchQ, setSearchQ] = useState('');
-  const [lang, setLang] = useState('es');
   const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
   const [loading, setLoading] = useState(false);
   const categories = getCategories();
