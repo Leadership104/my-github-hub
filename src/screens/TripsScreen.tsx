@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { Trip, ItineraryItem, Booking } from '../types';
-import { BOOKING_TILES, PERKS } from '../data';
+import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import AIScreen from './AIScreen';
 
 const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
