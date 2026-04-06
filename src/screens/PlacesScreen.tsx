@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, PartyPopper, ShoppingBag, Plane } from 'lucide-react';
+import { UtensilsCrossed, Music, ShoppingBag, Briefcase } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -58,10 +58,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const categories = getCategories();
 
   const BIG_SECTIONS = [
-    { id: 'restaurants', label: 'Restaurants', icon: UtensilsCrossed, color: 'from-orange-500 to-red-500', catIds: ['food', 'cafe'] },
-    { id: 'entertainment', label: 'Entertainment', icon: PartyPopper, color: 'from-purple-500 to-pink-500', catIds: ['nightlife', 'beach', 'gym'] },
-    { id: 'shopping', label: 'Shopping', icon: ShoppingBag, color: 'from-blue-500 to-cyan-500', catIds: ['shop', 'atm', 'btcatm', 'auto'] },
-    { id: 'travel', label: 'Travel', icon: Plane, color: 'from-emerald-500 to-teal-500', catIds: ['hotel', 'transport', 'hospital', 'pharmacy'] },
+    { id: 'food', label: 'Food & Drinks', icon: UtensilsCrossed, color: 'from-orange-500 to-red-500', catIds: ['food', 'cafe', 'nightlife'] },
+    { id: 'entertainment', label: 'Entertainment', icon: Music, color: 'from-purple-500 to-pink-500', catIds: ['beach', 'gym'] },
+    { id: 'shopping', label: 'Shopping', icon: ShoppingBag, color: 'from-blue-500 to-cyan-500', catIds: ['shop', 'atm', 'btcatm'] },
+    { id: 'services', label: 'Services', icon: Briefcase, color: 'from-emerald-500 to-teal-500', catIds: ['hotel', 'transport', 'hospital', 'pharmacy', 'auto'] },
   ];
 
   // Auto-refresh results when location changes while viewing a subcategory
