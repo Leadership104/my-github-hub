@@ -428,6 +428,21 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
       </div>
     );
   }
+  // Groups view
+  if (tripsView === 'groups') {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <button onClick={() => setTripsView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <GroupsScreen />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
