@@ -11,7 +11,7 @@ import TripsScreen from './screens/TripsScreen';
 import PlacesScreen from './screens/PlacesScreen';
 import MapsScreen from './screens/MapsScreen';
 import WalletScreen from './screens/WalletScreen';
-import GroupsScreen from './screens/GroupsScreen';
+
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'home' },
