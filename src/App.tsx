@@ -182,7 +182,7 @@ export default function App() {
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} />;
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} />;
-      case 'groups': return <GroupsScreen />;
+    }
     }
   };
 
