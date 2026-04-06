@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Trip, ItineraryItem, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import AIScreen from './AIScreen';
+import GroupsScreen from './GroupsScreen';
 
 const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
   flight: { emoji: '✈️', label: 'Flight' },
@@ -28,7 +29,7 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
   const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
   const [form, setForm] = useState({ dest: '', country: '', start: '', end: '', notes: '' });
   const [detailTab, setDetailTab] = useState<'bookings' | 'itinerary' | 'book'>('bookings');
-  const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases'>('main');
+  const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases' | 'groups'>('main');
   const [lang, setLang] = useState('es');
 
   const createTrip = () => {
@@ -427,6 +428,21 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
       </div>
     );
   }
+  // Groups view
+  if (tripsView === 'groups') {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <button onClick={() => setTripsView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+        </div>
+        <div className="flex-1 overflow-hidden">
+          <GroupsScreen />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -452,17 +468,22 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
           </div>
         </button>
 
-        {/* Destinations & Phrases buttons */}
-        <div className="grid grid-cols-2 gap-3 mb-4">
+        {/* Destinations, Phrases & Groups buttons */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
           <button onClick={() => setTripsView('destinations')}
-            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-left">
-            <span className="text-2xl">🌍</span>
-            <div><div className="text-white font-bold text-sm">Destinations</div><div className="text-white/50 text-[10px]">Nomad scores</div></div>
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-center">
+            <span className="text-xl">🌍</span>
+            <div className="text-white font-bold text-[11px]">Destinations</div>
           </button>
           <button onClick={() => setTripsView('phrases')}
-            className="flex items-center gap-3 p-4 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-left">
-            <span className="text-2xl">🌐</span>
-            <div><div className="text-white font-bold text-sm">Phrases</div><div className="text-white/50 text-[10px]">10 languages · 20+ phrases</div></div>
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-center">
+            <span className="text-xl">🌐</span>
+            <div className="text-white font-bold text-[11px]">Phrases</div>
+          </button>
+          <button onClick={() => setTripsView('groups')}
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-kipita text-center">
+            <span className="text-xl">👥</span>
+            <div className="text-white font-bold text-[11px]">Groups</div>
           </button>
         </div>
 

@@ -11,14 +11,13 @@ import TripsScreen from './screens/TripsScreen';
 import PlacesScreen from './screens/PlacesScreen';
 import MapsScreen from './screens/MapsScreen';
 import WalletScreen from './screens/WalletScreen';
-import GroupsScreen from './screens/GroupsScreen';
+
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'home' },
   { id: 'ai', label: 'AI', icon: 'auto_awesome' },
-  { id: 'trips', label: 'Trips', icon: 'flight_takeoff' },
+  { id: 'trips', label: 'Travel', icon: 'flight_takeoff' },
   { id: 'places', label: 'Places', icon: 'explore' },
-  { id: 'groups', label: 'Groups', icon: 'groups' },
 ];
 
 const PRESET_LOCATIONS: LocationState[] = [
@@ -183,7 +182,6 @@ export default function App() {
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} />;
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} />;
-      case 'groups': return <GroupsScreen />;
     }
   };
 
