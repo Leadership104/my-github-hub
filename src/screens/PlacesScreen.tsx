@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, BedDouble, ShoppingCart, HeartPulse, Compass } from 'lucide-react';
+import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -59,7 +59,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   const BIG_SECTIONS = [
     { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'nightlife'] },
-    { id: 'stay', label: 'Stay & Transit', emoji: '🏨', icon: BedDouble, catIds: ['hotel', 'transport', 'auto'] },
+    { id: 'stay', label: 'Hotels', emoji: '🏨', icon: BedDouble, catIds: ['hotel'] },
+    { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto'] },
     { id: 'shop', label: 'Shopping & Money', emoji: '🛒', icon: ShoppingCart, catIds: ['shop', 'atm', 'btcatm'] },
     { id: 'health', label: 'Health & Wellness', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
     { id: 'explore', label: 'Things to Do', emoji: '🧭', icon: Compass, catIds: ['beach', 'attractions'] },
