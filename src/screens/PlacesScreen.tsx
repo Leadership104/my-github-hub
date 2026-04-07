@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, Heart, ShoppingBag, Car, Sparkles } from 'lucide-react';
+import { UtensilsCrossed, BedDouble, ShoppingCart, HeartPulse, Compass } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -58,11 +58,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const categories = getCategories();
 
   const BIG_SECTIONS = [
-    { id: 'eat', label: 'Eat & Drink', icon: UtensilsCrossed, color: 'from-orange-500 to-red-500', catIds: ['food', 'cafe', 'nightlife'] },
-    { id: 'stay', label: 'Stay & Move', icon: Car, color: 'from-blue-500 to-indigo-500', catIds: ['hotel', 'transport'] },
-    { id: 'shop', label: 'Shop & Money', icon: ShoppingBag, color: 'from-violet-500 to-purple-500', catIds: ['shop', 'atm', 'btcatm'] },
-    { id: 'health', label: 'Health & Care', icon: Heart, color: 'from-emerald-500 to-teal-500', catIds: ['hospital', 'pharmacy', 'gym', 'auto'] },
-    { id: 'fun', label: 'Fun & Outdoors', icon: Sparkles, color: 'from-pink-500 to-rose-500', catIds: ['beach', 'attractions', 'nightlife'] },
+    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'nightlife'] },
+    { id: 'stay', label: 'Stay & Transit', emoji: '🏨', icon: BedDouble, catIds: ['hotel', 'transport', 'auto'] },
+    { id: 'shop', label: 'Shopping & Money', emoji: '🛒', icon: ShoppingCart, catIds: ['shop', 'atm', 'btcatm'] },
+    { id: 'health', label: 'Health & Wellness', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
+    { id: 'explore', label: 'Things to Do', emoji: '🧭', icon: Compass, catIds: ['beach', 'attractions'] },
   ];
 
   // Auto-refresh results when location changes while viewing a subcategory
@@ -394,13 +394,21 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
 
-        {/* 4 Big Category Buttons */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Category Sections */}
+        <div className="space-y-3 mb-6">
           {BIG_SECTIONS.map(section => (
             <button key={section.id} onClick={() => { setSelectedSection(section.id); setView('section'); }}
-              className={`flex flex-col items-center justify-center gap-3 p-6 bg-gradient-to-br ${section.color} rounded-kipita text-white shadow-lg hover:shadow-xl transition-all active:scale-95`}>
-              <section.icon className="w-10 h-10" />
-              <span className="text-base font-extrabold tracking-wide">{section.label}</span>
+              className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98] text-left">
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">{section.emoji}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-bold text-foreground">{section.label}</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  {section.catIds.length} categories
+                </span>
+              </div>
+              <span className="ms text-lg text-muted-foreground">chevron_right</span>
             </button>
           ))}
         </div>
