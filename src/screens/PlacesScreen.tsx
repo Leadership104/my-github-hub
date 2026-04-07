@@ -58,11 +58,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const categories = getCategories();
 
   const BIG_SECTIONS = [
-    { id: 'eat', label: 'Eat & Drink', icon: UtensilsCrossed, color: 'from-orange-500 to-red-500', catIds: ['food', 'cafe', 'nightlife'] },
-    { id: 'stay', label: 'Stay & Move', icon: Car, color: 'from-blue-500 to-indigo-500', catIds: ['hotel', 'transport'] },
-    { id: 'shop', label: 'Shop & Money', icon: ShoppingBag, color: 'from-violet-500 to-purple-500', catIds: ['shop', 'atm', 'btcatm'] },
-    { id: 'health', label: 'Health & Care', icon: Heart, color: 'from-emerald-500 to-teal-500', catIds: ['hospital', 'pharmacy', 'gym', 'auto'] },
-    { id: 'fun', label: 'Fun & Outdoors', icon: Sparkles, color: 'from-pink-500 to-rose-500', catIds: ['beach', 'attractions', 'nightlife'] },
+    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'nightlife'] },
+    { id: 'stay', label: 'Stay & Transit', emoji: '🏨', icon: BedDouble, catIds: ['hotel', 'transport', 'auto'] },
+    { id: 'shop', label: 'Shopping & Money', emoji: '🛒', icon: ShoppingCart, catIds: ['shop', 'atm', 'btcatm'] },
+    { id: 'health', label: 'Health & Wellness', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
+    { id: 'explore', label: 'Things to Do', emoji: '🧭', icon: Compass, catIds: ['beach', 'attractions'] },
   ];
 
   // Auto-refresh results when location changes while viewing a subcategory
