@@ -405,9 +405,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               </div>
               <div className="flex-1 min-w-0">
                 <span className="text-sm font-bold text-foreground">{section.label}</span>
-                <span className="block text-xs text-muted-foreground mt-0.5">
-                  {section.catIds.length} categories
-                </span>
               </div>
               <span className="ms text-lg text-muted-foreground">chevron_right</span>
             </button>
