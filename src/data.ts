@@ -222,6 +222,7 @@ export const CITY_COSTS: Record<string, {
       { item: 'Dubai Frame entry', price: '$14' },
       { item: 'Dhow dinner cruise', price: '$30–60' },
       { item: 'Museum of the Future', price: '$40' },
+    ],
   },
 };
 
