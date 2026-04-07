@@ -62,7 +62,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     { id: 'stay', label: 'Stay & Move', icon: Car, color: 'from-blue-500 to-indigo-500', catIds: ['hotel', 'transport'] },
     { id: 'shop', label: 'Shop & Money', icon: ShoppingBag, color: 'from-violet-500 to-purple-500', catIds: ['shop', 'atm', 'btcatm'] },
     { id: 'health', label: 'Health & Care', icon: Heart, color: 'from-emerald-500 to-teal-500', catIds: ['hospital', 'pharmacy', 'gym', 'auto'] },
-    { id: 'fun', label: 'Fun & Outdoors', icon: Sparkles, color: 'from-pink-500 to-rose-500', catIds: ['beach', 'nightlife_venues'] },
+    { id: 'fun', label: 'Fun & Outdoors', icon: Sparkles, color: 'from-pink-500 to-rose-500', catIds: ['beach', 'attractions', 'nightlife'] },
   ];
 
   // Auto-refresh results when location changes while viewing a subcategory
