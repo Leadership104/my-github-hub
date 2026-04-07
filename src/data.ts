@@ -248,6 +248,7 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'gym', label: 'Fitness', emoji: '💪', query: 'gym' },
   { id: 'beach', label: 'Beaches', emoji: '🏖️', query: 'beach' },
   { id: 'nightlife', label: 'Nightlife', emoji: '🎵', query: 'nightlife bars' },
+  { id: 'attractions', label: 'Attractions', emoji: '🎡', query: 'tourist attractions things to do' },
   { id: 'atm', label: 'ATM', emoji: '🏧', query: 'atm cash machine' },
   { id: 'btcatm', label: 'BTC ATM', emoji: '₿', query: 'bitcoin atm cryptocurrency' },
   { id: 'hospital', label: 'Medical', emoji: '🏥', query: 'hospital' },
@@ -328,6 +329,19 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Transmission', query: 'transmission repair service', emoji: '⚙️' },
     { label: 'Towing', query: 'towing service roadside assistance', emoji: '🚛' },
     { label: 'All Auto', query: 'auto repair car maintenance', emoji: '🔧' },
+  ],
+  beach: [
+    { label: 'Beach', query: 'beach ocean swimming', emoji: '🏖️' },
+    { label: 'Park', query: 'park garden', emoji: '🌳' },
+    { label: 'Lake', query: 'lake waterfront', emoji: '🏞️' },
+    { label: 'Hiking', query: 'hiking trail nature', emoji: '🥾' },
+  ],
+  attractions: [
+    { label: 'Museums', query: 'museum art gallery', emoji: '🏛️' },
+    { label: 'Tours', query: 'sightseeing tour', emoji: '🗺️' },
+    { label: 'Theme Parks', query: 'theme park amusement', emoji: '🎢' },
+    { label: 'Landmarks', query: 'landmark monument', emoji: '🗽' },
+    { label: 'Events', query: 'events concerts festivals', emoji: '🎪' },
   ],
 };
 
