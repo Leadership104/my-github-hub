@@ -223,7 +223,19 @@ export const CITY_COSTS: Record<string, {
       { item: 'Dhow dinner cruise', price: '$30–60' },
       { item: 'Museum of the Future', price: '$40' },
     ],
-  },
+  beach: [
+    { label: 'Beach', query: 'beach ocean swimming', emoji: '🏖️' },
+    { label: 'Park', query: 'park garden', emoji: '🌳' },
+    { label: 'Lake', query: 'lake waterfront', emoji: '🏞️' },
+    { label: 'Hiking', query: 'hiking trail nature', emoji: '🥾' },
+  ],
+  attractions: [
+    { label: 'Museums', query: 'museum art gallery', emoji: '🏛️' },
+    { label: 'Tours', query: 'sightseeing tour', emoji: '🗺️' },
+    { label: 'Theme Parks', query: 'theme park amusement', emoji: '🎢' },
+    { label: 'Landmarks', query: 'landmark monument', emoji: '🗽' },
+    { label: 'Events', query: 'events concerts festivals', emoji: '🎪' },
+  ],
 };
 
 export const DESTINATIONS: Destination[] = [
