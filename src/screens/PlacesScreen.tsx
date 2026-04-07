@@ -394,13 +394,21 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
 
-        {/* 4 Big Category Buttons */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
+        {/* Category Sections */}
+        <div className="space-y-3 mb-6">
           {BIG_SECTIONS.map(section => (
             <button key={section.id} onClick={() => { setSelectedSection(section.id); setView('section'); }}
-              className={`flex flex-col items-center justify-center gap-3 p-6 bg-gradient-to-br ${section.color} rounded-kipita text-white shadow-lg hover:shadow-xl transition-all active:scale-95`}>
-              <section.icon className="w-10 h-10" />
-              <span className="text-base font-extrabold tracking-wide">{section.label}</span>
+              className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98] text-left">
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
+                <span className="text-2xl">{section.emoji}</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-bold text-foreground">{section.label}</span>
+                <span className="block text-xs text-muted-foreground mt-0.5">
+                  {section.catIds.length} categories
+                </span>
+              </div>
+              <span className="ms text-lg text-muted-foreground">chevron_right</span>
             </button>
           ))}
         </div>
