@@ -653,7 +653,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
 
             {/* Unified browse chips — deduplicated, horizontal scroll */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide no-drag-scroll mt-3 pb-2 -mx-1 px-1">
               {(() => {
                 const seen = new Set<string>();
                 const allChips: { label: string; query: string; emoji: string; key: string }[] = [];
