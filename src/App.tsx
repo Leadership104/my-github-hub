@@ -214,7 +214,7 @@ export default function App() {
             <span className="w-[7px] h-[7px] rounded-full bg-border" />
           </div>
           <button onClick={() => setShowSOS(true)}
-            className="bg-kipita-red rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md"
+            className="bg-kipita-red rounded-md w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md"
             title="Emergency SOS">
             <span className="text-white font-extrabold text-[11px] tracking-wide">SOS</span>
           </button>
