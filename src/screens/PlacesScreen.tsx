@@ -147,9 +147,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'money', label: 'ATM', emoji: '🏧', icon: MapPin, catIds: ['atm', 'btcatm'] },
-    { id: 'health', label: 'Health', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
+    { id: 'health', label: 'Health', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym', 'spa'] },
     { id: 'explore', label: 'Entertainment', emoji: '🎭', icon: Compass, catIds: ['nightlife', 'beach', 'attractions'] },
-    { id: 'services', label: 'Services', emoji: '🧹', icon: Shirt, catIds: ['laundry', 'coworking', 'spa'] },
   ];
 
   // Auto-refresh results when location changes while viewing a subcategory
