@@ -142,12 +142,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
 
   const BIG_SECTIONS = [
-    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'nightlife'] },
+    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe'] },
     { id: 'stay', label: 'Places to Stay', emoji: '🏨', icon: BedDouble, catIds: ['hotel'] },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto'] },
-    { id: 'shop', label: 'Shopping & Money', emoji: '🛒', icon: ShoppingCart, catIds: ['shop', 'atm', 'btcatm'] },
+    { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
+    { id: 'money', label: 'ATMs & Money', emoji: '🏧', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'health', label: 'Health & Wellness', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
-    { id: 'explore', label: 'Things to Do', emoji: '🧭', icon: Compass, catIds: ['beach', 'attractions'] },
+    { id: 'explore', label: 'Entertainment', emoji: '🎭', icon: Compass, catIds: ['nightlife', 'beach', 'attractions'] },
   ];
 
   // Auto-refresh results when location changes while viewing a subcategory
