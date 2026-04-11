@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search } from 'lucide-react';
+import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 import { haversine } from '../hooks';
@@ -142,13 +142,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
 
   const BIG_SECTIONS = [
-    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe'] },
+    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
     { id: 'stay', label: 'Places to Stay', emoji: '🏨', icon: BedDouble, catIds: ['hotel'] },
-    { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto'] },
+    { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'money', label: 'ATM', emoji: '🏧', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'health', label: 'Health', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
     { id: 'explore', label: 'Entertainment', emoji: '🎭', icon: Compass, catIds: ['nightlife', 'beach', 'attractions'] },
+    { id: 'services', label: 'Services', emoji: '🧹', icon: Shirt, catIds: ['laundry', 'coworking', 'spa'] },
   ];
 
   // Auto-refresh results when location changes while viewing a subcategory
@@ -246,7 +247,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   // Place detail view
   if (view === 'detail' && selectedPlace) {
-    const backView = selectedPlace ? (foodGuidePlaces.length > 0 ? 'foodguide' : 'subcategory') : 'subcategory';
+    const backView = selectedPlace ? (foodGuidePlaces.length > 0 ? 'section' : 'subcategory') : 'subcategory';
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-shrink-0">
@@ -631,6 +632,136 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   if (view === 'section' && selectedSection) {
     const section = BIG_SECTIONS.find(s => s.id === selectedSection);
     const sectionCats = categories.filter(c => section?.catIds.includes(c.id));
+
+    // For 'eat' section, integrate food guide at top
+    if (selectedSection === 'eat') {
+      const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return (
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="px-5 pt-5 pb-2 flex-shrink-0">
+            <button onClick={() => { setView('main'); setSelectedSection(null); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+              <span className="ms text-lg">arrow_back</span> Back
+            </button>
+            <div className="flex items-center gap-3">
+              <UtensilsCrossed className="w-7 h-7 text-foreground" />
+              <h2 className="text-xl font-extrabold">Food & Drinks</h2>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+              <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {locationName}</span>
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {currentTime}</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
+
+            {/* Cuisine filter chips */}
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
+              {CUISINE_FILTERS.map(c => (
+                <button key={c.id} onClick={() => changeCuisine(c.id)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                    ${selectedCuisine === c.id
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-card border-border text-foreground hover:shadow-sm'
+                    }`}>
+                  <span>{c.emoji}</span> {c.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+            {/* Browse by type grid */}
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {sectionCats.map(cat => (
+                <button key={cat.id} onClick={() => openCategory(cat.id)}
+                  className="flex flex-col items-center gap-2 p-3 bg-card border border-border rounded-kipita hover:shadow-md transition-all text-center">
+                  <span className="text-xl">{cat.emoji}</span>
+                  <span className="text-[10px] font-semibold text-foreground">{cat.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <h3 className="text-sm font-bold text-foreground">🍴 Nearby Now</h3>
+
+            {foodGuideLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map(i => (
+                  <div key={i} className="bg-card border border-border rounded-kipita overflow-hidden animate-pulse">
+                    <div className="flex gap-3 p-4">
+                      <div className="w-20 h-20 bg-muted rounded-xl flex-shrink-0" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-muted rounded w-3/4" />
+                        <div className="h-3 bg-muted rounded w-1/2" />
+                        <div className="flex gap-2">
+                          <div className="h-5 bg-muted rounded-full w-14" />
+                          <div className="h-5 bg-muted rounded-full w-16" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : foodGuidePlaces.length === 0 ? (
+              <div className="text-center py-12">
+                <span className="text-4xl block mb-3">🍽️</span>
+                <p className="text-sm font-semibold text-foreground">No open restaurants found</p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or check back later</p>
+              </div>
+            ) : foodGuidePlaces.map((p, i) => {
+              const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
+              const driveTime = distKm ? estimateDriveTime(distKm) : null;
+              const mustTry = extractMustTry(p.reviews);
+              const closingSoon = isClosingSoon(p.closingTime);
+
+              return (
+                <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
+                  className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
+                  <div className="flex gap-3 p-4">
+                    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                      {p.photoUrl ? (
+                        <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm truncate">{p.name}</div>
+                      {p.typeLabel && <div className="text-[10px] text-muted-foreground">{p.typeLabel}</div>}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {p.rating && (
+                          <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
+                          </span>
+                        )}
+                        {p.reviewCount > 0 && <span className="text-[10px] text-muted-foreground">({p.reviewCount.toLocaleString()})</span>}
+                        {driveTime && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                            <Navigation className="w-2.5 h-2.5" /> {driveTime}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">OPEN</span>
+                        {p.closingTime && (
+                          <span className={`text-[10px] ${closingSoon ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}`}>
+                            {closingSoon ? '⚠ Closing soon' : `Closes ${p.closingTime}`}
+                          </span>
+                        )}
+                      </div>
+                      {mustTry && (
+                        <div className="flex items-center gap-1 mt-1.5 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit max-w-full truncate">
+                          <ChefHat className="w-2.5 h-2.5 flex-shrink-0" />
+                          <span className="truncate">{mustTry}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="px-5 pt-5 pb-3 flex-shrink-0">
@@ -674,25 +805,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
 
-        {/* Local Food Guide CTA */}
-        <button onClick={openFoodGuide}
-          className="w-full mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-kipita hover:shadow-md transition-all active:scale-[0.98] text-left">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <ChefHat className="w-6 h-6 text-amber-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-bold text-foreground block">🍴 Local Food Guide</span>
-              <span className="text-[11px] text-muted-foreground">Open now · Sorted by distance · Must-try dishes</span>
-            </div>
-            <span className="ms text-lg text-amber-500">chevron_right</span>
-          </div>
-        </button>
-
         {/* Category Sections */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {BIG_SECTIONS.map(section => (
-            <button key={section.id} onClick={() => { setSelectedSection(section.id); setView('section'); }}
+            <button key={section.id} onClick={() => {
+              setSelectedSection(section.id);
+              setView('section');
+              if (section.id === 'eat') loadFoodGuide('all');
+            }}
               className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98]">
               <span className="text-2xl">{section.emoji}</span>
               <span className="text-xs font-semibold text-foreground">{section.label}</span>

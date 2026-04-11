@@ -242,6 +242,7 @@ const getHour = () => new Date().getHours();
 export const getCategories = (): PlaceCategory[] => [
   { id: 'food', label: 'Food', emoji: getHour() < 10 ? '🍳' : getHour() < 15 ? '🍜' : getHour() < 20 ? '🍽️' : '🌮', query: 'restaurants' },
   { id: 'cafe', label: 'Cafes', emoji: getHour() < 11 ? '☕' : getHour() < 16 ? '🧋' : '🍵', query: 'cafes' },
+  { id: 'drinks', label: 'Drinks', emoji: '🍸', query: 'bars lounges' },
   { id: 'hotel', label: 'Hotels', emoji: '🏨', query: 'hotels' },
   { id: 'shop', label: 'Shopping', emoji: '🛍️', query: 'shopping' },
   { id: 'transport', label: 'Transit', emoji: '🚇', query: 'public transit' },
@@ -254,6 +255,11 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'hospital', label: 'Medical', emoji: '🏥', query: 'hospital' },
   { id: 'pharmacy', label: 'Pharmacy', emoji: '💊', query: 'pharmacy' },
   { id: 'auto', label: 'Auto Care', emoji: '🔧', query: 'auto repair car maintenance' },
+  { id: 'gas', label: 'Gas Stations', emoji: '⛽', query: 'gas station fuel' },
+  { id: 'laundry', label: 'Laundry', emoji: '🧺', query: 'laundromat laundry service' },
+  { id: 'coworking', label: 'Coworking', emoji: '💻', query: 'coworking space shared office' },
+  { id: 'spa', label: 'Spa & Beauty', emoji: '💆', query: 'spa beauty salon massage' },
+  { id: 'ev', label: 'EV Charging', emoji: '⚡', query: 'electric vehicle charging station' },
 ];
 
 export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
@@ -282,6 +288,16 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Juice Bar', query: 'juice bar smoothie', emoji: '🧃' },
     { label: 'All Cafes', query: 'cafes', emoji: '🍵' },
   ],
+  drinks: [
+    { label: 'Cocktail Bar', query: 'cocktail bar lounge', emoji: '🍸' },
+    { label: 'Brewery', query: 'brewery craft beer taproom', emoji: '🍺' },
+    { label: 'Wine Bar', query: 'wine bar', emoji: '🍷' },
+    { label: 'Lounge', query: 'lounge bar chill', emoji: '🛋️' },
+    { label: 'Sports Bar', query: 'sports bar pub', emoji: '📺' },
+    { label: 'Rooftop Bar', query: 'rooftop bar', emoji: '🌃' },
+    { label: 'Hookah', query: 'hookah lounge shisha', emoji: '💨' },
+    { label: 'All Bars', query: 'bars lounges', emoji: '🥂' },
+  ],
   shop: [
     { label: 'Mall', query: 'shopping mall', emoji: '🏬' },
     { label: 'Grocery', query: 'supermarket grocery', emoji: '🛒' },
@@ -296,6 +312,7 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Live Music', query: 'live music venue', emoji: '🎵' },
     { label: 'Rooftop', query: 'rooftop bar', emoji: '🌃' },
     { label: 'Pub', query: 'pub sports bar', emoji: '🍺' },
+    { label: 'Brewery', query: 'brewery taproom', emoji: '🍻' },
   ],
   hotel: [
     { label: 'Hotel', query: 'hotel', emoji: '🏨' },
@@ -342,6 +359,29 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Theme Parks', query: 'theme park amusement', emoji: '🎢' },
     { label: 'Landmarks', query: 'landmark monument', emoji: '🗽' },
     { label: 'Events', query: 'events concerts festivals', emoji: '🎪' },
+  ],
+  gas: [
+    { label: 'Gas Station', query: 'gas station fuel', emoji: '⛽' },
+    { label: 'Diesel', query: 'diesel fuel station', emoji: '🛢️' },
+  ],
+  laundry: [
+    { label: 'Laundromat', query: 'laundromat self service laundry', emoji: '🧺' },
+    { label: 'Dry Cleaner', query: 'dry cleaning service', emoji: '👔' },
+  ],
+  coworking: [
+    { label: 'Coworking', query: 'coworking space shared office', emoji: '💻' },
+    { label: 'Library', query: 'public library study', emoji: '📚' },
+    { label: 'Business Center', query: 'business center office rental', emoji: '🏢' },
+  ],
+  spa: [
+    { label: 'Spa', query: 'spa massage wellness', emoji: '💆' },
+    { label: 'Hair Salon', query: 'hair salon barbershop', emoji: '💇' },
+    { label: 'Nail Salon', query: 'nail salon manicure', emoji: '💅' },
+    { label: 'Massage', query: 'massage therapy', emoji: '🧖' },
+  ],
+  ev: [
+    { label: 'EV Charger', query: 'electric vehicle charging station', emoji: '⚡' },
+    { label: 'Tesla', query: 'tesla supercharger', emoji: '🔌' },
   ],
 };
 
