@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
-import { haversine } from '../hooks';
+import { haversine, useDragScroll } from '../hooks';
 
 interface LivePlace {
   placeId: string;
@@ -140,6 +140,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [selectedCuisine, setSelectedCuisine] = useState('all');
   const [foodGuidePlaces, setFoodGuidePlaces] = useState<LivePlace[]>([]);
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
+  const cuisineScrollRef = useDragScroll<HTMLDivElement>();
+  const chipsScrollRef = useDragScroll<HTMLDivElement>();
 
   const BIG_SECTIONS = [
     { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
@@ -398,7 +400,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
 
           {/* Cuisine filter chips */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide no-drag-scroll mt-3 pb-2 -mx-1 px-1">
+          <div ref={cuisineScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
             {CUISINE_FILTERS.map(c => (
               <button key={c.id} onClick={() => changeCuisine(c.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
@@ -653,7 +655,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
 
             {/* Unified browse chips — deduplicated, horizontal scroll */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide no-drag-scroll mt-3 pb-2 -mx-1 px-1">
+            <div ref={chipsScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
               {(() => {
                 const seen = new Set<string>();
                 const allChips: { label: string; query: string; emoji: string; key: string }[] = [];
