@@ -690,17 +690,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         </button>
 
         {/* Category Sections */}
-        <div className="space-y-3 mb-6">
+        <div className="grid grid-cols-3 gap-3 mb-6">
           {BIG_SECTIONS.map(section => (
             <button key={section.id} onClick={() => { setSelectedSection(section.id); setView('section'); }}
-              className="w-full flex items-center gap-4 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98] text-left">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center flex-shrink-0">
-                <span className="text-2xl">{section.emoji}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-bold text-foreground">{section.label}</span>
-              </div>
-              <span className="ms text-lg text-muted-foreground">chevron_right</span>
+              className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98]">
+              <span className="text-2xl">{section.emoji}</span>
+              <span className="text-xs font-semibold text-foreground">{section.label}</span>
             </button>
           ))}
         </div>
