@@ -355,6 +355,7 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
   ],
   attractions: [
     { label: 'Museums', query: 'museum art gallery', emoji: '🏛️' },
+    { label: 'Libraries', query: 'public library', emoji: '📚' },
     { label: 'Tours', query: 'sightseeing tour', emoji: '🗺️' },
     { label: 'Theme Parks', query: 'theme park amusement', emoji: '🎢' },
     { label: 'Landmarks', query: 'landmark monument', emoji: '🗽' },
