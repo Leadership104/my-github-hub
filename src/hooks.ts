@@ -1,15 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useRef } from 'react';
 import type { CryptoPrice, BTCMerchant, MetalPrice } from './types';
 
 export function useDragScroll<T extends HTMLElement = HTMLDivElement>() {
-  const [node, setNode] = useState<T | null>(null);
-
-  const ref = useCallback((element: T | null) => {
-    setNode(element);
-  }, []);
+  const ref = useRef<T>(null);
 
   useEffect(() => {
-    const el = node;
+    const el = ref.current;
     if (!el) return;
     let isDown = false;
     let startX = 0;
@@ -72,7 +68,7 @@ export function useDragScroll<T extends HTMLElement = HTMLDivElement>() {
       el.removeEventListener('click', onClick, true);
       el.removeEventListener('dragstart', onDragStart);
     };
-  }, [node]);
+  });
 
   return ref;
 }
