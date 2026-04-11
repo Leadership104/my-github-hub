@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CryptoPrice, BTCMerchant, MetalPrice } from './types';
 
 export function useDragScroll<T extends HTMLElement = HTMLDivElement>() {
