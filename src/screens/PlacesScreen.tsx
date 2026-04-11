@@ -805,25 +805,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
 
-        {/* Local Food Guide CTA */}
-        <button onClick={openFoodGuide}
-          className="w-full mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-kipita hover:shadow-md transition-all active:scale-[0.98] text-left">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <ChefHat className="w-6 h-6 text-amber-600" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-sm font-bold text-foreground block">🍴 Local Food Guide</span>
-              <span className="text-[11px] text-muted-foreground">Open now · Sorted by distance · Must-try dishes</span>
-            </div>
-            <span className="ms text-lg text-amber-500">chevron_right</span>
-          </div>
-        </button>
-
         {/* Category Sections */}
         <div className="grid grid-cols-3 gap-3 mb-6">
           {BIG_SECTIONS.map(section => (
-            <button key={section.id} onClick={() => { setSelectedSection(section.id); setView('section'); }}
+            <button key={section.id} onClick={() => {
+              setSelectedSection(section.id);
+              setView('section');
+              if (section.id === 'eat') loadFoodGuide('all');
+            }}
               className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98]">
               <span className="text-2xl">{section.emoji}</span>
               <span className="text-xs font-semibold text-foreground">{section.label}</span>
