@@ -1,5 +1,47 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CryptoPrice, BTCMerchant, MetalPrice } from './types';
+
+export function useDragScroll<T extends HTMLElement = HTMLDivElement>() {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let isDown = false, startX = 0, scrollLeft = 0, moved = false;
+    const onDown = (e: MouseEvent) => {
+      isDown = true; moved = false;
+      startX = e.pageX - el.offsetLeft;
+      scrollLeft = el.scrollLeft;
+      el.style.cursor = 'grabbing';
+      el.style.userSelect = 'none';
+    };
+    const onLeave = () => { isDown = false; el.style.cursor = 'grab'; el.style.removeProperty('user-select'); };
+    const onUp = () => { isDown = false; el.style.cursor = 'grab'; el.style.removeProperty('user-select'); };
+    const onMove = (e: MouseEvent) => {
+      if (!isDown) return;
+      e.preventDefault();
+      const x = e.pageX - el.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      if (Math.abs(walk) > 3) moved = true;
+      el.scrollLeft = scrollLeft - walk;
+    };
+    // Prevent click on children after drag
+    const onClick = (e: MouseEvent) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } };
+    el.style.cursor = 'grab';
+    el.addEventListener('mousedown', onDown);
+    el.addEventListener('mouseleave', onLeave);
+    el.addEventListener('mouseup', onUp);
+    el.addEventListener('mousemove', onMove);
+    el.addEventListener('click', onClick, true);
+    return () => {
+      el.removeEventListener('mousedown', onDown);
+      el.removeEventListener('mouseleave', onLeave);
+      el.removeEventListener('mouseup', onUp);
+      el.removeEventListener('mousemove', onMove);
+      el.removeEventListener('click', onClick, true);
+    };
+  }, []);
+  return ref;
+}
 
 // Default to New York, USA instead of Bangkok
 const DEFAULT_LOCATION = { lat: 40.7128, lng: -74.006, name: 'New York, US' };
