@@ -242,6 +242,7 @@ const getHour = () => new Date().getHours();
 export const getCategories = (): PlaceCategory[] => [
   { id: 'food', label: 'Food', emoji: getHour() < 10 ? '🍳' : getHour() < 15 ? '🍜' : getHour() < 20 ? '🍽️' : '🌮', query: 'restaurants' },
   { id: 'cafe', label: 'Cafes', emoji: getHour() < 11 ? '☕' : getHour() < 16 ? '🧋' : '🍵', query: 'cafes' },
+  { id: 'drinks', label: 'Drinks', emoji: '🍸', query: 'bars lounges' },
   { id: 'hotel', label: 'Hotels', emoji: '🏨', query: 'hotels' },
   { id: 'shop', label: 'Shopping', emoji: '🛍️', query: 'shopping' },
   { id: 'transport', label: 'Transit', emoji: '🚇', query: 'public transit' },
@@ -254,6 +255,11 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'hospital', label: 'Medical', emoji: '🏥', query: 'hospital' },
   { id: 'pharmacy', label: 'Pharmacy', emoji: '💊', query: 'pharmacy' },
   { id: 'auto', label: 'Auto Care', emoji: '🔧', query: 'auto repair car maintenance' },
+  { id: 'gas', label: 'Gas Stations', emoji: '⛽', query: 'gas station fuel' },
+  { id: 'laundry', label: 'Laundry', emoji: '🧺', query: 'laundromat laundry service' },
+  { id: 'coworking', label: 'Coworking', emoji: '💻', query: 'coworking space shared office' },
+  { id: 'spa', label: 'Spa & Beauty', emoji: '💆', query: 'spa beauty salon massage' },
+  { id: 'ev', label: 'EV Charging', emoji: '⚡', query: 'electric vehicle charging station' },
 ];
 
 export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
