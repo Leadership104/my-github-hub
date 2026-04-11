@@ -668,13 +668,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
-            {/* Browse by type grid */}
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            {/* Browse by type — small chips row */}
+            <div className="flex gap-2 flex-wrap mb-2">
               {sectionCats.map(cat => (
                 <button key={cat.id} onClick={() => openCategory(cat.id)}
-                  className="flex flex-col items-center gap-2 p-3 bg-card border border-border rounded-kipita hover:shadow-md transition-all text-center">
-                  <span className="text-xl">{cat.emoji}</span>
-                  <span className="text-[10px] font-semibold text-foreground">{cat.label}</span>
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border bg-card border-border text-foreground hover:shadow-sm transition-all">
+                  <span>{cat.emoji}</span> {cat.label}
                 </button>
               ))}
             </div>
