@@ -384,6 +384,11 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'EV Charger', query: 'electric vehicle charging station', emoji: '⚡' },
     { label: 'Tesla', query: 'tesla supercharger', emoji: '🔌' },
   ],
+  library: [
+    { label: 'Public Library', query: 'public library', emoji: '📚' },
+    { label: 'University Library', query: 'university library', emoji: '🎓' },
+    { label: 'Bookstore', query: 'bookstore book shop', emoji: '📖' },
+  ],
 };
 
 export const PHRASES: Record<string, { label: string; phrases: { en: string; local: string; phon: string }[] }> = {
