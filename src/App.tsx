@@ -214,8 +214,10 @@ export default function App() {
             <span className="w-[7px] h-[7px] rounded-full bg-border" />
           </div>
           <button onClick={() => setShowSOS(true)}
-            className="bg-kipita-red rounded-full w-9 h-9 flex items-center justify-center text-lg animate-sos flex-shrink-0"
-            title="Emergency SOS">🚨</button>
+            className="bg-kipita-red rounded-full w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md"
+            title="Emergency SOS">
+            <span className="text-white font-extrabold text-[11px] tracking-wide">SOS</span>
+          </button>
           <button onClick={() => setShowProfile(!showProfile)}
             className="w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
             <span className="ms text-2xl text-muted-foreground">account_circle</span>
