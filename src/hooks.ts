@@ -1,45 +1,79 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CryptoPrice, BTCMerchant, MetalPrice } from './types';
 
 export function useDragScroll<T extends HTMLElement = HTMLDivElement>() {
-  const ref = useRef<T>(null);
+  const [node, setNode] = useState<T | null>(null);
+
+  const ref = useCallback((element: T | null) => {
+    setNode(element);
+  }, []);
+
   useEffect(() => {
-    const el = ref.current;
+    const el = node;
     if (!el) return;
-    let isDown = false, startX = 0, scrollLeft = 0, moved = false;
+    let isDown = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let moved = false;
+
+    const resetDrag = () => {
+      isDown = false;
+      el.style.cursor = 'grab';
+      document.body.style.removeProperty('user-select');
+    };
+
     const onDown = (e: MouseEvent) => {
-      isDown = true; moved = false;
-      startX = e.pageX - el.offsetLeft;
+      if (e.button !== 0) return;
+      isDown = true;
+      moved = false;
+      startX = e.pageX;
       scrollLeft = el.scrollLeft;
       el.style.cursor = 'grabbing';
-      el.style.userSelect = 'none';
+      document.body.style.userSelect = 'none';
     };
-    const onLeave = () => { isDown = false; el.style.cursor = 'grab'; el.style.removeProperty('user-select'); };
-    const onUp = () => { isDown = false; el.style.cursor = 'grab'; el.style.removeProperty('user-select'); };
+
+    const onUp = () => {
+      resetDrag();
+    };
+
     const onMove = (e: MouseEvent) => {
       if (!isDown) return;
       e.preventDefault();
-      const x = e.pageX - el.offsetLeft;
-      const walk = (x - startX) * 1.5;
-      if (Math.abs(walk) > 3) moved = true;
+      const walk = (e.pageX - startX) * 1.5;
+      if (Math.abs(walk) > 4) moved = true;
       el.scrollLeft = scrollLeft - walk;
     };
+
     // Prevent click on children after drag
-    const onClick = (e: MouseEvent) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } };
+    const onClick = (e: MouseEvent) => {
+      if (moved) {
+        e.stopPropagation();
+        e.preventDefault();
+        moved = false;
+      }
+    };
+
+    const onDragStart = (e: DragEvent) => {
+      e.preventDefault();
+    };
+
     el.style.cursor = 'grab';
     el.addEventListener('mousedown', onDown);
-    el.addEventListener('mouseleave', onLeave);
-    el.addEventListener('mouseup', onUp);
-    el.addEventListener('mousemove', onMove);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
     el.addEventListener('click', onClick, true);
+    el.addEventListener('dragstart', onDragStart);
+
     return () => {
+      resetDrag();
       el.removeEventListener('mousedown', onDown);
-      el.removeEventListener('mouseleave', onLeave);
-      el.removeEventListener('mouseup', onUp);
-      el.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
       el.removeEventListener('click', onClick, true);
+      el.removeEventListener('dragstart', onDragStart);
     };
-  }, []);
+  }, [node]);
+
   return ref;
 }
 
