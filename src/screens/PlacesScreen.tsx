@@ -140,6 +140,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [selectedCuisine, setSelectedCuisine] = useState('all');
   const [foodGuidePlaces, setFoodGuidePlaces] = useState<LivePlace[]>([]);
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
+  const cuisineScrollRef = useDragScroll<HTMLDivElement>();
+  const chipsScrollRef = useDragScroll<HTMLDivElement>();
 
   const BIG_SECTIONS = [
     { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
