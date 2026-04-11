@@ -219,7 +219,7 @@ export default function App() {
             <span className="text-white font-extrabold text-[11px] tracking-wide">SOS</span>
           </button>
           <button onClick={() => setShowProfile(!showProfile)}
-            className="w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
+            className="ml-auto w-11 h-11 rounded-full bg-muted flex items-center justify-center overflow-hidden flex-shrink-0">
             <span className="ms text-2xl text-muted-foreground">account_circle</span>
           </button>
         </div>
