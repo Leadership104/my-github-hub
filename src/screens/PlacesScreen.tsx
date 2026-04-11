@@ -398,7 +398,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
 
           {/* Cuisine filter chips */}
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide no-drag-scroll mt-3 pb-2 -mx-1 px-1">
             {CUISINE_FILTERS.map(c => (
               <button key={c.id} onClick={() => changeCuisine(c.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
