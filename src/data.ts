@@ -260,6 +260,7 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'coworking', label: 'Coworking', emoji: '💻', query: 'coworking space shared office' },
   { id: 'spa', label: 'Spa & Beauty', emoji: '💆', query: 'spa beauty salon massage' },
   { id: 'ev', label: 'EV Charging', emoji: '⚡', query: 'electric vehicle charging station' },
+  { id: 'library', label: 'Libraries', emoji: '📚', query: 'public library' },
 ];
 
 export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
@@ -355,7 +356,6 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
   ],
   attractions: [
     { label: 'Museums', query: 'museum art gallery', emoji: '🏛️' },
-    { label: 'Libraries', query: 'public library', emoji: '📚' },
     { label: 'Tours', query: 'sightseeing tour', emoji: '🗺️' },
     { label: 'Theme Parks', query: 'theme park amusement', emoji: '🎢' },
     { label: 'Landmarks', query: 'landmark monument', emoji: '🗽' },
