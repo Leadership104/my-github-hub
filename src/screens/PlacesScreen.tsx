@@ -652,33 +652,31 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             </div>
             <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
 
-            {/* Cuisine filter chips */}
+            {/* Unified browse chips — deduplicated, horizontal scroll */}
             <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
-              {CUISINE_FILTERS.map(c => (
-                <button key={c.id} onClick={() => changeCuisine(c.id)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
-                    ${selectedCuisine === c.id
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'bg-card border-border text-foreground hover:shadow-sm'
-                    }`}>
-                  <span>{c.emoji}</span> {c.label}
-                </button>
-              ))}
+              {(() => {
+                const seen = new Set<string>();
+                const allChips: { label: string; query: string; emoji: string; key: string }[] = [];
+                sectionCats.forEach(cat => {
+                  (CATEGORY_SUBS[cat.id] || []).forEach(sub => {
+                    const norm = sub.label.toLowerCase().replace(/[^a-z]/g, '');
+                    if (!seen.has(norm)) {
+                      seen.add(norm);
+                      allChips.push({ ...sub, key: `${cat.id}-${sub.label}` });
+                    }
+                  });
+                });
+                return allChips.map(chip => (
+                  <button key={chip.key} onClick={() => openSubResult(chip.label, chip.query)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border bg-card border-border text-foreground hover:shadow-sm transition-all flex-shrink-0">
+                    <span>{chip.emoji}</span> {chip.label}
+                  </button>
+                ));
+              })()}
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
-            {/* Browse by type — horizontal scroll chips */}
-            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
-              {sectionCats.flatMap(cat => 
-                (CATEGORY_SUBS[cat.id] || []).map(sub => (
-                  <button key={`${cat.id}-${sub.label}`} onClick={() => openSubResult(sub.label, sub.query)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border bg-card border-border text-foreground hover:shadow-sm transition-all flex-shrink-0">
-                    <span>{sub.emoji}</span> {sub.label}
-                  </button>
-                ))
-              )}
-            </div>
 
             <h3 className="text-sm font-bold text-foreground">🍴 Nearby Now</h3>
 
