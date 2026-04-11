@@ -146,8 +146,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     { id: 'stay', label: 'Places to Stay', emoji: '🏨', icon: BedDouble, catIds: ['hotel'] },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto'] },
     { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
-    { id: 'money', label: 'ATMs & Money', emoji: '🏧', icon: MapPin, catIds: ['atm', 'btcatm'] },
-    { id: 'health', label: 'Health & Wellness', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
+    { id: 'money', label: 'ATM', emoji: '🏧', icon: MapPin, catIds: ['atm', 'btcatm'] },
+    { id: 'health', label: 'Health', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'gym'] },
     { id: 'explore', label: 'Entertainment', emoji: '🎭', icon: Compass, catIds: ['nightlife', 'beach', 'attractions'] },
   ];
 
