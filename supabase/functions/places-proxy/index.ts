@@ -8,6 +8,45 @@ const corsHeaders = {
 
 const GOOGLE_KEY = () => Deno.env.get("GOOGLE_PLACES_API_KEY") || "";
 
+/* ── Field mask shared across search endpoints ── */
+const SEARCH_FIELDS = [
+  "places.id",
+  "places.displayName",
+  "places.formattedAddress",
+  "places.location",
+  "places.rating",
+  "places.userRatingCount",
+  "places.priceLevel",
+  "places.photos",
+  "places.currentOpeningHours",
+  "places.websiteUri",
+  "places.internationalPhoneNumber",
+  "places.types",
+  "places.primaryTypeDisplayName",
+  "places.googleMapsUri",
+  "places.editorialSummary",
+  "places.reviews",
+].join(",");
+
+const DETAIL_FIELDS = [
+  "id",
+  "displayName",
+  "formattedAddress",
+  "location",
+  "rating",
+  "userRatingCount",
+  "priceLevel",
+  "photos",
+  "currentOpeningHours",
+  "websiteUri",
+  "internationalPhoneNumber",
+  "reviews",
+  "types",
+  "primaryTypeDisplayName",
+  "googleMapsUri",
+  "editorialSummary",
+].join(",");
+
 /* ── Nearby Search (New) ── */
 async function nearbySearch(lat: number, lng: number, type: string, radius = 3500, maxResults = 20) {
   const body = {
@@ -18,25 +57,6 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
     },
   };
 
-  const fieldMask = [
-    "places.id",
-    "places.displayName",
-    "places.formattedAddress",
-    "places.location",
-    "places.rating",
-    "places.userRatingCount",
-    "places.priceLevel",
-    "places.photos",
-    "places.currentOpeningHours",
-    "places.websiteUri",
-    "places.internationalPhoneNumber",
-    "places.types",
-    "places.primaryTypeDisplayName",
-    "places.googleMapsUri",
-    "places.editorialSummary",
-    "places.reviews",
-  ].join(",");
-
   const res = await fetch(
     "https://places.googleapis.com/v1/places:searchNearby",
     {
@@ -44,7 +64,7 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": GOOGLE_KEY(),
-        "X-Goog-FieldMask": fieldMask,
+        "X-Goog-FieldMask": SEARCH_FIELDS,
       },
       body: JSON.stringify(body),
     }
@@ -68,24 +88,6 @@ async function textSearch(query: string, lat?: number, lng?: number, radius = 50
     };
   }
 
-  const fieldMask = [
-    "places.id",
-    "places.displayName",
-    "places.formattedAddress",
-    "places.location",
-    "places.rating",
-    "places.userRatingCount",
-    "places.priceLevel",
-    "places.photos",
-    "places.currentOpeningHours",
-    "places.websiteUri",
-    "places.internationalPhoneNumber",
-    "places.types",
-    "places.primaryTypeDisplayName",
-    "places.googleMapsUri",
-    "places.reviews",
-  ].join(",");
-
   const res = await fetch(
     "https://places.googleapis.com/v1/places:searchText",
     {
@@ -93,7 +95,7 @@ async function textSearch(query: string, lat?: number, lng?: number, radius = 50
       headers: {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": GOOGLE_KEY(),
-        "X-Goog-FieldMask": fieldMask,
+        "X-Goog-FieldMask": SEARCH_FIELDS,
       },
       body: JSON.stringify(body),
     }
@@ -110,31 +112,12 @@ async function textSearch(query: string, lat?: number, lng?: number, radius = 50
 
 /* ── Place Details (New) ── */
 async function placeDetails(placeId: string) {
-  const fieldMask = [
-    "id",
-    "displayName",
-    "formattedAddress",
-    "location",
-    "rating",
-    "userRatingCount",
-    "priceLevel",
-    "photos",
-    "currentOpeningHours",
-    "websiteUri",
-    "internationalPhoneNumber",
-    "reviews",
-    "types",
-    "primaryTypeDisplayName",
-    "googleMapsUri",
-    "editorialSummary",
-  ].join(",");
-
   const res = await fetch(
     `https://places.googleapis.com/v1/places/${placeId}`,
     {
       headers: {
         "X-Goog-Api-Key": GOOGLE_KEY(),
-        "X-Goog-FieldMask": fieldMask,
+        "X-Goog-FieldMask": DETAIL_FIELDS,
       },
     }
   );
@@ -153,6 +136,28 @@ function photoUrl(photoName: string, maxWidth = 400) {
   return `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=${maxWidth}&key=${GOOGLE_KEY()}`;
 }
 
+/* ── Extract closing time from opening hours periods ── */
+function extractClosingTime(openingHours: any): string | null {
+  if (!openingHours?.periods) return null;
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // 0=Sun
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  for (const period of openingHours.periods) {
+    if (period.open?.day === dayOfWeek && period.close) {
+      const openMin = (period.open.hour || 0) * 60 + (period.open.minute || 0);
+      const closeMin = (period.close.hour || 0) * 60 + (period.close.minute || 0);
+      const adjustedClose = closeMin <= openMin ? closeMin + 1440 : closeMin;
+      if (currentMinutes >= openMin && currentMinutes < adjustedClose) {
+        const h = period.close.hour ?? 0;
+        const m = period.close.minute ?? 0;
+        return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      }
+    }
+  }
+  return null;
+}
+
 /* ── Normalize response for frontend ── */
 function normalizePlaces(data: any) {
   const places = data.places || [];
@@ -168,13 +173,14 @@ function normalizePlaces(data: any) {
     photoUrl: p.photos?.[0]?.name ? photoUrl(p.photos[0].name) : null,
     photos: (p.photos || []).slice(0, 3).map((ph: any) => photoUrl(ph.name)),
     openNow: p.currentOpeningHours?.openNow ?? null,
+    closingTime: extractClosingTime(p.currentOpeningHours),
     hours: p.currentOpeningHours?.weekdayDescriptions || [],
     phone: p.internationalPhoneNumber || null,
     website: p.websiteUri || null,
     types: p.types || [],
     typeLabel: p.primaryTypeDisplayName?.text || null,
     mapsUrl: p.googleMapsUri || null,
-    reviews: (p.reviews || []).slice(0, 3).map((r: any) => ({
+    reviews: (p.reviews || []).slice(0, 5).map((r: any) => ({
       author: r.authorAttribution?.displayName || "Anonymous",
       rating: r.rating,
       text: r.text?.text || "",
@@ -215,7 +221,7 @@ async function coinmapVenues(lat: number, lng: number) {
     lat: v.lat,
     lng: v.lon,
     rating: null, reviewCount: 0, priceLevel: null,
-    photoUrl: null, photos: [], openNow: null, hours: [],
+    photoUrl: null, photos: [], openNow: null, closingTime: null, hours: [],
     phone: null,
     website: v.website || null,
     types: ["bitcoin_merchant"],
