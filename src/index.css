@@ -74,6 +74,8 @@ body {
 /* Scrollbar styling */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { scrollbar-width: none; }
+.no-drag-scroll { cursor: default; }
+.no-drag-scroll * { user-select: none; -webkit-user-select: none; }
 
 /* Leaflet overrides */
 .leaflet-container { font-family: 'Montserrat', sans-serif !important; }
