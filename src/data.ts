@@ -288,6 +288,16 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Juice Bar', query: 'juice bar smoothie', emoji: '🧃' },
     { label: 'All Cafes', query: 'cafes', emoji: '🍵' },
   ],
+  drinks: [
+    { label: 'Cocktail Bar', query: 'cocktail bar lounge', emoji: '🍸' },
+    { label: 'Brewery', query: 'brewery craft beer taproom', emoji: '🍺' },
+    { label: 'Wine Bar', query: 'wine bar', emoji: '🍷' },
+    { label: 'Lounge', query: 'lounge bar chill', emoji: '🛋️' },
+    { label: 'Sports Bar', query: 'sports bar pub', emoji: '📺' },
+    { label: 'Rooftop Bar', query: 'rooftop bar', emoji: '🌃' },
+    { label: 'Hookah', query: 'hookah lounge shisha', emoji: '💨' },
+    { label: 'All Bars', query: 'bars lounges', emoji: '🥂' },
+  ],
   shop: [
     { label: 'Mall', query: 'shopping mall', emoji: '🏬' },
     { label: 'Grocery', query: 'supermarket grocery', emoji: '🛒' },
@@ -302,6 +312,7 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Live Music', query: 'live music venue', emoji: '🎵' },
     { label: 'Rooftop', query: 'rooftop bar', emoji: '🌃' },
     { label: 'Pub', query: 'pub sports bar', emoji: '🍺' },
+    { label: 'Brewery', query: 'brewery taproom', emoji: '🍻' },
   ],
   hotel: [
     { label: 'Hotel', query: 'hotel', emoji: '🏨' },
