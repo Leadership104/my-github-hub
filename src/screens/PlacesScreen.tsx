@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass } from 'lucide-react';
+import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
+import { haversine } from '../hooks';
 
 interface LivePlace {
   placeId: string;
@@ -15,6 +16,7 @@ interface LivePlace {
   photoUrl: string | null;
   photos: string[];
   openNow: boolean | null;
+  closingTime: string | null;
   hours: string[];
   phone: string | null;
   website: string | null;
@@ -46,8 +48,85 @@ async function fetchGooglePlaces(action: string, params: Record<string, unknown>
   }
 }
 
+/* ── Drive time estimate from haversine distance ── */
+function estimateDriveTime(distKm: number): string {
+  // Avg city driving ~25 km/h
+  const minutes = Math.round((distKm / 25) * 60);
+  if (minutes < 1) return '< 1 min';
+  if (minutes === 1) return '1 min';
+  return `${minutes} min`;
+}
+
+/* ── Extract must-try dish from reviews ── */
+function extractMustTry(reviews: LivePlace['reviews']): string | null {
+  if (!reviews || reviews.length === 0) return null;
+  // Food-related keywords to look for in reviews
+  const foodPatterns = [
+    /must.?try[:\s]+(?:the\s+)?([^.!,]{3,40})/i,
+    /recommend[:\s]+(?:the\s+)?([^.!,]{3,40})/i,
+    /best\s+([^.!,]{3,30})\s+(?:I've|i've|we've|ever)/i,
+    /amazing\s+([^.!,]{3,30})/i,
+    /incredible\s+([^.!,]{3,30})/i,
+    /outstanding\s+([^.!,]{3,30})/i,
+    /try\s+(?:the\s+)?([^.!,]{3,30})/i,
+    /loved\s+(?:the\s+)?([^.!,]{3,30})/i,
+    /(\w+\s+\w+(?:\s+\w+)?)\s+(?:was|is|were)\s+(?:incredible|amazing|outstanding|excellent|perfect|delicious)/i,
+  ];
+
+  for (const review of reviews) {
+    if (review.rating < 4) continue;
+    for (const pattern of foodPatterns) {
+      const match = review.text.match(pattern);
+      if (match?.[1]) {
+        const dish = match[1].trim();
+        // Filter out non-food phrases
+        if (dish.length > 3 && dish.length < 40 && !dish.match(/^(place|restaurant|service|staff|waiter|view|atmosphere|experience|visit|time)/i)) {
+          return dish.charAt(0).toUpperCase() + dish.slice(1);
+        }
+      }
+    }
+  }
+
+  // Fallback: look for the most-mentioned food words in 4-5 star reviews
+  const topReview = reviews.find(r => r.rating >= 4 && r.text.length > 20);
+  if (topReview) {
+    // Extract first sentence as a highlight
+    const firstSentence = topReview.text.split(/[.!]/)[0]?.trim();
+    if (firstSentence && firstSentence.length < 60) return `"${firstSentence}"`;
+  }
+  return null;
+}
+
+/* ── Check if closing within N minutes ── */
+function isClosingSoon(closingTime: string | null, withinMinutes = 30): boolean {
+  if (!closingTime) return false;
+  const [h, m] = closingTime.split(':').map(Number);
+  const now = new Date();
+  const closeMinutes = h * 60 + m;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const diff = closeMinutes - nowMinutes;
+  return diff > 0 && diff <= withinMinutes;
+}
+
+/* ── Cuisine types for the food guide ── */
+const CUISINE_FILTERS = [
+  { id: 'all', label: 'All', emoji: '🍽️' },
+  { id: 'italian', label: 'Italian', emoji: '🍝' },
+  { id: 'japanese', label: 'Japanese', emoji: '🍱' },
+  { id: 'mexican', label: 'Mexican', emoji: '🌮' },
+  { id: 'chinese', label: 'Chinese', emoji: '🥡' },
+  { id: 'thai', label: 'Thai', emoji: '🍜' },
+  { id: 'indian', label: 'Indian', emoji: '🍛' },
+  { id: 'american', label: 'American', emoji: '🍔' },
+  { id: 'mediterranean', label: 'Mediterranean', emoji: '🥙' },
+  { id: 'korean', label: 'Korean', emoji: '🥘' },
+  { id: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
+  { id: 'seafood', label: 'Seafood', emoji: '🦞' },
+  { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
+];
+
 export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView }: Props) {
-  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail'>(initialView === 'phrases' || initialView === 'destinations' ? 'main' : (initialView || 'main') as any);
+  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide'>(initialView === 'phrases' || initialView === 'destinations' ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
@@ -56,6 +135,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
   const [loading, setLoading] = useState(false);
   const categories = getCategories();
+
+  // Food Guide state
+  const [selectedCuisine, setSelectedCuisine] = useState('all');
+  const [foodGuidePlaces, setFoodGuidePlaces] = useState<LivePlace[]>([]);
+  const [foodGuideLoading, setFoodGuideLoading] = useState(false);
 
   const BIG_SECTIONS = [
     { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'nightlife'] },
@@ -72,13 +156,15 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     if (prevLocRef.current.lat === lat && prevLocRef.current.lng === lng) return;
     prevLocRef.current = { lat, lng };
     if (view === 'subcategory' && selectedSub) {
-      // Re-fetch with new location
       (async () => {
         setLoading(true);
         const places = await fetchGooglePlaces('search', { query: `${selectedSub.label} near ${locationName}`, lat, lng, radius: 5000 });
         setLivePlaces(places);
         setLoading(false);
       })();
+    }
+    if (view === 'foodguide') {
+      loadFoodGuide(selectedCuisine);
     }
   }, [lat, lng, locationName, view, selectedSub]);
 
@@ -92,7 +178,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setView('subcategory');
     setLoading(true);
     const places = await fetchGooglePlaces('search', { query: `${label} near ${locationName}`, lat, lng, radius: 5000 });
-    // Sort: open places first, then by distance (lat/lng proximity)
     const sorted = [...places].sort((a, b) => {
       if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
       const distA = a.lat && a.lng ? Math.hypot(a.lat - lat, a.lng - lng) : 999;
@@ -106,22 +191,67 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const openPlaceDetail = useCallback(async (place: LivePlace) => {
     setSelectedPlace(place);
     setView('detail');
-    // Fetch full details if we have a placeId
     if (place.placeId) {
       const detailed = await fetchGooglePlaces('details', { placeId: place.placeId });
       if (detailed.length > 0) setSelectedPlace(detailed[0]);
     }
   }, []);
 
+  /* ── Food Guide loader ── */
+  const loadFoodGuide = useCallback(async (cuisine: string) => {
+    setFoodGuideLoading(true);
+    const query = cuisine === 'all'
+      ? `restaurants near ${locationName}`
+      : `authentic ${cuisine} restaurant near ${locationName}`;
+    const places = await fetchGooglePlaces('search', { query, lat, lng, radius: 8000 }); // ~10 min drive radius
+
+    const now = new Date();
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Filter: open and not closing within 30 min
+    const filtered = places.filter(p => {
+      if (p.openNow === false) return false;
+      if (p.closingTime && isClosingSoon(p.closingTime, 30)) return false;
+      return true;
+    });
+
+    // Sort by proximity (closest first)
+    const sorted = [...filtered].sort((a, b) => {
+      const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
+      const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
+      return distA - distB;
+    });
+
+    // Only include within ~10 min drive (~7 km in city)
+    const nearby = sorted.filter(p => {
+      if (!p.lat || !p.lng) return true;
+      return haversine(lat, lng, p.lat, p.lng) <= 7;
+    });
+
+    setFoodGuidePlaces(nearby.length > 0 ? nearby : sorted.slice(0, 10));
+    setFoodGuideLoading(false);
+  }, [lat, lng, locationName]);
+
+  const openFoodGuide = useCallback(async () => {
+    setView('foodguide');
+    setSelectedCuisine('all');
+    await loadFoodGuide('all');
+  }, [loadFoodGuide]);
+
+  const changeCuisine = useCallback(async (cuisine: string) => {
+    setSelectedCuisine(cuisine);
+    await loadFoodGuide(cuisine);
+  }, [loadFoodGuide]);
+
   // Place detail view
   if (view === 'detail' && selectedPlace) {
+    const backView = selectedPlace ? (foodGuidePlaces.length > 0 ? 'foodguide' : 'subcategory') : 'subcategory';
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-shrink-0">
-          <button onClick={() => setView('subcategory')} className="flex items-center gap-1 text-sm text-muted-foreground px-5 pt-5 mb-2">
+          <button onClick={() => setView(backView as any)} className="flex items-center gap-1 text-sm text-muted-foreground px-5 pt-5 mb-2">
             <span className="ms text-lg">arrow_back</span> Back
           </button>
-          {/* Photo gallery */}
           {selectedPlace.photos && selectedPlace.photos.length > 0 ? (
             <div className="flex overflow-x-auto scrollbar-hide gap-0.5">
               {selectedPlace.photos.map((url, i) => (
@@ -156,6 +286,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 {selectedPlace.openNow ? '● Open Now' : '● Closed'}
               </span>
             )}
+            {selectedPlace.closingTime && selectedPlace.openNow && (
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${isClosingSoon(selectedPlace.closingTime) ? 'bg-amber-100 text-amber-700' : 'text-muted-foreground'}`}>
+                Closes {selectedPlace.closingTime}
+              </span>
+            )}
             {selectedPlace.priceLevel && (
               <span className="text-xs text-muted-foreground">💰 {selectedPlace.priceLevel.replace('PRICE_LEVEL_', '')}</span>
             )}
@@ -164,7 +299,29 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           {selectedPlace.address && <p className="text-sm text-muted-foreground mt-3">📍 {selectedPlace.address}</p>}
           {selectedPlace.summary && <p className="text-sm text-muted-foreground/80 mt-2 italic">{selectedPlace.summary}</p>}
 
-          {/* Contact */}
+          {/* Must-try dish */}
+          {(() => {
+            const mustTry = extractMustTry(selectedPlace.reviews);
+            return mustTry ? (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-kipita p-3 flex items-start gap-2">
+                <ChefHat className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-xs font-bold text-amber-800">Must-Try</p>
+                  <p className="text-xs text-amber-700">{mustTry}</p>
+                </div>
+              </div>
+            ) : null;
+          })()}
+
+          {/* Drive time */}
+          {selectedPlace.lat && selectedPlace.lng && (
+            <div className="flex items-center gap-1.5 mt-3 text-sm text-muted-foreground">
+              <Navigation className="w-3.5 h-3.5" />
+              <span>~{estimateDriveTime(haversine(lat, lng, selectedPlace.lat, selectedPlace.lng))} drive</span>
+              <span className="text-muted-foreground/50">({haversine(lat, lng, selectedPlace.lat, selectedPlace.lng).toFixed(1)} km)</span>
+            </div>
+          )}
+
           <div className="flex gap-3 mt-3">
             {selectedPlace.phone && (
               <a href={`tel:${selectedPlace.phone}`} className="flex items-center gap-1 text-sm text-blue-600 font-semibold">
@@ -173,7 +330,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             )}
           </div>
 
-          {/* Hours */}
           {selectedPlace.hours && selectedPlace.hours.length > 0 && (
             <div className="mt-4 bg-muted rounded-kipita p-3">
               <p className="text-xs font-bold mb-2">🕐 Opening Hours</p>
@@ -185,7 +341,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             </div>
           )}
 
-          {/* Reviews */}
           {selectedPlace.reviews && selectedPlace.reviews.length > 0 && (
             <div className="mt-4">
               <p className="text-sm font-bold mb-2">Reviews</p>
@@ -205,7 +360,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             </div>
           )}
 
-          {/* Action buttons */}
           <div className="flex gap-2 mt-4">
             {selectedPlace.mapsUrl && (
               <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
@@ -222,7 +376,131 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     );
   }
 
+  /* ── Food Guide View ── */
+  if (view === 'foodguide') {
+    const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-2 flex-shrink-0">
+          <button onClick={() => setView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+          <div className="flex items-center gap-2">
+            <ChefHat className="w-6 h-6 text-foreground" />
+            <h2 className="text-xl font-extrabold">Local Food Guide</h2>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
+            <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {locationName}</span>
+            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {currentTime}</span>
+          </div>
+          <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
 
+          {/* Cuisine filter chips */}
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
+            {CUISINE_FILTERS.map(c => (
+              <button key={c.id} onClick={() => changeCuisine(c.id)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                  ${selectedCuisine === c.id
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-card border-border text-foreground hover:shadow-sm'
+                  }`}>
+                <span>{c.emoji}</span> {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          {foodGuideLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-card border border-border rounded-kipita overflow-hidden animate-pulse">
+                  <div className="flex gap-3 p-4">
+                    <div className="w-20 h-20 bg-muted rounded-xl flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                      <div className="flex gap-2">
+                        <div className="h-5 bg-muted rounded-full w-14" />
+                        <div className="h-5 bg-muted rounded-full w-16" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : foodGuidePlaces.length === 0 ? (
+            <div className="text-center py-12">
+              <span className="text-4xl block mb-3">🍽️</span>
+              <p className="text-sm font-semibold text-foreground">No open restaurants found</p>
+              <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or check back later</p>
+            </div>
+          ) : foodGuidePlaces.map((p, i) => {
+            const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
+            const driveTime = distKm ? estimateDriveTime(distKm) : null;
+            const mustTry = extractMustTry(p.reviews);
+            const closingSoon = isClosingSoon(p.closingTime);
+
+            return (
+              <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
+                className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
+                <div className="flex gap-3 p-4">
+                  {/* Photo or placeholder */}
+                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                    {p.photoUrl ? (
+                      <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    {/* Name & type */}
+                    <div className="font-bold text-sm truncate">{p.name}</div>
+                    {p.typeLabel && <div className="text-[10px] text-muted-foreground">{p.typeLabel}</div>}
+
+                    {/* Rating + Drive time row */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      {p.rating && (
+                        <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
+                        </span>
+                      )}
+                      {p.reviewCount > 0 && <span className="text-[10px] text-muted-foreground">({p.reviewCount.toLocaleString()})</span>}
+                      {driveTime && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <Navigation className="w-2.5 h-2.5" /> {driveTime}
+                        </span>
+                      )}
+                      {p.priceLevel && <span className="text-[10px] text-muted-foreground">{p.priceLevel.replace('PRICE_LEVEL_', '')}</span>}
+                    </div>
+
+                    {/* Open status */}
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">OPEN</span>
+                      {p.closingTime && (
+                        <span className={`text-[10px] ${closingSoon ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}`}>
+                          {closingSoon ? '⚠ Closing soon' : `Closes ${p.closingTime}`}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Must-try dish */}
+                    {mustTry && (
+                      <div className="flex items-center gap-1 mt-1.5 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit max-w-full truncate">
+                        <ChefHat className="w-2.5 h-2.5 flex-shrink-0" />
+                        <span className="truncate">{mustTry}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   // Subcategory result view with LIVE Google Places data
   if (view === 'subcategory' && selectedSub) {
@@ -394,6 +672,21 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
       <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
+
+        {/* Local Food Guide CTA */}
+        <button onClick={openFoodGuide}
+          className="w-full mb-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-kipita hover:shadow-md transition-all active:scale-[0.98] text-left">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <ChefHat className="w-6 h-6 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-bold text-foreground block">🍴 Local Food Guide</span>
+              <span className="text-[11px] text-muted-foreground">Open now · Sorted by distance · Must-try dishes</span>
+            </div>
+            <span className="ms text-lg text-amber-500">chevron_right</span>
+          </div>
+        </button>
 
         {/* Category Sections */}
         <div className="space-y-3 mb-6">
