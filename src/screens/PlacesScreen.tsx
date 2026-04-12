@@ -143,6 +143,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const cuisineScrollRef = useDragScroll<HTMLDivElement>();
   const chipsScrollRef = useDragScroll<HTMLDivElement>();
 
+  // Inline chip selection for eat section
+  const [activeChip, setActiveChip] = useState<{ label: string; query: string } | null>(null);
+  const [chipResults, setChipResults] = useState<LivePlace[]>([]);
+  const [chipLoading, setChipLoading] = useState(false);
+
   const BIG_SECTIONS = [
     { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
     { id: 'stay', label: 'Places to Stay', emoji: '🏨', icon: BedDouble, catIds: ['hotel'] },
