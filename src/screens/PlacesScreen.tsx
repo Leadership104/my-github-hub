@@ -252,6 +252,26 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     await loadFoodGuide(cuisine);
   }, [loadFoodGuide]);
 
+  /* ── Inline chip tap for eat section ── */
+  const selectChip = useCallback(async (chip: { label: string; query: string }) => {
+    if (activeChip?.label === chip.label) {
+      setActiveChip(null);
+      setChipResults([]);
+      return;
+    }
+    setActiveChip(chip);
+    setChipLoading(true);
+    const places = await fetchGooglePlaces('search', { query: `${chip.label} near ${locationName}`, lat, lng, radius: 5000 });
+    const sorted = [...places].sort((a, b) => {
+      if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
+      const distA = a.lat && a.lng ? Math.hypot(a.lat - lat, a.lng - lng) : 999;
+      const distB = b.lat && b.lng ? Math.hypot(b.lat - lat, b.lng - lng) : 999;
+      return distA - distB;
+    });
+    setChipResults(sorted);
+    setChipLoading(false);
+  }, [lat, lng, locationName, activeChip]);
+
   // Place detail view
   if (view === 'detail' && selectedPlace) {
     const backView = selectedPlace ? (foodGuidePlaces.length > 0 ? 'section' : 'subcategory') : 'subcategory';
