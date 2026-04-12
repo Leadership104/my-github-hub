@@ -274,7 +274,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   // Place detail view
   if (view === 'detail' && selectedPlace) {
-    const backView = selectedPlace ? (foodGuidePlaces.length > 0 ? 'section' : 'subcategory') : 'subcategory';
+    const backView = activeChip || foodGuidePlaces.length > 0 || chipResults.length > 0 ? 'section' : 'subcategory';
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-shrink-0">
