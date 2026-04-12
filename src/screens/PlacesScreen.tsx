@@ -776,36 +776,18 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
             <span className="ms text-sm">location_on</span> {locationName}
           </div>
-
-          {/* If single category, show its subcategory chips directly */}
-          {sectionCats.length === 1 && (CATEGORY_SUBS[sectionCats[0].id] || []).length > 0 && (
-            <div ref={chipsScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
-              {(CATEGORY_SUBS[sectionCats[0].id] || []).map(sub => (
-                <button key={sub.label} onClick={() => openSubResult(sub.label, sub.query)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border bg-card border-border text-foreground hover:shadow-sm transition-all flex-shrink-0">
-                  <span>{sub.emoji}</span> {sub.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
         <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
-          {sectionCats.length > 1 ? (
-            <>
-              <p className="text-sm text-muted-foreground mb-4">Choose a category:</p>
-              <div className="grid grid-cols-2 gap-3">
-                {sectionCats.map(cat => (
-                  <button key={cat.id} onClick={() => openCategory(cat.id)}
-                    className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-kipita hover:shadow-md transition-all text-center">
-                    <span className="text-3xl">{cat.emoji}</span>
-                    <span className="text-sm font-bold text-foreground">{cat.label}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Tap a type above to find places nearby</p>
-          )}
+          <p className="text-sm text-muted-foreground mb-4">Choose a category:</p>
+          <div className="grid grid-cols-2 gap-3">
+            {sectionCats.map(cat => (
+              <button key={cat.id} onClick={() => openCategory(cat.id)}
+                className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-kipita hover:shadow-md transition-all text-center">
+                <span className="text-3xl">{cat.emoji}</span>
+                <span className="text-sm font-bold text-foreground">{cat.label}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
