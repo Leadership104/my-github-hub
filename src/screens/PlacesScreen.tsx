@@ -663,121 +663,107 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     // For 'eat' section, integrate food guide at top
     if (selectedSection === 'eat') {
       const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const seen = new Set<string>();
+      const allChips: { label: string; query: string; emoji: string; key: string }[] = [];
+      sectionCats.forEach(cat => {
+        (CATEGORY_SUBS[cat.id] || []).forEach(sub => {
+          const norm = sub.label.toLowerCase().replace(/[^a-z]/g, '');
+          if (!seen.has(norm)) {
+            seen.add(norm);
+            allChips.push({ ...sub, key: `${cat.id}-${sub.label}` });
+          }
+        });
+      });
+
+      const displayPlaces = activeChip ? chipResults : foodGuidePlaces;
+      const isLoading = activeChip ? chipLoading : foodGuideLoading;
+      const heading = activeChip ? activeChip.label : '🍴 Nearby Now';
+
       return (
         <div className="flex flex-col h-full overflow-hidden">
           <div className="px-5 pt-5 pb-2 flex-shrink-0">
-            <button onClick={() => { setView('main'); setSelectedSection(null); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <button onClick={() => { setView('main'); setSelectedSection(null); setActiveChip(null); setChipResults([]); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
               <span className="ms text-lg">arrow_back</span> Back
             </button>
-            <div className="flex items-center gap-3">
-              <UtensilsCrossed className="w-7 h-7 text-foreground" />
-              <h2 className="text-xl font-extrabold">Food & Drinks</h2>
-            </div>
+            <h2 className="text-xl font-extrabold">Food & Drinks</h2>
             <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
               <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {locationName}</span>
               <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {currentTime}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
 
-            {/* Unified browse chips — deduplicated, horizontal scroll */}
+            {/* Chips row */}
             <div ref={chipsScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
-              {(() => {
-                const seen = new Set<string>();
-                const allChips: { label: string; query: string; emoji: string; key: string }[] = [];
-                sectionCats.forEach(cat => {
-                  (CATEGORY_SUBS[cat.id] || []).forEach(sub => {
-                    const norm = sub.label.toLowerCase().replace(/[^a-z]/g, '');
-                    if (!seen.has(norm)) {
-                      seen.add(norm);
-                      allChips.push({ ...sub, key: `${cat.id}-${sub.label}` });
-                    }
-                  });
-                });
-                return allChips.map(chip => (
-                  <button key={chip.key} onClick={() => openSubResult(chip.label, chip.query)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border bg-card border-border text-foreground hover:shadow-sm transition-all flex-shrink-0">
-                    <span>{chip.emoji}</span> {chip.label}
-                  </button>
-                ));
-              })()}
+              {allChips.map(chip => (
+                <button key={chip.key} onClick={() => selectChip(chip)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                    ${activeChip?.label === chip.label
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-card border-border text-foreground hover:shadow-sm'
+                    }`}>
+                  <span>{chip.emoji}</span> {chip.label}
+                </button>
+              ))}
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+            <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
-            <h3 className="text-sm font-bold text-foreground">🍴 Nearby Now</h3>
-
-            {foodGuideLoading ? (
+            {isLoading ? (
               <div className="space-y-3">
-                {[1, 2, 3, 4].map(i => (
+                {[1, 2, 3].map(i => (
                   <div key={i} className="bg-card border border-border rounded-kipita overflow-hidden animate-pulse">
                     <div className="flex gap-3 p-4">
-                      <div className="w-20 h-20 bg-muted rounded-xl flex-shrink-0" />
+                      <div className="w-16 h-16 bg-muted rounded-xl flex-shrink-0" />
                       <div className="flex-1 space-y-2">
                         <div className="h-4 bg-muted rounded w-3/4" />
                         <div className="h-3 bg-muted rounded w-1/2" />
-                        <div className="flex gap-2">
-                          <div className="h-5 bg-muted rounded-full w-14" />
-                          <div className="h-5 bg-muted rounded-full w-16" />
-                        </div>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            ) : foodGuidePlaces.length === 0 ? (
+            ) : displayPlaces.length === 0 ? (
               <div className="text-center py-12">
-                <span className="text-4xl block mb-3">🍽️</span>
-                <p className="text-sm font-semibold text-foreground">No open restaurants found</p>
-                <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or check back later</p>
+                <span className="text-3xl block mb-2">🍽️</span>
+                <p className="text-sm font-semibold text-foreground">No places found</p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
               </div>
-            ) : foodGuidePlaces.map((p, i) => {
+            ) : displayPlaces.map((p, i) => {
               const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
               const driveTime = distKm ? estimateDriveTime(distKm) : null;
-              const mustTry = extractMustTry(p.reviews);
-              const closingSoon = isClosingSoon(p.closingTime);
 
               return (
                 <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
                   className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
-                  <div className="flex gap-3 p-4">
-                    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                  <div className="flex gap-3 p-3">
+                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
                       {p.photoUrl ? (
                         <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
+                        <div className="w-full h-full flex items-center justify-center text-xl">📍</div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-sm truncate">{p.name}</div>
-                      {p.typeLabel && <div className="text-[10px] text-muted-foreground">{p.typeLabel}</div>}
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                         {p.rating && (
                           <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
                             <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
                           </span>
                         )}
-                        {p.reviewCount > 0 && <span className="text-[10px] text-muted-foreground">({p.reviewCount.toLocaleString()})</span>}
+                        {p.openNow !== null && (
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.openNow ? 'bg-green-50 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                            {p.openNow ? 'OPEN' : 'CLOSED'}
+                          </span>
+                        )}
                         {driveTime && (
                           <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
                             <Navigation className="w-2.5 h-2.5" /> {driveTime}
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">OPEN</span>
-                        {p.closingTime && (
-                          <span className={`text-[10px] ${closingSoon ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}`}>
-                            {closingSoon ? '⚠ Closing soon' : `Closes ${p.closingTime}`}
-                          </span>
-                        )}
-                      </div>
-                      {mustTry && (
-                        <div className="flex items-center gap-1 mt-1.5 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit max-w-full truncate">
-                          <ChefHat className="w-2.5 h-2.5 flex-shrink-0" />
-                          <span className="truncate">{mustTry}</span>
-                        </div>
-                      )}
+                      {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
                     </div>
                   </div>
                 </button>
