@@ -1051,7 +1051,28 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <button key={section.id} onClick={() => {
               setSelectedSection(section.id);
               setView('section');
-              if (section.id === 'eat') loadFoodGuide('all');
+              setActiveChip(null);
+              setChipResults([]);
+              if (section.id === 'eat') {
+                loadFoodGuide('all');
+              } else {
+                // Auto-select the first chip for all non-eat sections
+                const sectionCats = categories.filter(c => section.catIds.includes(c.id));
+                const firstChips: { label: string; query: string; emoji: string }[] = [];
+                for (const cat of sectionCats) {
+                  const subs = CATEGORY_SUBS[cat.id] || [];
+                  if (subs.length > 0) {
+                    firstChips.push(subs[0]);
+                    break;
+                  } else {
+                    firstChips.push({ label: cat.label, query: cat.query, emoji: cat.emoji });
+                    break;
+                  }
+                }
+                if (firstChips.length > 0) {
+                  selectChip(firstChips[0]);
+                }
+              }
             }}
               className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98]">
               <span className="text-2xl">{section.emoji}</span>
