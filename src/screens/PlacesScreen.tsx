@@ -60,39 +60,48 @@ function estimateDriveTime(distKm: number): string {
 /* ── Extract must-try dish from reviews ── */
 function extractMustTry(reviews: LivePlace['reviews']): string | null {
   if (!reviews || reviews.length === 0) return null;
-  // Food-related keywords to look for in reviews
-  const foodPatterns = [
+
+  // Words that indicate a specific dish/food item (not the restaurant itself)
+  const dishIndicators = /\b(dish|plate|bowl|burger|pizza|pasta|steak|sushi|taco|curry|soup|salad|sandwich|wrap|noodle|rice|chicken|beef|pork|lamb|fish|seafood|shrimp|lobster|crab|dumpling|roll|fries|wings|ribs|brisket|ramen|pho|pad\s?thai|burrito|enchilada|falafel|kebab|gyro|panini|croissant|waffle|pancake|omelet|brunch|appetizer|dessert|cake|pie|gelato|latte|mocha|espresso|cocktail|margarita)\b/i;
+
+  // Patterns that capture specific dish names
+  const dishPatterns = [
     /must.?try[:\s]+(?:the\s+)?([^.!,]{3,40})/i,
-    /recommend[:\s]+(?:the\s+)?([^.!,]{3,40})/i,
+    /(?:order|get|have)\s+(?:the\s+)?([^.!,]{3,40})/i,
+    /recommend\s+(?:the\s+)?([^.!,]{3,40})/i,
     /best\s+([^.!,]{3,30})\s+(?:I've|i've|we've|ever)/i,
-    /amazing\s+([^.!,]{3,30})/i,
-    /incredible\s+([^.!,]{3,30})/i,
-    /outstanding\s+([^.!,]{3,30})/i,
+    /(?:the\s+)?([^.!,]{3,30})\s+(?:was|is|were)\s+(?:incredible|amazing|outstanding|excellent|perfect|delicious|phenomenal|to die for)/i,
     /try\s+(?:the\s+)?([^.!,]{3,30})/i,
     /loved\s+(?:the\s+)?([^.!,]{3,30})/i,
-    /(\w+\s+\w+(?:\s+\w+)?)\s+(?:was|is|were)\s+(?:incredible|amazing|outstanding|excellent|perfect|delicious)/i,
+    /delicious\s+([^.!,]{3,30})/i,
   ];
+
+  // Non-food words to reject
+  const rejectPattern = /^(place|restaurant|service|staff|waiter|waitress|server|view|atmosphere|experience|visit|time|location|spot|establishment|area|ambiance|decor|parking|vibe|music|owner|management|prices?|value|deal|menu|portion|quality)/i;
 
   for (const review of reviews) {
     if (review.rating < 4) continue;
-    for (const pattern of foodPatterns) {
+    for (const pattern of dishPatterns) {
       const match = review.text.match(pattern);
       if (match?.[1]) {
         const dish = match[1].trim();
-        // Filter out non-food phrases
-        if (dish.length > 3 && dish.length < 40 && !dish.match(/^(place|restaurant|service|staff|waiter|view|atmosphere|experience|visit|time)/i)) {
+        // Must mention a food-like word AND not be a generic phrase about the restaurant
+        if (dish.length > 3 && dish.length < 40 && !rejectPattern.test(dish) && dishIndicators.test(dish)) {
           return dish.charAt(0).toUpperCase() + dish.slice(1);
         }
       }
     }
   }
 
-  // Fallback: look for the most-mentioned food words in 4-5 star reviews
-  const topReview = reviews.find(r => r.rating >= 4 && r.text.length > 20);
-  if (topReview) {
-    // Extract first sentence as a highlight
-    const firstSentence = topReview.text.split(/[.!]/)[0]?.trim();
-    if (firstSentence && firstSentence.length < 60) return `"${firstSentence}"`;
+  // Fallback: scan for sentences that mention a specific dish
+  for (const review of reviews) {
+    if (review.rating < 4 || review.text.length < 20) continue;
+    const sentences = review.text.split(/[.!]/).map(s => s.trim()).filter(s => s.length > 10 && s.length < 60);
+    for (const sentence of sentences) {
+      if (dishIndicators.test(sentence) && !rejectPattern.test(sentence)) {
+        return `"${sentence}"`;
+      }
+    }
   }
   return null;
 }
@@ -211,7 +220,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setFoodGuideLoading(true);
     const query = cuisine === 'all'
       ? `restaurants near ${locationName}`
-      : `authentic ${cuisine} restaurant near ${locationName}`;
+      : `authentic ${cuisine} food restaurant -fusion near ${locationName}`;
     const places = await fetchGooglePlaces('search', { query, lat, lng, radius: 8000 }); // ~10 min drive radius
 
     const now = new Date();
