@@ -180,11 +180,7 @@ export function useMetalPrices() {
         if (spot?.platinum) list.push({ symbol: 'XPT', label: 'Platinum', price: '$' + Number(spot.platinum).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' / oz' });
         setMetals(list);
       }).catch(() => {
-        setMetals([
-          { symbol: 'XAU', label: 'Gold', price: '~$3,100 / oz' },
-          { symbol: 'XAG', label: 'Silver', price: '~$34 / oz' },
-          { symbol: 'XPT', label: 'Platinum', price: '~$990 / oz' },
-        ]);
+        setMetals([]);
       });
   }, []);
   return metals;
@@ -218,16 +214,7 @@ export function useBTCMerchants(lat: number, lng: number) {
         setMerchants(els.slice(0, 100));
       })
       .catch(() => {
-        const baseLat = lat || 40.7128;
-        const baseLng = lng || -74.006;
-        const demoNames = ['Lightning Café', 'Satoshi Market', 'BTC Corner Shop', 'Crypto Bistro', 'Bitcoin Hub', 'Digital Pay'];
-        setMerchants(demoNames.map(name => ({
-          lat: baseLat + (Math.random() - .5) * 0.05,
-          lng: baseLng + (Math.random() - .5) * 0.05,
-          name,
-          type: 'BTC Merchant',
-          source: 'btcmap' as const,
-        })));
+        setMerchants([]);
       })
       .finally(() => setLoading(false));
   }, [lat, lng]);
@@ -261,7 +248,7 @@ export function useCurrencyConverter() {
       .then(r => r.json())
       .then(d => setRates(d.rates || {}))
       .catch(() => {
-        setRates({ USD: 1, EUR: 0.92, GBP: 0.78, JPY: 149.5, CNY: 7.25, CHF: 0.89, THB: 34.5, IDR: 16300, BRL: 5.85, AED: 3.67, SGD: 1.35 });
+        setRates({});
       });
   }, []);
   const convert = useCallback((amount: number, from: string, to: string, btcPrice?: number) => {
