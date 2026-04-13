@@ -903,11 +903,38 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       );
     }
 
-    // Default section view for other sections (transport, health, etc.)
+    // Default section view for other sections (transport, health, explore, library, atm)
+    // Uses same inline chips + results pattern as eat/shop/stay
+    const seen = new Set<string>();
+    const allChips: { label: string; query: string; emoji: string; key: string }[] = [];
+    sectionCats.forEach(cat => {
+      const subs = CATEGORY_SUBS[cat.id] || [];
+      if (subs.length > 0) {
+        subs.forEach(sub => {
+          const norm = sub.label.toLowerCase().replace(/[^a-z]/g, '');
+          if (!seen.has(norm)) {
+            seen.add(norm);
+            allChips.push({ ...sub, key: `${cat.id}-${sub.label}` });
+          }
+        });
+      } else {
+        // No subs — use the category itself as a chip
+        const norm = cat.label.toLowerCase().replace(/[^a-z]/g, '');
+        if (!seen.has(norm)) {
+          seen.add(norm);
+          allChips.push({ label: cat.label, query: cat.query, emoji: cat.emoji, key: cat.id });
+        }
+      }
+    });
+
+    const displayPlaces = activeChip ? chipResults : [];
+    const isLoading = activeChip ? chipLoading : false;
+    const heading = activeChip ? activeChip.label : `${section?.emoji} Tap a category to explore`;
+
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        <div className="px-5 pt-5 pb-3 flex-shrink-0">
-          <button onClick={() => { setView('main'); setSelectedSection(null); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+        <div className="px-5 pt-5 pb-2 flex-shrink-0">
+          <button onClick={() => { setView('main'); setSelectedSection(null); setActiveChip(null); setChipResults([]); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
             <span className="ms text-lg">arrow_back</span> Back
           </button>
           <div className="flex items-center gap-3">
@@ -917,17 +944,89 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
             <span className="ms text-sm">location_on</span> {locationName}
           </div>
-        </div>
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3">
-          <div className="grid grid-cols-2 gap-3">
-            {sectionCats.map(cat => (
-              <button key={cat.id} onClick={() => openCategory(cat.id)}
-                className="flex flex-col items-center gap-3 p-5 bg-card border border-border rounded-kipita hover:shadow-md transition-all text-center">
-                <span className="text-3xl">{cat.emoji}</span>
-                <span className="text-sm font-bold text-foreground">{cat.label}</span>
+
+          <div ref={chipsScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
+            {allChips.map(chip => (
+              <button key={chip.key} onClick={() => selectChip(chip)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                  ${activeChip?.label === chip.label
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-card border-border text-foreground hover:shadow-sm'
+                  }`}>
+                <span>{chip.emoji}</span> {chip.label}
               </button>
             ))}
           </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          <h3 className="text-sm font-bold text-foreground">{heading}</h3>
+
+          {isLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="bg-card border border-border rounded-kipita overflow-hidden animate-pulse">
+                  <div className="flex gap-3 p-4">
+                    <div className="w-14 h-14 bg-muted rounded-xl flex-shrink-0" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : displayPlaces.length === 0 && !activeChip ? (
+            <div className="text-center py-12">
+              <span className="text-3xl block mb-2">{section?.emoji}</span>
+              <p className="text-xs text-muted-foreground mt-1">Select a chip above to see results</p>
+            </div>
+          ) : displayPlaces.length === 0 ? (
+            <div className="text-center py-12">
+              <span className="text-3xl block mb-2">{section?.emoji}</span>
+              <p className="text-sm font-semibold text-foreground">No places found</p>
+              <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
+            </div>
+          ) : displayPlaces.map((p, i) => {
+            const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
+            const driveTime = distKm ? estimateDriveTime(distKm) : null;
+
+            return (
+              <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
+                className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
+                <div className="flex gap-3 p-3">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                    {p.photoUrl ? (
+                      <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xl">📍</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-bold text-sm truncate">{p.name}</div>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {p.rating && (
+                        <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
+                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
+                        </span>
+                      )}
+                      {p.openNow !== null && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.openNow ? 'bg-green-50 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                          {p.openNow ? 'OPEN' : 'CLOSED'}
+                        </span>
+                      )}
+                      {driveTime && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                          <Navigation className="w-2.5 h-2.5" /> {driveTime}
+                        </span>
+                      )}
+                    </div>
+                    {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     );
