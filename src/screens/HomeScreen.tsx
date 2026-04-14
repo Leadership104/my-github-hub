@@ -43,7 +43,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { emoji: '🍽️', label: 'Food', action: () => onSwitchTab('places', 'food') },
     { emoji: '☕', label: 'Coffee', action: () => onSwitchTab('places', 'cafe') },
     { emoji: '⛽', label: 'Gas', action: () => onSwitchTab('places', 'gas') },
-    { emoji: '💊', label: 'Pharmacy', action: () => onSwitchTab('places', 'pharmacy') },
+    { emoji: '🏥', label: 'Medical', action: () => onSwitchTab('places', 'medical') },
     { emoji: '🏧', label: 'ATM', action: () => onSwitchTab('maps', 'atm') },
     { emoji: '🚇', label: 'Transit', action: () => onSwitchTab('places', 'transport') },
   ];
