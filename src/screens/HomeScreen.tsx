@@ -39,13 +39,22 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   const flag = codeToFlag(countryCode);
   const displayAddress = fullAddress || locationName;
 
+  const essentials = [
+    { emoji: '🍽️', label: 'Food', action: () => onSwitchTab('places', 'food') },
+    { emoji: '☕', label: 'Coffee', action: () => onSwitchTab('places', 'cafe') },
+    { emoji: '⛽', label: 'Gas', action: () => onSwitchTab('places', 'gas') },
+    { emoji: '💊', label: 'Pharmacy', action: () => onSwitchTab('places', 'pharmacy') },
+    { emoji: '🏧', label: 'ATM', action: () => onSwitchTab('maps', 'atm') },
+    { emoji: '🚇', label: 'Transit', action: () => onSwitchTab('places', 'transport') },
+  ];
+
   const quickTools = [
     { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
-    { emoji: '🏧', label: 'ATM Finder', action: () => onSwitchTab('maps', 'atm') },
     { emoji: '💱', label: 'Currency', action: () => onSwitchTab('wallet') },
     { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('maps', 'hospital') },
     { emoji: '🗺️', label: 'Maps', action: () => onSwitchTab('maps') },
     { emoji: '👥', label: 'Groups', action: () => onSwitchTab('groups') },
+    { emoji: '🔍', label: 'Places', action: () => onSwitchTab('places') },
   ];
 
   /* Traffic-light dots for safety level */
@@ -98,6 +107,30 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       )}
 
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
+        {/* Essentials */}
+        <h3 className="text-sm font-bold text-foreground mb-3">Essentials</h3>
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {essentials.map(t => (
+            <button key={t.label} onClick={t.action}
+              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
+              <span className="text-2xl">{t.emoji}</span>
+              <span className="text-xs font-semibold text-foreground">{t.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Quick Tools */}
+        <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {quickTools.map(t => (
+            <button key={t.label} onClick={t.action}
+              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
+              <span className="text-2xl">{t.emoji}</span>
+              <span className="text-xs font-semibold text-foreground">{t.label}</span>
+            </button>
+          ))}
+        </div>
+
         {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
           className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-5 text-left hover:scale-[1.01] transition-transform">
@@ -129,7 +162,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
         {/* Upside */}
         <a href="https://upside.com/" target="_blank" rel="noopener noreferrer"
-          className="block w-full bg-gradient-to-r from-kipita-green to-emerald-500 rounded-kipita p-4 mb-5 hover:opacity-90 transition-opacity no-underline">
+          className="block w-full bg-gradient-to-r from-kipita-green to-emerald-500 rounded-kipita p-4 mb-6 hover:opacity-90 transition-opacity no-underline">
           <div className="flex items-center gap-3">
             <span className="text-3xl">⛽</span>
             <div className="flex-1">
@@ -139,18 +172,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <span className="ms text-white/60 text-xl">chevron_right</span>
           </div>
         </a>
-
-        {/* Quick Tools — utility section */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {quickTools.map(t => (
-            <button key={t.label} onClick={t.action}
-              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
-            </button>
-          ))}
-        </div>
       </div>
     </div>
   );
