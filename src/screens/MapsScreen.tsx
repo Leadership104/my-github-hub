@@ -159,7 +159,10 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   const markersRef = useRef<L.Marker[]>([]);
   const categories = getCategories();
 
-  const [filter, setFilter] = useState(initialFilter || 'btc');
+  const [filter, setFilter] = useState(initialFilter || 'food');
+  const [showSafety, setShowSafety] = useState(false);
+  const [safetyData, setSafetyData] = useState<{ aqi: number; aqiLabel: string; healthTips: string[]; securityTips: string[]; emergencyNumbers: { label: string; number: string }[]; pollutionLevel: string } | null>(null);
+  const [safetyLoading, setSafetyLoading] = useState(false);
   const [subFilter, setSubFilter] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState(false);
