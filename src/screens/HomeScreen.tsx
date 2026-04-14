@@ -32,6 +32,14 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
           <span className="ms text-lg">search</span>
           Search destinations, hotels, flights…
         </button>
+        <button className="mt-3 flex items-center gap-1.5 text-white/60 text-xs font-medium">
+          <span>{weather.emoji}</span>
+          <span>{weather.temp}</span>
+          <span>·</span>
+          <span>{weather.desc}</span>
+          <span>·</span>
+          <span>{locationName}</span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-24">
