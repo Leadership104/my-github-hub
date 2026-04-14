@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DESTINATIONS, TRANSPORT_LINKS, PERKS } from '../data';
 import type { TabId } from '../types';
 
