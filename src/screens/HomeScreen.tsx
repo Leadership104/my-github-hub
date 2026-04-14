@@ -1,23 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { DESTINATIONS, TRANSPORT_LINKS, PERKS } from '../data';
 import type { TabId } from '../types';
+import type { ForecastDay } from '../hooks';
+
+/* Country code → flag emoji */
+const codeToFlag = (code?: string) => {
+  if (!code || code.length !== 2) return '🌍';
+  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+};
+
+/* Safety advisory text from score */
+const advisoryText = (score?: number) => {
+  if (!score) return { text: 'No data', level: 0 };
+  if (score >= 8.5) return { text: 'Exercise normal precautions', level: 3 };
+  if (score >= 7) return { text: 'Exercise increased caution', level: 2 };
+  if (score >= 5) return { text: 'Reconsider travel', level: 1 };
+  return { text: 'Do not travel', level: 0 };
+};
 
 interface Props {
   weather: { emoji: string; temp: string; desc: string };
+  forecast: ForecastDay[];
   locationName: string;
+  fullAddress?: string;
+  countryCode?: string;
   onSwitchTab: (tab: TabId, hint?: string) => void;
 }
 
-export default function HomeScreen({ weather, locationName, onSwitchTab }: Props) {
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning ✈️' : hour < 18 ? 'Good afternoon 🌤️' : 'Good evening 🌙';
+export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
+  const [showForecast, setShowForecast] = useState(false);
+  const [showSafetyDetail, setShowSafetyDetail] = useState(false);
 
-  // Find a matching destination for safety score
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+
   const safetyDest = DESTINATIONS.find(d =>
     locationName.toLowerCase().includes(d.city.toLowerCase()) ||
     locationName.toLowerCase().includes(d.country.toLowerCase())
   );
   const safetyScore = safetyDest?.safetyScore;
+  const advisory = advisoryText(safetyScore);
+  const flag = codeToFlag(countryCode);
+  const displayAddress = fullAddress || locationName;
 
   const quickTools = [
     { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
@@ -28,59 +52,105 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
     { emoji: '👥', label: 'Groups', action: () => onSwitchTab('groups') },
   ];
 
+  /* Traffic-light dots for safety level */
+  const safetyDots = (level: number) => (
+    <div className="flex flex-col gap-[2px]">
+      <span className={`w-[8px] h-[8px] rounded-full ${level <= 0 ? 'bg-red-500' : 'bg-red-500/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level <= 1 ? 'bg-orange-400' : 'bg-orange-400/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level >= 2 ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level >= 3 ? 'bg-green-500' : 'bg-green-500/20'}`} />
+    </div>
+  );
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Compact dark header */}
-      <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-5 pt-3 pb-3 flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-white/70 text-xs font-medium">{greeting}</p>
-            <h1 className="text-white text-xl font-extrabold">Where to next?</h1>
-          </div>
-          {safetyScore && (
-            <div className="flex flex-col items-center bg-white/10 rounded-lg px-3 py-1.5">
-              <span className="text-[10px] text-white/60 font-medium">Safety</span>
-              <span className={`text-sm font-extrabold ${safetyScore >= 8 ? 'text-kipita-green' : safetyScore >= 6 ? 'text-yellow-400' : 'text-kipita-red'}`}>{safetyScore}/10</span>
-            </div>
-          )}
-        </div>
-        <button onClick={() => onSwitchTab('places')}
-          className="mt-2 w-full flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-white/60 text-sm">
-          <span className="ms text-lg">search</span>
-          Search destinations, hotels, flights…
-        </button>
+      {/* Greeting bar */}
+      <div className="bg-card px-5 pt-3 pb-2 flex-shrink-0">
+        <p className="text-muted-foreground text-xs font-medium">{greeting}</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-24">
-        {/* Quick Tools */}
+      {/* Location + Safety advisory bar */}
+      <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl flex-shrink-0">{flag}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-white text-xs font-medium truncate leading-tight">{displayAddress}</p>
+          </div>
+          <button onClick={() => setShowSafetyDetail(!showSafetyDetail)}
+            className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-white/80 text-[11px] font-semibold text-right leading-tight max-w-[100px]">{advisory.text}</span>
+            <span className="text-white/40 text-xs">▸</span>
+            {safetyDots(advisory.level)}
+          </button>
+        </div>
+      </div>
+
+      {/* Safety detail expandable */}
+      {showSafetyDetail && safetyDest && (
+        <div className="bg-card border-b border-border px-4 py-3 space-y-2 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground">Safety Details — {safetyDest.city}</span>
+            <span className={`text-sm font-extrabold ${safetyScore! >= 8 ? 'text-kipita-green' : safetyScore! >= 6 ? 'text-yellow-500' : 'text-kipita-red'}`}>{safetyScore}/10</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-muted rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">Monthly Cost</p>
+              <p className="text-xs font-bold">${safetyDest.monthlyCost.toLocaleString()}</p>
+            </div>
+            <div className="bg-muted rounded-lg p-2">
+              <p className="text-[10px] text-muted-foreground">Internet</p>
+              <p className="text-xs font-bold">{safetyDest.speed} Mbps</p>
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">{safetyDest.desc}</p>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
+        {/* Weather — tappable for forecast */}
+        <button onClick={() => setShowForecast(!showForecast)}
+          className="w-full flex items-center gap-3 bg-card border border-border rounded-kipita p-3 mb-4 text-left hover:shadow-md transition-all">
+          <span className="text-3xl">{weather.emoji}</span>
+          <div className="flex-1">
+            <div className="text-lg font-extrabold text-foreground">{weather.temp}F</div>
+            <div className="text-xs text-muted-foreground">{weather.desc} · {locationName}</div>
+          </div>
+          <span className="ms text-muted-foreground text-lg">{showForecast ? 'expand_less' : 'expand_more'}</span>
+        </button>
+
+        {/* 5-day forecast */}
+        {showForecast && forecast.length > 0 && (
+          <div className="bg-card border border-border rounded-kipita p-3 mb-4 space-y-1.5">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1">5-Day Forecast</p>
+            {forecast.map(f => (
+              <div key={f.date} className="flex items-center gap-3 py-1">
+                <span className="text-xs font-bold w-10 text-foreground">{f.dayName}</span>
+                <span className="text-lg">{f.emoji}</span>
+                <span className="text-xs text-muted-foreground flex-1">{f.desc}</span>
+                <span className="text-xs font-bold text-foreground">{f.high}°</span>
+                <span className="text-xs text-muted-foreground">{f.low}°</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Quick Tools — most used */}
         <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div className="grid grid-cols-3 gap-3 mb-5">
           {quickTools.map(t => (
             <button key={t.label} onClick={t.action}
-              className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
+              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
               <span className="text-2xl">{t.emoji}</span>
               <span className="text-xs font-semibold text-foreground">{t.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Book Transport */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Book Transport</h3>
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          {TRANSPORT_LINKS.map(t => (
-            <a key={t.label} href={t.url} target="_blank" rel="noopener noreferrer"
-              className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all no-underline">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
-            </a>
-          ))}
-        </div>
-
         {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
-          className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-6 text-left hover:scale-[1.01] transition-transform">
-          <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-            <span className="ms text-white text-2xl">auto_awesome</span>
+          className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-5 text-left hover:scale-[1.01] transition-transform">
+          <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center">
+            <span className="ms text-white text-xl">auto_awesome</span>
           </div>
           <div className="flex-1">
             <div className="text-white font-extrabold text-sm">Kipita AI</div>
@@ -89,9 +159,21 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
           <span className="ms text-white/40 text-xl">chevron_right</span>
         </button>
 
+        {/* Book Transport */}
+        <h3 className="text-sm font-bold text-foreground mb-3">Book Transport</h3>
+        <div className="grid grid-cols-3 gap-3 mb-5">
+          {TRANSPORT_LINKS.map(t => (
+            <a key={t.label} href={t.url} target="_blank" rel="noopener noreferrer"
+              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all no-underline">
+              <span className="text-2xl">{t.emoji}</span>
+              <span className="text-xs font-semibold text-foreground">{t.label}</span>
+            </a>
+          ))}
+        </div>
+
         {/* Perks & Deals */}
         <h3 className="text-sm font-bold text-foreground mb-3">🎁 Perks & Deals</h3>
-        <div className="space-y-2 mb-6">
+        <div className="space-y-2 mb-5">
           {PERKS.filter(p => p.category === 'btc').slice(0, 3).map(p => (
             <a key={p.title} href={p.url} target="_blank" rel="noopener noreferrer"
               className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:shadow-md transition-all no-underline">
@@ -105,19 +187,18 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
           ))}
         </div>
 
-        {/* Upside — Cash Back */}
+        {/* Upside */}
         <a href="https://upside.com/" target="_blank" rel="noopener noreferrer"
           className="block w-full bg-gradient-to-r from-green-600 to-emerald-500 rounded-kipita p-4 mb-6 hover:opacity-90 transition-opacity no-underline">
           <div className="flex items-center gap-3">
             <span className="text-3xl">⛽</span>
             <div className="flex-1">
               <div className="text-white font-extrabold text-sm">Upside — Cash Back</div>
-              <div className="text-white/70 text-xs mt-0.5">Earn cash back on gas, food & groceries every time you fill up.</div>
+              <div className="text-white/70 text-xs mt-0.5">Earn cash back on gas, food & groceries.</div>
             </div>
             <span className="ms text-white/60 text-xl">chevron_right</span>
           </div>
         </a>
-
       </div>
     </div>
   );
