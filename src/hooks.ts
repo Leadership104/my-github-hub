@@ -80,6 +80,8 @@ export interface LocationState {
   lat: number;
   lng: number;
   name: string;
+  fullAddress?: string;
+  countryCode?: string;
 }
 
 export function useLocation() {
@@ -92,12 +94,13 @@ export function useLocation() {
       async (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords;
         try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`);
           const d = await r.json();
           const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || '';
           const country = d.address?.country_code?.toUpperCase() || '';
           const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
-          setLocation({ lat, lng, name });
+          const fullAddress = d.display_name || name;
+          setLocation({ lat, lng, name, fullAddress, countryCode: country });
         } catch { setLocation({ lat, lng, name: 'GPS Active' }); }
         setDetected(true);
       },
@@ -134,20 +137,40 @@ const WX_CODES: Record<number, [string, string]> = {
   95: ['⛈️', 'Thunderstorm'], 99: ['⛈️', 'Heavy storm'],
 };
 
+export interface ForecastDay {
+  date: string;
+  dayName: string;
+  high: number;
+  low: number;
+  emoji: string;
+  desc: string;
+}
+
 export function useWeather(lat: number, lng: number) {
   const [weather, setWeather] = useState({ emoji: '🌤️', temp: '--', desc: 'Loading…' });
+  const [forecast, setForecast] = useState<ForecastDay[]>([]);
   useEffect(() => {
     if (!lat || !lng) return;
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&temperature_unit=fahrenheit`)
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=5`)
       .then(r => r.json())
       .then(d => {
         const temp = Math.round(d.current?.temperature_2m ?? 0);
         const code = d.current?.weather_code ?? 0;
         const [emoji, desc] = WX_CODES[code] || ['🌤️', 'Clear'];
         setWeather({ emoji, temp: temp + '°', desc });
+        if (d.daily) {
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          const fc: ForecastDay[] = (d.daily.time || []).map((t: string, i: number) => {
+            const dt = new Date(t + 'T12:00:00');
+            const wc = d.daily.weather_code?.[i] ?? 0;
+            const [em, ds] = WX_CODES[wc] || ['🌤️', 'Clear'];
+            return { date: t, dayName: i === 0 ? 'Today' : days[dt.getDay()], high: Math.round(d.daily.temperature_2m_max[i]), low: Math.round(d.daily.temperature_2m_min[i]), emoji: em, desc: ds };
+          });
+          setForecast(fc);
+        }
       }).catch(() => {});
   }, [lat, lng]);
-  return weather;
+  return { ...weather, forecast };
 }
 
 export function useCryptoPrices() {
