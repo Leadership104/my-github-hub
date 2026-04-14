@@ -32,7 +32,7 @@ interface Props {
   locationName?: string;
   lat?: number;
   lng?: number;
-  initialView?: 'phrases' | 'destinations';
+  initialView?: string;
 }
 
 async function fetchGooglePlaces(action: string, params: Record<string, unknown>): Promise<LivePlace[]> {
