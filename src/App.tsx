@@ -127,6 +127,8 @@ export default function App() {
             const country = item.address?.country_code?.toUpperCase() || '';
             return city + (country ? `, ${country}` : '');
           })(),
+          fullAddress: item.display_name || val,
+          countryCode: item.address?.country_code?.toUpperCase() || '',
         })));
       } catch { setLocationSuggestions([]); }
     }, 400);
