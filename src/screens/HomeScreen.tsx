@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DESTINATIONS, TRANSPORT_LINKS, PERKS } from '../data';
+import { DESTINATIONS, PERKS } from '../data';
 import type { TabId } from '../types';
 import type { ForecastDay } from '../hooks';
 
@@ -28,11 +28,7 @@ interface Props {
 }
 
 export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
-  const [showForecast, setShowForecast] = useState(false);
   const [showSafetyDetail, setShowSafetyDetail] = useState(false);
-
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   const safetyDest = DESTINATIONS.find(d =>
     locationName.toLowerCase().includes(d.city.toLowerCase()) ||
@@ -55,20 +51,15 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   /* Traffic-light dots for safety level */
   const safetyDots = (level: number) => (
     <div className="flex flex-col gap-[2px]">
-      <span className={`w-[8px] h-[8px] rounded-full ${level <= 0 ? 'bg-red-500' : 'bg-red-500/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level <= 0 ? 'bg-destructive' : 'bg-destructive/20'}`} />
       <span className={`w-[8px] h-[8px] rounded-full ${level <= 1 ? 'bg-orange-400' : 'bg-orange-400/20'}`} />
       <span className={`w-[8px] h-[8px] rounded-full ${level >= 2 ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
-      <span className={`w-[8px] h-[8px] rounded-full ${level >= 3 ? 'bg-green-500' : 'bg-green-500/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level >= 3 ? 'bg-kipita-green' : 'bg-kipita-green/20'}`} />
     </div>
   );
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Greeting bar */}
-      <div className="bg-card px-5 pt-3 pb-2 flex-shrink-0">
-        <p className="text-muted-foreground text-xs font-medium">{greeting}</p>
-      </div>
-
       {/* Location + Safety advisory bar */}
       <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
         <div className="flex items-center gap-3">
@@ -107,45 +98,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       )}
 
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
-        {/* Weather — tappable for forecast */}
-        <button onClick={() => setShowForecast(!showForecast)}
-          className="w-full flex items-center gap-3 bg-card border border-border rounded-kipita p-3 mb-4 text-left hover:shadow-md transition-all">
-          <span className="text-3xl">{weather.emoji}</span>
-          <div className="flex-1">
-            <div className="text-lg font-extrabold text-foreground">{weather.temp}F</div>
-            <div className="text-xs text-muted-foreground">{weather.desc} · {locationName}</div>
-          </div>
-          <span className="ms text-muted-foreground text-lg">{showForecast ? 'expand_less' : 'expand_more'}</span>
-        </button>
-
-        {/* 5-day forecast */}
-        {showForecast && forecast.length > 0 && (
-          <div className="bg-card border border-border rounded-kipita p-3 mb-4 space-y-1.5">
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide mb-1">5-Day Forecast</p>
-            {forecast.map(f => (
-              <div key={f.date} className="flex items-center gap-3 py-1">
-                <span className="text-xs font-bold w-10 text-foreground">{f.dayName}</span>
-                <span className="text-lg">{f.emoji}</span>
-                <span className="text-xs text-muted-foreground flex-1">{f.desc}</span>
-                <span className="text-xs font-bold text-foreground">{f.high}°</span>
-                <span className="text-xs text-muted-foreground">{f.low}°</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Quick Tools — most used */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {quickTools.map(t => (
-            <button key={t.label} onClick={t.action}
-              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
-            </button>
-          ))}
-        </div>
-
         {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
           className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-5 text-left hover:scale-[1.01] transition-transform">
@@ -158,18 +110,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           </div>
           <span className="ms text-white/40 text-xl">chevron_right</span>
         </button>
-
-        {/* Book Transport */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Book Transport</h3>
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {TRANSPORT_LINKS.map(t => (
-            <a key={t.label} href={t.url} target="_blank" rel="noopener noreferrer"
-              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all no-underline">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
-            </a>
-          ))}
-        </div>
 
         {/* Perks & Deals */}
         <h3 className="text-sm font-bold text-foreground mb-3">🎁 Perks & Deals</h3>
@@ -189,7 +129,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
         {/* Upside */}
         <a href="https://upside.com/" target="_blank" rel="noopener noreferrer"
-          className="block w-full bg-gradient-to-r from-green-600 to-emerald-500 rounded-kipita p-4 mb-6 hover:opacity-90 transition-opacity no-underline">
+          className="block w-full bg-gradient-to-r from-kipita-green to-emerald-500 rounded-kipita p-4 mb-5 hover:opacity-90 transition-opacity no-underline">
           <div className="flex items-center gap-3">
             <span className="text-3xl">⛽</span>
             <div className="flex-1">
@@ -199,6 +139,18 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <span className="ms text-white/60 text-xl">chevron_right</span>
           </div>
         </a>
+
+        {/* Quick Tools — utility section */}
+        <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          {quickTools.map(t => (
+            <button key={t.label} onClick={t.action}
+              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
+              <span className="text-2xl">{t.emoji}</span>
+              <span className="text-xs font-semibold text-foreground">{t.label}</span>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );
