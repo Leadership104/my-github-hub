@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DESTINATIONS, TRANSPORT_LINKS, PERKS } from '../data';
 import type { TabId } from '../types';
 
@@ -12,6 +12,13 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning ✈️' : hour < 18 ? 'Good afternoon 🌤️' : 'Good evening 🌙';
 
+  // Find a matching destination for safety score
+  const safetyDest = DESTINATIONS.find(d =>
+    locationName.toLowerCase().includes(d.city.toLowerCase()) ||
+    locationName.toLowerCase().includes(d.country.toLowerCase())
+  );
+  const safetyScore = safetyDest?.safetyScore;
+
   const quickTools = [
     { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
     { emoji: '🏧', label: 'ATM Finder', action: () => onSwitchTab('maps', 'atm') },
@@ -23,22 +30,24 @@ export default function HomeScreen({ weather, locationName, onSwitchTab }: Props
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Dark header */}
-      <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-5 pt-5 pb-6 flex-shrink-0">
-        <p className="text-white/70 text-sm font-medium">{greeting}</p>
-        <h1 className="text-white text-2xl font-extrabold mt-1">Where to next?</h1>
+      {/* Compact dark header */}
+      <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-5 pt-3 pb-3 flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-white/70 text-xs font-medium">{greeting}</p>
+            <h1 className="text-white text-xl font-extrabold">Where to next?</h1>
+          </div>
+          {safetyScore && (
+            <div className="flex flex-col items-center bg-white/10 rounded-lg px-3 py-1.5">
+              <span className="text-[10px] text-white/60 font-medium">Safety</span>
+              <span className={`text-sm font-extrabold ${safetyScore >= 8 ? 'text-kipita-green' : safetyScore >= 6 ? 'text-yellow-400' : 'text-kipita-red'}`}>{safetyScore}/10</span>
+            </div>
+          )}
+        </div>
         <button onClick={() => onSwitchTab('places')}
-          className="mt-4 w-full flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-3 text-white/60 text-sm">
+          className="mt-2 w-full flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2.5 text-white/60 text-sm">
           <span className="ms text-lg">search</span>
           Search destinations, hotels, flights…
-        </button>
-        <button className="mt-3 flex items-center gap-1.5 text-white/60 text-xs font-medium">
-          <span>{weather.emoji}</span>
-          <span>{weather.temp}</span>
-          <span>·</span>
-          <span>{weather.desc}</span>
-          <span>·</span>
-          <span>{locationName}</span>
         </button>
       </div>
 
