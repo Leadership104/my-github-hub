@@ -22,18 +22,18 @@ const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
 ];
 
 const PRESET_LOCATIONS: LocationState[] = [
-  { lat: 40.7128, lng: -74.006, name: 'New York, US' },
-  { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, US' },
-  { lat: 41.8781, lng: -87.6298, name: 'Chicago, US' },
-  { lat: 29.7604, lng: -95.3698, name: 'Houston, US' },
-  { lat: 25.7617, lng: -80.1918, name: 'Miami, US' },
-  { lat: 51.5074, lng: -0.1278, name: 'London, UK' },
-  { lat: 48.8566, lng: 2.3522, name: 'Paris, FR' },
-  { lat: 35.6762, lng: 139.6503, name: 'Tokyo, JP' },
-  { lat: 13.7563, lng: 100.5018, name: 'Bangkok, TH' },
-  { lat: 1.3521, lng: 103.8198, name: 'Singapore, SG' },
-  { lat: -33.8688, lng: 151.2093, name: 'Sydney, AU' },
-  { lat: 19.4326, lng: -99.1332, name: 'Mexico City, MX' },
+  { lat: 40.7128, lng: -74.006, name: 'New York, US', countryCode: 'US' },
+  { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, US', countryCode: 'US' },
+  { lat: 41.8781, lng: -87.6298, name: 'Chicago, US', countryCode: 'US' },
+  { lat: 29.7604, lng: -95.3698, name: 'Houston, US', countryCode: 'US' },
+  { lat: 25.7617, lng: -80.1918, name: 'Miami, US', countryCode: 'US' },
+  { lat: 51.5074, lng: -0.1278, name: 'London, UK', countryCode: 'GB' },
+  { lat: 48.8566, lng: 2.3522, name: 'Paris, FR', countryCode: 'FR' },
+  { lat: 35.6762, lng: 139.6503, name: 'Tokyo, JP', countryCode: 'JP' },
+  { lat: 13.7563, lng: 100.5018, name: 'Bangkok, TH', countryCode: 'TH' },
+  { lat: 1.3521, lng: 103.8198, name: 'Singapore, SG', countryCode: 'SG' },
+  { lat: -33.8688, lng: 151.2093, name: 'Sydney, AU', countryCode: 'AU' },
+  { lat: 19.4326, lng: -99.1332, name: 'Mexico City, MX', countryCode: 'MX' },
 ];
 
 const EMERGENCY_NUMBERS: { country: string; police: string; ambulance: string; fire: string }[] = [
@@ -147,12 +147,12 @@ export default function App() {
       async (pos) => {
         const { latitude: lt, longitude: lg } = pos.coords;
         try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lt}&lon=${lg}&format=json`);
+          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lt}&lon=${lg}&format=json&addressdetails=1`);
           const d = await r.json();
           const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || '';
           const country = d.address?.country_code?.toUpperCase() || '';
           const n = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
-          selectLocation({ lat: lt, lng: lg, name: n });
+          selectLocation({ lat: lt, lng: lg, name: n, fullAddress: d.display_name || n, countryCode: country });
         } catch {
           selectLocation({ lat: lt, lng: lg, name: 'Current Location' });
         }
