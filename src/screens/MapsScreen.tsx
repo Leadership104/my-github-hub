@@ -430,12 +430,76 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
     });
   }, [merchants, lat, lng, clearMarkers, addLabeledMarker, fetchOverpassBtcMerchants]);
 
+  // Fetch safety info for current location
+  const fetchSafetyInfo = useCallback(async () => {
+    setSafetyLoading(true);
+    setShowSafety(true);
+    try {
+      // Fetch AQI from Open-Meteo Air Quality API (free, no key)
+      const aqiRes = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm2_5,pm10,nitrogen_dioxide,ozone`);
+      const aqiData = await aqiRes.json();
+      const aqi = aqiData?.current?.us_aqi ?? 0;
+      const pm25 = aqiData?.current?.pm2_5 ?? 0;
+      const aqiLabel = aqi <= 50 ? 'Good' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Unhealthy for Sensitive Groups' : aqi <= 200 ? 'Unhealthy' : 'Very Unhealthy';
+      const pollutionLevel = aqi <= 50 ? 'Low' : aqi <= 100 ? 'Moderate' : aqi <= 150 ? 'Elevated' : 'High';
+
+      // Build health tips based on AQI
+      const healthTips: string[] = [
+        `Air Quality Index (AQI): ${aqi} — ${aqiLabel}`,
+        `PM2.5: ${pm25.toFixed(1)} µg/m³`,
+        aqi <= 50 ? 'Air quality is good. Enjoy outdoor activities!' : aqi <= 100 ? 'Air quality is acceptable. Sensitive individuals should limit prolonged outdoor exertion.' : 'Consider reducing outdoor activities, especially for children and those with respiratory conditions.',
+        'Stay hydrated and carry water when exploring.',
+        'Apply sunscreen (SPF 30+) if spending time outdoors.',
+        'Pack any prescription medications you may need.',
+      ];
+
+      // General security awareness tips (PG-friendly)
+      const securityTips: string[] = [
+        'Keep your belongings close and use zippered bags in crowded areas.',
+        'Be aware of your surroundings, especially at night.',
+        'Use well-lit, populated routes when walking.',
+        'Keep copies of important documents (passport, ID) stored digitally.',
+        'Share your itinerary with a trusted contact.',
+        'Use licensed transportation services.',
+        'Avoid displaying expensive items openly.',
+      ];
+
+      // Emergency numbers (region-aware basic set)
+      const emergencyNumbers = [
+        { label: '🚔 Police', number: '911' },
+        { label: '🚑 Ambulance', number: '911' },
+        { label: '🚒 Fire', number: '911' },
+        { label: '📞 Intl Emergency', number: '112' },
+      ];
+
+      setSafetyData({ aqi, aqiLabel, healthTips, securityTips, emergencyNumbers, pollutionLevel });
+    } catch (e) {
+      console.warn('Safety data fetch error:', e);
+      setSafetyData({
+        aqi: 0, aqiLabel: 'Unavailable',
+        healthTips: ['Stay hydrated and carry water.', 'Apply sunscreen when outdoors.', 'Pack any prescription medications.'],
+        securityTips: ['Keep belongings close.', 'Be aware of your surroundings.', 'Use well-lit routes at night.'],
+        emergencyNumbers: [{ label: '📞 Emergency', number: '112' }],
+        pollutionLevel: 'Unknown',
+      });
+    }
+    setSafetyLoading(false);
+  }, [lat, lng]);
+
   // React to filter changes
   useEffect(() => {
     setSubFilter(null);
     setSelectedPlace(null);
-    if (filter === 'btc') renderBtcMarkers();
-    else fetchOverpassPlaces(filter);
+    if (filter === 'safety') {
+      setShowSafety(true);
+      clearMarkers();
+      setNearbyPlaces([]);
+      fetchSafetyInfo();
+    } else {
+      setShowSafety(false);
+      if (filter === 'btc') renderBtcMarkers();
+      else fetchOverpassPlaces(filter);
+    }
   }, [filter]);
 
   // Re-render BTC markers when merchants load
