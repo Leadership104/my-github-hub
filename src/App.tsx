@@ -201,7 +201,7 @@ export default function App() {
         </div>
         <button onClick={() => setShowLocationPicker(true)}
           className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-muted rounded-full px-4 py-2.5 text-sm font-semibold text-muted-foreground overflow-hidden min-w-0">
-          <span className="ms text-kipita-red text-lg flex-shrink-0">location_on</span>
+          <span className="text-lg flex-shrink-0">{countryCode ? String.fromCodePoint(...[...countryCode.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65)) : '🌍'}</span>
           <span className="truncate">{locationName}</span>
           <span className="ms text-xs text-muted-foreground flex-shrink-0">expand_more</span>
         </button>
