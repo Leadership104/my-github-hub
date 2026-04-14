@@ -1080,7 +1080,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
             </button>
           ))}
         </div>
-      </div>
+      </div>}
     </div>
   );
 }
