@@ -446,8 +446,18 @@ export default function TripsScreen({ trips, onSaveTrips }: Props) {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-5 pt-5 pb-3 flex-shrink-0">
-        <h2 className="text-xl font-extrabold">My Trips</h2>
+      {/* Where to next header */}
+      <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-5 pt-5 pb-5 flex-shrink-0">
+        <h2 className="text-white text-xl font-extrabold">Where to next?</h2>
+        <button onClick={() => setShowAiPlanner(true)}
+          className="mt-3 w-full flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-3 text-white/60 text-sm">
+          <span className="ms text-lg">search</span>
+          Plan your next trip with AI…
+        </button>
+      </div>
+
+      <div className="px-5 pt-4 pb-3 flex-shrink-0">
+        <h3 className="text-base font-extrabold">My Trips</h3>
         <div className="flex gap-2 mt-3">
           {(['upcoming', 'completed'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
