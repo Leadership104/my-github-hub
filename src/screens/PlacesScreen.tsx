@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine } from 'lucide-react';
+import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine, Stethoscope, Dumbbell } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 import { haversine, useDragScroll } from '../hooks';
@@ -163,7 +163,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'money', label: 'ATM', emoji: '🏧', icon: MapPin, catIds: ['atm', 'btcatm'] },
-    { id: 'health', label: 'Health', emoji: '💊', icon: HeartPulse, catIds: ['hospital', 'pharmacy', 'pharmacy24', 'gym', 'spa'] },
+    { id: 'medical', label: 'Medical', emoji: '🏥', icon: Stethoscope, catIds: ['hospital', 'er', 'childrenhospital', 'urgentcare', 'pharmacy', 'pharmacy24', 'dentist'] },
+    { id: 'wellness', label: 'Recreational', emoji: '🏋️', icon: Dumbbell, catIds: ['gym', 'spa'] },
     { id: 'explore', label: 'Entertainment', emoji: '🎭', icon: Compass, catIds: ['nightlife', 'beach', 'attractions'] },
     { id: 'library', label: 'Libraries', emoji: '📚', icon: Monitor, catIds: ['library'] },
   ];
