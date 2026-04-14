@@ -1004,8 +1004,8 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         </div>
       )}
 
-      {/* Bottom sheet */}
-      <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[60%]' : 'h-[200px]'}`}>
+      {/* Bottom sheet (hidden when safety panel is active) */}
+      {!showSafety && <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[60%]' : 'h-[200px]'}`}>
         <button onClick={() => setExpanded(!expanded)} className="w-full flex flex-col items-center py-2">
           <div className="w-10 h-1 bg-border rounded-full" />
           <span className="text-[10px] text-muted-foreground mt-1">{expanded ? '▼ collapse' : '▲ expand'}</span>
