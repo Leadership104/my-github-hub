@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
+import type { ForecastDay } from './hooks';
 import type { Trip, Booking } from './types';
 import type { TabId } from './types';
 import type { LocationState } from './hooks';
@@ -102,8 +103,8 @@ export default function App() {
   const [locationSuggestions, setLocationSuggestions] = useState<LocationState[]>([]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { lat, lng, name: locationName, updateLocation } = useLocation();
-  const weather = useWeather(lat, lng);
+  const { lat, lng, name: locationName, fullAddress, countryCode, updateLocation } = useLocation();
+  const { forecast, ...weather } = useWeather(lat, lng);
   const prices = useCryptoPrices();
   const metals = useMetalPrices();
   const { merchants, loading: merchantsLoading } = useBTCMerchants(lat, lng);
@@ -176,7 +177,7 @@ export default function App() {
 
   const renderScreen = () => {
     switch (tab) {
-      case 'home': return <HomeScreen weather={weather} locationName={locationName} onSwitchTab={switchTab} />;
+      case 'home': return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} onSwitchTab={switchTab} />;
       case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} weather={weather} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} />;
       case 'trips': return <TripsScreen trips={trips} onSaveTrips={saveTrips} />;
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} />;
