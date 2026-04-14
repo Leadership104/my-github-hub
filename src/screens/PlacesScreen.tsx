@@ -169,6 +169,81 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     { id: 'library', label: 'Libraries', emoji: '📚', icon: Monitor, catIds: ['library'] },
   ];
 
+  // Map hint strings to section IDs and optional chip catId
+  const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string }> = {
+    food: { sectionId: 'eat', chipCatId: 'food' },
+    cafe: { sectionId: 'eat', chipCatId: 'cafe' },
+    coffee: { sectionId: 'eat', chipCatId: 'cafe' },
+    drinks: { sectionId: 'eat', chipCatId: 'drinks' },
+    gas: { sectionId: 'transport', chipCatId: 'gas' },
+    transport: { sectionId: 'transport', chipCatId: 'transport' },
+    medical: { sectionId: 'medical' },
+    pharmacy: { sectionId: 'medical', chipCatId: 'pharmacy' },
+    hospital: { sectionId: 'medical', chipCatId: 'hospital' },
+    hotel: { sectionId: 'stay' },
+    shop: { sectionId: 'shop' },
+    atm: { sectionId: 'money' },
+    gym: { sectionId: 'wellness' },
+    spa: { sectionId: 'wellness', chipCatId: 'spa' },
+    nightlife: { sectionId: 'explore', chipCatId: 'nightlife' },
+    library: { sectionId: 'library' },
+  };
+
+  // Auto-open section + chip from initialView hint
+  const initialViewHandled = React.useRef(false);
+  React.useEffect(() => {
+    if (!initialView || initialViewHandled.current) return;
+    if (initialView === 'phrases' || initialView === 'destinations') return;
+    const mapping = HINT_TO_SECTION[initialView];
+    if (!mapping) return;
+    initialViewHandled.current = true;
+
+    setSelectedSection(mapping.sectionId);
+    setView('section');
+    setActiveChip(null);
+    setChipResults([]);
+
+    const section = BIG_SECTIONS.find(s => s.id === mapping.sectionId);
+    if (!section) return;
+
+    if (mapping.sectionId === 'eat') {
+      if (mapping.chipCatId && mapping.chipCatId !== 'food') {
+        // Auto-select first chip from the specific sub-category (e.g. cafe, drinks)
+        const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
+        if (subs.length > 0) {
+          selectChip(subs[0]);
+        }
+      } else {
+        loadFoodGuide('all');
+      }
+    } else {
+      // For non-eat sections, find the right chip
+      const sectionCats = categories.filter(c => section.catIds.includes(c.id));
+      let targetChip: { label: string; query: string; emoji: string } | null = null;
+
+      if (mapping.chipCatId) {
+        const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
+        if (subs.length > 0) {
+          targetChip = subs[0];
+        } else {
+          const cat = categories.find(c => c.id === mapping.chipCatId);
+          if (cat) targetChip = { label: cat.label, query: cat.query, emoji: cat.emoji };
+        }
+      }
+
+      if (!targetChip) {
+        // Default to first chip in section
+        for (const cat of sectionCats) {
+          const subs = CATEGORY_SUBS[cat.id] || [];
+          if (subs.length > 0) { targetChip = subs[0]; break; }
+          else { targetChip = { label: cat.label, query: cat.query, emoji: cat.emoji }; break; }
+        }
+      }
+
+      if (targetChip) selectChip(targetChip);
+    }
+  }, [initialView]);
+
   // Auto-refresh results when location changes while viewing a subcategory
   const prevLocRef = React.useRef({ lat, lng });
   React.useEffect(() => {
