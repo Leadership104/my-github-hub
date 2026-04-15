@@ -61,12 +61,13 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
       } else if (fromCur === 'ETH' || toCur === 'ETH') {
         r = convert(num, fromCur, toCur, ethPrice);
       } else if (fromCur === 'XAU' || toCur === 'XAU') {
-        // Gold ~$2400/oz approximate
-        const goldPrice = metals.find(m => m.symbol === 'XAU')?.rawPrice || 2400;
+        const goldMetal = metals.find(m => m.symbol === 'XAU');
+        const goldPrice = goldMetal ? parseFloat(goldMetal.price.replace(/[^0-9.]/g, '')) || 2400 : 2400;
         if (fromCur === 'XAU') r = num * goldPrice * (rates[toCur] || 1);
         else r = num / (rates[fromCur] || 1) / goldPrice;
       } else if (fromCur === 'XAG' || toCur === 'XAG') {
-        const silverPrice = metals.find(m => m.symbol === 'XAG')?.rawPrice || 28;
+        const silverMetal = metals.find(m => m.symbol === 'XAG');
+        const silverPrice = silverMetal ? parseFloat(silverMetal.price.replace(/[^0-9.]/g, '')) || 28 : 28;
         if (fromCur === 'XAG') r = num * silverPrice * (rates[toCur] || 1);
         else r = num / (rates[fromCur] || 1) / silverPrice;
       } else {
