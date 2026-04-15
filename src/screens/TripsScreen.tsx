@@ -16,9 +16,10 @@ const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
 interface Props {
   trips: Trip[];
   onSaveTrips: (updated: Trip[]) => void;
+  onBack?: () => void;
 }
 
-export default function TripsScreen({ trips, onSaveTrips }: Props) {
+export default function TripsScreen({ trips, onSaveTrips, onBack }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');

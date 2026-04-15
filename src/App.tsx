@@ -68,6 +68,7 @@ function loadTrips(): Trip[] {
 export default function App() {
   const [tab, setTab] = useState<TabId>('home');
   const [screenHint, setScreenHint] = useState<string | undefined>();
+  const prevTabRef = useRef<TabId>('home');
   const [trips, setTrips] = useState<Trip[]>(loadTrips);
 
   const saveTrips = useCallback((updated: Trip[]) => {
@@ -95,8 +96,15 @@ export default function App() {
   const [splash, setSplash] = useState(true);
 
   const switchTab = useCallback((t: TabId, hint?: string) => {
+    prevTabRef.current = tab;
     setTab(t);
     setScreenHint(hint);
+  }, [tab]);
+
+  const goBack = useCallback(() => {
+    setTab(prevTabRef.current || 'home');
+    prevTabRef.current = 'home';
+    setScreenHint(undefined);
   }, []);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
@@ -180,11 +188,11 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home': return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} onSwitchTab={switchTab} />;
-      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} weather={weather} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} />;
-      case 'trips': return <TripsScreen trips={trips} onSaveTrips={saveTrips} />;
-      case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} />;
-      case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} />;
-      case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} />;
+      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} weather={weather} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} />;
+      case 'trips': return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} />;
+      case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} onBack={goBack} />;
+      case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} onBack={goBack} />;
+      case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} onBack={goBack} />;
     }
   };
 
