@@ -17,6 +17,7 @@ interface Props {
   trips?: Trip[];
   onCreateTrip?: (dest: string, country: string, days: number) => void;
   onAddBooking?: (tripId: string, booking: Booking) => void;
+  onBack?: () => void;
 }
 
 export default function AIScreen({ btcPrice, locationName, weather, trips, onCreateTrip, onAddBooking }: Props) {

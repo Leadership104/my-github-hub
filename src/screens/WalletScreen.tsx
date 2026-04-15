@@ -6,6 +6,7 @@ interface Props {
   prices: CryptoPrice[];
   metals: MetalPrice[];
   onOpenMaps: () => void;
+  onBack?: () => void;
 }
 
 export default function WalletScreen({ prices, metals, onOpenMaps }: Props) {

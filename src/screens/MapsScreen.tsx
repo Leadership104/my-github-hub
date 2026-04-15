@@ -36,6 +36,7 @@ interface Props {
   merchants: BTCMerchant[];
   loading: boolean;
   initialFilter?: string;
+  onBack?: () => void;
 }
 
 /* ── Overpass tag configs for every category ── */

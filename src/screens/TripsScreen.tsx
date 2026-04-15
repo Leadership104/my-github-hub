@@ -16,6 +16,7 @@ const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
 interface Props {
   trips: Trip[];
   onSaveTrips: (updated: Trip[]) => void;
+  onBack?: () => void;
 }
 
 export default function TripsScreen({ trips, onSaveTrips }: Props) {
