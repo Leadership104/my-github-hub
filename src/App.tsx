@@ -218,13 +218,6 @@ export default function App() {
             <span>{weather.emoji}</span>
             <span>{weather.temp}</span>
           </button>
-          <div className="flex items-center gap-0.5 px-1">
-            <span className="w-[7px] h-[7px] rounded-full bg-destructive" />
-            <span className="w-[7px] h-[7px] rounded-full bg-orange-400/20" />
-            <span className="w-[7px] h-[7px] rounded-full bg-yellow-400/20" />
-            <span className="w-[7px] h-[7px] rounded-full bg-lime-400" />
-            <span className="w-[7px] h-[7px] rounded-full bg-kipita-green" />
-          </div>
           <button onClick={() => setShowSOS(true)}
             className="bg-kipita-red rounded-md w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md"
             title="Emergency SOS">
