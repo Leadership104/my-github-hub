@@ -510,7 +510,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="px-5 pt-5 pb-2 flex-shrink-0">
-          <button onClick={() => setView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+          <button onClick={goToMain} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
             <span className="ms text-lg">arrow_back</span> Back
           </button>
           <div className="flex items-center gap-2">
@@ -719,7 +719,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="px-5 pt-5 pb-3 flex-shrink-0">
-          <button onClick={() => selectedSection ? setView('section') : setView('main')} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+          <button onClick={() => selectedSection ? setView('section') : goToMain()} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
             <span className="ms text-lg">arrow_back</span> Back
           </button>
           <h2 className="text-xl font-extrabold">{cat?.emoji} {cat?.label}</h2>
@@ -781,7 +781,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return (
         <div className="flex flex-col h-full overflow-hidden">
           <div className="px-5 pt-5 pb-2 flex-shrink-0">
-            <button onClick={() => { setView('main'); setSelectedSection(null); setActiveChip(null); setChipResults([]); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <button onClick={goToMain} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
               <span className="ms text-lg">arrow_back</span> Back
             </button>
             <h2 className="text-xl font-extrabold">Food & Drinks</h2>
@@ -894,7 +894,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return (
         <div className="flex flex-col h-full overflow-hidden">
           <div className="px-5 pt-5 pb-2 flex-shrink-0">
-            <button onClick={() => { setView('main'); setSelectedSection(null); setActiveChip(null); setChipResults([]); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <button onClick={goToMain} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
               <span className="ms text-lg">arrow_back</span> Back
             </button>
             <div className="flex items-center gap-3">
@@ -1024,7 +1024,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="px-5 pt-5 pb-2 flex-shrink-0">
-          <button onClick={() => { setView('main'); setSelectedSection(null); setActiveChip(null); setChipResults([]); }} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+          <button onClick={goToMain} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
             <span className="ms text-lg">arrow_back</span> Back
           </button>
           <div className="flex items-center gap-3">
