@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { DESTINATIONS, PERKS } from '../data';
+import { PERKS } from '../data';
 import type { TabId } from '../types';
 import type { ForecastDay } from '../hooks';
+import { useTravelSafety } from '../hooks';
 
 /* Country code → flag emoji */
 const codeToFlag = (code?: string) => {
@@ -9,13 +10,13 @@ const codeToFlag = (code?: string) => {
   return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 };
 
-/* Safety advisory text from score */
+/* 5-level safety from live score (0-10, 10=safest) */
 const advisoryText = (score?: number) => {
-  if (!score) return { text: 'No data', level: 0 };
-  if (score >= 9) return { text: 'Exercise normal precautions', level: 4 };
-  if (score >= 7.5) return { text: 'Exercise increased caution', level: 3 };
-  if (score >= 6) return { text: 'Be aware', level: 2 };
-  if (score >= 4) return { text: 'Reconsider travel', level: 1 };
+  if (score == null) return { text: 'Loading…', level: -1 };
+  if (score >= 8) return { text: 'Exercise normal precautions', level: 4 };
+  if (score >= 6) return { text: 'Exercise increased caution', level: 3 };
+  if (score >= 4) return { text: 'Be aware', level: 2 };
+  if (score >= 2) return { text: 'Reconsider travel', level: 1 };
   return { text: 'Do not travel', level: 0 };
 };
 
@@ -31,11 +32,9 @@ interface Props {
 export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
   const [showSafetyDetail, setShowSafetyDetail] = useState(false);
 
-  const safetyDest = DESTINATIONS.find(d =>
-    locationName.toLowerCase().includes(d.city.toLowerCase()) ||
-    locationName.toLowerCase().includes(d.country.toLowerCase())
-  );
-  const safetyScore = safetyDest?.safetyScore;
+  // Live safety data from travel-advisory.info
+  const liveSafety = useTravelSafety(countryCode);
+  const safetyScore = liveSafety?.score;
   const advisory = advisoryText(safetyScore);
   const flag = codeToFlag(countryCode);
   const displayAddress = fullAddress || locationName;
@@ -58,7 +57,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { emoji: '🔍', label: 'Places', action: () => onSwitchTab('places') },
   ];
 
-  /* 5-level safety indicator */
+  /* 5-level safety indicator: red(danger) → orange → yellow → lime → green(safe) */
   const safetyDots = (level: number) => (
     <div className="flex flex-col gap-[2px]">
       <span className={`w-[8px] h-[8px] rounded-full ${level <= 0 ? 'bg-destructive' : 'bg-destructive/20'}`} />
@@ -71,7 +70,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Location + Safety advisory bar */}
+      {/* Location + Safety advisory bar (dark section) */}
       <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
         <div className="flex items-center gap-3">
           <span className="text-2xl flex-shrink-0">{flag}</span>
@@ -88,23 +87,14 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       </div>
 
       {/* Safety detail expandable */}
-      {showSafetyDetail && safetyDest && (
+      {showSafetyDetail && liveSafety && (
         <div className="bg-card border-b border-border px-4 py-3 space-y-2 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-foreground">Safety Details — {safetyDest.city}</span>
-            <span className={`text-sm font-extrabold ${safetyScore! >= 8 ? 'text-kipita-green' : safetyScore! >= 6 ? 'text-yellow-500' : 'text-kipita-red'}`}>{safetyScore}/10</span>
+            <span className="text-xs font-bold text-foreground">Safety Details — {locationName}</span>
+            <span className={`text-sm font-extrabold ${safetyScore! >= 8 ? 'text-kipita-green' : safetyScore! >= 5 ? 'text-yellow-500' : 'text-kipita-red'}`}>{safetyScore}/10</span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="bg-muted rounded-lg p-2">
-              <p className="text-[10px] text-muted-foreground">Monthly Cost</p>
-              <p className="text-xs font-bold">${safetyDest.monthlyCost.toLocaleString()}</p>
-            </div>
-            <div className="bg-muted rounded-lg p-2">
-              <p className="text-[10px] text-muted-foreground">Internet</p>
-              <p className="text-xs font-bold">{safetyDest.speed} Mbps</p>
-            </div>
-          </div>
-          <p className="text-[10px] text-muted-foreground">{safetyDest.desc}</p>
+          <p className="text-[10px] text-muted-foreground leading-relaxed">{liveSafety.advisory}</p>
+          <p className="text-[9px] text-muted-foreground/60">Source: {liveSafety.source}</p>
         </div>
       )}
 
