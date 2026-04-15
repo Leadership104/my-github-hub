@@ -154,7 +154,7 @@ async function fetchGooglePlaces(action: string, params: Record<string, unknown>
   }
 }
 
-export default function MapsScreen({ lat, lng, merchants, loading, initialFilter }: Props) {
+export default function MapsScreen({ lat, lng, merchants, loading, initialFilter, onBack }: Props) {
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const markersRef = useRef<L.Marker[]>([]);

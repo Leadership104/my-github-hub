@@ -20,7 +20,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export default function AIScreen({ btcPrice, locationName, weather, trips, onCreateTrip, onAddBooking }: Props) {
+export default function AIScreen({ btcPrice, locationName, weather, trips, onCreateTrip, onAddBooking, onBack }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { id: '0', role: 'ai', text: "Hi! I'm Kipita AI — your real-time travel companion powered by Gemini. I can help you plan trips, find places, check safety, and more.\n\n💡 Try: \"Plan a trip to Bali\" · \"Is Tokyo safe?\" · \"Best nomad cities 2026\"", timestamp: Date.now() },
   ]);

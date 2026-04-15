@@ -136,7 +136,7 @@ const CUISINE_FILTERS = [
   { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
 ];
 
-export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView }: Props) {
+export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack }: Props) {
   const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide'>(initialView === 'phrases' || initialView === 'destinations' ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);

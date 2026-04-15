@@ -9,7 +9,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export default function WalletScreen({ prices, metals, onOpenMaps }: Props) {
+export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Props) {
   const { convert, rates, currencies } = useCurrencyConverter();
   const [amount, setAmount] = useState('100');
   const [fromCur, setFromCur] = useState('USD');

@@ -19,7 +19,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export default function TripsScreen({ trips, onSaveTrips }: Props) {
+export default function TripsScreen({ trips, onSaveTrips, onBack }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
