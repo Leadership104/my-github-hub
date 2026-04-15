@@ -12,9 +12,10 @@ const codeToFlag = (code?: string) => {
 /* Safety advisory text from score */
 const advisoryText = (score?: number) => {
   if (!score) return { text: 'No data', level: 0 };
-  if (score >= 8.5) return { text: 'Exercise normal precautions', level: 3 };
-  if (score >= 7) return { text: 'Exercise increased caution', level: 2 };
-  if (score >= 5) return { text: 'Reconsider travel', level: 1 };
+  if (score >= 9) return { text: 'Exercise normal precautions', level: 4 };
+  if (score >= 7.5) return { text: 'Exercise increased caution', level: 3 };
+  if (score >= 6) return { text: 'Be aware', level: 2 };
+  if (score >= 4) return { text: 'Reconsider travel', level: 1 };
   return { text: 'Do not travel', level: 0 };
 };
 
@@ -57,13 +58,14 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { emoji: '🔍', label: 'Places', action: () => onSwitchTab('places') },
   ];
 
-  /* Traffic-light dots for safety level */
+  /* 5-level safety indicator */
   const safetyDots = (level: number) => (
     <div className="flex flex-col gap-[2px]">
       <span className={`w-[8px] h-[8px] rounded-full ${level <= 0 ? 'bg-destructive' : 'bg-destructive/20'}`} />
       <span className={`w-[8px] h-[8px] rounded-full ${level <= 1 ? 'bg-orange-400' : 'bg-orange-400/20'}`} />
-      <span className={`w-[8px] h-[8px] rounded-full ${level >= 2 ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
-      <span className={`w-[8px] h-[8px] rounded-full ${level >= 3 ? 'bg-kipita-green' : 'bg-kipita-green/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level === 2 ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level >= 3 ? 'bg-lime-400' : 'bg-lime-400/20'}`} />
+      <span className={`w-[8px] h-[8px] rounded-full ${level >= 4 ? 'bg-kipita-green' : 'bg-kipita-green/20'}`} />
     </div>
   );
 
@@ -155,7 +157,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 <div className="text-xs font-bold text-foreground">{p.title}</div>
                 <div className="text-[10px] text-muted-foreground truncate">{p.desc}</div>
               </div>
-              <div className="bg-kipita-red-lt px-2 py-1 rounded text-[9px] font-bold text-kipita-red flex-shrink-0">{p.code}</div>
+              <span className="ms text-muted-foreground text-sm flex-shrink-0">chevron_right</span>
             </a>
           ))}
         </div>
