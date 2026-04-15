@@ -9,32 +9,89 @@ interface Props {
   onBack?: () => void;
 }
 
+type FilterTab = 'currency' | 'crypto' | 'commodities';
+
 export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Props) {
   const { convert, rates, currencies } = useCurrencyConverter();
   const [amount, setAmount] = useState('100');
-  const [fromCur, setFromCur] = useState('USD');
-  const [toCur, setToCur] = useState('BTC');
+  const [fromCur, setFromCur] = useState('EUR');
+  const [toCur, setToCur] = useState('USD');
   const [result, setResult] = useState('');
+  const [filterTab, setFilterTab] = useState<FilterTab>('currency');
 
   const btcPrice = prices.find(p => p.symbol === 'BTC')?.price || 0;
-  const topCurrencies = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'IDR', 'BRL', 'MXN', 'PHP', 'KRW', 'AED', 'INR', 'BTC'];
+  const ethPrice = prices.find(p => p.symbol === 'ETH')?.price || 0;
+
+  // Currency options based on active filter
+  const getCurrencyOptions = () => {
+    const fiatCurrencies = ['USD', 'EUR', 'GBP', 'THB', 'JPY', 'IDR', 'BRL', 'MXN', 'PHP', 'KRW', 'AED', 'INR'];
+    const cryptoCurrencies = ['BTC', 'ETH'];
+    const commodities = ['XAU', 'XAG']; // Gold, Silver
+
+    switch (filterTab) {
+      case 'crypto': return [...cryptoCurrencies, ...fiatCurrencies];
+      case 'commodities': return [...commodities, ...fiatCurrencies];
+      default: return fiatCurrencies;
+    }
+  };
+
+  const currencyOptions = getCurrencyOptions();
+
+  // Reset selections when filter changes
+  useEffect(() => {
+    if (filterTab === 'crypto') { setFromCur('BTC'); setToCur('USD'); }
+    else if (filterTab === 'commodities') { setFromCur('XAU'); setToCur('USD'); }
+    else { setFromCur('EUR'); setToCur('USD'); }
+  }, [filterTab]);
+
+  const labelFor = (cur: string) => {
+    const labels: Record<string, string> = {
+      BTC: '₿ Bitcoin', ETH: 'Ξ Ethereum',
+      XAU: '🥇 Gold (oz)', XAG: '🥈 Silver (oz)',
+    };
+    return labels[cur] || cur;
+  };
 
   useEffect(() => {
     const num = parseFloat(amount);
     if (!isNaN(num) && num > 0) {
-      const r = convert(num, fromCur, toCur, btcPrice);
+      let r: number;
+      if (fromCur === 'BTC' || toCur === 'BTC') {
+        r = convert(num, fromCur, toCur, btcPrice);
+      } else if (fromCur === 'ETH' || toCur === 'ETH') {
+        r = convert(num, fromCur, toCur, ethPrice);
+      } else if (fromCur === 'XAU' || toCur === 'XAU') {
+        // Gold ~$2400/oz approximate
+        const goldPrice = metals.find(m => m.symbol === 'XAU')?.rawPrice || 2400;
+        if (fromCur === 'XAU') r = num * goldPrice * (rates[toCur] || 1);
+        else r = num / (rates[fromCur] || 1) / goldPrice;
+      } else if (fromCur === 'XAG' || toCur === 'XAG') {
+        const silverPrice = metals.find(m => m.symbol === 'XAG')?.rawPrice || 28;
+        if (fromCur === 'XAG') r = num * silverPrice * (rates[toCur] || 1);
+        else r = num / (rates[fromCur] || 1) / silverPrice;
+      } else {
+        r = convert(num, fromCur, toCur, btcPrice);
+      }
+
       if (toCur === 'BTC') setResult(r.toFixed(8) + ' ₿');
-      else if (fromCur === 'BTC') setResult('$' + r.toLocaleString(undefined, { maximumFractionDigits: 2 }));
+      else if (toCur === 'ETH') setResult(r.toFixed(6) + ' Ξ');
+      else if (toCur === 'XAU') setResult(r.toFixed(4) + ' oz');
+      else if (toCur === 'XAG') setResult(r.toFixed(4) + ' oz');
       else setResult(r ? r.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—');
     } else setResult('—');
-  }, [amount, fromCur, toCur, convert, btcPrice]);
+  }, [amount, fromCur, toCur, convert, btcPrice, ethPrice, rates, metals]);
 
-  // FX rate display
   const fmtRate = (cur: string, symbol: string) => {
     if (!rates[cur]) return '—';
     if (cur === 'EUR' || cur === 'GBP') return '$' + (1 / rates[cur]).toFixed(4);
     return symbol + rates[cur].toFixed(2);
   };
+
+  const filterTabs: { id: FilterTab; label: string; icon: string }[] = [
+    { id: 'currency', label: 'Currency', icon: '💱' },
+    { id: 'crypto', label: 'Crypto', icon: '₿' },
+    { id: 'commodities', label: 'Commodities', icon: '🥇' },
+  ];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -42,6 +99,17 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
         <h2 className="text-xl font-extrabold">💳 Wallet & Markets</h2>
       </div>
       <div className="flex-1 overflow-y-auto px-5 pb-24">
+
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-4">
+          {filterTabs.map(ft => (
+            <button key={ft.id} onClick={() => setFilterTab(ft.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-kipita-sm text-xs font-bold transition-all ${filterTab === ft.id ? 'bg-kipita-red text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted'}`}>
+              <span>{ft.icon}</span>
+              <span>{ft.label}</span>
+            </button>
+          ))}
+        </div>
 
         {/* Currency Converter */}
         <div className="bg-card border border-border rounded-kipita p-5 mb-4">
@@ -54,7 +122,7 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
               className="flex-1 bg-background border border-border rounded-kipita-sm px-3 py-3 text-xl font-extrabold outline-none focus:border-kipita-red min-w-0" />
             <select value={fromCur} onChange={e => setFromCur(e.target.value)}
               className="bg-background border border-border rounded-kipita-sm px-2 py-2 font-bold text-sm cursor-pointer min-w-[100px]">
-              {topCurrencies.filter(c => c === 'BTC' || currencies.includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
+              {currencyOptions.filter(c => ['BTC','ETH','XAU','XAG'].includes(c) || currencies.includes(c)).map(c => <option key={c} value={c}>{labelFor(c)}</option>)}
             </select>
           </div>
           <div className="flex justify-center my-2">
@@ -69,15 +137,15 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
             </div>
             <select value={toCur} onChange={e => setToCur(e.target.value)}
               className="bg-background border border-border rounded-kipita-sm px-2 py-2 font-bold text-sm cursor-pointer min-w-[100px]">
-              {topCurrencies.filter(c => c === 'BTC' || currencies.includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
+              {currencyOptions.filter(c => ['BTC','ETH','XAU','XAG'].includes(c) || currencies.includes(c)).map(c => <option key={c} value={c}>{labelFor(c)}</option>)}
             </select>
           </div>
         </div>
 
-        {/* Crypto Prices */}
+        {/* Crypto Prices — only BTC and ETH */}
         <h3 className="font-bold text-sm mb-3">Live Crypto</h3>
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          {prices.map(p => (
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          {prices.filter(p => p.symbol === 'BTC' || p.symbol === 'ETH').map(p => (
             <div key={p.symbol} className="bg-card border border-border rounded-kipita p-3.5">
               <div className="text-[10px] font-bold text-muted-foreground mb-1.5">{p.icon} {p.symbol}</div>
               <div className="text-sm font-extrabold">${p.price.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
@@ -109,11 +177,11 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
           </div>
         </div>
 
-        {/* Metals */}
+        {/* Precious Metals / Commodities */}
         {metals.length > 0 && (
           <>
             <h3 className="font-bold text-sm mb-3">🥇 Precious Metals</h3>
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-2 gap-3 mb-4">
               {metals.map(m => (
                 <div key={m.symbol} className="bg-card border border-border rounded-kipita p-3">
                   <div className="text-[10px] font-bold text-muted-foreground">{m.label}</div>
