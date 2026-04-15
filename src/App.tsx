@@ -68,6 +68,7 @@ function loadTrips(): Trip[] {
 export default function App() {
   const [tab, setTab] = useState<TabId>('home');
   const [screenHint, setScreenHint] = useState<string | undefined>();
+  const prevTabRef = useRef<TabId>('home');
   const [trips, setTrips] = useState<Trip[]>(loadTrips);
 
   const saveTrips = useCallback((updated: Trip[]) => {
