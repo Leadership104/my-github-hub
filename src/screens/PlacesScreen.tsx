@@ -147,6 +147,18 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [loading, setLoading] = useState(false);
   const categories = getCategories();
 
+  // When deep-linked from home, "Back" at root level returns to home
+  const goToMain = useCallback(() => {
+    if (onBack && initialView) {
+      onBack();
+    } else {
+      setView('main');
+      setSelectedSection(null);
+      setActiveChip(null);
+      setChipResults([]);
+    }
+  }, [onBack, initialView]);
+
   // Food Guide state
   const [selectedCuisine, setSelectedCuisine] = useState('all');
   const [foodGuidePlaces, setFoodGuidePlaces] = useState<LivePlace[]>([]);
