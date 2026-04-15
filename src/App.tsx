@@ -96,8 +96,15 @@ export default function App() {
   const [splash, setSplash] = useState(true);
 
   const switchTab = useCallback((t: TabId, hint?: string) => {
+    prevTabRef.current = tab;
     setTab(t);
     setScreenHint(hint);
+  }, [tab]);
+
+  const goBack = useCallback(() => {
+    setTab(prevTabRef.current || 'home');
+    prevTabRef.current = 'home';
+    setScreenHint(undefined);
   }, []);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [locationSearch, setLocationSearch] = useState('');
