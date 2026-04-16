@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel,
-  CRIME_CATEGORIES, CONTEXT_WEIGHTS, SITUATIONAL_MULTIPLIERS,
   type SafetyContext, type SafetyResult,
 } from '../lib/safetyEngine';
 
@@ -13,6 +12,35 @@ const CONTEXTS: { id: SafetyContext; label: string; icon: string; desc: string }
 
 const TIER_COLORS: Record<string, string> = {
   personal: '#ef4444', property: '#f97316', transit: '#a855f7', environ: '#3b82f6',
+};
+
+const TIER_LABELS: Record<string, string> = {
+  personal: 'Personal Safety', property: 'Property Crime',
+  transit: 'Transit Risk', environ: 'Environment',
+};
+
+const SAFETY_TIPS: Record<string, Record<string, string>> = {
+  HOME: {
+    'LOW RISK':  'Your home area appears safe. Continue standard precautions.',
+    MODERATE:   'Be mindful of property security and neighborhood activity.',
+    ELEVATED:   'Consider enhanced home security measures and stay alert to local advisories.',
+    'HIGH RISK': 'Stay vigilant. Keep doors locked and be cautious of strangers.',
+    CRITICAL:   'Exercise extreme caution. Avoid leaving home unnecessarily.',
+  },
+  AWAY: {
+    'LOW RISK':  'This area appears safe for travelers. Enjoy your visit.',
+    MODERATE:   'Keep valuables secure and stay in well-lit, populated areas.',
+    ELEVATED:   'Avoid isolated areas and stay aware of your surroundings at all times.',
+    'HIGH RISK': 'Travel in groups when possible. Keep emergency contacts readily accessible.',
+    CRITICAL:   'Reconsider travel to this area. Consult local authorities if present.',
+  },
+  TRANSIT: {
+    'LOW RISK':  'Roads and transit appear safe for your journey.',
+    MODERATE:   'Secure your vehicle and stay aware of your surroundings en route.',
+    ELEVATED:   'Plan your route carefully. Avoid travel after dark if possible.',
+    'HIGH RISK': 'Stay on main roads and keep doors locked while driving.',
+    CRITICAL:   'Avoid travel if possible. Emergency services may be limited.',
+  },
 };
 
 interface Props {
@@ -126,8 +154,8 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           <div className="flex gap-2 mt-3 flex-wrap justify-center">
             {[
               ['Confidence', result.confidence],
-              ['Multiplier', `${result.sitMul}×`],
-              ['Time', detectTimeOfDay()],
+              ['Time of Day', detectTimeOfDay() === 'daytime' ? 'Daytime' : detectTimeOfDay() === 'evening' ? 'Evening' : 'Night'],
+              ['Context', CONTEXTS.find(c => c.id === result.context)?.label ?? result.context],
             ].map(([k, v]) => (
               <div key={k} className="bg-muted rounded-lg px-2.5 py-1 text-center">
                 <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{k}</div>
@@ -137,13 +165,24 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           </div>
         </div>
 
+        {/* Safety Tip */}
+        <div className="rounded-kipita p-3 flex items-start gap-2"
+          style={{ backgroundColor: `${sl.color}18`, border: `1px solid ${sl.color}40` }}>
+          <span className="text-base mt-0.5">
+            {result.score >= 80 ? '✅' : result.score >= 60 ? '⚠️' : result.score >= 40 ? '🟠' : '🔴'}
+          </span>
+          <p className="text-xs text-foreground leading-relaxed">
+            {SAFETY_TIPS[context]?.[result.riskLevel] ?? 'Stay aware of your surroundings.'}
+          </p>
+        </div>
+
         {/* Top Risk Factors */}
         <div className="bg-card border border-border rounded-kipita p-4">
           <p className="text-[10px] font-semibold text-muted-foreground tracking-widest mb-1">TOP RISK FACTORS</p>
           <p className="text-[9px] text-muted-foreground mb-3">
-            Weights adjusted for <span className="font-bold" style={{ color: sl.color }}>
+            For <span className="font-bold" style={{ color: sl.color }}>
               {CONTEXTS.find(c => c.id === context)?.label}
-            </span> context
+            </span> — higher bars indicate greater relative risk
           </p>
 
           <div className="space-y-3">
@@ -154,7 +193,6 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
                 <div key={key}>
                   <div className="flex justify-between mb-1">
                     <span className="text-xs text-foreground">{val.icon} {val.label}</span>
-                    <span className="text-[10px] font-bold" style={{ color: tc }}>−{val.pts} pts</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex-1 h-1.5 bg-muted rounded-full">
@@ -175,49 +213,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
             {Object.entries(TIER_COLORS).map(([t, c]) => (
               <span key={t} className="text-[9px] font-medium rounded-md px-1.5 py-0.5"
                 style={{ color: c, backgroundColor: `${c}18` }}>
-                ● {t}
+                ● {TIER_LABELS[t] ?? t}
               </span>
             ))}
-          </div>
-        </div>
-
-        {/* Context Weight Comparison */}
-        <div className="bg-card border border-border rounded-kipita p-4">
-          <p className="text-[10px] font-semibold text-muted-foreground tracking-widest mb-3">
-            HOME vs AWAY vs TRANSIT — WEIGHT COMPARISON
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {Object.entries(CRIME_CATEGORIES).slice(0, 8).map(([k, cat]) => {
-              const hw = CONTEXT_WEIGHTS.HOME[k] ?? 0;
-              const aw = CONTEXT_WEIGHTS.AWAY[k] ?? 0;
-              const tw = CONTEXT_WEIGHTS.TRANSIT[k] ?? 0;
-              return (
-                <div key={k} className="bg-muted rounded-lg p-2">
-                  <p className="text-[10px] text-foreground font-medium mb-1 truncate">{cat.icon} {cat.label}</p>
-                  {[
-                    { icon: '🏠', id: 'HOME' as SafetyContext, w: hw, c: '#3b82f6' },
-                    { icon: '✈️', id: 'AWAY' as SafetyContext, w: aw, c: '#a855f7' },
-                    { icon: '🚗', id: 'TRANSIT' as SafetyContext, w: tw, c: '#f59e0b' },
-                  ].map(r => (
-                    <div key={r.id} className="flex items-center gap-1 mb-0.5">
-                      <span className="text-[8px] text-muted-foreground w-5">{r.icon}</span>
-                      <div className="flex-1 h-1 bg-background rounded-full">
-                        <div className="h-full rounded-full transition-all"
-                          style={{
-                            width: `${r.w * 100}%`,
-                            backgroundColor: r.c,
-                            opacity: context === r.id ? 1 : 0.3,
-                          }} />
-                      </div>
-                      <span className="text-[8px] w-5 text-right"
-                        style={{ color: context === r.id ? r.c : '#64748b', fontWeight: context === r.id ? 700 : 400 }}>
-                        {(r.w * 100).toFixed(0)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
           </div>
         </div>
 
