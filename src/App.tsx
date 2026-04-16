@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants } from './hooks';
+import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants, useTravelSafety } from './hooks';
 import type { ForecastDay } from './hooks';
 import type { Trip, Booking } from './types';
 import type { TabId } from './types';
@@ -12,6 +12,7 @@ import TripsScreen from './screens/TripsScreen';
 import PlacesScreen from './screens/PlacesScreen';
 import MapsScreen from './screens/MapsScreen';
 import WalletScreen from './screens/WalletScreen';
+import SafetyScreen from './screens/SafetyScreen';
 
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
@@ -185,6 +186,8 @@ export default function App() {
     );
   }
 
+  const advisoryData = useTravelSafety(countryCode);
+
   const renderScreen = () => {
     switch (tab) {
       case 'home': return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} onSwitchTab={switchTab} />;
@@ -193,6 +196,7 @@ export default function App() {
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} onBack={goBack} />;
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} onBack={goBack} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} onBack={goBack} />;
+      case 'safety': return <SafetyScreen locationName={locationName} countryCode={countryCode} advisoryScore={advisoryData?.rawScore} onBack={goBack} />;
     }
   };
 
