@@ -36,6 +36,10 @@ fix_*.js
 .codex_android/
 .kotlin/
 
+# Web build artifacts
+node_modules/
+dist/
+
 # Claude Code session data
 .claude/
 
