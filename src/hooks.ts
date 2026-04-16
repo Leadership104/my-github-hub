@@ -266,7 +266,7 @@ export function haversine(lat1: number, lon1: number, lat2: number, lon2: number
 
 /* Live travel safety score from travel-advisory.info API */
 export function useTravelSafety(countryCode?: string) {
-  const [safetyData, setSafetyData] = useState<{ score: number; advisory: string; source: string } | null>(null);
+  const [safetyData, setSafetyData] = useState<{ score: number; advisory: string; source: string; rawScore: number } | null>(null);
 
   useEffect(() => {
     if (!countryCode || countryCode.length !== 2) { setSafetyData(null); return; }
@@ -276,11 +276,11 @@ export function useTravelSafety(countryCode?: string) {
       .then(d => {
         const entry = d?.data?.[cc];
         if (entry) {
-          // API returns score 0-5 where 0=safe, 5=war zone. Convert to 0-10 (10=safest)
           const rawScore = parseFloat(entry.advisory?.score) || 2.5;
           const normalizedScore = Math.max(0, Math.min(10, ((5 - rawScore) / 5) * 10));
           setSafetyData({
             score: Math.round(normalizedScore * 10) / 10,
+            rawScore,
             advisory: entry.advisory?.message || '',
             source: entry.advisory?.source || 'travel-advisory.info',
           });
