@@ -191,9 +191,9 @@ export function advisoryToBaseRates(rawScore: number): Record<string, number> {
 
 /** 5-level safety band from score (0-100) */
 export function safetyLevel(score: number): { level: number; label: string; color: string } {
-  if (score >= 80) return { level: 4, label: 'Very Safe', color: '#22c55e' };
-  if (score >= 60) return { level: 3, label: 'Generally Safe', color: '#84cc16' };
-  if (score >= 40) return { level: 2, label: 'Use Caution', color: '#eab308' };
-  if (score >= 20) return { level: 1, label: 'High Risk', color: '#f97316' };
-  return { level: 0, label: 'Dangerous', color: '#ef4444' };
+  if (score >= 80) return { level: 4, label: 'Safe', color: '#22c55e' };
+  if (score >= 60) return { level: 3, label: 'Safer', color: '#84cc16' };
+  if (score >= 40) return { level: 2, label: 'Moderate', color: '#eab308' };
+  if (score >= 20) return { level: 1, label: 'Risky', color: '#f97316' };
+  return { level: 0, label: 'Unsafe', color: '#ef4444' };
 }

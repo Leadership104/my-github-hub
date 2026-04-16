@@ -105,10 +105,10 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           {/* 5-level dots */}
           <div className="flex items-center gap-2 mt-1">
             {[
-              { threshold: 0, color: '#ef4444', label: 'Critical' },
-              { threshold: 1, color: '#f97316', label: 'High' },
+              { threshold: 0, color: '#ef4444', label: 'Unsafe' },
+              { threshold: 1, color: '#f97316', label: 'Risky' },
               { threshold: 2, color: '#eab308', label: 'Moderate' },
-              { threshold: 3, color: '#84cc16', label: 'Low' },
+              { threshold: 3, color: '#84cc16', label: 'Safer' },
               { threshold: 4, color: '#22c55e', label: 'Safe' },
             ].map((d, i) => (
               <div key={i} className="flex flex-col items-center gap-0.5">
