@@ -1,24 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PERKS } from '../data';
 import type { TabId } from '../types';
 import type { ForecastDay } from '../hooks';
 import { useTravelSafety } from '../hooks';
-
-/* Country code → flag emoji */
-const codeToFlag = (code?: string) => {
-  if (!code || code.length !== 2) return '🌍';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
-};
-
-/* 5-level safety from live score (0-10, 10=safest) */
-const advisoryText = (score?: number) => {
-  if (score == null) return { text: 'Loading…', level: -1 };
-  if (score >= 8) return { text: 'Exercise normal precautions', level: 4 };
-  if (score >= 6) return { text: 'Exercise increased caution', level: 3 };
-  if (score >= 4) return { text: 'Be aware', level: 2 };
-  if (score >= 2) return { text: 'Reconsider travel', level: 1 };
-  return { text: 'Do not travel', level: 0 };
-};
+import { computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel } from '../lib/safetyEngine';
 
 interface Props {
   weather: { emoji: string; temp: string; desc: string };
@@ -30,14 +15,33 @@ interface Props {
 }
 
 export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
-  const [showSafetyDetail, setShowSafetyDetail] = useState(false);
-
   // Live safety data from travel-advisory.info
   const liveSafety = useTravelSafety(countryCode);
-  const safetyScore = liveSafety?.score;
-  const advisory = advisoryText(safetyScore);
-  const flag = codeToFlag(countryCode);
-  const displayAddress = fullAddress || locationName;
+
+  // Compute Kipita Safety Score
+  const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
+
+  useEffect(() => {
+    if (!liveSafety) return;
+    // Convert advisory raw score to base rates and compute
+    const rawScore = liveSafety.rawScore ?? 2.5;
+    const baseRates = advisoryToBaseRates(rawScore);
+    const timeOfDay = detectTimeOfDay();
+    const result = computeSafetyScore({
+      context: 'AWAY', // default for travelers
+      situational: { timeOfDay, density: 'residential', events: 'none', weather: 'normal' },
+      baseRates,
+    });
+    const sl = safetyLevel(result.score);
+    setSafetyResult({ score: result.score, ...sl });
+  }, [liveSafety]);
+
+  // Abbreviate location: show city, state abbreviation
+  const abbreviatedLocation = (() => {
+    const name = locationName || 'Detecting…';
+    // Already short format like "New York, US"
+    return name;
+  })();
 
   const essentials = [
     { emoji: '🍽️', label: 'Food', action: () => onSwitchTab('places', 'food') },
@@ -51,52 +55,53 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   const quickTools = [
     { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
     { emoji: '💱', label: 'Currency', action: () => onSwitchTab('wallet') },
-    { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('maps', 'hospital') },
+    { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('safety') },
     { emoji: '🗺️', label: 'Maps', action: () => onSwitchTab('maps') },
     { emoji: '👥', label: 'Groups', action: () => onSwitchTab('groups') },
     { emoji: '🔍', label: 'Places', action: () => onSwitchTab('places') },
   ];
 
-  /* 5-level safety indicator: red(danger) → orange → yellow → lime → green(safe) */
-  const safetyDots = (level: number) => (
-    <div className="flex flex-col gap-[2px]">
-      <span className={`w-[8px] h-[8px] rounded-full ${level <= 0 ? 'bg-destructive' : 'bg-destructive/20'}`} />
-      <span className={`w-[8px] h-[8px] rounded-full ${level <= 1 ? 'bg-orange-400' : 'bg-orange-400/20'}`} />
-      <span className={`w-[8px] h-[8px] rounded-full ${level === 2 ? 'bg-yellow-400' : 'bg-yellow-400/20'}`} />
-      <span className={`w-[8px] h-[8px] rounded-full ${level >= 3 ? 'bg-lime-400' : 'bg-lime-400/20'}`} />
-      <span className={`w-[8px] h-[8px] rounded-full ${level >= 4 ? 'bg-kipita-green' : 'bg-kipita-green/20'}`} />
-    </div>
-  );
+  /* 5-level safety dots: red(danger) → orange → yellow → lime → green(safe) */
+  const level = safetyResult?.level ?? -1;
+  const DOT_CONFIG = [
+    { threshold: (l: number) => l <= 0, active: 'bg-destructive', inactive: 'bg-destructive/20' },
+    { threshold: (l: number) => l <= 1, active: 'bg-orange-400', inactive: 'bg-orange-400/20' },
+    { threshold: (l: number) => l === 2, active: 'bg-yellow-400', inactive: 'bg-yellow-400/20' },
+    { threshold: (l: number) => l >= 3, active: 'bg-lime-400', inactive: 'bg-lime-400/20' },
+    { threshold: (l: number) => l >= 4, active: 'bg-kipita-green', inactive: 'bg-kipita-green/20' },
+  ];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Location + Safety advisory bar (dark section) */}
       <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-2xl flex-shrink-0">{flag}</span>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-medium truncate leading-tight">{displayAddress}</p>
+            <p className="text-white text-xs font-medium truncate leading-tight">{abbreviatedLocation}</p>
           </div>
-          <button onClick={() => setShowSafetyDetail(!showSafetyDetail)}
+          <button onClick={() => onSwitchTab('safety')}
             className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-white/80 text-[11px] font-semibold text-right leading-tight max-w-[100px]">{advisory.text}</span>
+            <div className="text-right">
+              <span className="text-white/80 text-[11px] font-semibold leading-tight max-w-[100px] block">
+                {safetyResult ? safetyResult.label : 'Loading…'}
+              </span>
+              {safetyResult && (
+                <span className="text-[9px] font-bold" style={{ color: safetyResult.color }}>
+                  {safetyResult.score}/100
+                </span>
+              )}
+            </div>
+            <div className="flex flex-col gap-[2px]">
+              {DOT_CONFIG.map((dot, i) => (
+                <span key={i} className={`w-[8px] h-[8px] rounded-full ${
+                  level >= 0 && dot.threshold(level) ? dot.active : dot.inactive
+                }`} />
+              ))}
+            </div>
             <span className="text-white/40 text-xs">▸</span>
-            {safetyDots(advisory.level)}
           </button>
         </div>
       </div>
-
-      {/* Safety detail expandable */}
-      {showSafetyDetail && liveSafety && (
-        <div className="bg-card border-b border-border px-4 py-3 space-y-2 flex-shrink-0">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-foreground">Safety Details — {locationName}</span>
-            <span className={`text-sm font-extrabold ${safetyScore! >= 8 ? 'text-kipita-green' : safetyScore! >= 5 ? 'text-yellow-500' : 'text-kipita-red'}`}>{safetyScore}/10</span>
-          </div>
-          <p className="text-[10px] text-muted-foreground leading-relaxed">{liveSafety.advisory}</p>
-          <p className="text-[9px] text-muted-foreground/60">Source: {liveSafety.source}</p>
-        </div>
-      )}
 
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
         {/* Essentials */}
