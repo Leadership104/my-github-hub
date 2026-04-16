@@ -61,14 +61,14 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { emoji: '🔍', label: 'Places', action: () => onSwitchTab('places') },
   ];
 
-  /* 5-level safety dots: red(danger) → orange → yellow → lime → green(safe) */
+  /* 5-level safety dots */
   const level = safetyResult?.level ?? -1;
-  const DOT_CONFIG = [
-    { threshold: (l: number) => l <= 0, active: 'bg-destructive', inactive: 'bg-destructive/20' },
-    { threshold: (l: number) => l <= 1, active: 'bg-orange-400', inactive: 'bg-orange-400/20' },
-    { threshold: (l: number) => l === 2, active: 'bg-yellow-400', inactive: 'bg-yellow-400/20' },
-    { threshold: (l: number) => l >= 3, active: 'bg-lime-400', inactive: 'bg-lime-400/20' },
-    { threshold: (l: number) => l >= 4, active: 'bg-kipita-green', inactive: 'bg-kipita-green/20' },
+  const DOTS = [
+    { min: 0, color: '#ef4444', label: 'Unsafe' },
+    { min: 1, color: '#f97316', label: 'Risky' },
+    { min: 2, color: '#eab308', label: 'Moderate' },
+    { min: 3, color: '#84cc16', label: 'Safer' },
+    { min: 4, color: '#22c55e', label: 'Safe' },
   ];
 
   return (
@@ -79,25 +79,22 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-medium truncate leading-tight">{abbreviatedLocation}</p>
           </div>
-          <button onClick={() => onSwitchTab('safety')}
+        <button onClick={() => onSwitchTab('safety')}
             className="flex items-center gap-2 flex-shrink-0">
-            <div className="text-right">
-              <span className="text-white/80 text-[11px] font-semibold leading-tight max-w-[100px] block">
-                {safetyResult ? safetyResult.label : 'Loading…'}
-              </span>
-              {safetyResult && (
-                <span className="text-[9px] font-bold" style={{ color: safetyResult.color }}>
-                  {safetyResult.score}/100
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col gap-[2px]">
-              {DOT_CONFIG.map((dot, i) => (
-                <span key={i} className={`w-[8px] h-[8px] rounded-full ${
-                  level >= 0 && dot.threshold(level) ? dot.active : dot.inactive
-                }`} />
+            <div className="flex items-center gap-1.5">
+              {DOTS.map((dot, i) => (
+                <div key={i} className="flex flex-col items-center gap-0.5">
+                  <span className="w-[10px] h-[10px] rounded-full transition-all"
+                    style={{
+                      backgroundColor: level >= dot.min ? dot.color : `${dot.color}25`,
+                      boxShadow: level === dot.min ? `0 0 6px ${dot.color}` : 'none',
+                    }} />
+                </div>
               ))}
             </div>
+            <span className="text-[11px] font-bold ml-1" style={{ color: safetyResult?.color ?? '#64748b' }}>
+              {safetyResult?.label ?? '…'}
+            </span>
             <span className="text-white/40 text-xs">▸</span>
           </button>
         </div>
