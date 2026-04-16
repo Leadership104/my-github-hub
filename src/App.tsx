@@ -171,6 +171,8 @@ export default function App() {
     );
   }, [selectLocation]);
 
+  const advisoryData = useTravelSafety(countryCode);
+
   // Splash screen
   if (splash) {
     setTimeout(() => setSplash(false), 2000);
@@ -185,8 +187,6 @@ export default function App() {
       </div>
     );
   }
-
-  const advisoryData = useTravelSafety(countryCode);
 
   const renderScreen = () => {
     switch (tab) {
