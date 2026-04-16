@@ -189,6 +189,15 @@ export function advisoryToBaseRates(rawScore: number): Record<string, number> {
   };
 }
 
+/** Convert a category's pts value to a 5-level risk rating label */
+export function categoryRating(pts: number): { label: string; level: number; color: string } {
+  if (pts < 1)  return { label: 'Very Low', level: 0, color: '#22c55e' };
+  if (pts < 3)  return { label: 'Low',      level: 1, color: '#84cc16' };
+  if (pts < 6)  return { label: 'Medium',   level: 2, color: '#eab308' };
+  if (pts < 10) return { label: 'High',     level: 3, color: '#f97316' };
+  return         { label: 'Very High',      level: 4, color: '#ef4444' };
+}
+
 /** 5-level safety band from score (0-100) */
 export function safetyLevel(score: number): { level: number; label: string; color: string } {
   if (score >= 80) return { level: 4, label: 'Safe', color: '#22c55e' };
