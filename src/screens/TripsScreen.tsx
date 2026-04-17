@@ -17,6 +17,7 @@ interface Props {
   trips: Trip[];
   onSaveTrips: (updated: Trip[]) => void;
   onBack?: () => void;
+  onSwitchTab?: (tab: import('../types').TabId, hint?: string) => void;
 }
 
 export default function TripsScreen({ trips, onSaveTrips, onBack }: Props) {
