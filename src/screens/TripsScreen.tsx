@@ -20,7 +20,7 @@ interface Props {
   onSwitchTab?: (tab: import('../types').TabId, hint?: string) => void;
 }
 
-export default function TripsScreen({ trips, onSaveTrips, onBack }: Props) {
+export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
