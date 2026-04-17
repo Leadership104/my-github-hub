@@ -52,15 +52,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { emoji: '🚇', label: 'Transit', action: () => onSwitchTab('places', 'transport') },
   ];
 
-  const quickTools = [
-    { emoji: '🌐', label: 'Translate', action: () => onSwitchTab('places', 'phrases') },
-    { emoji: '💱', label: 'Currency', action: () => onSwitchTab('wallet') },
-    { emoji: '🛡️', label: 'Safety', action: () => onSwitchTab('safety') },
-    { emoji: '🗺️', label: 'Maps', action: () => onSwitchTab('maps') },
-    { emoji: '👥', label: 'Groups', action: () => onSwitchTab('groups') },
-    { emoji: '🔍', label: 'Places', action: () => onSwitchTab('places') },
-  ];
-
   /* 5-level safety dots */
   const level = safetyResult?.level ?? -1;
   const DOTS = [
@@ -105,18 +96,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         <h3 className="text-sm font-bold text-foreground mb-3">Essentials</h3>
         <div className="grid grid-cols-3 gap-3 mb-5">
           {essentials.map(t => (
-            <button key={t.label} onClick={t.action}
-              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Quick Tools */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {quickTools.map(t => (
             <button key={t.label} onClick={t.action}
               className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
               <span className="text-2xl">{t.emoji}</span>
