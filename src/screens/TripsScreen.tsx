@@ -470,7 +470,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
           </div>
         </button>
 
-        {/* Destinations, Phrases & Groups buttons */}
+        {/* Travel utilities */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <button onClick={() => setTripsView('destinations')}
             className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-center">
@@ -486,6 +486,16 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
             className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-kipita text-center">
             <span className="text-xl">👥</span>
             <div className="text-white font-bold text-[11px]">Groups</div>
+          </button>
+          <button onClick={() => onSwitchTab?.('maps')}
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-kipita text-center">
+            <span className="text-xl">🗺️</span>
+            <div className="text-white font-bold text-[11px]">Maps</div>
+          </button>
+          <button onClick={() => onSwitchTab?.('wallet')}
+            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-kipita text-center">
+            <span className="text-xl">💱</span>
+            <div className="text-white font-bold text-[11px]">Currency</div>
           </button>
         </div>
 
