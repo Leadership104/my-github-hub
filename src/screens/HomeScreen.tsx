@@ -104,18 +104,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           ))}
         </div>
 
-        {/* Quick Tools */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Quick Tools</h3>
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {quickTools.map(t => (
-            <button key={t.label} onClick={t.action}
-              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
-            </button>
-          ))}
-        </div>
-
         {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
           className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-5 text-left hover:scale-[1.01] transition-transform">
