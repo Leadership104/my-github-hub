@@ -250,15 +250,15 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
         {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
-          className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-5 text-left hover:scale-[1.01] transition-transform">
-          <div className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center">
-            <span className="ms text-white text-xl">auto_awesome</span>
+          className="w-full flex items-center gap-3 bg-card border-2 border-kipita-red rounded-kipita p-4 mb-5 text-left hover:shadow-md transition-shadow">
+          <div className="w-11 h-11 rounded-full bg-kipita-red-lt flex items-center justify-center">
+            <span className="ms text-kipita-red text-xl">auto_awesome</span>
           </div>
           <div className="flex-1">
-            <div className="text-white font-extrabold text-sm">Kipita AI : Know Before You Go</div>
-            <div className="text-white/60 text-xs mt-0.5">Gain Insights BEFORE you travel.</div>
+            <div className="text-foreground font-extrabold text-sm">Kipita AI : Know Before You Go</div>
+            <div className="text-muted-foreground text-xs mt-0.5">Gain Insights BEFORE you travel.</div>
           </div>
-          <span className="ms text-white/40 text-xl">chevron_right</span>
+          <span className="ms text-muted-foreground text-xl">chevron_right</span>
         </button>
 
         {/* Perks & Deals */}
