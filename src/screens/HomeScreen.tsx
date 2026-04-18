@@ -86,7 +86,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'entertainment', label: 'Entertainment', color: 'bg-kipita-navy text-white',
+      id: 'entertainment', label: 'Entertainment', emoji: '🎭', color: 'bg-kipita-navy text-white',
       groups: [
         { label: 'Nightlife', emoji: '🎵', subs: [
           { label: 'Nightclub', hint: 'nightlife', emoji: '🎉' },
@@ -109,7 +109,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'shopping', label: 'Shopping', color: 'bg-foreground text-background',
+      id: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'bg-foreground text-background',
       groups: [
         { label: 'Stores', emoji: '🛍️', subs: [
           { label: 'Mall', hint: 'shop', emoji: '🏬' },
@@ -125,7 +125,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'essentials', label: 'Essentials', color: 'bg-kipita-green text-white',
+      id: 'essentials', label: 'Essentials', emoji: '🧰', color: 'bg-kipita-green text-white',
       groups: [
         { label: 'Transport', emoji: '🚗', subs: [
           { label: 'Gas Stations', hint: 'gas', emoji: '⛽' },
@@ -205,41 +205,46 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 if (activeCat === c.id) { setActiveCat(null); setActiveGroup(null); }
                 else { setActiveCat(c.id); setActiveGroup(null); }
               }}
-              className={`py-3 rounded-kipita-sm text-sm font-bold transition-all ${
+              className={`py-3 px-3 rounded-kipita-sm text-sm font-bold transition-all flex items-center justify-center gap-2 ${
                 activeCat === c.id ? c.color + ' shadow-md' : 'bg-card border border-border text-foreground'
               }`}>
-              {c.label}
+              <span className="text-base">{c.emoji}</span>
+              <span>{c.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Level 2: subcategory groups */}
+        {/* Level 2: subcategory groups — single horizontal scroll line on light gray */}
         {currentCat && (
-          <div className="flex flex-wrap gap-2 mb-3">
-            {currentCat.groups.map(g => (
-              <button key={g.label}
-                onClick={() => setActiveGroup(activeGroup === g.label ? null : g.label)}
-                className={`px-3 py-2 rounded-full text-xs font-semibold border transition-all ${
-                  activeGroup === g.label
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'bg-card text-foreground border-border'
-                }`}>
-                <span className="mr-1">{g.emoji}</span>{g.label}
-              </button>
-            ))}
+          <div className="bg-muted/60 rounded-kipita-sm p-2 mb-2 -mx-1">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar px-1" style={{ scrollbarWidth: 'none' }}>
+              {currentCat.groups.map(g => (
+                <button key={g.label}
+                  onClick={() => setActiveGroup(activeGroup === g.label ? null : g.label)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${
+                    activeGroup === g.label
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-card text-foreground border-border'
+                  }`}>
+                  <span className="mr-1">{g.emoji}</span>{g.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
-        {/* Level 3: final subcategory chips → navigate to Places result */}
+        {/* Level 3: final subcategory chips — single horizontal scroll line on light gray */}
         {currentGroup && (
-          <div className="flex flex-wrap gap-2 mb-5 p-3 bg-muted/40 rounded-kipita-sm">
-            {currentGroup.subs.map(s => (
-              <button key={s.label}
-                onClick={() => onSwitchTab(s.hint === 'atm' ? 'maps' : 'places', s.hint)}
-                className="flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground hover:border-kipita-red hover:text-kipita-red transition-colors">
-                <span>{s.emoji}</span>{s.label}
-              </button>
-            ))}
+          <div className="bg-muted/60 rounded-kipita-sm p-2 mb-5 -mx-1">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar px-1" style={{ scrollbarWidth: 'none' }}>
+              {currentGroup.subs.map(s => (
+                <button key={s.label}
+                  onClick={() => onSwitchTab(s.hint === 'atm' ? 'maps' : 'places', s.hint)}
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground whitespace-nowrap hover:border-kipita-red hover:text-kipita-red transition-colors">
+                  <span>{s.emoji}</span>{s.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
