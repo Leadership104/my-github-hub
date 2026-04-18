@@ -255,8 +255,8 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <span className="ms text-white text-xl">auto_awesome</span>
           </div>
           <div className="flex-1">
-            <div className="text-white font-extrabold text-sm">Kipita AI</div>
-            <div className="text-white/60 text-xs mt-0.5">Plan trips · Safety · Bitcoin · Translate</div>
+            <div className="text-white font-extrabold text-sm">Kipita AI : Know Before You Go</div>
+            <div className="text-white/60 text-xs mt-0.5">Gain Insights BEFORE you travel.</div>
           </div>
           <span className="ms text-white/40 text-xl">chevron_right</span>
         </button>
