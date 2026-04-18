@@ -52,6 +52,111 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { emoji: '🚇', label: 'Transit', action: () => onSwitchTab('places', 'transport') },
   ];
 
+  /* ── 3-level category drill-down ── */
+  type SubChip = { label: string; hint: string; emoji: string };
+  type SubGroup = { label: string; emoji: string; subs: SubChip[] };
+  type TopCat = { id: string; label: string; color: string; groups: SubGroup[] };
+
+  const TOP_CATEGORIES: TopCat[] = [
+    {
+      id: 'restaurants', label: 'Restaurants', color: 'bg-kipita-red text-white',
+      groups: [
+        { label: 'Food', emoji: '🍽️', subs: [
+          { label: 'American', hint: 'food', emoji: '🍔' },
+          { label: 'Italian', hint: 'food', emoji: '🍝' },
+          { label: 'Mexican', hint: 'food', emoji: '🌮' },
+          { label: 'Japanese', hint: 'food', emoji: '🍱' },
+          { label: 'Chinese', hint: 'food', emoji: '🥡' },
+          { label: 'Pizza', hint: 'food', emoji: '🍕' },
+          { label: 'All Food', hint: 'food', emoji: '🍽️' },
+        ]},
+        { label: 'Cafés', emoji: '☕', subs: [
+          { label: 'Coffee', hint: 'cafe', emoji: '☕' },
+          { label: 'Boba / Tea', hint: 'cafe', emoji: '🧋' },
+          { label: 'Bakery Café', hint: 'cafe', emoji: '🥐' },
+          { label: 'All Cafés', hint: 'cafe', emoji: '🍵' },
+        ]},
+        { label: 'Drinks & Bars', emoji: '🍸', subs: [
+          { label: 'Cocktail Bar', hint: 'drinks', emoji: '🍸' },
+          { label: 'Brewery', hint: 'drinks', emoji: '🍺' },
+          { label: 'Wine Bar', hint: 'drinks', emoji: '🍷' },
+          { label: 'Rooftop', hint: 'drinks', emoji: '🌃' },
+          { label: 'All Bars', hint: 'drinks', emoji: '🥂' },
+        ]},
+      ],
+    },
+    {
+      id: 'entertainment', label: 'Entertainment', color: 'bg-kipita-navy text-white',
+      groups: [
+        { label: 'Nightlife', emoji: '🎵', subs: [
+          { label: 'Nightclub', hint: 'nightlife', emoji: '🎉' },
+          { label: 'Live Music', hint: 'nightlife', emoji: '🎵' },
+          { label: 'Pub', hint: 'nightlife', emoji: '🍺' },
+          { label: 'Rooftop', hint: 'nightlife', emoji: '🌃' },
+        ]},
+        { label: 'Attractions', emoji: '🎡', subs: [
+          { label: 'Museums', hint: 'places', emoji: '🏛️' },
+          { label: 'Tours', hint: 'places', emoji: '🗺️' },
+          { label: 'Theme Parks', hint: 'places', emoji: '🎢' },
+          { label: 'Landmarks', hint: 'places', emoji: '🗽' },
+          { label: 'Events', hint: 'places', emoji: '🎪' },
+        ]},
+        { label: 'Outdoors', emoji: '🏖️', subs: [
+          { label: 'Beach', hint: 'places', emoji: '🏖️' },
+          { label: 'Park', hint: 'places', emoji: '🌳' },
+          { label: 'Hiking', hint: 'places', emoji: '🥾' },
+        ]},
+      ],
+    },
+    {
+      id: 'shopping', label: 'Shopping', color: 'bg-foreground text-background',
+      groups: [
+        { label: 'Stores', emoji: '🛍️', subs: [
+          { label: 'Mall', hint: 'shop', emoji: '🏬' },
+          { label: 'Clothing', hint: 'shop', emoji: '👔' },
+          { label: 'Electronics', hint: 'shop', emoji: '📱' },
+          { label: 'Local Market', hint: 'shop', emoji: '🏪' },
+          { label: 'All Shops', hint: 'shop', emoji: '🛍️' },
+        ]},
+        { label: 'Groceries', emoji: '🛒', subs: [
+          { label: 'Supermarket', hint: 'shop', emoji: '🛒' },
+          { label: 'Convenience', hint: 'shop', emoji: '🏪' },
+        ]},
+      ],
+    },
+    {
+      id: 'essentials', label: 'Essentials', color: 'bg-kipita-green text-white',
+      groups: [
+        { label: 'Transport', emoji: '🚗', subs: [
+          { label: 'Gas Stations', hint: 'gas', emoji: '⛽' },
+          { label: 'Transit', hint: 'transport', emoji: '🚇' },
+          { label: 'EV Charging', hint: 'places', emoji: '⚡' },
+          { label: 'Auto Care', hint: 'places', emoji: '🔧' },
+        ]},
+        { label: 'Medical', emoji: '🏥', subs: [
+          { label: 'Hospital', hint: 'hospital', emoji: '🏥' },
+          { label: 'Pharmacy', hint: 'pharmacy', emoji: '💊' },
+          { label: 'Urgent Care', hint: 'medical', emoji: '⚕️' },
+          { label: 'Dentist', hint: 'medical', emoji: '🦷' },
+        ]},
+        { label: 'Money', emoji: '🏧', subs: [
+          { label: 'ATM', hint: 'atm', emoji: '🏧' },
+          { label: 'BTC ATM', hint: 'atm', emoji: '₿' },
+        ]},
+        { label: 'Stay', emoji: '🏨', subs: [
+          { label: 'Hotel', hint: 'hotel', emoji: '🏨' },
+          { label: 'Hostel', hint: 'hotel', emoji: '🛏️' },
+          { label: 'Resort', hint: 'hotel', emoji: '🏖️' },
+        ]},
+      ],
+    },
+  ];
+
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const currentCat = TOP_CATEGORIES.find(c => c.id === activeCat) || null;
+  const currentGroup = currentCat?.groups.find(g => g.label === activeGroup) || null;
+
   /* 5-level safety dots */
   const level = safetyResult?.level ?? -1;
   const DOTS = [
@@ -92,17 +197,51 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
-        {/* Essentials */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Essentials</h3>
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {essentials.map(t => (
-            <button key={t.label} onClick={t.action}
-              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
+        {/* Top Categories: 4 chips drilling down to subcategories */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {TOP_CATEGORIES.map(c => (
+            <button key={c.id}
+              onClick={() => {
+                if (activeCat === c.id) { setActiveCat(null); setActiveGroup(null); }
+                else { setActiveCat(c.id); setActiveGroup(null); }
+              }}
+              className={`py-3 rounded-kipita-sm text-sm font-bold transition-all ${
+                activeCat === c.id ? c.color + ' shadow-md' : 'bg-card border border-border text-foreground'
+              }`}>
+              {c.label}
             </button>
           ))}
         </div>
+
+        {/* Level 2: subcategory groups */}
+        {currentCat && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {currentCat.groups.map(g => (
+              <button key={g.label}
+                onClick={() => setActiveGroup(activeGroup === g.label ? null : g.label)}
+                className={`px-3 py-2 rounded-full text-xs font-semibold border transition-all ${
+                  activeGroup === g.label
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-card text-foreground border-border'
+                }`}>
+                <span className="mr-1">{g.emoji}</span>{g.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Level 3: final subcategory chips → navigate to Places result */}
+        {currentGroup && (
+          <div className="flex flex-wrap gap-2 mb-5 p-3 bg-muted/40 rounded-kipita-sm">
+            {currentGroup.subs.map(s => (
+              <button key={s.label}
+                onClick={() => onSwitchTab(s.hint === 'atm' ? 'maps' : 'places', s.hint)}
+                className="flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground hover:border-kipita-red hover:text-kipita-red transition-colors">
+                <span>{s.emoji}</span>{s.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
