@@ -52,6 +52,111 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { emoji: '🚇', label: 'Transit', action: () => onSwitchTab('places', 'transport') },
   ];
 
+  /* ── 3-level category drill-down ── */
+  type SubChip = { label: string; hint: string; emoji: string };
+  type SubGroup = { label: string; emoji: string; subs: SubChip[] };
+  type TopCat = { id: string; label: string; color: string; groups: SubGroup[] };
+
+  const TOP_CATEGORIES: TopCat[] = [
+    {
+      id: 'restaurants', label: 'Restaurants', color: 'bg-kipita-red text-white',
+      groups: [
+        { label: 'Food', emoji: '🍽️', subs: [
+          { label: 'American', hint: 'food', emoji: '🍔' },
+          { label: 'Italian', hint: 'food', emoji: '🍝' },
+          { label: 'Mexican', hint: 'food', emoji: '🌮' },
+          { label: 'Japanese', hint: 'food', emoji: '🍱' },
+          { label: 'Chinese', hint: 'food', emoji: '🥡' },
+          { label: 'Pizza', hint: 'food', emoji: '🍕' },
+          { label: 'All Food', hint: 'food', emoji: '🍽️' },
+        ]},
+        { label: 'Cafés', emoji: '☕', subs: [
+          { label: 'Coffee', hint: 'cafe', emoji: '☕' },
+          { label: 'Boba / Tea', hint: 'cafe', emoji: '🧋' },
+          { label: 'Bakery Café', hint: 'cafe', emoji: '🥐' },
+          { label: 'All Cafés', hint: 'cafe', emoji: '🍵' },
+        ]},
+        { label: 'Drinks & Bars', emoji: '🍸', subs: [
+          { label: 'Cocktail Bar', hint: 'drinks', emoji: '🍸' },
+          { label: 'Brewery', hint: 'drinks', emoji: '🍺' },
+          { label: 'Wine Bar', hint: 'drinks', emoji: '🍷' },
+          { label: 'Rooftop', hint: 'drinks', emoji: '🌃' },
+          { label: 'All Bars', hint: 'drinks', emoji: '🥂' },
+        ]},
+      ],
+    },
+    {
+      id: 'entertainment', label: 'Entertainment', color: 'bg-kipita-navy text-white',
+      groups: [
+        { label: 'Nightlife', emoji: '🎵', subs: [
+          { label: 'Nightclub', hint: 'nightlife', emoji: '🎉' },
+          { label: 'Live Music', hint: 'nightlife', emoji: '🎵' },
+          { label: 'Pub', hint: 'nightlife', emoji: '🍺' },
+          { label: 'Rooftop', hint: 'nightlife', emoji: '🌃' },
+        ]},
+        { label: 'Attractions', emoji: '🎡', subs: [
+          { label: 'Museums', hint: 'places', emoji: '🏛️' },
+          { label: 'Tours', hint: 'places', emoji: '🗺️' },
+          { label: 'Theme Parks', hint: 'places', emoji: '🎢' },
+          { label: 'Landmarks', hint: 'places', emoji: '🗽' },
+          { label: 'Events', hint: 'places', emoji: '🎪' },
+        ]},
+        { label: 'Outdoors', emoji: '🏖️', subs: [
+          { label: 'Beach', hint: 'places', emoji: '🏖️' },
+          { label: 'Park', hint: 'places', emoji: '🌳' },
+          { label: 'Hiking', hint: 'places', emoji: '🥾' },
+        ]},
+      ],
+    },
+    {
+      id: 'shopping', label: 'Shopping', color: 'bg-foreground text-background',
+      groups: [
+        { label: 'Stores', emoji: '🛍️', subs: [
+          { label: 'Mall', hint: 'shop', emoji: '🏬' },
+          { label: 'Clothing', hint: 'shop', emoji: '👔' },
+          { label: 'Electronics', hint: 'shop', emoji: '📱' },
+          { label: 'Local Market', hint: 'shop', emoji: '🏪' },
+          { label: 'All Shops', hint: 'shop', emoji: '🛍️' },
+        ]},
+        { label: 'Groceries', emoji: '🛒', subs: [
+          { label: 'Supermarket', hint: 'shop', emoji: '🛒' },
+          { label: 'Convenience', hint: 'shop', emoji: '🏪' },
+        ]},
+      ],
+    },
+    {
+      id: 'essentials', label: 'Essentials', color: 'bg-kipita-green text-white',
+      groups: [
+        { label: 'Transport', emoji: '🚗', subs: [
+          { label: 'Gas Stations', hint: 'gas', emoji: '⛽' },
+          { label: 'Transit', hint: 'transport', emoji: '🚇' },
+          { label: 'EV Charging', hint: 'places', emoji: '⚡' },
+          { label: 'Auto Care', hint: 'places', emoji: '🔧' },
+        ]},
+        { label: 'Medical', emoji: '🏥', subs: [
+          { label: 'Hospital', hint: 'hospital', emoji: '🏥' },
+          { label: 'Pharmacy', hint: 'pharmacy', emoji: '💊' },
+          { label: 'Urgent Care', hint: 'medical', emoji: '⚕️' },
+          { label: 'Dentist', hint: 'medical', emoji: '🦷' },
+        ]},
+        { label: 'Money', emoji: '🏧', subs: [
+          { label: 'ATM', hint: 'atm', emoji: '🏧' },
+          { label: 'BTC ATM', hint: 'atm', emoji: '₿' },
+        ]},
+        { label: 'Stay', emoji: '🏨', subs: [
+          { label: 'Hotel', hint: 'hotel', emoji: '🏨' },
+          { label: 'Hostel', hint: 'hotel', emoji: '🛏️' },
+          { label: 'Resort', hint: 'hotel', emoji: '🏖️' },
+        ]},
+      ],
+    },
+  ];
+
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  const [activeGroup, setActiveGroup] = useState<string | null>(null);
+  const currentCat = TOP_CATEGORIES.find(c => c.id === activeCat) || null;
+  const currentGroup = currentCat?.groups.find(g => g.label === activeGroup) || null;
+
   /* 5-level safety dots */
   const level = safetyResult?.level ?? -1;
   const DOTS = [
