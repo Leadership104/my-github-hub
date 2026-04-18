@@ -55,11 +55,11 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   /* ── 3-level category drill-down ── */
   type SubChip = { label: string; hint: string; emoji: string };
   type SubGroup = { label: string; emoji: string; subs: SubChip[] };
-  type TopCat = { id: string; label: string; color: string; groups: SubGroup[] };
+  type TopCat = { id: string; label: string; emoji: string; color: string; groups: SubGroup[] };
 
   const TOP_CATEGORIES: TopCat[] = [
     {
-      id: 'restaurants', label: 'Restaurants', color: 'bg-kipita-red text-white',
+      id: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: 'bg-kipita-red text-white',
       groups: [
         { label: 'Food', emoji: '🍽️', subs: [
           { label: 'American', hint: 'food', emoji: '🍔' },
