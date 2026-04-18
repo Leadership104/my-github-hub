@@ -59,7 +59,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
   const TOP_CATEGORIES: TopCat[] = [
     {
-      id: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: 'bg-kipita-red text-white',
+      id: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: 'border-kipita-red ring-2 ring-kipita-red',
       groups: [
         { label: 'Food', emoji: '🍽️', subs: [
           { label: 'American', hint: 'food', emoji: '🍔' },
