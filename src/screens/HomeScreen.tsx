@@ -198,18 +198,18 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
         {/* Top Categories: 4 square tiles drilling down to subcategories */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
+        <div className="grid grid-cols-4 gap-2 mb-3">
           {TOP_CATEGORIES.map(c => (
             <button key={c.id}
               onClick={() => {
                 if (activeCat === c.id) { setActiveCat(null); setActiveGroup(null); }
                 else { setActiveCat(c.id); setActiveGroup(null); }
               }}
-              className={`aspect-square rounded-kipita-sm text-sm font-bold transition-all flex flex-col items-center justify-center gap-2 ${
+              className={`aspect-square rounded-kipita-sm text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-1 px-1 ${
                 activeCat === c.id ? c.color + ' shadow-md' : 'bg-card border border-border text-foreground'
               }`}>
-              <span className="text-3xl">{c.emoji}</span>
-              <span>{c.label}</span>
+              <span className="text-xl">{c.emoji}</span>
+              <span className="leading-tight text-center">{c.label}</span>
             </button>
           ))}
         </div>
