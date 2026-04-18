@@ -86,7 +86,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'entertainment', label: 'Entertainment', emoji: '🎭', color: 'bg-kipita-navy text-white',
+      id: 'entertainment', label: 'Entertainment', emoji: '🎭', color: 'border-kipita-blue ring-2 ring-kipita-blue',
       groups: [
         { label: 'Nightlife', emoji: '🎵', subs: [
           { label: 'Nightclub', hint: 'nightlife', emoji: '🎉' },
@@ -109,7 +109,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'bg-foreground text-background',
+      id: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'border-kipita-teal ring-2 ring-kipita-teal',
       groups: [
         { label: 'Stores', emoji: '🛍️', subs: [
           { label: 'Mall', hint: 'shop', emoji: '🏬' },
@@ -125,7 +125,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'essentials', label: 'Essentials', emoji: '🧰', color: 'bg-kipita-green text-white',
+      id: 'essentials', label: 'Essentials', emoji: '🧰', color: 'border-kipita-green ring-2 ring-kipita-green',
       groups: [
         { label: 'Transport', emoji: '🚗', subs: [
           { label: 'Gas Stations', hint: 'gas', emoji: '⛽' },
@@ -205,8 +205,8 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 if (activeCat === c.id) { setActiveCat(null); setActiveGroup(null); }
                 else { setActiveCat(c.id); setActiveGroup(null); }
               }}
-              className={`aspect-square rounded-kipita-sm text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-1 px-1 ${
-                activeCat === c.id ? c.color + ' shadow-md' : 'bg-card border border-border text-foreground'
+              className={`aspect-square rounded-kipita-sm text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-1 px-1 bg-card text-foreground border ${
+                activeCat === c.id ? c.color + ' shadow-md' : 'border-border'
               }`}>
               <span className="text-xl">{c.emoji}</span>
               <span className="leading-tight text-center">{c.label}</span>
@@ -221,10 +221,10 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
               {currentCat.groups.map(g => (
                 <button key={g.label}
                   onClick={() => setActiveGroup(activeGroup === g.label ? null : g.label)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all ${
+                  className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all bg-card text-foreground ${
                     activeGroup === g.label
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'bg-card text-foreground border-border'
+                      ? 'border-kipita-blue ring-2 ring-kipita-blue'
+                      : 'border-border'
                   }`}>
                   <span className="mr-1">{g.emoji}</span>{g.label}
                 </button>
@@ -240,7 +240,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
               {currentGroup.subs.map(s => (
                 <button key={s.label}
                   onClick={() => onSwitchTab(s.hint === 'atm' ? 'maps' : 'places', s.hint)}
-                  className="flex-shrink-0 flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground whitespace-nowrap hover:border-kipita-red hover:text-kipita-red transition-colors">
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground whitespace-nowrap hover:border-kipita-green hover:text-foreground transition-colors">
                   <span>{s.emoji}</span>{s.label}
                 </button>
               ))}

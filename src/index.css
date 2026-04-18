@@ -3,15 +3,16 @@
 @tailwind utilities;
 
 :root {
-  --kipita-red: 4 79% 56%;
-  --kipita-red-dk: 4 70% 47%;
-  --kipita-red-lt: 4 86% 96%;
+  /* Kipita logo brand colors — exact hex values */
+  --kipita-red: 355 71% 55%;       /* #DD3B49 */
+  --kipita-red-dk: 355 60% 45%;
+  --kipita-red-lt: 355 80% 96%;
   --kipita-navy: 218 56% 11%;
   --kipita-navy-card: 218 47% 18%;
-  --kipita-green: 142 71% 45%;
-  --kipita-teal: 160 69% 62%;
+  --kipita-green: 120 49% 50%;     /* #44BC44 */
+  --kipita-teal: 156 70% 62%;      /* #5BE1AE */
+  --kipita-blue: 209 93% 66%;      /* #56ACF9 */
   --kipita-warning: 28 91% 48%;
-  --kipita-blue: 217 91% 60%;
   --kipita-btc: 28 92% 53%;
 
   --background: 210 25% 97%;
