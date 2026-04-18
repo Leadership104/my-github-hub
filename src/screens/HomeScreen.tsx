@@ -197,17 +197,51 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
-        {/* Essentials */}
-        <h3 className="text-sm font-bold text-foreground mb-3">Essentials</h3>
-        <div className="grid grid-cols-3 gap-3 mb-5">
-          {essentials.map(t => (
-            <button key={t.label} onClick={t.action}
-              className="flex flex-col items-center gap-2 p-3.5 bg-card border border-border rounded-kipita hover:shadow-md transition-all">
-              <span className="text-2xl">{t.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{t.label}</span>
+        {/* Top Categories: 4 chips drilling down to subcategories */}
+        <div className="grid grid-cols-2 gap-2 mb-3">
+          {TOP_CATEGORIES.map(c => (
+            <button key={c.id}
+              onClick={() => {
+                if (activeCat === c.id) { setActiveCat(null); setActiveGroup(null); }
+                else { setActiveCat(c.id); setActiveGroup(null); }
+              }}
+              className={`py-3 rounded-kipita-sm text-sm font-bold transition-all ${
+                activeCat === c.id ? c.color + ' shadow-md' : 'bg-card border border-border text-foreground'
+              }`}>
+              {c.label}
             </button>
           ))}
         </div>
+
+        {/* Level 2: subcategory groups */}
+        {currentCat && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {currentCat.groups.map(g => (
+              <button key={g.label}
+                onClick={() => setActiveGroup(activeGroup === g.label ? null : g.label)}
+                className={`px-3 py-2 rounded-full text-xs font-semibold border transition-all ${
+                  activeGroup === g.label
+                    ? 'bg-foreground text-background border-foreground'
+                    : 'bg-card text-foreground border-border'
+                }`}>
+                <span className="mr-1">{g.emoji}</span>{g.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Level 3: final subcategory chips → navigate to Places result */}
+        {currentGroup && (
+          <div className="flex flex-wrap gap-2 mb-5 p-3 bg-muted/40 rounded-kipita-sm">
+            {currentGroup.subs.map(s => (
+              <button key={s.label}
+                onClick={() => onSwitchTab(s.hint === 'atm' ? 'maps' : 'places', s.hint)}
+                className="flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground hover:border-kipita-red hover:text-kipita-red transition-colors">
+                <span>{s.emoji}</span>{s.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
