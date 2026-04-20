@@ -87,8 +87,9 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
 async function textSearch(query: string, lat?: number, lng?: number, radius = 5000) {
   const body: Record<string, unknown> = { textQuery: query, maxResultCount: 20 };
   if (typeof lat === "number" && typeof lng === "number" && !Number.isNaN(lat) && !Number.isNaN(lng)) {
-    // Hard restrict so Google can't return results from other cities/countries.
-    body.locationRestriction = {
+    // searchText supports `circle` only inside `locationBias` (not locationRestriction).
+    // We still enforce a strict client-side distance cap to keep results local.
+    body.locationBias = {
       circle: { center: { latitude: lat, longitude: lng }, radius: Math.min(radius || 5000, 50000) },
     };
   }
