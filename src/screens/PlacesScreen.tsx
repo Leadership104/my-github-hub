@@ -266,7 +266,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     if (view === 'subcategory' && selectedSub) {
       (async () => {
         setLoading(true);
-        const places = await fetchGooglePlaces('search', { query: `${selectedSub.label} near ${locationName}`, lat, lng, radius: 5000 });
+        const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
+        const places = await fetchGooglePlaces('search', { query: `${term} near ${locationName}`, lat, lng, radius: 5000 });
         setLivePlaces(places);
         setLoading(false);
       })();
