@@ -225,6 +225,29 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           </div>
         </div>
 
+        {/* Trend Card — keyed to active location (GPS or selected) + context */}
+        <div className="bg-card border border-border rounded-kipita p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">SAFETY TREND</p>
+            <span className="text-[10px] font-bold" style={{ color: trendColor }}>
+              {delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : '— 0'}
+            </span>
+          </div>
+          <p className="text-xs text-foreground mb-2">{trendLabel}</p>
+          {history.length > 1 ? (
+            <svg width="100%" height={spH} viewBox={`0 0 ${spW} ${spH}`} preserveAspectRatio="none">
+              <path d={spPath} fill="none" stroke={sl.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <p className="text-[10px] text-muted-foreground italic">
+              Visit this screen on different days to build a trend for {locationName}.
+            </p>
+          )}
+          <p className="text-[9px] text-muted-foreground/70 mt-1">
+            Tracking {history.length} reading{history.length === 1 ? '' : 's'} for {locationName} · {CONTEXTS.find(c => c.id === context)?.label}
+          </p>
+        </div>
+
         {/* Plain-English headline + advice (ChatGPT-style: calm, clear) */}
         <div className="bg-card border border-border rounded-kipita p-4">
           <div className="flex items-start gap-3">
