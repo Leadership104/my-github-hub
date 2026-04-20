@@ -85,17 +85,20 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
     .filter(([, v]) => v.pts > 0)
     .slice(0, 6);
 
-  /* SVG gauge */
-  const gaugeR = 70, cx = 90, cy = 90;
-  const startA = 210, endA = -30;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const arcX = (a: number, r: number) => cx + r * Math.cos(toRad(a));
-  const arcY = (a: number, r: number) => cy + r * Math.sin(toRad(a));
-  const sweep = (startA - endA) * (result.score / 100);
-  const needleA = startA - sweep;
-
-  const bgPath = `M ${arcX(startA, gaugeR)} ${arcY(startA, gaugeR)} A ${gaugeR} ${gaugeR} 0 1 1 ${arcX(endA, gaugeR)} ${arcY(endA, gaugeR)}`;
-  const scorePath = `M ${arcX(startA, gaugeR)} ${arcY(startA, gaugeR)} A ${gaugeR} ${gaugeR} 0 ${sweep > 180 ? 1 : 0} 1 ${arcX(needleA, gaugeR)} ${arcY(needleA, gaugeR)}`;
+  /* Credit-score style semicircle gauge (180° arc, left→right over the top) */
+  const W = 260, H = 150;
+  const cx = W / 2, cy = 130, R = 95;
+  const polar = (deg: number) => {
+    const rad = (deg * Math.PI) / 180;
+    return { x: cx + R * Math.cos(rad), y: cy + R * Math.sin(rad) };
+  };
+  // Score 0..100 → angle 180° (left) sweeping to 360° (right), passing 270° (top)
+  const pct = Math.max(0, Math.min(100, result.score)) / 100;
+  const p0 = polar(180);
+  const pScore = polar(180 + 180 * pct);
+  const pFull = polar(360);
+  const bgPath = `M ${p0.x} ${p0.y} A ${R} ${R} 0 0 1 ${pFull.x} ${pFull.y}`;
+  const scorePath = `M ${p0.x} ${p0.y} A ${R} ${R} 0 0 1 ${pScore.x} ${pScore.y}`;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
