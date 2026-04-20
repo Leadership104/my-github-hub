@@ -150,7 +150,7 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, locationName, btcPrice, weather, trips]);
+  }, [loading, messages, locationName, lat, lng, btcPrice, weather, advisoryScore, trips]);
 
   return (
     <div className="flex flex-col h-full">
