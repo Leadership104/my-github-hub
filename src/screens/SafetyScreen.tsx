@@ -10,6 +10,15 @@ const CONTEXTS: { id: SafetyContext; label: string; icon: string; desc: string }
   { id: 'TRANSIT', label: 'In Transit', icon: '🚗', desc: 'Driving or commuting' },
 ];
 
+// Friendlier plain-English headlines (ChatGPT-style: calm, direct, helpful)
+const HEADLINES: Record<string, string> = {
+  'LOW RISK': 'Looks safe right now',
+  MODERATE: 'Generally okay — stay aware',
+  ELEVATED: 'Be extra careful here',
+  'HIGH RISK': 'High risk — take precautions',
+  CRITICAL: 'Avoid if possible',
+};
+
 const TIER_COLORS: Record<string, string> = {
   personal: '#ef4444', property: '#f97316', transit: '#a855f7', environ: '#3b82f6',
 };
