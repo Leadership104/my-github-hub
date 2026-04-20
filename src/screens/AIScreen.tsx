@@ -14,6 +14,8 @@ interface Props {
   btcPrice?: number;
   locationName?: string;
   countryCode?: string;
+  lat?: number;
+  lng?: number;
   weather?: { emoji: string; temp: string; desc: string };
   advisoryScore?: number;
   trips?: Trip[];
@@ -22,7 +24,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export default function AIScreen({ btcPrice, locationName, countryCode, weather, advisoryScore, trips, onCreateTrip, onAddBooking, onBack }: Props) {
+export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng, weather, advisoryScore, trips, onCreateTrip, onAddBooking, onBack }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
