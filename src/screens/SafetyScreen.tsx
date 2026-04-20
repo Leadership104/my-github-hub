@@ -59,9 +59,32 @@ interface Props {
   onBack: () => void;
 }
 
+const TREND_KEY = 'kip_safety_trend_v1';
+type TrendEntry = { date: string; score: number };
+
+function loadTrend(key: string): TrendEntry[] {
+  try {
+    const raw = localStorage.getItem(TREND_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    return Array.isArray(all[key]) ? all[key] : [];
+  } catch { return []; }
+}
+function saveTrend(key: string, entries: TrendEntry[]) {
+  try {
+    const raw = localStorage.getItem(TREND_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    all[key] = entries.slice(-30);
+    localStorage.setItem(TREND_KEY, JSON.stringify(all));
+  } catch { /* ignore quota */ }
+}
+
 export default function SafetyScreen({ locationName, countryCode, advisoryScore, onBack }: Props) {
   const [context, setContext] = useState<SafetyContext>('AWAY');
   const [result, setResult] = useState<SafetyResult | null>(null);
+  const [trend, setTrend] = useState<TrendEntry[]>([]);
+
+  // Trend & score are keyed to the ACTIVE location (GPS-detected or user-selected) + context.
+  const trendKey = `${(countryCode || 'XX').toUpperCase()}|${locationName}|${context}`;
 
   const compute = useCallback(() => {
     const baseRates = advisoryToBaseRates(advisoryScore ?? 2.5);
@@ -73,7 +96,15 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       baseRates,
     });
     setResult(r);
-  }, [context, advisoryScore]);
+
+    // Persist a daily snapshot for THIS location + context.
+    const today = new Date().toISOString().slice(0, 10);
+    const existing = loadTrend(trendKey);
+    const filtered = existing.filter(e => e.date !== today);
+    const next = [...filtered, { date: today, score: r.score }];
+    saveTrend(trendKey, next);
+    setTrend(next);
+  }, [context, advisoryScore, trendKey]);
 
   useEffect(() => { compute(); }, [compute]);
 
@@ -84,6 +115,27 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
     .sort((a, b) => b[1].pts - a[1].pts)
     .filter(([, v]) => v.pts > 0)
     .slice(0, 6);
+
+  // Trend delta vs previous distinct-day reading
+  const prior = trend.length > 1 ? trend[trend.length - 2] : null;
+  const delta = prior ? result.score - prior.score : 0;
+  const trendLabel = !prior
+    ? 'First reading — building history'
+    : delta > 1 ? `Safer than last reading (+${delta})`
+    : delta < -1 ? `Less safe than last reading (${delta})`
+    : 'Stable vs last reading';
+  const trendColor = delta > 1 ? '#22c55e' : delta < -1 ? '#ef4444' : '#64748b';
+
+  // Sparkline (last 14 days)
+  const history = trend.slice(-14);
+  const spW = 240, spH = 44, spPad = 4;
+  const spPath = history.length > 1
+    ? history.map((e, i) => {
+        const x = spPad + (i / (history.length - 1)) * (spW - spPad * 2);
+        const y = spPad + ((100 - e.score) / 100) * (spH - spPad * 2);
+        return `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`;
+      }).join(' ')
+    : '';
 
   /* Credit-score style semicircle gauge (180° arc, left→right over the top) */
   const W = 260, H = 150;
@@ -109,7 +161,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
-          <p className="text-white/50 text-[10px]">Your safety, explained simply</p>
+          <p className="text-white/50 text-[10px] truncate">
+            📍 Live for {locationName}{countryCode ? ` (${countryCode})` : ''} · GPS or selected location
+          </p>
         </div>
       </div>
 
@@ -169,6 +223,29 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Trend Card — keyed to active location (GPS or selected) + context */}
+        <div className="bg-card border border-border rounded-kipita p-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">SAFETY TREND</p>
+            <span className="text-[10px] font-bold" style={{ color: trendColor }}>
+              {delta > 0 ? `▲ +${delta}` : delta < 0 ? `▼ ${delta}` : '— 0'}
+            </span>
+          </div>
+          <p className="text-xs text-foreground mb-2">{trendLabel}</p>
+          {history.length > 1 ? (
+            <svg width="100%" height={spH} viewBox={`0 0 ${spW} ${spH}`} preserveAspectRatio="none">
+              <path d={spPath} fill="none" stroke={sl.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          ) : (
+            <p className="text-[10px] text-muted-foreground italic">
+              Visit this screen on different days to build a trend for {locationName}.
+            </p>
+          )}
+          <p className="text-[9px] text-muted-foreground/70 mt-1">
+            Tracking {history.length} reading{history.length === 1 ? '' : 's'} for {locationName} · {CONTEXTS.find(c => c.id === context)?.label}
+          </p>
         </div>
 
         {/* Plain-English headline + advice (ChatGPT-style: calm, clear) */}
