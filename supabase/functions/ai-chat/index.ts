@@ -10,13 +10,13 @@ const LOVABLE_API_KEY = () => Deno.env.get("LOVABLE_API_KEY") || "";
 const GOOGLE_PLACES_API_KEY = () => Deno.env.get("GOOGLE_PLACES_API_KEY") || "";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
-const SYSTEM_PROMPT = `You are Kipita AI — a world-class travel expert and personal concierge for digital nomads and travelers. Think and act like a smart local friend who knows the area inside-out.
+const SYSTEM_PROMPT = `You are Kipita AI — a chill, well-traveled local friend who happens to know everything about wherever the user is. You talk like a friend texting travel tips, not a guidebook.
 
-Your job is to be AGENTIC and PROACTIVE: don't just answer — recommend specific places, things to do RIGHT NOW (based on time of day, weather, season), warn of pitfalls, and surface hidden gems.
+Your vibe: casual, warm, specific. Use real place names, real data. Drop insider knowledge. Be the friend who's been there and knows what's up.
 
 When given live data (nearby places, weather, BTC price, advisories), USE IT. Reference real venue names, real distances, real conditions. Never give generic answers when specific data is available.
 
-Tone: warm, direct, useful. No filler. Use markdown bold and emojis for scanability.
+Tone: like texting a cool friend who knows the city. Use emoji naturally (not excessively). Bold key info. Keep it real.
 
 Booking links to weave in naturally when relevant:
 - Hotels: [Hotels.com](https://www.hotels.com/affiliate/RrZ7bmg)
@@ -30,8 +30,17 @@ Forbidden affiliates (NEVER mention): Strike, River, Skyscanner, Booking.com, Ai
 
 Keep replies under 400 words unless asked for depth.`;
 
+interface PlaceChip {
+  name: string;
+  type: string;
+  rating?: number;
+  reviews?: number;
+  openNow?: boolean;
+  summary?: string;
+}
+
 // Pull nearby live places via Google Places (New) v1
-async function fetchNearbyPlaces(lat: number, lng: number, type: string, max: number = 5) {
+async function fetchNearbyPlaces(lat: number, lng: number, type: string, max: number = 5): Promise<PlaceChip[]> {
   const key = GOOGLE_PLACES_API_KEY();
   if (!key) return [];
   try {
@@ -53,7 +62,7 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max: nu
     const data = await resp.json();
     return (data.places || []).map((p: any) => ({
       name: p.displayName?.text,
-      type: p.primaryTypeDisplayName?.text,
+      type: p.primaryTypeDisplayName?.text || type,
       rating: p.rating,
       reviews: p.userRatingCount,
       openNow: p.currentOpeningHours?.openNow,
@@ -89,6 +98,7 @@ serve(async (req) => {
     // Build context-aware system prompt
     let systemPrompt = SYSTEM_PROMPT;
     let liveDataBlock = "";
+    let allPlaces: PlaceChip[] = [];
 
     if (context) {
       const now = new Date();
@@ -109,7 +119,8 @@ serve(async (req) => {
           fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
           fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
         ]);
-        const fmt = (label: string, arr: any[]) => arr.length
+        allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter(p => p.name);
+        const fmt = (label: string, arr: PlaceChip[]) => arr.length
           ? `\n${label}:\n` + arr.map(p => `  • ${p.name}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED NOW]" : p.openNow === true ? " [OPEN NOW]" : ""}${p.summary ? ` — ${p.summary}` : ""}`).join("\n")
           : "";
         liveDataBlock += fmt("\nNearby restaurants", restaurants);
@@ -127,30 +138,32 @@ serve(async (req) => {
       systemPrompt += liveDataBlock;
     }
 
-    // For agentic briefings, override the user message with a structured instruction
+    // For agentic briefings, override the user message with a casual structured instruction
     let userMessage = message;
     if (agenticBriefing && context?.location) {
-      userMessage = `Generate an AGENTIC area briefing for **${context.location}**. The user just opened the AI tab — surprise them with how local and specific you are.
+      const safetyLevel = context.advisoryScore != null
+        ? (context.advisoryScore <= 1.5 ? "very safe, chill vibes" : context.advisoryScore <= 2.5 ? "pretty safe, normal precautions" : context.advisoryScore <= 3.5 ? "be aware, keep your wits about you" : "stay alert, not the safest")
+        : "no data yet";
 
-Use the LIVE CONTEXT above (real nearby places, weather, time of day). Format EXACTLY:
+      userMessage = `Generate a casual, friendly area briefing for **${context.location}**. The user just opened the AI tab — make them feel like their well-traveled friend just texted them tips.
 
-**📍 ${context.location} — Right Now**
+Use the LIVE CONTEXT above (real nearby places, weather, time of day). Format like this:
 
-**🛡️ Safety vibe:** 1 sentence, reference actual advisory level.
+**📍 ${context.location} vibes**
 
-**🌤️ Conditions:** weather + what it means for plans (e.g. "perfect patio weather, hit a rooftop bar").
+**🛡️ Safety check:** Give an honest, casual safety vibe report. Current level: ${safetyLevel}. Mention what to watch for, what areas/times to be cautious about, any scams to know about. Keep it real but not scary.
 
-**🍽️ Eat now:** Pick the BEST 1-2 spots from the nearby restaurants list above, name them, say why (rating, vibe, what to order). If a great spot is closed, say so and suggest an alternative.
+**🌤️ Right now:** Weather + what that means for plans. Be specific — "perfect for…" or "skip outdoor stuff, hit up…"
 
-**☕ Or grab coffee:** 1 specific cafe from the list.
+**🍽️ Go eat here:** Pick the BEST 2-3 spots from the nearby restaurants. Name them, say what's good, mention if they're open. Be opinionated — "honestly the best X in the area."
 
-**✨ Do this today:** 2 concrete things — pull from nearby attractions or suggest activities matching the weather/time. Name real places.
+**☕ Coffee spot:** 1 specific cafe, why it's worth it.
 
-**⚠️ Heads up:** 1 hyper-local insider tip — a scam, etiquette nuance, neighborhood to avoid, or hidden gem most travelers miss.
+**✨ Don't miss:** 2 concrete things to do today. Pull from nearby attractions. Make it sound exciting.
 
-**💬 Ask me:** 2 short follow-up questions tailored to this exact city + time of day.
+**⚠️ Real talk:** 1 insider tip — a scam, etiquette thing, or hidden gem. The kind of thing only a local would tell you.
 
-Keep under 220 words. Be SPECIFIC. Use real names from the live data. No generic filler.`;
+Keep under 250 words. Sound like a friend, not a travel guide. Use real names from the live data.`;
     }
 
     const messages = [
@@ -172,7 +185,7 @@ Keep under 220 words. Be SPECIFIC. Use real names from the live data. No generic
         model: "google/gemini-2.5-flash",
         messages,
         max_tokens: 1200,
-        temperature: 0.75,
+        temperature: 0.8,
       }),
     });
 
@@ -197,7 +210,13 @@ Keep under 220 words. Be SPECIFIC. Use real names from the live data. No generic
     const data = await response.json();
     const reply = data.choices?.[0]?.message?.content || "I'm sorry, I couldn't generate a response. Please try again.";
 
-    return new Response(JSON.stringify({ reply }), {
+    // Return places alongside reply for chip rendering
+    const responseBody: Record<string, unknown> = { reply };
+    if (allPlaces.length > 0) {
+      responseBody.places = allPlaces.slice(0, 12);
+    }
+
+    return new Response(JSON.stringify(responseBody), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {

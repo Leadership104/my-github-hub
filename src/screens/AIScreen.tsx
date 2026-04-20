@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatMessage, Trip, Booking } from '../types';
+import type { ChatMessage, Trip, Booking, TabId } from '../types';
 import { DESTINATIONS } from '../data';
 import { supabase } from '../integrations/supabase/client';
 
@@ -8,6 +8,15 @@ function extractDestFromMsg(msg: string) {
   if (known) return `${known.city}, ${known.country}`;
   const cleaned = msg.replace(/plan|a|my|trip|to|travel|for|in|visit|itinerary|i want|go to|take me to|tell me about|what about|how is|\?/gi, ' ').replace(/\s+/g, ' ').trim();
   return cleaned.length > 2 ? cleaned.replace(/\b\w/g, c => c.toUpperCase()) : null;
+}
+
+interface PlaceChip {
+  name: string;
+  type: string;
+  rating?: number;
+  reviews?: number;
+  openNow?: boolean;
+  summary?: string;
 }
 
 interface Props {
@@ -22,21 +31,82 @@ interface Props {
   onCreateTrip?: (dest: string, country: string, days: number) => void;
   onAddBooking?: (tripId: string, booking: Booking) => void;
   onBack?: () => void;
+  onSwitchTab?: (tab: TabId, hint?: string) => void;
 }
 
-export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng, weather, advisoryScore, trips, onCreateTrip, onAddBooking, onBack }: Props) {
+// Map place types to Places screen section hints
+function placeTypeToHint(type: string): string {
+  const t = type.toLowerCase();
+  if (t.includes('restaurant') || t.includes('food')) return 'food';
+  if (t.includes('cafe') || t.includes('coffee')) return 'coffee';
+  if (t.includes('bar') || t.includes('pub') || t.includes('night')) return 'nightlife';
+  if (t.includes('attraction') || t.includes('museum') || t.includes('park')) return 'attractions';
+  if (t.includes('shop') || t.includes('store') || t.includes('mall')) return 'shopping';
+  return 'food';
+}
+
+function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip) => void }) {
+  if (!places.length) return null;
+  return (
+    <div className="px-1 pb-2">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">📍 Spots nearby — tap to explore</p>
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {places.map((p, i) => (
+          <button
+            key={`${p.name}-${i}`}
+            onClick={() => onTap(p)}
+            className="flex-shrink-0 bg-card border border-border rounded-xl px-3 py-2 text-left hover:border-kipita-red/40 hover:bg-muted transition-all max-w-[180px]"
+          >
+            <div className="text-xs font-bold text-foreground truncate">{p.name}</div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {p.rating && <span className="text-[10px] font-semibold text-amber-500">★ {p.rating}</span>}
+              {p.openNow === true && <span className="text-[10px] text-emerald-500 font-medium">Open</span>}
+              {p.openNow === false && <span className="text-[10px] text-muted-foreground">Closed</span>}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.type}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MessageBubble({ msg }: { msg: ChatMessage }) {
+  return (
+    <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+      <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+        msg.role === 'user'
+          ? 'bg-kipita-red text-white rounded-br-sm'
+          : 'bg-card border border-border text-foreground rounded-bl-sm'
+      }`}>
+        {msg.text.split(/(\*\*\[.*?\]\(.*?\)\*\*|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+          const boldLinkMatch = part.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
+          if (boldLinkMatch) return <a key={i} href={boldLinkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-bold">{boldLinkMatch[1]}</a>;
+          const boldMatch = part.match(/^\*\*(.+?)\*\*$/);
+          if (boldMatch) return <strong key={i}>{boldMatch[1]}</strong>;
+          const linkMatch = part.match(/^\[(.+?)\]\((.+?)\)$/);
+          if (linkMatch) return <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-semibold">{linkMatch[1]}</a>;
+          return <span key={i}>{part}</span>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng, weather, advisoryScore, trips, onCreateTrip, onAddBooking, onBack, onSwitchTab }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [briefingLoading, setBriefingLoading] = useState(false);
   const [lastTrip, setLastTrip] = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripCreatedToast, setTripCreatedToast] = useState('');
+  const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const briefingKeyRef = useRef<string>('');
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
-  // Agentic auto-briefing: fires once per location change when AI screen opens
+  // Agentic auto-briefing
   useEffect(() => {
     if (!locationName) return;
     const key = `${locationName}|${countryCode || ''}`;
@@ -46,15 +116,16 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
     const placeholder: ChatMessage = {
       id: 'briefing-' + Date.now(),
       role: 'ai',
-      text: `🧭 Scouting **${locationName}** in real time…\n\nPulling live nearby spots, weather, and local intel.`,
+      text: `🧭 Checking out **${locationName}** for you…\n\nPulling live spots, weather, and the vibe.`,
       timestamp: Date.now(),
     };
     setMessages([placeholder]);
+    setNearbyPlaces([]);
     setBriefingLoading(true);
 
     supabase.functions.invoke('ai-chat', {
       body: {
-        message: 'agentic-briefing', // overridden server-side when agenticBriefing=true
+        message: 'agentic-briefing',
         history: [],
         agenticBriefing: true,
         context: {
@@ -69,13 +140,14 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
       },
     }).then(({ data, error }) => {
       if (error) throw error;
-      const reply = data?.reply || `Here's what I know about **${locationName}** — ask me anything!`;
+      const reply = data?.reply || `Here's the vibe for **${locationName}** — ask me anything!`;
       setMessages([{ id: 'briefing-result', role: 'ai', text: reply, timestamp: Date.now() }]);
+      if (data?.places?.length) setNearbyPlaces(data.places);
     }).catch((err) => {
       console.error('Briefing error:', err);
       setMessages([{
         id: 'briefing-fallback', role: 'ai',
-        text: `Hi! I'm Kipita AI — your travel expert. I couldn't pull a live briefing for **${locationName}** right now, but I'm ready to help.\n\n💡 Try: "What should I do today?" · "Best food nearby" · "Plan a 5-day trip"`,
+        text: `Hey! I'm your Kipita AI travel buddy. Couldn't pull live data for **${locationName}** right now, but I'm here to help.\n\n💡 Try: "What should I do today?" · "Best food nearby" · "Is it safe here?"`,
         timestamp: Date.now(),
       }]);
     }).finally(() => setBriefingLoading(false));
@@ -84,10 +156,17 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
   const quickActions = [
     { emoji: '📋', label: 'My Trips', prompt: 'Show my trips and bookings' },
     { emoji: '✈️', label: 'Plan Trip', prompt: 'Plan a 5-day trip for a digital nomad' },
-    { emoji: '🏨', label: 'Book Hotel', prompt: `Book a hotel in ${locationName || 'Tokyo'}` },
-    { emoji: '🛡️', label: 'Safety', prompt: `What is the safety situation for ${locationName || 'my area'}?` },
-    { emoji: '💰', label: 'Cost Guide', prompt: `How much does it cost to live in ${locationName || 'Lisbon'}?` },
+    { emoji: '🛡️', label: 'Safety', prompt: `Give me the real safety vibe for ${locationName || 'my area'} — what should I watch out for?` },
+    { emoji: '🍽️', label: 'Best Food', prompt: `What's the best food near me right now?` },
+    { emoji: '🌃', label: 'Tonight', prompt: `What should I do tonight in ${locationName || 'this area'}?` },
   ];
+
+  const handlePlaceChipTap = useCallback((place: PlaceChip) => {
+    if (onSwitchTab) {
+      const hint = placeTypeToHint(place.type);
+      onSwitchTab('places', hint);
+    }
+  }, [onSwitchTab]);
 
   const handleCreateTrip = (dest: string) => {
     const knownDest = DESTINATIONS.find(d => dest.toLowerCase().includes(d.city.toLowerCase()));
@@ -119,7 +198,6 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
       if (typeof advisoryScore === 'number') context.advisoryScore = advisoryScore;
       if (trips && trips.length > 0) context.trips = trips;
 
-      // Send recent history for context
       const history = messages.slice(-10).map(m => ({ role: m.role, text: m.text }));
 
       const { data, error } = await supabase.functions.invoke('ai-chat', {
@@ -132,7 +210,10 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
       const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now() };
       setMessages(prev => [...prev.slice(-18), aiMsg]);
 
-      // Detect trip planning intent for "Create Trip" button
+      // Update place chips if new ones came back
+      if (data?.places?.length) setNearbyPlaces(data.places);
+
+      // Detect trip planning intent
       if (/\b(plan|trip|travel|visit|itinerary|go to)\b/.test(text.toLowerCase()) && !/\b(my trips?|my bookings?|show)\b/.test(text.toLowerCase())) {
         const dest = extractDestFromMsg(text) || 'New Destination';
         const knownDest = DESTINATIONS.find(d => text.toLowerCase().includes(d.city.toLowerCase()));
@@ -143,7 +224,7 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
       console.error('AI chat error:', err);
       const errorMsg: ChatMessage = {
         id: (Date.now() + 1).toString(), role: 'ai',
-        text: "⚠️ I'm having trouble connecting right now. Please check your connection and try again.",
+        text: "⚠️ Having trouble connecting right now. Check your connection and try again.",
         timestamp: Date.now(),
       };
       setMessages(prev => [...prev, errorMsg]);
@@ -167,10 +248,10 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
         <div className="flex-1">
           <h3 className="font-bold text-foreground">Kipita AI</h3>
           <p className="text-xs text-muted-foreground">
-            {briefingLoading ? `Briefing for ${locationName}…` : loading ? 'Thinking…' : `📍 ${locationName || 'Live data'} · Powered by Gemini`}
+            {briefingLoading ? `Scouting ${locationName}…` : loading ? 'Thinking…' : `📍 ${locationName || 'Live data'} · Your travel buddy`}
           </p>
         </div>
-        <button onClick={() => { briefingKeyRef.current = ''; setMessages([{ id: '0', role: 'ai', text: "Chat cleared! I'm ready to help. 🌍 Ask me anything.", timestamp: Date.now() }]); setLastTrip(null); }}
+        <button onClick={() => { briefingKeyRef.current = ''; setNearbyPlaces([]); setMessages([{ id: '0', role: 'ai', text: "Fresh start! What's on your mind? 🌍", timestamp: Date.now() }]); setLastTrip(null); }}
           className="ms text-muted-foreground text-xl hover:text-foreground transition-colors">refresh</button>
       </div>
 
@@ -187,24 +268,14 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.map(msg => (
-          <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
-              msg.role === 'user'
-                ? 'bg-kipita-red text-white rounded-br-sm'
-                : 'bg-card border border-border text-foreground rounded-bl-sm'
-            }`}>
-              {msg.text.split(/(\*\*\[.*?\]\(.*?\)\*\*|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
-                const boldLinkMatch = part.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
-                if (boldLinkMatch) return <a key={i} href={boldLinkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-bold">{boldLinkMatch[1]}</a>;
-                const boldMatch = part.match(/^\*\*(.+?)\*\*$/);
-                if (boldMatch) return <strong key={i}>{boldMatch[1]}</strong>;
-                const linkMatch = part.match(/^\[(.+?)\]\((.+?)\)$/);
-                if (linkMatch) return <a key={i} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-semibold">{linkMatch[1]}</a>;
-                return <span key={i}>{part}</span>;
-              })}
-            </div>
-          </div>
+          <MessageBubble key={msg.id} msg={msg} />
         ))}
+
+        {/* Place chips after briefing */}
+        {!loading && !briefingLoading && nearbyPlaces.length > 0 && (
+          <PlaceChips places={nearbyPlaces} onTap={handlePlaceChipTap} />
+        )}
+
         {loading && (
           <div className="flex justify-start">
             <div className="bg-card border border-border rounded-2xl px-4 py-3 rounded-bl-sm">
@@ -216,6 +287,7 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
             </div>
           </div>
         )}
+
         {/* Add to Trips button */}
         {lastTrip && !loading && (
           <div className="flex justify-center gap-2">
@@ -238,7 +310,7 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-          placeholder="Plan trips, book hotels, ask anything…"
+          placeholder="Ask me anything about this area…"
           rows={1}
           className="flex-1 resize-none bg-background border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red transition-colors"
         />
