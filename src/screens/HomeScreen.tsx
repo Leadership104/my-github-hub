@@ -197,6 +197,19 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
+        {/* AI CTA - Moved to top */}
+        <button onClick={() => onSwitchTab('ai')}
+          className="w-full flex items-center gap-3 bg-card border-2 border-kipita-red rounded-kipita p-4 mb-5 text-left hover:shadow-md transition-shadow">
+          <div className="w-11 h-11 rounded-full bg-kipita-red-lt flex items-center justify-center">
+            <span className="ms text-kipita-red text-xl">auto_awesome</span>
+          </div>
+          <div className="flex-1">
+            <div className="text-foreground font-extrabold text-sm">Kipita AI : Know Before You Go</div>
+            <div className="text-muted-foreground text-xs mt-0.5">Gain Insights BEFORE you travel.</div>
+          </div>
+          <span className="ms text-muted-foreground text-xl">chevron_right</span>
+        </button>
+
         {/* Top Categories: 4 square tiles drilling down to subcategories */}
         <div className="grid grid-cols-4 gap-2 mb-3">
           {TOP_CATEGORIES.map(c => (
@@ -248,20 +261,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           </div>
         )}
 
-        {/* AI CTA */}
-        <button onClick={() => onSwitchTab('ai')}
-          className="w-full flex items-center gap-3 bg-card border-2 border-kipita-red rounded-kipita p-4 mb-5 text-left hover:shadow-md transition-shadow">
-          <div className="w-11 h-11 rounded-full bg-kipita-red-lt flex items-center justify-center">
-            <span className="ms text-kipita-red text-xl">auto_awesome</span>
-          </div>
-          <div className="flex-1">
-            <div className="text-foreground font-extrabold text-sm">Kipita AI : Know Before You Go</div>
-            <div className="text-muted-foreground text-xs mt-0.5">Gain Insights BEFORE you travel.</div>
-          </div>
-          <span className="ms text-muted-foreground text-xl">chevron_right</span>
-        </button>
-
-        {/* Perks & Deals */}
+        {/* Kipita Perks */}
         <h3 className="text-sm font-bold text-foreground mb-3">🎁 Kipita Perks</h3>
         <div className="space-y-2 mb-5">
           {PERKS.filter(p => p.category === 'btc').slice(0, 3).map(p => (
