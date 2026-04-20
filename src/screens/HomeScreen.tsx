@@ -59,7 +59,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
   const TOP_CATEGORIES: TopCat[] = [
     {
-      id: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: 'border-kipita-red ring-2 ring-kipita-red',
+      id: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: 'shadow-sm',
       groups: [
         { label: 'Food', emoji: '🍽️', subs: [
           { label: 'American', hint: 'food', emoji: '🍔' },
@@ -86,7 +86,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'entertainment', label: 'Entertainment', emoji: '🎭', color: 'border-kipita-blue ring-2 ring-kipita-blue',
+      id: 'entertainment', label: 'Entertainment', emoji: '🎭', color: 'shadow-sm',
       groups: [
         { label: 'Nightlife', emoji: '🎵', subs: [
           { label: 'Nightclub', hint: 'nightlife', emoji: '🎉' },
@@ -109,7 +109,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'border-kipita-teal ring-2 ring-kipita-teal',
+      id: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'shadow-sm',
       groups: [
         { label: 'Stores', emoji: '🛍️', subs: [
           { label: 'Mall', hint: 'shop', emoji: '🏬' },
@@ -125,7 +125,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       ],
     },
     {
-      id: 'essentials', label: 'Essentials', emoji: '🧰', color: 'border-kipita-green ring-2 ring-kipita-green',
+      id: 'essentials', label: 'Essentials', emoji: '🧰', color: 'shadow-sm',
       groups: [
         { label: 'Transport', emoji: '🚗', subs: [
           { label: 'Gas Stations', hint: 'gas', emoji: '⛽' },
@@ -199,7 +199,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
         {/* AI CTA - Moved to top */}
         <button onClick={() => onSwitchTab('ai')}
-          className="w-full flex items-center gap-3 bg-card border-2 border-kipita-red rounded-kipita p-4 mb-5 text-left hover:shadow-md transition-shadow">
+          className="w-full flex items-center gap-3 bg-card rounded-kipita p-4 mb-5 text-left hover:shadow-md transition-shadow shadow-sm">
           <div className="w-11 h-11 rounded-full bg-kipita-red-lt flex items-center justify-center">
             <span className="ms text-kipita-red text-xl">auto_awesome</span>
           </div>
@@ -236,7 +236,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                   onClick={() => setActiveGroup(activeGroup === g.label ? null : g.label)}
                   className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all bg-card text-foreground ${
                     activeGroup === g.label
-                      ? 'border-kipita-blue ring-2 ring-kipita-blue'
+                      ? 'shadow-sm'
                       : 'border-border'
                   }`}>
                   <span className="mr-1">{g.emoji}</span>{g.label}
@@ -253,7 +253,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
               {currentGroup.subs.map(s => (
                 <button key={s.label}
                   onClick={() => onSwitchTab(s.hint === 'atm' ? 'maps' : 'places', s.hint)}
-                  className="flex-shrink-0 flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground whitespace-nowrap hover:border-kipita-green hover:text-foreground transition-colors">
+                  className="flex-shrink-0 flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground whitespace-nowrap hover:shadow-sm transition-colors">
                   <span>{s.emoji}</span>{s.label}
                 </button>
               ))}
