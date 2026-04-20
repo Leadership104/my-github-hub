@@ -262,7 +262,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         </button>
 
         {/* Perks & Deals */}
-        <h3 className="text-sm font-bold text-foreground mb-3">🎁 Perks & Deals</h3>
+        <h3 className="text-sm font-bold text-foreground mb-3">🎁 Kipita Perks</h3>
         <div className="space-y-2 mb-5">
           {PERKS.filter(p => p.category === 'btc').slice(0, 3).map(p => (
             <a key={p.title} href={p.url} target="_blank" rel="noopener noreferrer"
