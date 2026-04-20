@@ -10,6 +10,15 @@ const CONTEXTS: { id: SafetyContext; label: string; icon: string; desc: string }
   { id: 'TRANSIT', label: 'In Transit', icon: '🚗', desc: 'Driving or commuting' },
 ];
 
+// Friendlier plain-English headlines (ChatGPT-style: calm, direct, helpful)
+const HEADLINES: Record<string, string> = {
+  'LOW RISK': 'Looks safe right now',
+  MODERATE: 'Generally okay — stay aware',
+  ELEVATED: 'Be extra careful here',
+  'HIGH RISK': 'High risk — take precautions',
+  CRITICAL: 'Avoid if possible',
+};
+
 const TIER_COLORS: Record<string, string> = {
   personal: '#ef4444', property: '#f97316', transit: '#a855f7', environ: '#3b82f6',
 };
@@ -76,17 +85,20 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
     .filter(([, v]) => v.pts > 0)
     .slice(0, 6);
 
-  /* SVG gauge */
-  const gaugeR = 70, cx = 90, cy = 90;
-  const startA = 210, endA = -30;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const arcX = (a: number, r: number) => cx + r * Math.cos(toRad(a));
-  const arcY = (a: number, r: number) => cy + r * Math.sin(toRad(a));
-  const sweep = (startA - endA) * (result.score / 100);
-  const needleA = startA - sweep;
-
-  const bgPath = `M ${arcX(startA, gaugeR)} ${arcY(startA, gaugeR)} A ${gaugeR} ${gaugeR} 0 1 1 ${arcX(endA, gaugeR)} ${arcY(endA, gaugeR)}`;
-  const scorePath = `M ${arcX(startA, gaugeR)} ${arcY(startA, gaugeR)} A ${gaugeR} ${gaugeR} 0 ${sweep > 180 ? 1 : 0} 1 ${arcX(needleA, gaugeR)} ${arcY(needleA, gaugeR)}`;
+  /* Credit-score style semicircle gauge (180° arc, left→right over the top) */
+  const W = 260, H = 150;
+  const cx = W / 2, cy = 130, R = 95;
+  const polar = (deg: number) => {
+    const rad = (deg * Math.PI) / 180;
+    return { x: cx + R * Math.cos(rad), y: cy + R * Math.sin(rad) };
+  };
+  // Score 0..100 → angle 180° (left) sweeping to 360° (right), passing 270° (top)
+  const pct = Math.max(0, Math.min(100, result.score)) / 100;
+  const p0 = polar(180);
+  const pScore = polar(180 + 180 * pct);
+  const pFull = polar(360);
+  const bgPath = `M ${p0.x} ${p0.y} A ${R} ${R} 0 0 1 ${pFull.x} ${pFull.y}`;
+  const scorePath = `M ${p0.x} ${p0.y} A ${R} ${R} 0 0 1 ${pScore.x} ${pScore.y}`;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -97,7 +109,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
-          <p className="text-white/50 text-[10px]">Kipita Safety Intelligence Engine</p>
+          <p className="text-white/50 text-[10px]">Your safety, explained simply</p>
         </div>
       </div>
 
@@ -117,64 +129,78 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           ))}
         </div>
 
-        {/* Score Gauge */}
+        {/* Score Gauge — credit-score style */}
         <div className="bg-card border border-border rounded-kipita p-5 flex flex-col items-center">
-          <p className="text-[10px] font-semibold text-muted-foreground tracking-widest mb-2">COMPOSITE SAFETY INDEX</p>
-          <svg width="180" height="120" className="mb-1">
-            <path d={bgPath} fill="none" stroke="hsl(var(--muted))" strokeWidth={12} strokeLinecap="round" />
-            <path d={scorePath} fill="none" stroke={sl.color} strokeWidth={12} strokeLinecap="round"
-              style={{ filter: `drop-shadow(0 0 6px ${sl.color}88)`, transition: 'all 0.6s' }} />
-            <text x={cx} y={cy + 6} textAnchor="middle" fill="currentColor" fontSize="30" fontWeight="800"
-              className="text-foreground">{result.score}</text>
-            <text x={cx} y={cy + 22} textAnchor="middle" fill={sl.color} fontSize="9" fontWeight="700"
-              letterSpacing="2">{result.riskLevel}</text>
+          <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">SAFETY SCORE</p>
+          <p className="text-[10px] text-muted-foreground mb-2">Higher is safer · 0–100</p>
+
+          <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="mb-1">
+            <path d={bgPath} fill="none" stroke="hsl(var(--muted))" strokeWidth={14} strokeLinecap="round" />
+            <path d={scorePath} fill="none" stroke={sl.color} strokeWidth={14} strokeLinecap="round"
+              style={{ filter: `drop-shadow(0 0 8px ${sl.color}aa)`, transition: 'all 0.7s ease' }} />
+            <circle cx={pScore.x} cy={pScore.y} r={8} fill={sl.color}
+              style={{ filter: `drop-shadow(0 0 4px ${sl.color})`, transition: 'all 0.7s ease' }} />
+            <text x={cx} y={cy - 18} textAnchor="middle" fontSize="46" fontWeight="800"
+              className="fill-foreground">{result.score}</text>
+            <text x={cx} y={cy} textAnchor="middle" fontSize="10" fontWeight="700"
+              fill={sl.color} letterSpacing="2">{result.riskLevel}</text>
+            <text x={p0.x} y={p0.y + 18} textAnchor="middle" fontSize="9"
+              className="fill-muted-foreground">0</text>
+            <text x={pFull.x} y={pFull.y + 18} textAnchor="middle" fontSize="9"
+              className="fill-muted-foreground">100</text>
           </svg>
 
-          {/* 5-level dots */}
-          <div className="flex items-center gap-2 mt-1">
+          {/* 5-level scale legend */}
+          <div className="flex items-center justify-between w-full mt-2 px-1">
             {[
               { threshold: 0, color: '#ef4444', label: 'Unsafe' },
               { threshold: 1, color: '#f97316', label: 'Risky' },
               { threshold: 2, color: '#eab308', label: 'Moderate' },
               { threshold: 3, color: '#84cc16', label: 'Safer' },
               { threshold: 4, color: '#22c55e', label: 'Safe' },
-            ].map((d, i) => (
-              <div key={i} className="flex flex-col items-center gap-0.5">
-                <span className="w-3 h-3 rounded-full transition-all"
+            ].map((d) => (
+              <div key={d.threshold} className="flex flex-col items-center gap-1 flex-1">
+                <span className="w-2.5 h-2.5 rounded-full transition-all"
                   style={{
                     backgroundColor: sl.level >= d.threshold ? d.color : `${d.color}30`,
                     boxShadow: sl.level === d.threshold ? `0 0 8px ${d.color}` : 'none',
                   }} />
-                <span className="text-[7px] text-muted-foreground">{d.label}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Metadata chips */}
-          <div className="flex gap-2 mt-3 flex-wrap justify-center">
-            {[
-              ['Confidence', result.confidence],
-              ['Time of Day', detectTimeOfDay() === 'daytime' ? 'Daytime' : detectTimeOfDay() === 'evening' ? 'Evening' : 'Night'],
-              ['Context', CONTEXTS.find(c => c.id === result.context)?.label ?? result.context],
-            ].map(([k, v]) => (
-              <div key={k} className="bg-muted rounded-lg px-2.5 py-1 text-center">
-                <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{k}</div>
-                <div className="text-xs font-bold text-foreground">{v}</div>
+                <span className="text-[8px] text-muted-foreground">{d.label}</span>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Safety Tip */}
-        <div className="rounded-kipita p-3 flex items-start gap-2"
-          style={{ backgroundColor: `${sl.color}18`, border: `1px solid ${sl.color}40` }}>
-          <span className="text-base mt-0.5">
-            {result.score >= 80 ? '✅' : result.score >= 60 ? '⚠️' : result.score >= 40 ? '🟠' : '🔴'}
-          </span>
-          <p className="text-xs text-foreground leading-relaxed">
-            {SAFETY_TIPS[context]?.[result.riskLevel] ?? 'Stay aware of your surroundings.'}
-          </p>
+        {/* Plain-English headline + advice (ChatGPT-style: calm, clear) */}
+        <div className="bg-card border border-border rounded-kipita p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl mt-0.5">
+              {result.score >= 80 ? '✅' : result.score >= 60 ? '⚠️' : result.score >= 40 ? '🟠' : '🔴'}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-foreground mb-1">
+                {HEADLINES[result.riskLevel] ?? 'Stay aware'}
+              </p>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                {SAFETY_TIPS[context]?.[result.riskLevel] ?? 'Stay aware of your surroundings.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Quick context chips */}
+          <div className="flex gap-2 mt-3 flex-wrap">
+            <span className="text-[10px] bg-muted text-foreground rounded-full px-2.5 py-1">
+              📍 {CONTEXTS.find(c => c.id === result.context)?.label}
+            </span>
+            <span className="text-[10px] bg-muted text-foreground rounded-full px-2.5 py-1">
+              🕒 {detectTimeOfDay() === 'daytime' ? 'Daytime' : detectTimeOfDay() === 'evening' ? 'Evening' : 'Night'}
+            </span>
+            <span className="text-[10px] bg-muted text-foreground rounded-full px-2.5 py-1">
+              🎯 {result.confidence} confidence
+            </span>
+          </div>
         </div>
+
 
         {/* Top Risk Factors */}
         <div className="bg-card border border-border rounded-kipita p-4">
