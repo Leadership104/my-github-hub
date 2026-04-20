@@ -462,7 +462,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
       <div className="flex-1 overflow-y-auto px-5 pb-24">
         {/* AI Banner */}
-        <button onClick={() => setShowAiPlanner(true)} className="w-full flex items-center gap-3 bg-card border-2 border-kipita-red rounded-kipita p-4 mb-4 text-left hover:shadow-md transition-shadow">
+        <button onClick={() => setShowAiPlanner(true)} className="w-full flex items-center gap-3 bg-card rounded-kipita p-4 mb-4 text-left hover:shadow-md transition-shadow shadow-sm">
           <span className="text-2xl">✨</span>
           <div className="flex-1">
             <div className="text-foreground font-extrabold text-sm">Plan & Book with AI</div>
@@ -473,27 +473,27 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
         {/* Travel utilities */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <button onClick={() => setTripsView('destinations')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-card border-2 border-kipita-blue rounded-kipita text-center hover:shadow-md transition-shadow">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">🌍</span>
             <div className="text-foreground font-bold text-[11px]">Destinations</div>
           </button>
           <button onClick={() => setTripsView('phrases')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-card border-2 border-kipita-red rounded-kipita text-center hover:shadow-md transition-shadow">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">🌐</span>
             <div className="text-foreground font-bold text-[11px]">Phrases</div>
           </button>
           <button onClick={() => setTripsView('groups')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-card border-2 border-kipita-teal rounded-kipita text-center hover:shadow-md transition-shadow">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">👥</span>
             <div className="text-foreground font-bold text-[11px]">Groups</div>
           </button>
           <button onClick={() => onSwitchTab?.('maps')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-card border-2 border-kipita-green rounded-kipita text-center hover:shadow-md transition-shadow">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">🗺️</span>
             <div className="text-foreground font-bold text-[11px]">Maps</div>
           </button>
           <button onClick={() => onSwitchTab?.('wallet')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-card border-2 border-kipita-btc rounded-kipita text-center hover:shadow-md transition-shadow">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">💱</span>
             <div className="text-foreground font-bold text-[11px]">Currency</div>
           </button>
