@@ -112,8 +112,11 @@ export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng
     try {
       const context: Record<string, unknown> = {};
       if (locationName) context.location = locationName;
+      if (typeof lat === 'number') context.lat = lat;
+      if (typeof lng === 'number') context.lng = lng;
       if (btcPrice) context.btcPrice = btcPrice;
       if (weather) context.weather = `${weather.emoji} ${weather.temp} ${weather.desc}`;
+      if (typeof advisoryScore === 'number') context.advisoryScore = advisoryScore;
       if (trips && trips.length > 0) context.trips = trips;
 
       // Send recent history for context
