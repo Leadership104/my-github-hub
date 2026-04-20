@@ -14,6 +14,8 @@ interface Props {
   btcPrice?: number;
   locationName?: string;
   countryCode?: string;
+  lat?: number;
+  lng?: number;
   weather?: { emoji: string; temp: string; desc: string };
   advisoryScore?: number;
   trips?: Trip[];
@@ -22,7 +24,7 @@ interface Props {
   onBack?: () => void;
 }
 
-export default function AIScreen({ btcPrice, locationName, countryCode, weather, advisoryScore, trips, onCreateTrip, onAddBooking, onBack }: Props) {
+export default function AIScreen({ btcPrice, locationName, countryCode, lat, lng, weather, advisoryScore, trips, onCreateTrip, onAddBooking, onBack }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,44 +46,22 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
     const placeholder: ChatMessage = {
       id: 'briefing-' + Date.now(),
       role: 'ai',
-      text: `🧭 Scanning live data for **${locationName}**…\n\nPulling safety, weather, local context, and things to know.`,
+      text: `🧭 Scouting **${locationName}** in real time…\n\nPulling live nearby spots, weather, and local intel.`,
       timestamp: Date.now(),
     };
     setMessages([placeholder]);
     setBriefingLoading(true);
 
-    const advisoryLabel = typeof advisoryScore === 'number'
-      ? advisoryScore <= 2 ? 'Low risk' : advisoryScore <= 3 ? 'Moderate risk' : advisoryScore <= 4 ? 'High risk' : 'Extreme risk'
-      : 'Unknown';
-
-    const briefingPrompt = `You are an expert travel concierge. The user just opened the AI tab. Generate a CONCISE area briefing for their CURRENT location: ${locationName}${countryCode ? ` (${countryCode})` : ''}.
-
-Use this real-time context:
-- Weather: ${weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : 'N/A'}
-- Travel advisory level: ${advisoryLabel}${typeof advisoryScore === 'number' ? ` (${advisoryScore.toFixed(1)}/5)` : ''}
-- Bitcoin price: ${btcPrice ? `$${btcPrice.toLocaleString()}` : 'N/A'}
-
-Format your response EXACTLY like this (use markdown bold and emojis, keep under 180 words):
-
-**📍 Quick Briefing: ${locationName}**
-
-**🛡️ Safety:** 1 short sentence on current safety vibe + advisory level.
-
-**🌤️ Right now:** weather + what it means for plans (e.g. "great for outdoor cafes").
-
-**💡 Things to know:** 3 short bullets — local etiquette, scams to avoid, a current event/seasonal note, or a hidden tip travelers usually miss. Be SPECIFIC to ${locationName}, not generic.
-
-**✨ Try asking me:** 2 short example questions tailored to this city (e.g. "Best ramen in Shinjuku", "Visa rules for digital nomads here").
-
-Be direct, warm, and useful — like a smart local friend. No filler.`;
-
     supabase.functions.invoke('ai-chat', {
       body: {
-        message: briefingPrompt,
+        message: 'agentic-briefing', // overridden server-side when agenticBriefing=true
         history: [],
+        agenticBriefing: true,
         context: {
           location: locationName,
           countryCode,
+          lat,
+          lng,
           btcPrice,
           weather: weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : undefined,
           advisoryScore,
@@ -95,11 +75,11 @@ Be direct, warm, and useful — like a smart local friend. No filler.`;
       console.error('Briefing error:', err);
       setMessages([{
         id: 'briefing-fallback', role: 'ai',
-        text: `Hi! I'm Kipita AI. I couldn't pull a live briefing for **${locationName}** right now, but I'm ready to help.\n\n💡 Try: "Is it safe here?" · "Best food nearby" · "Plan a 5-day trip"`,
+        text: `Hi! I'm Kipita AI — your travel expert. I couldn't pull a live briefing for **${locationName}** right now, but I'm ready to help.\n\n💡 Try: "What should I do today?" · "Best food nearby" · "Plan a 5-day trip"`,
         timestamp: Date.now(),
       }]);
     }).finally(() => setBriefingLoading(false));
-  }, [locationName, countryCode, weather, advisoryScore, btcPrice]);
+  }, [locationName, countryCode, lat, lng, weather, advisoryScore, btcPrice]);
 
   const quickActions = [
     { emoji: '📋', label: 'My Trips', prompt: 'Show my trips and bookings' },
@@ -132,8 +112,11 @@ Be direct, warm, and useful — like a smart local friend. No filler.`;
     try {
       const context: Record<string, unknown> = {};
       if (locationName) context.location = locationName;
+      if (typeof lat === 'number') context.lat = lat;
+      if (typeof lng === 'number') context.lng = lng;
       if (btcPrice) context.btcPrice = btcPrice;
       if (weather) context.weather = `${weather.emoji} ${weather.temp} ${weather.desc}`;
+      if (typeof advisoryScore === 'number') context.advisoryScore = advisoryScore;
       if (trips && trips.length > 0) context.trips = trips;
 
       // Send recent history for context
@@ -167,7 +150,7 @@ Be direct, warm, and useful — like a smart local friend. No filler.`;
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, locationName, btcPrice, weather, trips]);
+  }, [loading, messages, locationName, lat, lng, btcPrice, weather, advisoryScore, trips]);
 
   return (
     <div className="flex flex-col h-full">
