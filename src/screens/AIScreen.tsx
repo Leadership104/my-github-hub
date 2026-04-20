@@ -183,9 +183,11 @@ Be direct, warm, and useful — like a smart local friend. No filler.`;
         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-kipita-navy to-kipita-red flex items-center justify-center text-xl">✨</div>
         <div className="flex-1">
           <h3 className="font-bold text-foreground">Kipita AI</h3>
-          <p className="text-xs text-muted-foreground">{loading ? 'Thinking…' : 'Powered by Gemini · Live data'}</p>
+          <p className="text-xs text-muted-foreground">
+            {briefingLoading ? `Briefing for ${locationName}…` : loading ? 'Thinking…' : `📍 ${locationName || 'Live data'} · Powered by Gemini`}
+          </p>
         </div>
-        <button onClick={() => { setMessages([{ id: '0', role: 'ai', text: "Chat cleared! I'm ready to help. 🌍 Ask me anything.", timestamp: Date.now() }]); setLastTrip(null); }}
+        <button onClick={() => { briefingKeyRef.current = ''; setMessages([{ id: '0', role: 'ai', text: "Chat cleared! I'm ready to help. 🌍 Ask me anything.", timestamp: Date.now() }]); setLastTrip(null); }}
           className="ms text-muted-foreground text-xl hover:text-foreground transition-colors">refresh</button>
       </div>
 
