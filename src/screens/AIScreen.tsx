@@ -13,24 +13,93 @@ function extractDestFromMsg(msg: string) {
 interface Props {
   btcPrice?: number;
   locationName?: string;
+  countryCode?: string;
   weather?: { emoji: string; temp: string; desc: string };
+  advisoryScore?: number;
   trips?: Trip[];
   onCreateTrip?: (dest: string, country: string, days: number) => void;
   onAddBooking?: (tripId: string, booking: Booking) => void;
   onBack?: () => void;
 }
 
-export default function AIScreen({ btcPrice, locationName, weather, trips, onCreateTrip, onAddBooking, onBack }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '0', role: 'ai', text: "Hi! I'm Kipita AI — your real-time travel companion powered by Gemini. I can help you plan trips, find places, check safety, and more.\n\n💡 Try: \"Plan a trip to Bali\" · \"Is Tokyo safe?\" · \"Best nomad cities 2026\"", timestamp: Date.now() },
-  ]);
+export default function AIScreen({ btcPrice, locationName, countryCode, weather, advisoryScore, trips, onCreateTrip, onAddBooking, onBack }: Props) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [briefingLoading, setBriefingLoading] = useState(false);
   const [lastTrip, setLastTrip] = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripCreatedToast, setTripCreatedToast] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const briefingKeyRef = useRef<string>('');
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  // Agentic auto-briefing: fires once per location change when AI screen opens
+  useEffect(() => {
+    if (!locationName) return;
+    const key = `${locationName}|${countryCode || ''}`;
+    if (briefingKeyRef.current === key) return;
+    briefingKeyRef.current = key;
+
+    const placeholder: ChatMessage = {
+      id: 'briefing-' + Date.now(),
+      role: 'ai',
+      text: `🧭 Scanning live data for **${locationName}**…\n\nPulling safety, weather, local context, and things to know.`,
+      timestamp: Date.now(),
+    };
+    setMessages([placeholder]);
+    setBriefingLoading(true);
+
+    const advisoryLabel = typeof advisoryScore === 'number'
+      ? advisoryScore <= 2 ? 'Low risk' : advisoryScore <= 3 ? 'Moderate risk' : advisoryScore <= 4 ? 'High risk' : 'Extreme risk'
+      : 'Unknown';
+
+    const briefingPrompt = `You are an expert travel concierge. The user just opened the AI tab. Generate a CONCISE area briefing for their CURRENT location: ${locationName}${countryCode ? ` (${countryCode})` : ''}.
+
+Use this real-time context:
+- Weather: ${weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : 'N/A'}
+- Travel advisory level: ${advisoryLabel}${typeof advisoryScore === 'number' ? ` (${advisoryScore.toFixed(1)}/5)` : ''}
+- Bitcoin price: ${btcPrice ? `$${btcPrice.toLocaleString()}` : 'N/A'}
+
+Format your response EXACTLY like this (use markdown bold and emojis, keep under 180 words):
+
+**📍 Quick Briefing: ${locationName}**
+
+**🛡️ Safety:** 1 short sentence on current safety vibe + advisory level.
+
+**🌤️ Right now:** weather + what it means for plans (e.g. "great for outdoor cafes").
+
+**💡 Things to know:** 3 short bullets — local etiquette, scams to avoid, a current event/seasonal note, or a hidden tip travelers usually miss. Be SPECIFIC to ${locationName}, not generic.
+
+**✨ Try asking me:** 2 short example questions tailored to this city (e.g. "Best ramen in Shinjuku", "Visa rules for digital nomads here").
+
+Be direct, warm, and useful — like a smart local friend. No filler.`;
+
+    supabase.functions.invoke('ai-chat', {
+      body: {
+        message: briefingPrompt,
+        history: [],
+        context: {
+          location: locationName,
+          countryCode,
+          btcPrice,
+          weather: weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : undefined,
+          advisoryScore,
+        },
+      },
+    }).then(({ data, error }) => {
+      if (error) throw error;
+      const reply = data?.reply || `Here's what I know about **${locationName}** — ask me anything!`;
+      setMessages([{ id: 'briefing-result', role: 'ai', text: reply, timestamp: Date.now() }]);
+    }).catch((err) => {
+      console.error('Briefing error:', err);
+      setMessages([{
+        id: 'briefing-fallback', role: 'ai',
+        text: `Hi! I'm Kipita AI. I couldn't pull a live briefing for **${locationName}** right now, but I'm ready to help.\n\n💡 Try: "Is it safe here?" · "Best food nearby" · "Plan a 5-day trip"`,
+        timestamp: Date.now(),
+      }]);
+    }).finally(() => setBriefingLoading(false));
+  }, [locationName, countryCode, weather, advisoryScore, btcPrice]);
 
   const quickActions = [
     { emoji: '📋', label: 'My Trips', prompt: 'Show my trips and bookings' },
