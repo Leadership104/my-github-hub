@@ -109,7 +109,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         </button>
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
-          <p className="text-white/50 text-[10px]">Kipita Safety Intelligence Engine</p>
+          <p className="text-white/50 text-[10px]">Your safety, explained simply</p>
         </div>
       </div>
 
