@@ -79,12 +79,17 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
   return res.json();
 }
 
-/* ── Text Search (New) ── */
+/* ── Text Search (New) ──
+ * Uses locationRestriction (hard circle) when lat/lng are provided so results
+ * NEVER come from outside the selected city. Falls back to bias-only when no
+ * coords are sent.
+ */
 async function textSearch(query: string, lat?: number, lng?: number, radius = 5000) {
   const body: Record<string, unknown> = { textQuery: query, maxResultCount: 20 };
-  if (lat && lng) {
-    body.locationBias = {
-      circle: { center: { latitude: lat, longitude: lng }, radius },
+  if (typeof lat === "number" && typeof lng === "number" && !Number.isNaN(lat) && !Number.isNaN(lng)) {
+    // Hard restrict so Google can't return results from other cities/countries.
+    body.locationRestriction = {
+      circle: { center: { latitude: lat, longitude: lng }, radius: Math.min(radius || 5000, 50000) },
     };
   }
 
