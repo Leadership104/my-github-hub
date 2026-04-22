@@ -114,6 +114,7 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [thinkingStep, setThinkingStep] = useState(0);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [lastTrip, setLastTrip] = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripToast, setTripToast] = useState('');
@@ -121,6 +122,20 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
   const bottomRef = useRef<HTMLDivElement>(null);
   const recogRef = useRef<any>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const THINKING_STEPS = [
+    'Analyzing your question…',
+    'Fetching live travel data…',
+    'Checking destination insights…',
+    'Querying city intelligence…',
+    'Compiling your answer…',
+  ];
+
+  useEffect(() => {
+    if (!loading) { setThinkingStep(0); return; }
+    const iv = setInterval(() => setThinkingStep(s => (s + 1) % THINKING_STEPS.length), 1600);
+    return () => clearInterval(iv);
+  }, [loading]);
 
   const city = locationName?.split(',')[0] || 'Bangkok';
 
@@ -199,7 +214,8 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
       if (error) throw error;
 
       const reply = data?.reply || "I'm having trouble connecting. Please try again.";
-      const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now() };
+      const sources: string[] = data?.sources || [];
+      const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now(), sources };
       setMessages(prev => [...prev.slice(-20), aiMsg]);
       setSuggestions(getFollowUps(reply, locationName || ''));
 
@@ -253,7 +269,7 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-foreground text-sm">Kipita AI</h3>
           <p className="text-[10px] text-muted-foreground truncate">
-            {loading ? '● Thinking…' : 'Gemini · Live exchange rates · Country data'}
+            {loading ? `● ${THINKING_STEPS[thinkingStep]}` : 'Gemini 2.5 · 7 live data tools · Always-on intelligence'}
           </p>
         </div>
         <button onClick={clearChat} title="Clear chat"
@@ -262,10 +278,10 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
         </button>
       </div>
 
-      {/* Live context bar */}
-      {(locationName || weather || btcPrice) && (
+      {/* Live context bar — location + weather only; BTC surfaced on demand */}
+      {(locationName || weather) && (
         <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/30 border-b border-border overflow-x-auto scrollbar-hide flex-shrink-0">
-          <span className="text-[9px] text-muted-foreground/60 uppercase tracking-wider flex-shrink-0 mr-1">Context:</span>
+          <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider flex-shrink-0 mr-0.5">AI context:</span>
           {locationName && (
             <span className="text-[10px] text-muted-foreground bg-card border border-border rounded-full px-2 py-0.5 flex-shrink-0">
               📍 {locationName.split(',')[0]}
@@ -274,11 +290,6 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
           {weather && (
             <span className="text-[10px] text-muted-foreground bg-card border border-border rounded-full px-2 py-0.5 flex-shrink-0">
               {weather.emoji} {weather.temp}
-            </span>
-          )}
-          {btcPrice && (
-            <span className="text-[10px] text-muted-foreground bg-card border border-border rounded-full px-2 py-0.5 flex-shrink-0">
-              ₿ ${btcPrice.toLocaleString()}
             </span>
           )}
           {(trips?.length ?? 0) > 0 && (
@@ -321,6 +332,17 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
                 </div>
               </div>
 
+              {/* Sources badges — what live data was consulted */}
+              {msg.role === 'ai' && msg.sources && msg.sources.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-1.5 ml-8">
+                  {msg.sources.map(s => (
+                    <span key={s} className="text-[9px] bg-muted/40 border border-border rounded-full px-2 py-0.5 text-muted-foreground/70">
+                      🔗 {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Follow-up suggestion chips after last AI message */}
               {isLastAi && suggestions.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mt-2 ml-8">
@@ -336,14 +358,15 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
           );
         })}
 
-        {/* Typing indicator */}
+        {/* Agentic thinking indicator */}
         {loading && (
-          <div className="flex justify-start items-center gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-kipita-navy to-kipita-red flex items-center justify-center text-[10px] flex-shrink-0">✨</div>
+          <div className="flex items-start gap-2">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-kipita-navy to-kipita-red flex items-center justify-center text-[10px] flex-shrink-0 mt-1">✨</div>
             <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3">
+              <p className="text-[11px] text-muted-foreground mb-1.5">{THINKING_STEPS[thinkingStep]}</p>
               <div className="flex gap-1">
                 {[0, 150, 300].map(delay => (
-                  <span key={delay} className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"
+                  <span key={delay} className="w-1.5 h-1.5 bg-muted-foreground/60 rounded-full animate-bounce"
                     style={{ animationDelay: `${delay}ms` }} />
                 ))}
               </div>

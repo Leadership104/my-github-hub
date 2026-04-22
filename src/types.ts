@@ -106,6 +106,7 @@ export interface ChatMessage {
   role: 'user' | 'ai';
   text: string;
   timestamp: number;
+  sources?: string[];
 }
 
 export interface Group {
