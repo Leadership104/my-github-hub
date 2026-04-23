@@ -236,33 +236,45 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const section = BIG_SECTIONS.find(s => s.id === mapping.sectionId);
     if (!section) return;
 
+    // Resolve sub-chip target (subLabel pins a specific sub like "Mechanic" or "Farmers Market").
+    const findSub = (catId: string | undefined, label: string | undefined) => {
+      if (!label) return null;
+      if (AD_HOC_SUBS[label]) return AD_HOC_SUBS[label];
+      if (!catId) return null;
+      const subs = CATEGORY_SUBS[catId] || [];
+      return subs.find(s => s.label.toLowerCase() === label.toLowerCase()) || null;
+    };
+
     if (mapping.sectionId === 'eat') {
-      if (mapping.chipCatId && mapping.chipCatId !== 'food') {
-        // Auto-select first chip from the specific sub-category (e.g. cafe, drinks)
+      const pinned = findSub(mapping.chipCatId, mapping.subLabel);
+      if (pinned) {
+        selectChip(pinned);
+      } else if (mapping.chipCatId && mapping.chipCatId !== 'food') {
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
-        if (subs.length > 0) {
-          selectChip(subs[0]);
-        }
+        if (subs.length > 0) selectChip(subs[0]);
       } else {
         loadFoodGuide('all');
       }
     } else {
-      // For non-eat sections, find the right chip
       const sectionCats = categories.filter(c => section.catIds.includes(c.id));
       let targetChip: { label: string; query: string; emoji: string } | null = null;
 
-      if (mapping.chipCatId) {
+      // 1. Pinned sub (highest priority — guarantees direct landing)
+      const pinned = findSub(mapping.chipCatId, mapping.subLabel);
+      if (pinned) targetChip = pinned;
+
+      // 2. Otherwise first sub of given chipCatId
+      if (!targetChip && mapping.chipCatId) {
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
-        if (subs.length > 0) {
-          targetChip = subs[0];
-        } else {
+        if (subs.length > 0) targetChip = subs[0];
+        else {
           const cat = categories.find(c => c.id === mapping.chipCatId);
           if (cat) targetChip = { label: cat.label, query: cat.query, emoji: cat.emoji };
         }
       }
 
+      // 3. Fallback to first chip in section
       if (!targetChip) {
-        // Default to first chip in section
         for (const cat of sectionCats) {
           const subs = CATEGORY_SUBS[cat.id] || [];
           if (subs.length > 0) { targetChip = subs[0]; break; }
