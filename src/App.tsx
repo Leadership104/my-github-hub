@@ -13,6 +13,9 @@ import PlacesScreen from './screens/PlacesScreen';
 import MapsScreen from './screens/MapsScreen';
 import WalletScreen from './screens/WalletScreen';
 import SafetyScreen from './screens/SafetyScreen';
+import ATMScreen from './screens/ATMScreen';
+import PerksScreen from './screens/PerksScreen';
+import FuelScreen from './screens/FuelScreen';
 
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
@@ -197,6 +200,9 @@ export default function App() {
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} onBack={goBack} />;
       case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} onBack={goBack} />;
       case 'safety': return <SafetyScreen locationName={locationName} countryCode={countryCode} advisoryScore={advisoryData?.rawScore} onBack={goBack} />;
+      case 'atm': return <ATMScreen lat={lat} lng={lng} merchants={merchants} onBack={goBack} onViewOnMap={(filter) => switchTab('maps', filter)} />;
+      case 'perks': return <PerksScreen onBack={goBack} />;
+      case 'fuel': return <FuelScreen onBack={goBack} />;
     }
   };
 
