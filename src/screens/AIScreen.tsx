@@ -12,13 +12,30 @@ function extractDestFromMsg(msg: string) {
   return cleaned.length > 2 ? cleaned.replace(/\b\w/g, c => c.toUpperCase()) : null;
 }
 
+interface Alert {
+  level: 'critical' | 'warning' | 'info';
+  title: string;
+  body: string;
+}
+
+interface NomadStats {
+  costOfLiving?: number;
+  safety?: number;
+  internet?: number;
+}
+
 interface PlaceChip {
   name: string;
   type: string;
+  category?: string;
   rating?: number;
   reviews?: number;
   openNow?: boolean;
   summary?: string;
+  placeId?: string;
+  photoUrl?: string;
+  lat?: number;
+  lng?: number;
 }
 
 interface Props {
@@ -38,21 +55,33 @@ interface Props {
 
 function placeTypeToHint(type: string): string {
   const t = type.toLowerCase();
-  if (t.includes('restaurant') || t.includes('food')) return 'food';
-  if (t.includes('cafe') || t.includes('coffee')) return 'coffee';
-  if (t.includes('bar') || t.includes('pub') || t.includes('night')) return 'nightlife';
-  if (t.includes('attraction') || t.includes('museum') || t.includes('park')) return 'attractions';
-  if (t.includes('shop') || t.includes('store') || t.includes('mall')) return 'shopping';
+  if (t === 'restaurant' || t.includes('restaurant') || t.includes('food')) return 'food';
+  if (t === 'cafe' || t.includes('cafe') || t.includes('coffee')) return 'coffee';
+  if (t === 'bar' || t.includes('bar') || t.includes('pub') || t.includes('night')) return 'nightlife';
+  if (t === 'tourist_attraction' || t.includes('attraction') || t.includes('museum') || t.includes('park')) return 'food';
+  if (t.includes('shop') || t.includes('store') || t.includes('mall')) return 'shop';
   return 'food';
+}
+
+function placeTypeToEmoji(type: string): string {
+  const t = type.toLowerCase();
+  if (t.includes('restaurant') || t.includes('food')) return '🍽️';
+  if (t.includes('cafe') || t.includes('coffee')) return '☕';
+  if (t.includes('bar') || t.includes('night') || t.includes('pub')) return '🍺';
+  if (t.includes('attraction') || t.includes('museum')) return '🏛️';
+  if (t.includes('park')) return '🌳';
+  if (t.includes('hospital')) return '🏥';
+  return '📍';
 }
 
 // ── Live Stats Bar ────────────────────────────────────────────────────────────
 function StatsBar({
-  weather, advisoryScore, locationName,
+  weather, advisoryScore, locationName, airQualityLabel,
 }: {
   weather?: { emoji: string; temp: string; desc: string };
   advisoryScore?: number;
   locationName?: string;
+  airQualityLabel?: string;
 }) {
   const safetyColor =
     advisoryScore == null   ? '#64748b'
@@ -66,6 +95,11 @@ function StatsBar({
     : advisoryScore <= 2.5  ? 'Generally safe'
     : advisoryScore <= 3.5  ? 'Stay alert'
     : advisoryScore <= 4.2  ? 'High risk' : 'Extreme risk';
+
+  const aqiColor =
+    airQualityLabel === 'Good' ? '#22c55e'
+    : airQualityLabel === 'Moderate' ? '#eab308'
+    : '#ef4444';
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -87,6 +121,12 @@ function StatsBar({
           <span className="text-[11px] font-bold" style={{ color: safetyColor }}>{safetyLabel}</span>
         </div>
       )}
+      {airQualityLabel && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1">
+          <span className="text-sm">🌬️</span>
+          <span className="text-[11px] font-bold" style={{ color: aqiColor }}>AQI {airQualityLabel}</span>
+        </div>
+      )}
       <div className="flex items-center gap-1 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1">
         <span className="text-[10px] text-muted-foreground">🕒 {timeStr}</span>
       </div>
@@ -99,8 +139,47 @@ function StatsBar({
   );
 }
 
-// ── Place Chips ───────────────────────────────────────────────────────────────
-function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip) => void }) {
+// ── Alert Bar ─────────────────────────────────────────────────────────────────
+function AlertBar({ alerts, dismissed, onDismiss }: {
+  alerts: Alert[];
+  dismissed: Set<number>;
+  onDismiss: (i: number) => void;
+}) {
+  const active = alerts.filter((_, i) => !dismissed.has(i));
+  if (!active.length) return null;
+  return (
+    <div className="flex gap-2 px-3 py-2 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
+      {alerts.map((alert, i) => {
+        if (dismissed.has(i)) return null;
+        const styles =
+          alert.level === 'critical'
+            ? { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', icon: '⚠️' }
+            : alert.level === 'warning'
+            ? { bg: 'bg-amber-500/10', border: 'border-amber-500/30', text: 'text-amber-400', icon: '⚡' }
+            : { bg: 'bg-sky-500/10', border: 'border-sky-500/30', text: 'text-sky-400', icon: 'ℹ️' };
+        return (
+          <div
+            key={i}
+            className={`flex items-center gap-1.5 flex-shrink-0 ${styles.bg} border ${styles.border} rounded-full px-3 py-1 text-[11px] font-medium ${styles.text}`}
+          >
+            <span>{styles.icon}</span>
+            <span className="truncate max-w-[180px]">{alert.title}</span>
+            <button
+              onClick={() => onDismiss(i)}
+              className="ml-1 opacity-60 hover:opacity-100 transition-opacity leading-none"
+              aria-label="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Rich Place Cards ──────────────────────────────────────────────────────────
+function RichPlaceCards({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip) => void }) {
   if (!places.length) return null;
   return (
     <div className="px-1 pb-2">
@@ -108,22 +187,60 @@ function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceCh
         📍 Nearby — tap to explore
       </p>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {places.map((p, i) => (
-          <button
-            key={`${p.name}-${i}`}
-            onClick={() => onTap(p)}
-            className="flex-shrink-0 bg-card border border-border rounded-xl px-3 py-2 text-left hover:border-kipita-red/40 hover:bg-muted transition-all max-w-[180px] active:scale-95"
-          >
-            <div className="text-xs font-bold text-foreground truncate">{p.name}</div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {p.rating && <span className="text-[10px] font-semibold text-amber-500">★ {p.rating}</span>}
-              {p.openNow === true  && <span className="text-[10px] text-emerald-500 font-medium">Open</span>}
-              {p.openNow === false && <span className="text-[10px] text-muted-foreground">Closed</span>}
+        {places.map((p, i) => {
+          const emoji = placeTypeToEmoji(p.category || p.type);
+          return (
+            <div
+              key={`${p.name}-${i}`}
+              className="flex-shrink-0 w-[155px] bg-card border border-border/60 rounded-xl overflow-hidden hover:border-kipita-red/40 hover:shadow-lg transition-all"
+            >
+              {p.photoUrl ? (
+                <img src={p.photoUrl} alt={p.name} className="w-full h-[80px] object-cover" loading="lazy" />
+              ) : (
+                <div className="w-full h-[80px] bg-muted flex items-center justify-center text-2xl">{emoji}</div>
+              )}
+              <div className="p-2">
+                <div className="text-xs font-bold text-foreground truncate">{p.name}</div>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {p.rating && <span className="text-[10px] font-semibold text-amber-500">★ {p.rating}</span>}
+                  {p.openNow === true  && <span className="text-[10px] text-emerald-500 font-medium">Open</span>}
+                  {p.openNow === false && <span className="text-[10px] text-muted-foreground">Closed</span>}
+                </div>
+                <div className="text-[9px] text-muted-foreground truncate mt-0.5">{p.type}</div>
+                <button
+                  onClick={() => onTap(p)}
+                  className="mt-1.5 w-full text-[10px] font-semibold text-kipita-red bg-kipita-red/5 border border-kipita-red/20 rounded-lg py-1 hover:bg-kipita-red/10 transition-colors active:scale-95"
+                >
+                  View in Places →
+                </button>
+              </div>
             </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.type}</div>
-          </button>
-        ))}
+          );
+        })}
       </div>
+    </div>
+  );
+}
+
+// ── Nomad Stats Strip ─────────────────────────────────────────────────────────
+function NomadStatsStrip({ stats }: { stats: NomadStats }) {
+  const pills = [
+    stats.costOfLiving != null && { emoji: '💰', label: 'Cost', value: `${stats.costOfLiving}/10` },
+    stats.safety != null       && { emoji: '🛡️', label: 'Safety', value: `${stats.safety}/10` },
+    stats.internet != null     && { emoji: '⚡', label: 'Internet', value: `${stats.internet}/10` },
+  ].filter(Boolean) as { emoji: string; label: string; value: string }[];
+
+  if (!pills.length) return null;
+
+  return (
+    <div className="flex gap-3 px-3 py-2 rounded-xl bg-gradient-to-r from-kipita-navy/5 to-kipita-teal/5 border border-border/40 overflow-x-auto scrollbar-hide">
+      {pills.map((p, i) => (
+        <div key={i} className="flex items-center gap-1 flex-shrink-0">
+          <span className="text-sm">{p.emoji}</span>
+          <span className="text-[11px] font-bold text-foreground">{p.value}</span>
+          <span className="text-[10px] text-muted-foreground">{p.label}</span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -155,8 +272,8 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
     <div className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}>
       <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
         isAI
-          ? 'bg-card border border-border text-foreground rounded-bl-sm'
-          : 'bg-kipita-red text-white rounded-br-sm'
+          ? 'bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm text-foreground rounded-bl-sm'
+          : 'bg-gradient-to-br from-kipita-red to-rose-700 text-white rounded-br-sm'
       }`}>
         {msg.text.split(/(\*\*\[.*?\]\(.*?\)\*\*|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
           const boldLink = part.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
@@ -178,15 +295,18 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
   );
 }
 
-// ── Typing Indicator ──────────────────────────────────────────────────────────
-function TypingIndicator() {
+// ── Animated Thinking ─────────────────────────────────────────────────────────
+function AnimatedThinking({ step }: { step: number }) {
   return (
     <div className="flex justify-start">
-      <div className="bg-card border border-border rounded-2xl px-4 py-3 rounded-bl-sm">
-        <div className="flex gap-1 items-center">
-          <span className="w-2 h-2 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+      <div className="bg-card/80 backdrop-blur-sm border border-border/50 shadow-sm rounded-2xl rounded-bl-sm px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{THINKING_STEPS[step]}</span>
+          <div className="flex gap-1">
+            <span className="w-1.5 h-1.5 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+            <span className="w-1.5 h-1.5 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+            <span className="w-1.5 h-1.5 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+          </div>
         </div>
       </div>
     </div>
@@ -205,27 +325,46 @@ const QUICK_ACTIONS = [
   { emoji: '🚕', label: 'Get around',       prompt: 'How do I get around safely here? Uber, taxis, transit — what\'s the real deal?' },
 ];
 
+const THINKING_STEPS = [
+  '🔍 Analyzing…',
+  '🌐 Fetching live data…',
+  '🏙️ Checking city intelligence…',
+  '🗺️ Scanning advisories…',
+  '📊 Compiling answer…',
+];
+
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function AIScreen({
   btcPrice, locationName, countryCode, lat, lng,
   weather, advisoryScore, trips,
   onCreateTrip, onBack, onSwitchTab,
 }: Props) {
-  const [messages, setMessages]         = useState<ChatMessage[]>([]);
-  const [suggestions, setSuggestions]   = useState<string[]>([]);
-  const [input, setInput]               = useState('');
-  const [loading, setLoading]           = useState(false);
+  const [messages, setMessages]               = useState<ChatMessage[]>([]);
+  const [suggestions, setSuggestions]         = useState<string[]>([]);
+  const [input, setInput]                     = useState('');
+  const [loading, setLoading]                 = useState(false);
   const [briefingLoading, setBriefingLoading] = useState(false);
-  const [lastTrip, setLastTrip]         = useState<{ dest: string; country: string; days: number } | null>(null);
+  const [thinkingStep, setThinkingStep]       = useState(0);
+  const [lastTrip, setLastTrip]               = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripCreatedToast, setTripCreatedToast] = useState('');
-  const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
-  const bottomRef                       = useRef<HTMLDivElement>(null);
-  const briefingKeyRef                  = useRef<string>('');
-  const textareaRef                     = useRef<HTMLTextAreaElement>(null);
+  const [nearbyPlaces, setNearbyPlaces]       = useState<PlaceChip[]>([]);
+  const [alerts, setAlerts]                   = useState<Alert[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<number>>(new Set());
+  const [airQualityLabel, setAirQualityLabel] = useState<string | undefined>(undefined);
+  const [nomadStats, setNomadStats]           = useState<NomadStats | null>(null);
+  const bottomRef                             = useRef<HTMLDivElement>(null);
+  const briefingKeyRef                        = useRef<string>('');
+  const textareaRef                           = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, suggestions]);
+
+  useEffect(() => {
+    if (!loading && !briefingLoading) { setThinkingStep(0); return; }
+    const iv = setInterval(() => setThinkingStep(s => (s + 1) % THINKING_STEPS.length), 1800);
+    return () => clearInterval(iv);
+  }, [loading, briefingLoading]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -250,6 +389,7 @@ export default function AIScreen({
     }]);
     setNearbyPlaces([]);
     setSuggestions([]);
+    setNomadStats(null);
     setBriefingLoading(true);
 
     supabase.functions.invoke('ai-chat', {
@@ -270,9 +410,13 @@ export default function AIScreen({
     }).then(({ data, error }) => {
       if (error) throw error;
       const reply = data?.reply || `Here's the vibe for **${locationName}** — ask me anything!`;
-      setMessages([{ id: 'briefing-result', role: 'ai', text: reply, timestamp: Date.now() }]);
+      const briefingSources: string[] = data?.sources || [];
+      setMessages([{ id: 'briefing-result', role: 'ai', text: reply, timestamp: Date.now(), sources: briefingSources }]);
       if (data?.places?.length) setNearbyPlaces(data.places);
       if (data?.suggestions?.length) setSuggestions(data.suggestions);
+      if (data?.alerts?.length) setAlerts(prev => [...prev, ...data.alerts].slice(0, 6));
+      if (data?.aqiLabel) setAirQualityLabel(data.aqiLabel);
+      if (data?.nomadStats) setNomadStats(data.nomadStats);
     }).catch(() => {
       setMessages([{
         id: 'briefing-fallback',
@@ -283,8 +427,10 @@ export default function AIScreen({
     }).finally(() => setBriefingLoading(false));
   }, [locationName, countryCode, lat, lng, weather, advisoryScore, btcPrice]);
 
-  const handlePlaceChipTap = useCallback((place: PlaceChip) => {
-    if (onSwitchTab) onSwitchTab('places', placeTypeToHint(place.type));
+  const handlePlaceCardTap = useCallback((place: PlaceChip) => {
+    const cat = placeTypeToHint(place.category || place.type);
+    const hint = place.placeId ? `${cat}|${place.placeId}` : cat;
+    if (onSwitchTab) onSwitchTab('places', hint);
   }, [onSwitchTab]);
 
   const handleCreateTrip = (dest: string) => {
@@ -328,11 +474,15 @@ export default function AIScreen({
       if (error) throw error;
 
       const reply = data?.reply || "I'm sorry, I couldn't process that. Please try again.";
-      const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now() };
+      const msgSources: string[] = data?.sources || [];
+      const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now(), sources: msgSources };
       setMessages(prev => [...prev.slice(-18), aiMsg]);
 
       if (data?.places?.length) setNearbyPlaces(data.places);
       if (data?.suggestions?.length) setSuggestions(data.suggestions);
+      if (data?.alerts?.length) setAlerts(prev => [...prev, ...data.alerts].slice(0, 6));
+      if (data?.aqiLabel) setAirQualityLabel(data.aqiLabel);
+      if (data?.nomadStats) setNomadStats(data.nomadStats);
 
       // Detect trip planning intent
       if (
@@ -361,6 +511,10 @@ export default function AIScreen({
     setNearbyPlaces([]);
     setSuggestions([]);
     setLastTrip(null);
+    setAlerts([]);
+    setDismissedAlerts(new Set());
+    setAirQualityLabel(undefined);
+    setNomadStats(null);
     setMessages([{
       id: '0',
       role: 'ai',
@@ -368,6 +522,8 @@ export default function AIScreen({
       timestamp: Date.now(),
     }]);
   };
+
+  const isActive = loading || briefingLoading;
 
   return (
     <div className="flex flex-col h-full">
@@ -380,16 +536,17 @@ export default function AIScreen({
 
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-border bg-card flex-shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-kipita-navy via-kipita-red to-kipita-teal flex items-center justify-center flex-shrink-0">
-          <span className="text-lg">✦</span>
+        <div className="relative flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-kipita-navy via-kipita-red to-kipita-teal flex items-center justify-center">
+            <span className="text-lg">✦</span>
+          </div>
+          <span className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-card ${isActive ? 'bg-amber-400 animate-pulse' : 'bg-green-500 animate-pulse'}`} />
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-bold text-foreground">Kipita AI</h3>
           <p className="text-xs text-muted-foreground truncate">
-            {briefingLoading
-              ? `🔍 Scouting ${locationName}…`
-              : loading
-              ? '💭 Thinking…'
+            {isActive
+              ? THINKING_STEPS[thinkingStep]
               : `Know Before You Go · ${locationName || 'Locating…'}`}
           </p>
         </div>
@@ -403,7 +560,10 @@ export default function AIScreen({
       </div>
 
       {/* Live stats bar */}
-      <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} />
+      <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} airQualityLabel={airQualityLabel} />
+
+      {/* Alert bar */}
+      <AlertBar alerts={alerts} dismissed={dismissedAlerts} onDismiss={i => setDismissedAlerts(prev => new Set([...prev, i]))} />
 
       {/* Quick actions horizontal scroll */}
       <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
@@ -411,7 +571,7 @@ export default function AIScreen({
           <button
             key={a.label}
             onClick={() => sendMessage(a.prompt)}
-            disabled={loading || briefingLoading}
+            disabled={isActive}
             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-semibold hover:bg-muted hover:border-kipita-red/30 transition-all disabled:opacity-40 active:scale-95"
           >
             <span>{a.emoji}</span>
@@ -423,23 +583,39 @@ export default function AIScreen({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <div key={msg.id} className="space-y-1">
+            <MessageBubble msg={msg} />
+            {msg.role === 'ai' && msg.sources && msg.sources.length > 0 && (
+              <div className="flex flex-wrap gap-1 ml-1">
+                {msg.sources.map((s, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 text-[10px] bg-muted border border-border/60 rounded-full px-2 py-0.5 text-muted-foreground">
+                    🔗 {s}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
         ))}
 
-        {/* Nearby place chips (shown after briefing) */}
-        {!loading && !briefingLoading && nearbyPlaces.length > 0 && (
-          <PlaceChips places={nearbyPlaces} onTap={handlePlaceChipTap} />
+        {/* Nomad stats strip — shown after briefing when city scores available */}
+        {!isActive && nomadStats && (
+          <NomadStatsStrip stats={nomadStats} />
+        )}
+
+        {/* Rich place cards */}
+        {!isActive && nearbyPlaces.length > 0 && (
+          <RichPlaceCards places={nearbyPlaces} onTap={handlePlaceCardTap} />
         )}
 
         {/* Suggestion chips */}
-        {!loading && !briefingLoading && suggestions.length > 0 && (
+        {!isActive && suggestions.length > 0 && (
           <SuggestionChips suggestions={suggestions} onTap={sendMessage} />
         )}
 
-        {(loading || briefingLoading) && <TypingIndicator />}
+        {isActive && <AnimatedThinking step={thinkingStep} />}
 
         {/* Create trip CTA */}
-        {lastTrip && !loading && (
+        {lastTrip && !isActive && (
           <div className="flex justify-center gap-2">
             <button
               onClick={() => handleCreateTrip(lastTrip.dest)}
@@ -477,7 +653,7 @@ export default function AIScreen({
         />
         <button
           onClick={() => sendMessage(input)}
-          disabled={!input.trim() || loading}
+          disabled={!input.trim() || isActive}
           className="w-10 h-10 bg-kipita-red text-white rounded-full flex items-center justify-center flex-shrink-0 hover:bg-kipita-red/90 transition-all disabled:opacity-40 active:scale-95"
         >
           <span className="ms text-lg">send</span>

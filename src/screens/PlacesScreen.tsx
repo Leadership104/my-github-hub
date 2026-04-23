@@ -208,7 +208,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   React.useEffect(() => {
     if (!initialView || initialViewHandled.current) return;
     if (initialView === 'phrases' || initialView === 'destinations') return;
-    const mapping = HINT_TO_SECTION[initialView];
+    const [hintKey, hintPlaceId] = initialView.split('|');
+    const mapping = HINT_TO_SECTION[hintKey];
     if (!mapping) return;
     initialViewHandled.current = true;
 
@@ -255,6 +256,16 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       }
 
       if (targetChip) selectChip(targetChip);
+    }
+
+    // Deep-link to specific place detail if placeId provided
+    if (hintPlaceId) {
+      fetchGooglePlaces('details', { placeId: hintPlaceId }).then(detailed => {
+        if (detailed.length > 0) {
+          setSelectedPlace(detailed[0]);
+          setView('detail');
+        }
+      }).catch(() => {});
     }
   }, [initialView]);
 

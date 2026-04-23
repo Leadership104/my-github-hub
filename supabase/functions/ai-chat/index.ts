@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([p, new Promise<null>(r => setTimeout(() => r(null), ms))]);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -97,10 +101,19 @@ const HEALTH_NOTES: Record<string, string> = {
 interface PlaceChip {
   name: string;
   type: string;
+  category?: string;
   rating?: number;
   reviews?: number;
   openNow?: boolean;
   summary?: string;
+  placeId?: string;
+  photoUrl?: string;
+  lat?: number;
+  lng?: number;
+}
+
+function buildPhotoUrl(name: string): string {
+  return `https://places.googleapis.com/v1/${name}/media?maxHeightPx=400&key=${GOOGLE_PLACES_API_KEY()}`;
 }
 
 async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5): Promise<PlaceChip[]> {
@@ -113,7 +126,7 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary",
+          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.photos",
       },
       body: JSON.stringify({
         includedTypes: [type],
@@ -127,10 +140,15 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
     return (data.places || []).map((p: any) => ({
       name: p.displayName?.text,
       type: p.primaryTypeDisplayName?.text || type,
+      category: type,
       rating: p.rating,
       reviews: p.userRatingCount,
       openNow: p.currentOpeningHours?.openNow,
       summary: p.editorialSummary?.text,
+      placeId: p.id,
+      lat: p.location?.latitude,
+      lng: p.location?.longitude,
+      photoUrl: p.photos?.[0]?.name ? buildPhotoUrl(p.photos[0].name) : null,
     }));
   } catch {
     return [];
@@ -149,6 +167,209 @@ async function fetchCountryInfo(countryCode: string): Promise<string> {
   } catch {
     return "";
   }
+}
+
+const MAJOR_CITIES = [
+  "Bangkok","Paris","London","New York","Tokyo","Dubai","Singapore","Rome","Barcelona","Amsterdam",
+  "Istanbul","Prague","Vienna","Berlin","Sydney","Melbourne","Toronto","Vancouver","Seoul","Kuala Lumpur",
+  "Hong Kong","Bali","Phuket","Lisbon","Athens","Budapest","Copenhagen","Stockholm","Oslo","Helsinki",
+  "Zurich","Geneva","Brussels","Warsaw","Krakow","Budapest","Bucharest","Dublin","Edinburgh","Manchester",
+  "Mumbai","Delhi","Bangalore","Chennai","Kolkata","Goa","Jaipur","Agra","Varanasi","Kathmandu",
+  "Cairo","Marrakech","Casablanca","Nairobi","Cape Town","Johannesburg","Lagos","Accra",
+  "São Paulo","Rio de Janeiro","Buenos Aires","Lima","Bogotá","Mexico City","Cancun","Havana",
+  "Los Angeles","Miami","Chicago","Las Vegas","San Francisco","New Orleans","Washington","Boston",
+  "Bali","Jakarta","Ho Chi Minh City","Hanoi","Phnom Penh","Yangon","Colombo","Kathmandu",
+  "Reykjavik","Auckland","Queenstown","Fiji","Maldives",
+];
+
+function extractCityFromMessage(message: string, location?: string): string {
+  const words = message.split(/\s+/);
+  for (const city of MAJOR_CITIES) {
+    if (message.toLowerCase().includes(city.toLowerCase())) return city;
+    for (const w of words) {
+      if (w.toLowerCase() === city.toLowerCase()) return city;
+    }
+  }
+  if (location) {
+    const first = location.split(",")[0].trim();
+    return first;
+  }
+  return "";
+}
+
+async function fetchTeleportScores(cityName: string): Promise<{ label: string; score: number }[] | null> {
+  if (!cityName) return null;
+  try {
+    const searchResp = await fetch(`https://api.teleport.org/api/cities/?search=${encodeURIComponent(cityName)}&limit=1`);
+    if (!searchResp.ok) return null;
+    const searchData = await searchResp.json();
+    const uaHref = searchData._embedded?.["city:search-results"]?.[0]?._links?.["city:urban_area"]?.href;
+    if (!uaHref) return null;
+    const scoresResp = await fetch(`${uaHref}scores/`);
+    if (!scoresResp.ok) return null;
+    const scoresData = await scoresResp.json();
+    return (scoresData.categories || [])
+      .filter((c: any) => ["Cost of Living","Safety","Internet Access","Startup Scene"].includes(c.name))
+      .map((c: any) => ({ label: c.name, score: Math.round(c.score_out_of_10 * 10) / 10 }));
+  } catch {
+    return null;
+  }
+}
+
+async function fetchWikipediaSummary(cityName: string): Promise<string | null> {
+  if (!cityName) return null;
+  try {
+    const resp = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(cityName)}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const extract: string = data.extract || "";
+    return extract.slice(0, 250) || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchExchangeRates(): Promise<string | null> {
+  try {
+    const resp = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR,GBP,THB,JPY,AUD,CAD,CHF,CNY,INR,MXN");
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const rates: Record<string, number> = data.rates || {};
+    return Object.entries(rates).map(([k, v]) => `${k}=${v}`).join(", ") || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchTravelAdvisoryText(countryCode: string): Promise<string | null> {
+  if (!countryCode) return null;
+  try {
+    const resp = await fetch(`https://www.travel-advisory.info/api?countrycode=${countryCode}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const info = data.data?.[countryCode]?.advisory;
+    return info?.message || null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchDuckDuckGoContext(query: string): Promise<string | null> {
+  if (!query) return null;
+  try {
+    const url = `https://api.duckduckgo.com/?q=${encodeURIComponent(query + " travel news")}&format=json&no_html=1&skip_disambig=1`;
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (data.AbstractText) return data.AbstractText.slice(0, 300);
+    const related = data.RelatedTopics?.[0]?.Text;
+    return related ? related.slice(0, 300) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchAirQuality(lat: number, lng: number): Promise<{ label: string; value: number; unit: string } | null> {
+  try {
+    const resp = await fetch(
+      `https://api.openaq.org/v2/latest?coordinates=${lat},${lng}&radius=25000&limit=3&order_by=lastUpdated&sort=desc`,
+      { headers: { "Accept": "application/json" } }
+    );
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const results = data.results || [];
+    for (const r of results) {
+      for (const m of (r.measurements || [])) {
+        if (m.parameter === "pm25" || m.parameter === "pm10") {
+          const value = Math.round(m.value * 10) / 10;
+          const label = value < 12 ? "Good" : value < 35 ? "Moderate" : "Unhealthy";
+          return { label, value, unit: m.unit || "µg/m³" };
+        }
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchPublicHolidays(cc: string): Promise<{ name: string; date: string }[] | null> {
+  if (!cc) return null;
+  try {
+    const year = new Date().getFullYear();
+    const resp = await fetch(`https://date.nager.at/api/v3/publicholidays/${year}/${cc}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!Array.isArray(data)) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const limit = new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000);
+    return data
+      .filter((h: any) => {
+        const d = new Date(h.date);
+        return d >= today && d <= limit;
+      })
+      .map((h: any) => ({ name: h.localName || h.name, date: h.date }));
+  } catch {
+    return null;
+  }
+}
+
+interface BackendAlert {
+  level: "critical" | "warning" | "info";
+  title: string;
+  body: string;
+}
+
+function buildAlerts(
+  advisoryScore: number | undefined,
+  airQuality: { label: string; value: number; unit: string } | null,
+  holidays: { name: string; date: string }[] | null,
+  advisoryText: string | null,
+): BackendAlert[] {
+  const alerts: BackendAlert[] = [];
+
+  if (advisoryScore != null) {
+    const hasAvoidLanguage = advisoryText ? /\b(avoid|do not)\b/i.test(advisoryText) : false;
+    if (advisoryScore >= 3.5 || hasAvoidLanguage) {
+      alerts.push({
+        level: "critical",
+        title: "High Risk Destination",
+        body: advisoryText?.slice(0, 120) || "Exercise extreme caution. Check government advisories before traveling.",
+      });
+    } else if (advisoryScore >= 2.5) {
+      alerts.push({
+        level: "warning",
+        title: "Elevated Risk Area",
+        body: "Stay alert, avoid isolated areas at night, and keep valuables secure.",
+      });
+    }
+  }
+
+  if (airQuality?.label === "Unhealthy") {
+    alerts.push({
+      level: "warning",
+      title: "Poor Air Quality",
+      body: `PM2.5 at ${airQuality.value} ${airQuality.unit} — limit outdoor exposure and consider wearing a mask.`,
+    });
+  }
+
+  if (holidays && holidays.length > 0) {
+    const now = Date.now();
+    const soon = holidays.filter(h => {
+      const diff = (new Date(h.date).getTime() - now) / (1000 * 60 * 60 * 24);
+      return diff <= 3;
+    });
+    for (const h of soon.slice(0, 2)) {
+      alerts.push({
+        level: "info",
+        title: `Public Holiday: ${h.name}`,
+        body: `On ${h.date} — expect closures, crowds, and reduced public transport.`,
+      });
+    }
+  }
+
+  return alerts;
 }
 
 // ── Ultimate Travel Expert System Prompt ──────────────────────────────────────
@@ -185,6 +406,24 @@ BOOKING LINKS (weave in naturally when RELEVANT, not forced):
 
 NEVER MENTION: Strike, River, Skyscanner, Booking.com, Airbnb.
 
+NOMAD INTELLIGENCE (always include for nomad/remote work queries):
+• Co-working spaces: name specific co-working hubs known in the city
+• SIM cards: best carrier, cost, where to buy (airport vs convenience store)
+• Internet: average speeds, cafe reliability, VPN laws
+• Monthly cost tiers: Budget $X/mo · Mid $Y/mo · Comfort $Z/mo (housing+food+transport)
+• Visa intel: tourist visa duration, visa run options, digital nomad visa if available
+• Banking: which ATMs have lowest fees, Wise/Revolut availability
+• Best neighborhoods: name the specific nomad-friendly neighborhoods (e.g. Nimman in Chiang Mai)
+
+FIRST-TIMER PROTOCOLS (always include for first visit queries):
+• Arrival checklist: what to do in first 30 mins after landing (SIM, cash, transport)
+• Biggest mistakes first-timers make (specific to this destination)
+• What NOT to trust: common tourist traps, scam taxi zones, overpriced tourist restaurants
+• Cultural essential: the one thing you MUST know before interacting with locals
+• Safety baseline: what's normal vs what's a red flag
+
+RESPONSE FORMAT for briefings: Lead with the most time-sensitive intel. Use specific names, prices in USD, real neighborhoods. Never say "it depends" without a concrete example.
+
 Keep responses under 380 words unless user asks for comprehensive detail.`;
 
 serve(async (req) => {
@@ -213,6 +452,13 @@ serve(async (req) => {
     let systemPrompt = SYSTEM_PROMPT;
     let liveDataBlock = "";
     let allPlaces: PlaceChip[] = [];
+    const sources: string[] = [];
+
+    // These are set in the context block and used outside for buildAlerts
+    let resolvedAdvisoryText: string | null = null;
+    let resolvedAirQuality: { label: string; value: number; unit: string } | null = null;
+    let resolvedHolidays: { name: string; date: string }[] | null = null;
+    let resolvedTeleportScores: { label: string; score: number }[] | null = null;
 
     if (context) {
       const now = new Date();
@@ -235,37 +481,109 @@ serve(async (req) => {
         liveDataBlock += `\n- Travel advisory: ${context.advisoryScore.toFixed(1)}/5 — ${safetyDesc}`;
       }
 
-      if (context.btcPrice) liveDataBlock += `\n- BTC price: $${context.btcPrice.toLocaleString()}`;
+      const cityName = extractCityFromMessage(message, context.location);
+      const cc = context.countryCode?.toUpperCase() || "";
 
-      // Country info
-      if (context.countryCode) {
-        const countryInfo = await fetchCountryInfo(context.countryCode);
-        if (countryInfo) liveDataBlock += `\n- ${countryInfo}`;
+      // Run all data sources in parallel with 4s timeouts
+      const placesPromise = (typeof context.lat === "number" && typeof context.lng === "number")
+        ? Promise.all([
+            fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
+            fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
+            fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
+            fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
+            fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
+          ])
+        : Promise.resolve(null);
 
-        const emergency = EMERGENCY_NUMBERS[context.countryCode.toUpperCase()];
+      const [
+        teleportScores,
+        wikiSummary,
+        exchangeRates,
+        advisoryText,
+        ddgContext,
+        countryInfo,
+        placesResults,
+        airQuality,
+        holidays,
+      ] = await Promise.all([
+        withTimeout(fetchTeleportScores(cityName), 4000),
+        withTimeout(fetchWikipediaSummary(cityName), 4000),
+        withTimeout(fetchExchangeRates(), 4000),
+        withTimeout(fetchTravelAdvisoryText(cc), 4000),
+        withTimeout(fetchDuckDuckGoContext(cityName), 4000),
+        withTimeout(cc ? fetchCountryInfo(cc) : Promise.resolve(""), 4000),
+        withTimeout(placesPromise, 4000),
+        withTimeout(
+          typeof context.lat === "number" && typeof context.lng === "number"
+            ? fetchAirQuality(context.lat, context.lng)
+            : Promise.resolve(null),
+          4000
+        ),
+        withTimeout(cc ? fetchPublicHolidays(cc) : Promise.resolve(null), 4000),
+      ]);
+
+      resolvedAdvisoryText = advisoryText;
+      resolvedAirQuality = airQuality;
+      resolvedHolidays = holidays;
+      resolvedTeleportScores = teleportScores;
+
+      // Country static data
+      if (countryInfo) liveDataBlock += `\n- ${countryInfo}`;
+
+      if (cc) {
+        const emergency = EMERGENCY_NUMBERS[cc];
         if (emergency) {
           liveDataBlock += `\n- Emergency numbers: Police ${emergency.police} | Ambulance ${emergency.ambulance} | Fire ${emergency.fire}${emergency.tourist ? ` | Tourist Police ${emergency.tourist}` : ""}`;
         }
 
-        const scams = SCAM_ALERTS[context.countryCode.toUpperCase()];
+        const scams = SCAM_ALERTS[cc];
         if (scams?.length) {
           liveDataBlock += `\n- Known local scams: ${scams.slice(0, 2).join("; ")}`;
         }
 
-        const health = HEALTH_NOTES[context.countryCode.toUpperCase()];
+        const health = HEALTH_NOTES[cc];
         if (health) liveDataBlock += `\n- Health advisory: ${health}`;
       }
 
-      // Live nearby places
-      if (typeof context.lat === "number" && typeof context.lng === "number") {
-        const [restaurants, cafes, attractions, bars, hospitals] = await Promise.all([
-          fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
-          fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
-          fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
-          fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
-          fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
-        ]);
+      // New enrichment data
+      if (wikiSummary) {
+        liveDataBlock += `\n- Destination overview: ${wikiSummary}`;
+        sources.push(`Wikipedia: ${cityName}`);
+      }
+      if (teleportScores && teleportScores.length > 0) {
+        const scoreMap: Record<string, number> = {};
+        for (const s of teleportScores) scoreMap[s.label] = s.score;
+        liveDataBlock += `\n- City quality scores: Cost of Living ${scoreMap["Cost of Living"] ?? "N/A"}/10, Safety ${scoreMap["Safety"] ?? "N/A"}/10, Internet ${scoreMap["Internet Access"] ?? "N/A"}/10, Startup Scene ${scoreMap["Startup Scene"] ?? "N/A"}/10`;
+        sources.push(`City Scores: ${cityName}`);
+      }
+      if (exchangeRates) {
+        liveDataBlock += `\n- Live USD exchange rates: ${exchangeRates}`;
+        sources.push("Live Exchange Rates");
+      }
+      if (advisoryText) {
+        liveDataBlock += `\n- Government advisory note: ${advisoryText}`;
+        sources.push(`Travel Advisory: ${cc}`);
+      }
+      if (ddgContext) {
+        liveDataBlock += `\n- Web context: ${ddgContext}`;
+        sources.push("Web Context");
+      }
 
+      // Air quality
+      if (airQuality) {
+        liveDataBlock += `\n- Air quality: ${airQuality.label} (${airQuality.value} ${airQuality.unit} PM2.5/PM10)`;
+        sources.push("Air Quality");
+      }
+
+      // Upcoming holidays
+      if (holidays && holidays.length > 0) {
+        liveDataBlock += `\n- Upcoming public holidays (next 14 days): ${holidays.map(h => `${h.name} on ${h.date}`).join("; ")}`;
+        sources.push("Public Holidays");
+      }
+
+      // Nearby places
+      if (placesResults) {
+        const [restaurants, cafes, attractions, bars, hospitals] = placesResults;
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
 
         const fmt = (label: string, arr: PlaceChip[]) =>
@@ -280,7 +598,10 @@ serve(async (req) => {
         if (hospitals.length) {
           liveDataBlock += fmt("Nearest hospitals", hospitals);
         }
+        if (allPlaces.length) sources.push("Nearby Places");
       }
+
+      if (countryInfo) sources.push("Country Info");
 
       if (context.trips?.length > 0) {
         liveDataBlock += `\n- User's active trips: ${JSON.stringify(
@@ -378,12 +699,33 @@ Keep it under 280 words. Sound like a brilliant friend who actually knows this p
       data.choices?.[0]?.message?.content ||
       "I'm sorry, I couldn't generate a response. Please try again.";
 
-    // Extract contextual follow-up suggestions based on what was asked
     const suggestions = buildSuggestions(message, context);
 
-    const responseBody: Record<string, unknown> = { reply, suggestions };
+    const alerts = buildAlerts(
+      context?.advisoryScore,
+      resolvedAirQuality,
+      resolvedHolidays,
+      resolvedAdvisoryText,
+    );
+
+    const responseBody: Record<string, unknown> = { reply, suggestions, sources, alerts };
+
     if (allPlaces.length > 0) {
       responseBody.places = allPlaces.slice(0, 12);
+    }
+
+    if (resolvedAirQuality) {
+      responseBody.aqiLabel = resolvedAirQuality.label;
+    }
+
+    if (resolvedTeleportScores && resolvedTeleportScores.length > 0) {
+      const scoreMap: Record<string, number> = {};
+      for (const s of resolvedTeleportScores) scoreMap[s.label] = s.score;
+      responseBody.nomadStats = {
+        costOfLiving: scoreMap["Cost of Living"],
+        safety: scoreMap["Safety"],
+        internet: scoreMap["Internet Access"],
+      };
     }
 
     return new Response(JSON.stringify(responseBody), {
@@ -426,7 +768,9 @@ function buildSuggestions(message: string, context: any): string[] {
   if (msg.includes("trip") || msg.includes("plan") || msg.includes("itinerary")) {
     return ["What's the one thing I absolutely can't miss?", "How many days do I really need?", "What are the best day trips from here?"];
   }
+  if (msg.includes("nomad") || msg.includes("remote") || msg.includes("cowork") || msg.includes("digital")) {
+    return [`Best co-working spaces in ${loc}?`, "What's the monthly cost of living?", "Which neighborhoods are best for remote workers?"];
+  }
 
-  // Default: general discovery prompts
   return [`What's the vibe in ${loc} right now?`, "What do most tourists get wrong about this place?", "What's the hidden gem most visitors miss?"];
 }
