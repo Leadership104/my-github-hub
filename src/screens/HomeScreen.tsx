@@ -212,21 +212,18 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           </div>
         )}
 
-        {/* Featured Near Me */}
-        <h2 className="text-sm font-bold text-foreground mt-4 mb-3">Featured Near Me</h2>
+        {/* Featured Near Me — situational */}
+        <h2 className="text-sm font-bold text-foreground mt-4 mb-1">Featured Near Me</h2>
+        <p className="text-[10px] text-muted-foreground mb-3">Curated for right now · 1-tap</p>
         <div className="grid grid-cols-4 gap-2 mb-5">
-          {FEATURED_CATEGORIES.map(cat => (
+          {getFeaturedNearMe().map(cat => (
             <button
               key={cat.label}
               onClick={() => onSwitchTab('places', cat.hint)}
-              className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-kipita-sm border-2 transition-all hover:shadow-sm active:scale-95 ${
-                cat.featured
-                  ? 'bg-card border-yellow-400'
-                  : 'bg-muted/40 border-border'
-              }`}
+              className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-kipita-sm border-2 bg-card border-yellow-400 transition-all hover:shadow-sm active:scale-95"
             >
               <span className="text-2xl">{cat.emoji}</span>
-              <span className={`text-[10px] font-semibold text-center leading-tight whitespace-pre-line ${cat.featured ? 'text-foreground' : 'text-muted-foreground'}`}>
+              <span className="text-[10px] font-semibold text-center leading-tight whitespace-pre-line text-foreground">
                 {cat.label}
               </span>
             </button>
