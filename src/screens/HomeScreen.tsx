@@ -123,7 +123,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <span className="ms text-kipita-red text-xl">auto_awesome</span>
           </div>
           <div className="flex-1">
-            <div className="text-foreground font-extrabold text-sm">Know B4 U Go</div>
+            <div className="text-foreground font-extrabold text-sm">Kipita AI</div>
             <div className="text-muted-foreground text-xs mt-0.5">powered insights</div>
           </div>
           <span className="ms text-muted-foreground text-xl">chevron_right</span>
