@@ -20,12 +20,59 @@ const FOOD_SUBS = [
   { emoji: '🍺', label: 'Bars', hint: 'nightlife' },
 ];
 
-const FEATURED_CATEGORIES = [
-  { emoji: '🌽', label: "Farmers\nMarket", hint: 'shop', featured: true },
-  { emoji: '🔧', label: 'Auto\nRepair', hint: 'places', featured: true },
-  { emoji: '🏥', label: 'Medical', hint: 'medical', featured: false },
-  { emoji: '🗺️', label: 'Attractions', hint: 'places', featured: false },
-];
+type FeaturedTile = { emoji: string; label: string; hint: string };
+
+/** Situation-aware featured tiles based on time of day + day of week. */
+function getFeaturedNearMe(): FeaturedTile[] {
+  const now = new Date();
+  const hour = now.getHours();
+  const day = now.getDay(); // 0=Sun, 6=Sat
+  const isWeekend = day === 0 || day === 6;
+
+  // Late night: 11pm–4am
+  if (hour >= 23 || hour < 4) {
+    return [
+      { emoji: '🌃', label: 'Nightlife', hint: 'nightlife' },
+      { emoji: '🏧', label: 'ATM', hint: 'atm' },
+      { emoji: '🍔', label: 'Late Eats', hint: 'food' },
+      { emoji: '⛽', label: 'Gas', hint: 'gas' },
+    ];
+  }
+  // Evening: 6pm–11pm
+  if (hour >= 18) {
+    return [
+      { emoji: '🍽️', label: 'Dinner', hint: 'food' },
+      { emoji: '🍻', label: 'Bars', hint: 'drinks' },
+      { emoji: '🎭', label: 'Attractions', hint: 'attractions' },
+      { emoji: '☕', label: 'Coffee', hint: 'coffee' },
+    ];
+  }
+  // Weekend morning: 5am–noon
+  if (isWeekend && hour < 12) {
+    return [
+      { emoji: '🌽', label: "Farmers\nMarket", hint: 'farmers_market' },
+      { emoji: '🎭', label: 'Attractions', hint: 'attractions' },
+      { emoji: '☕', label: 'Brunch', hint: 'coffee' },
+      { emoji: '🛍️', label: 'Shopping', hint: 'shop' },
+    ];
+  }
+  // Weekday morning: 5am–11am
+  if (hour < 11) {
+    return [
+      { emoji: '☕', label: 'Coffee', hint: 'coffee' },
+      { emoji: '🔧', label: 'Auto\nRepair', hint: 'mechanic' },
+      { emoji: '⛽', label: 'Gas', hint: 'gas' },
+      { emoji: '🥐', label: 'Breakfast', hint: 'food' },
+    ];
+  }
+  // Lunch / afternoon: 11am–6pm
+  return [
+    { emoji: '🍽️', label: 'Lunch', hint: 'food' },
+    { emoji: '🎭', label: 'Attractions', hint: 'attractions' },
+    { emoji: '🛍️', label: 'Shopping', hint: 'shop' },
+    { emoji: '🏥', label: 'Pharmacy', hint: 'pharmacy' },
+  ];
+}
 
 export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
   const liveSafety = useTravelSafety(countryCode);
