@@ -184,23 +184,39 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   ];
 
   // Map hint strings to section IDs and optional chip catId
-  const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string }> = {
+  // Map hint → { sectionId, chipCatId, subLabel? } where subLabel pins to a specific
+  // sub-chip (e.g. "Mechanic" within Auto Care, "Market" within Shopping).
+  const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string; subLabel?: string }> = {
     food: { sectionId: 'eat', chipCatId: 'food' },
     cafe: { sectionId: 'eat', chipCatId: 'cafe' },
     coffee: { sectionId: 'eat', chipCatId: 'cafe' },
     drinks: { sectionId: 'eat', chipCatId: 'drinks' },
     gas: { sectionId: 'transport', chipCatId: 'gas' },
     transport: { sectionId: 'transport', chipCatId: 'transport' },
+    auto: { sectionId: 'transport', chipCatId: 'auto' },
+    mechanic: { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Mechanic' },
+    oil_change: { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Oil Change' },
+    tire: { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Tire Shop' },
     medical: { sectionId: 'medical' },
     pharmacy: { sectionId: 'medical', chipCatId: 'pharmacy' },
     hospital: { sectionId: 'medical', chipCatId: 'hospital' },
     hotel: { sectionId: 'stay' },
     shop: { sectionId: 'shop' },
+    farmers_market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Farmers Market' },
+    market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Market' },
+    grocery: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Grocery' },
     atm: { sectionId: 'money' },
     gym: { sectionId: 'wellness' },
     spa: { sectionId: 'wellness', chipCatId: 'spa' },
     nightlife: { sectionId: 'explore', chipCatId: 'nightlife' },
+    attractions: { sectionId: 'explore', chipCatId: 'attractions' },
+    museum: { sectionId: 'explore', chipCatId: 'attractions', subLabel: 'Museums' },
     library: { sectionId: 'library' },
+  };
+
+  // Inject ad-hoc sub-chip queries (Farmers Market doesn't exist as a stock sub).
+  const AD_HOC_SUBS: Record<string, { label: string; query: string; emoji: string }> = {
+    'Farmers Market': { label: 'Farmers Market', query: 'farmers market produce', emoji: '🌽' },
   };
 
   // Auto-open section + chip from initialView hint
