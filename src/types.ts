@@ -138,4 +138,4 @@ export interface DemoPlace {
   price: string;
 }
 
-export type TabId = 'home' | 'ai' | 'trips' | 'places' | 'maps' | 'wallet' | 'groups' | 'safety';
+export type TabId = 'home' | 'ai' | 'trips' | 'places' | 'maps' | 'wallet' | 'groups' | 'safety' | 'atm' | 'perks' | 'fuel';

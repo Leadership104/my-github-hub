@@ -1,5 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
-import { PERKS } from '../data';
+import { useState, useEffect } from 'react';
 import type { TabId } from '../types';
 import type { ForecastDay } from '../hooks';
 import { useTravelSafety } from '../hooks';
@@ -14,21 +13,32 @@ interface Props {
   onSwitchTab: (tab: TabId, hint?: string) => void;
 }
 
-export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
-  // Live safety data from travel-advisory.info
-  const liveSafety = useTravelSafety(countryCode);
+const FOOD_SUBS = [
+  { emoji: '🍽️', label: 'Restaurants', hint: 'food' },
+  { emoji: '🍸', label: 'Drinks', hint: 'drinks' },
+  { emoji: '☕', label: 'Coffee', hint: 'cafe' },
+  { emoji: '🍺', label: 'Bars', hint: 'nightlife' },
+];
 
-  // Compute Kipita Safety Score
+const FEATURED_CATEGORIES = [
+  { emoji: '🌽', label: "Farmers\nMarket", hint: 'shop', featured: true },
+  { emoji: '🔧', label: 'Auto\nRepair', hint: 'places', featured: true },
+  { emoji: '🏥', label: 'Medical', hint: 'medical', featured: false },
+  { emoji: '🗺️', label: 'Attractions', hint: 'places', featured: false },
+];
+
+export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
+  const liveSafety = useTravelSafety(countryCode);
   const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
+  const [foodExpanded, setFoodExpanded] = useState(false);
 
   useEffect(() => {
     if (!liveSafety) return;
-    // Convert advisory raw score to base rates and compute
     const rawScore = liveSafety.rawScore ?? 2.5;
     const baseRates = advisoryToBaseRates(rawScore);
     const timeOfDay = detectTimeOfDay();
     const result = computeSafetyScore({
-      context: 'AWAY', // default for travelers
+      context: 'AWAY',
       situational: { timeOfDay, density: 'residential', events: 'none', weather: 'normal' },
       baseRates,
     });
@@ -36,156 +46,64 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     setSafetyResult({ score: result.score, ...sl });
   }, [liveSafety]);
 
-  // Abbreviate location: show city, state abbreviation
-  const abbreviatedLocation = (() => {
-    const name = locationName || 'Detecting…';
-    // Already short format like "New York, US"
-    return name;
-  })();
-
-  const essentials = [
-    { emoji: '🍽️', label: 'Food', action: () => onSwitchTab('places', 'food') },
-    { emoji: '☕', label: 'Coffee', action: () => onSwitchTab('places', 'cafe') },
-    { emoji: '⛽', label: 'Gas', action: () => onSwitchTab('places', 'gas') },
-    { emoji: '🏥', label: 'Medical', action: () => onSwitchTab('places', 'medical') },
-    { emoji: '🏧', label: 'ATM', action: () => onSwitchTab('maps', 'atm') },
-    { emoji: '🚇', label: 'Transit', action: () => onSwitchTab('places', 'transport') },
-  ];
-
-  /* ── 3-level category drill-down ── */
-  type SubChip = { label: string; hint: string; emoji: string };
-  type SubGroup = { label: string; emoji: string; subs: SubChip[] };
-  type TopCat = { id: string; label: string; emoji: string; color: string; groups: SubGroup[] };
-
-  const TOP_CATEGORIES: TopCat[] = [
-    {
-      id: 'restaurants', label: 'Restaurants', emoji: '🍽️', color: 'shadow-sm',
-      groups: [
-        { label: 'Food', emoji: '🍽️', subs: [
-          { label: 'American', hint: 'food', emoji: '🍔' },
-          { label: 'Italian', hint: 'food', emoji: '🍝' },
-          { label: 'Mexican', hint: 'food', emoji: '🌮' },
-          { label: 'Japanese', hint: 'food', emoji: '🍱' },
-          { label: 'Chinese', hint: 'food', emoji: '🥡' },
-          { label: 'Pizza', hint: 'food', emoji: '🍕' },
-          { label: 'All Food', hint: 'food', emoji: '🍽️' },
-        ]},
-        { label: 'Cafés', emoji: '☕', subs: [
-          { label: 'Coffee', hint: 'cafe', emoji: '☕' },
-          { label: 'Boba / Tea', hint: 'cafe', emoji: '🧋' },
-          { label: 'Bakery Café', hint: 'cafe', emoji: '🥐' },
-          { label: 'All Cafés', hint: 'cafe', emoji: '🍵' },
-        ]},
-        { label: 'Drinks & Bars', emoji: '🍸', subs: [
-          { label: 'Cocktail Bar', hint: 'drinks', emoji: '🍸' },
-          { label: 'Brewery', hint: 'drinks', emoji: '🍺' },
-          { label: 'Wine Bar', hint: 'drinks', emoji: '🍷' },
-          { label: 'Rooftop', hint: 'drinks', emoji: '🌃' },
-          { label: 'All Bars', hint: 'drinks', emoji: '🥂' },
-        ]},
-      ],
-    },
-    {
-      id: 'entertainment', label: 'Entertainment', emoji: '🎭', color: 'shadow-sm',
-      groups: [
-        { label: 'Nightlife', emoji: '🎵', subs: [
-          { label: 'Nightclub', hint: 'nightlife', emoji: '🎉' },
-          { label: 'Live Music', hint: 'nightlife', emoji: '🎵' },
-          { label: 'Pub', hint: 'nightlife', emoji: '🍺' },
-          { label: 'Rooftop', hint: 'nightlife', emoji: '🌃' },
-        ]},
-        { label: 'Attractions', emoji: '🎡', subs: [
-          { label: 'Museums', hint: 'places', emoji: '🏛️' },
-          { label: 'Tours', hint: 'places', emoji: '🗺️' },
-          { label: 'Theme Parks', hint: 'places', emoji: '🎢' },
-          { label: 'Landmarks', hint: 'places', emoji: '🗽' },
-          { label: 'Events', hint: 'places', emoji: '🎪' },
-        ]},
-        { label: 'Outdoors', emoji: '🏖️', subs: [
-          { label: 'Beach', hint: 'places', emoji: '🏖️' },
-          { label: 'Park', hint: 'places', emoji: '🌳' },
-          { label: 'Hiking', hint: 'places', emoji: '🥾' },
-        ]},
-      ],
-    },
-    {
-      id: 'shopping', label: 'Shopping', emoji: '🛍️', color: 'shadow-sm',
-      groups: [
-        { label: 'Stores', emoji: '🛍️', subs: [
-          { label: 'Mall', hint: 'shop', emoji: '🏬' },
-          { label: 'Clothing', hint: 'shop', emoji: '👔' },
-          { label: 'Electronics', hint: 'shop', emoji: '📱' },
-          { label: 'Local Market', hint: 'shop', emoji: '🏪' },
-          { label: 'All Shops', hint: 'shop', emoji: '🛍️' },
-        ]},
-        { label: 'Groceries', emoji: '🛒', subs: [
-          { label: 'Supermarket', hint: 'shop', emoji: '🛒' },
-          { label: 'Convenience', hint: 'shop', emoji: '🏪' },
-        ]},
-      ],
-    },
-    {
-      id: 'essentials', label: 'Essentials', emoji: '🧰', color: 'shadow-sm',
-      groups: [
-        { label: 'Transport', emoji: '🚗', subs: [
-          { label: 'Gas Stations', hint: 'gas', emoji: '⛽' },
-          { label: 'Transit', hint: 'transport', emoji: '🚇' },
-          { label: 'EV Charging', hint: 'places', emoji: '⚡' },
-          { label: 'Auto Care', hint: 'places', emoji: '🔧' },
-        ]},
-        { label: 'Medical', emoji: '🏥', subs: [
-          { label: 'Hospital', hint: 'hospital', emoji: '🏥' },
-          { label: 'Pharmacy', hint: 'pharmacy', emoji: '💊' },
-          { label: 'Urgent Care', hint: 'medical', emoji: '⚕️' },
-          { label: 'Dentist', hint: 'medical', emoji: '🦷' },
-        ]},
-        { label: 'Money', emoji: '🏧', subs: [
-          { label: 'ATM', hint: 'atm', emoji: '🏧' },
-          { label: 'BTC ATM', hint: 'atm', emoji: '₿' },
-        ]},
-        { label: 'Stay', emoji: '🏨', subs: [
-          { label: 'Hotel', hint: 'hotel', emoji: '🏨' },
-          { label: 'Hostel', hint: 'hotel', emoji: '🛏️' },
-          { label: 'Resort', hint: 'hotel', emoji: '🏖️' },
-        ]},
-      ],
-    },
-  ];
-
-  const [activeCat, setActiveCat] = useState<string | null>(null);
-  const [activeGroup, setActiveGroup] = useState<string | null>(null);
-  const currentCat = TOP_CATEGORIES.find(c => c.id === activeCat) || null;
-  const currentGroup = currentCat?.groups.find(g => g.label === activeGroup) || null;
-
   /* 5-level safety dots */
   const level = safetyResult?.level ?? -1;
   const DOTS = [
-    { min: 0, color: '#ef4444', label: 'Unsafe' },
-    { min: 1, color: '#f97316', label: 'Risky' },
-    { min: 2, color: '#eab308', label: 'Moderate' },
-    { min: 3, color: '#84cc16', label: 'Safer' },
-    { min: 4, color: '#22c55e', label: 'Safe' },
+    { min: 0, color: '#ef4444' },
+    { min: 1, color: '#f97316' },
+    { min: 2, color: '#eab308' },
+    { min: 3, color: '#84cc16' },
+    { min: 4, color: '#22c55e' },
+  ];
+
+  const handleEssentialTap = (id: string) => {
+    switch (id) {
+      case 'food':
+        setFoodExpanded(prev => !prev);
+        break;
+      case 'fun':
+        onSwitchTab('places', 'nightlife');
+        break;
+      case 'shopping':
+        onSwitchTab('places', 'shop');
+        break;
+      case 'fuel':
+        onSwitchTab('fuel');
+        break;
+      case 'maps':
+        onSwitchTab('maps');
+        break;
+      case 'atm':
+        onSwitchTab('atm');
+        break;
+    }
+  };
+
+  const ESSENTIALS = [
+    { id: 'food', emoji: '🍽️', label: 'Food' },
+    { id: 'fun', emoji: '🎭', label: 'Fun' },
+    { id: 'shopping', emoji: '🛍️', label: 'Shopping' },
+    { id: 'fuel', emoji: '⛽', label: 'Fuel' },
+    { id: 'maps', emoji: '🗺️', label: 'Maps' },
+    { id: 'atm', emoji: '🏧', label: 'ATM' },
   ];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Location + Safety advisory bar (dark section) */}
+      {/* Safety bar */}
       <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-medium truncate leading-tight">{abbreviatedLocation}</p>
+            <p className="text-white text-xs font-medium truncate leading-tight">{locationName || 'Detecting…'}</p>
           </div>
-        <button onClick={() => onSwitchTab('safety')}
-            className="flex items-center gap-2 flex-shrink-0">
+          <button onClick={() => onSwitchTab('safety')} className="flex items-center gap-2 flex-shrink-0">
             <div className="flex items-center gap-1.5">
               {DOTS.map((dot, i) => (
-                <div key={i} className="flex flex-col items-center gap-0.5">
-                  <span className="w-[10px] h-[10px] rounded-full transition-all"
-                    style={{
-                      backgroundColor: level >= dot.min ? dot.color : `${dot.color}25`,
-                      boxShadow: level === dot.min ? `0 0 6px ${dot.color}` : 'none',
-                    }} />
-                </div>
+                <span key={i} className="w-[10px] h-[10px] rounded-full transition-all"
+                  style={{
+                    backgroundColor: level >= dot.min ? dot.color : `${dot.color}25`,
+                    boxShadow: level === dot.min ? `0 0 6px ${dot.color}` : 'none',
+                  }} />
               ))}
             </div>
             <span className="text-[11px] font-bold ml-1" style={{ color: safetyResult?.color ?? '#64748b' }}>
@@ -196,99 +114,90 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-4 pb-24">
-        {/* AI CTA - Moved to top */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+
+        {/* AI CTA — Know B4 U Go */}
         <button onClick={() => onSwitchTab('ai')}
           className="w-full flex items-center gap-3 bg-card rounded-kipita p-4 mb-5 text-left hover:shadow-md transition-shadow shadow-sm">
           <div className="w-11 h-11 rounded-full bg-kipita-red-lt flex items-center justify-center">
             <span className="ms text-kipita-red text-xl">auto_awesome</span>
           </div>
           <div className="flex-1">
-            <div className="text-foreground font-extrabold text-sm">Kipita AI : Know Before You Go</div>
-            <div className="text-muted-foreground text-xs mt-0.5">Gain Insights BEFORE you travel.</div>
+            <div className="text-foreground font-extrabold text-sm">Know B4 U Go</div>
+            <div className="text-muted-foreground text-xs mt-0.5">powered insights</div>
           </div>
           <span className="ms text-muted-foreground text-xl">chevron_right</span>
         </button>
 
-        {/* Top Categories: 4 square tiles drilling down to subcategories */}
-        <div className="grid grid-cols-4 gap-2 mb-3">
-          {TOP_CATEGORIES.map(c => (
-            <button key={c.id}
-              onClick={() => {
-                if (activeCat === c.id) { setActiveCat(null); setActiveGroup(null); }
-                else { setActiveCat(c.id); setActiveGroup(null); }
-              }}
-              className={`aspect-square rounded-kipita-sm text-[11px] font-bold transition-all flex flex-col items-center justify-center gap-1 px-1 bg-card text-foreground border ${
-                activeCat === c.id ? c.color + ' shadow-md' : 'border-border'
-              }`}>
-              <span className="text-xl">{c.emoji}</span>
-              <span className="leading-tight text-center">{c.label}</span>
+        {/* Essentials Grid */}
+        <h2 className="text-sm font-bold text-foreground mb-3">Essentials</h2>
+        <div className="grid grid-cols-3 gap-3 mb-2">
+          {ESSENTIALS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => handleEssentialTap(item.id)}
+              className={`flex flex-col items-center justify-center gap-2 py-5 bg-card border rounded-kipita-sm shadow-sm transition-all hover:shadow-md active:scale-95 ${
+                item.id === 'food' && foodExpanded ? 'border-kipita-red' : 'border-border'
+              }`}
+            >
+              <span className="text-3xl">{item.emoji}</span>
+              <span className="text-xs font-bold text-foreground">{item.label}</span>
             </button>
           ))}
         </div>
 
-        {/* Level 2: subcategory groups — single horizontal scroll line on light gray */}
-        {currentCat && (
-          <div className="bg-muted/60 rounded-kipita-sm p-2 mb-2 -mx-1">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar px-1" style={{ scrollbarWidth: 'none' }}>
-              {currentCat.groups.map(g => (
-                <button key={g.label}
-                  onClick={() => setActiveGroup(activeGroup === g.label ? null : g.label)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-full text-xs font-semibold border whitespace-nowrap transition-all bg-card text-foreground ${
-                    activeGroup === g.label
-                      ? 'shadow-sm'
-                      : 'border-border'
-                  }`}>
-                  <span className="mr-1">{g.emoji}</span>{g.label}
+        {/* Food sub-options (expandable) */}
+        {foodExpanded && (
+          <div className="bg-muted/60 rounded-kipita-sm p-3 mb-3 -mx-0">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Choose a category</p>
+            <div className="grid grid-cols-4 gap-2">
+              {FOOD_SUBS.map(sub => (
+                <button
+                  key={sub.label}
+                  onClick={() => { onSwitchTab('places', sub.hint); setFoodExpanded(false); }}
+                  className="flex flex-col items-center gap-1.5 py-3 bg-card border border-border rounded-kipita-sm hover:shadow-sm transition-all active:scale-95"
+                >
+                  <span className="text-xl">{sub.emoji}</span>
+                  <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{sub.label}</span>
                 </button>
               ))}
             </div>
           </div>
         )}
 
-        {/* Level 3: final subcategory chips — single horizontal scroll line on light gray */}
-        {currentGroup && (
-          <div className="bg-muted/60 rounded-kipita-sm p-2 mb-5 -mx-1">
-            <div className="flex gap-2 overflow-x-auto no-scrollbar px-1" style={{ scrollbarWidth: 'none' }}>
-              {currentGroup.subs.map(s => (
-                <button key={s.label}
-                  onClick={() => onSwitchTab(s.hint === 'atm' ? 'maps' : 'places', s.hint)}
-                  className="flex-shrink-0 flex items-center gap-1 px-3 py-2 bg-card border border-border rounded-full text-xs font-semibold text-foreground whitespace-nowrap hover:shadow-sm transition-colors">
-                  <span>{s.emoji}</span>{s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Kipita Perks */}
-        <h3 className="text-sm font-bold text-foreground mb-3">🎁 Kipita Perks</h3>
-        <div className="space-y-2 mb-5">
-          {PERKS.filter(p => p.category === 'btc').slice(0, 3).map(p => (
-            <a key={p.title} href={p.url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:shadow-md transition-all no-underline">
-              <span className="text-xl flex-shrink-0">{p.icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-foreground">{p.title}</div>
-                <div className="text-[10px] text-muted-foreground truncate">{p.desc}</div>
-              </div>
-              <span className="ms text-muted-foreground text-sm flex-shrink-0">chevron_right</span>
-            </a>
+        {/* Featured Near Me */}
+        <h2 className="text-sm font-bold text-foreground mt-4 mb-3">Featured Near Me</h2>
+        <div className="grid grid-cols-4 gap-2 mb-5">
+          {FEATURED_CATEGORIES.map(cat => (
+            <button
+              key={cat.label}
+              onClick={() => onSwitchTab('places', cat.hint)}
+              className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-kipita-sm border-2 transition-all hover:shadow-sm active:scale-95 ${
+                cat.featured
+                  ? 'bg-card border-yellow-400'
+                  : 'bg-muted/40 border-border'
+              }`}
+            >
+              <span className="text-2xl">{cat.emoji}</span>
+              <span className={`text-[10px] font-semibold text-center leading-tight whitespace-pre-line ${cat.featured ? 'text-foreground' : 'text-muted-foreground'}`}>
+                {cat.label}
+              </span>
+            </button>
           ))}
         </div>
 
-        {/* Upside */}
-        <a href="https://upside.com/" target="_blank" rel="noopener noreferrer"
-          className="block w-full bg-gradient-to-r from-kipita-green to-emerald-500 rounded-kipita p-4 mb-6 hover:opacity-90 transition-opacity no-underline">
+        {/* Kipita Perks button */}
+        <button
+          onClick={() => onSwitchTab('perks')}
+          className="w-full flex items-center justify-between gap-3 p-4 bg-card border-2 border-kipita-green rounded-kipita shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+        >
           <div className="flex items-center gap-3">
-            <span className="text-3xl">⛽</span>
-            <div className="flex-1">
-              <div className="text-white font-extrabold text-sm">Upside — Cash Back</div>
-              <div className="text-white/70 text-xs mt-0.5">Earn cash back on gas, food & groceries.</div>
-            </div>
-            <span className="ms text-white/60 text-xl">chevron_right</span>
+            <span className="text-xl">🎁</span>
+            <span className="text-sm font-extrabold text-foreground">Kipita Perks</span>
           </div>
-        </a>
+          <span className="ms text-muted-foreground text-xl">chevron_right</span>
+        </button>
+
       </div>
     </div>
   );
