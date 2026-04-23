@@ -195,10 +195,10 @@ function TypingIndicator() {
 
 // ── Quick Actions ─────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
+  { emoji: '✈️', label: 'Plan a trip',      prompt: '__OPEN_WIZARD__' },
   { emoji: '🗺️', label: 'Brief me',        prompt: 'Give me a full Know Before You Go briefing for where I am right now.' },
   { emoji: '🛡️', label: 'Safety intel',   prompt: 'What\'s the real safety situation here? What should I specifically watch out for?' },
   { emoji: '🍽️', label: 'Best food',       prompt: 'What\'s the best food near me right now? Be specific with real spots.' },
-  { emoji: '✈️', label: 'Plan a trip',      prompt: 'Help me plan a 7-day trip as a digital nomad. What\'s the best destination right now?' },
   { emoji: '💰', label: 'Money tips',       prompt: 'What do I need to know about money here? ATMs, cards, budget, tips.' },
   { emoji: '🌃', label: 'Tonight',          prompt: 'What\'s the best thing to do tonight? Give me something specific and exciting.' },
   { emoji: '🏨', label: 'Where to stay',   prompt: 'What\'s the best neighborhood to stay in here, and what\'s a realistic hotel budget?' },

@@ -308,56 +308,133 @@ export default function App() {
         </>
       )}
 
-      {/* SOS Modal */}
-      {showSOS && (
-        <>
-          <div className="fixed inset-0 bg-black/60 z-[300]" onClick={() => setShowSOS(false)} />
-          <div className="fixed inset-x-4 top-[10%] max-w-md mx-auto bg-card rounded-2xl shadow-2xl z-[301] overflow-hidden max-h-[80vh] flex flex-col">
-            <div className="bg-kipita-red px-5 py-4 flex items-center gap-3">
-              <span className="text-3xl">🚨</span>
-              <div>
-                <h3 className="text-white font-extrabold text-lg">Emergency SOS</h3>
-                <p className="text-white/80 text-xs">Tap a number to call emergency services</p>
+      {/* SOS Modal — bottom sheet style matching screenshot */}
+      {showSOS && (() => {
+        const activeOrUpcoming = trips.find(t => t.status === 'active') || trips.find(t => t.status === 'upcoming');
+        const tripMembers = activeOrUpcoming?.invites || [];
+        const localEmergency = EMERGENCY_NUMBERS.find(e => e.country.includes(countryCode || 'USA')) || EMERGENCY_NUMBERS[0];
+        const sosMessage = `🚨 EMERGENCY: I need help. My current location: https://maps.google.com/?q=${lat},${lng}`;
+        const alertTripMembers = () => {
+          if (tripMembers.length === 0) return;
+          const subject = encodeURIComponent('🚨 Emergency Alert from Kipita');
+          const body = encodeURIComponent(`${sosMessage}\n\n— Sent via Kipita SOS`);
+          window.location.href = `mailto:${tripMembers.join(',')}?subject=${subject}&body=${body}`;
+        };
+        return (
+          <>
+            <div className="fixed inset-0 bg-black/60 z-[300]" onClick={() => setShowSOS(false)} />
+            <div className="fixed inset-x-0 bottom-0 max-w-md mx-auto bg-card rounded-t-3xl shadow-2xl z-[301] overflow-hidden max-h-[85vh] flex flex-col">
+              {/* Drag handle */}
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
               </div>
-              <button onClick={() => setShowSOS(false)} className="ml-auto text-white/80 hover:text-white text-2xl leading-none">&times;</button>
-            </div>
-            <div className="overflow-y-auto p-4 space-y-3">
-              {EMERGENCY_NUMBERS.map(e => (
-                <div key={e.country} className="bg-muted rounded-xl p-3">
-                  <div className="font-bold text-sm mb-2">{e.country}</div>
-                  <div className="grid grid-cols-3 gap-2">
-                    <a href={`tel:${e.police}`} className="bg-card border border-border rounded-lg p-2 text-center hover:bg-kipita-red-lt transition-colors">
-                      <div className="text-[10px] text-muted-foreground">Police</div>
-                      <div className="font-extrabold text-sm text-kipita-red">{e.police}</div>
+              {/* Header */}
+              <div className="flex items-start justify-between px-5 pt-2 pb-3">
+                <div>
+                  <h3 className="text-kipita-red font-extrabold text-lg flex items-center gap-1.5">
+                    SOS Emergency <span className="text-base">🆘</span>
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Alert your trip members and get help fast</p>
+                </div>
+                <button onClick={() => setShowSOS(false)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:bg-muted/70">
+                  <span className="text-lg leading-none">&times;</span>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-5 pb-6 space-y-4">
+                {/* Emergency Mode banner */}
+                <div className="bg-gradient-to-br from-kipita-red to-rose-600 rounded-2xl p-4 flex items-center gap-3 shadow-lg">
+                  <span className="text-3xl">🚨</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-extrabold text-sm">Emergency Mode</div>
+                    <div className="text-white/80 text-[11px] leading-snug">Use the buttons below to alert your group or get to safety</div>
+                  </div>
+                </div>
+
+                {/* Trip Members alert */}
+                <div>
+                  <div className="text-xs font-bold text-foreground mb-2">Trip Members</div>
+                  {tripMembers.length === 0 ? (
+                    <div className="bg-muted/60 rounded-xl p-4 text-center">
+                      <div className="text-xs text-muted-foreground">No trip members to alert.</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">Add people to a trip to enable group alerts.</div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={alertTripMembers}
+                      className="w-full bg-kipita-red text-white rounded-xl p-3 text-left flex items-center gap-3 hover:opacity-95 active:scale-[0.98] transition-all"
+                    >
+                      <span className="text-xl">📨</span>
+                      <div className="flex-1">
+                        <div className="font-bold text-sm">Alert {tripMembers.length} member{tripMembers.length > 1 ? 's' : ''}</div>
+                        <div className="text-[11px] text-white/80 truncate">{tripMembers.join(', ')}</div>
+                      </div>
+                      <span className="ms text-lg">arrow_forward</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Get Help Now */}
+                <div>
+                  <div className="text-xs font-bold text-foreground mb-2">Get Help Now</div>
+                  <div className="space-y-2">
+                    <a
+                      href={`https://www.google.com/maps/search/hospital/@${lat},${lng},14z`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-orange-50 rounded-xl no-underline hover:bg-orange-100 transition-colors active:scale-[0.98]"
+                    >
+                      <span className="text-2xl">🏥</span>
+                      <div className="flex-1">
+                        <div className="font-bold text-sm text-foreground">Navigate to Hospital</div>
+                        <div className="text-[11px] text-muted-foreground">Opens maps with nearest hospital</div>
+                      </div>
+                      <span className="ms text-kipita-red text-lg">arrow_forward</span>
                     </a>
-                    <a href={`tel:${e.ambulance}`} className="bg-card border border-border rounded-lg p-2 text-center hover:bg-kipita-red-lt transition-colors">
-                      <div className="text-[10px] text-muted-foreground">Ambulance</div>
-                      <div className="font-extrabold text-sm text-kipita-red">{e.ambulance}</div>
+                    <a
+                      href={`https://www.google.com/maps/search/fire+station/@${lat},${lng},14z`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-rose-50 rounded-xl no-underline hover:bg-rose-100 transition-colors active:scale-[0.98]"
+                    >
+                      <span className="text-2xl">🚒</span>
+                      <div className="flex-1">
+                        <div className="font-bold text-sm text-foreground">Navigate to Fire Station</div>
+                        <div className="text-[11px] text-muted-foreground">Opens maps with nearest fire station</div>
+                      </div>
+                      <span className="ms text-kipita-red text-lg">arrow_forward</span>
                     </a>
-                    <a href={`tel:${e.fire}`} className="bg-card border border-border rounded-lg p-2 text-center hover:bg-kipita-red-lt transition-colors">
-                      <div className="text-[10px] text-muted-foreground">Fire</div>
-                      <div className="font-extrabold text-sm text-kipita-red">{e.fire}</div>
+                    <a
+                      href={`tel:${localEmergency.police}`}
+                      className="flex items-center gap-3 p-3 bg-emerald-50 rounded-xl no-underline hover:bg-emerald-100 transition-colors active:scale-[0.98]"
+                    >
+                      <span className="text-2xl">📞</span>
+                      <div className="flex-1">
+                        <div className="font-bold text-sm text-foreground">Call Emergency Services</div>
+                        <div className="text-[11px] text-muted-foreground">Dial {localEmergency.police} ({localEmergency.country.replace(/[🇺🇸🇬🇧🇪🇺🇹🇭🇯🇵🇲🇽🇧🇷🇮🇩 ]/g, '').trim() || 'local'}) — adjust for local emergency number</div>
+                      </div>
+                      <span className="ms text-kipita-red text-lg">arrow_forward</span>
                     </a>
                   </div>
                 </div>
-              ))}
-              <div className="bg-kipita-red-lt rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground">📍 Share your location with emergency contacts</p>
-                <button onClick={() => {
-                  if (navigator.share) {
-                    navigator.share({ title: 'My Location', text: `I need help! My location: https://maps.google.com/?q=${lat},${lng}` });
-                  } else {
-                    navigator.clipboard.writeText(`https://maps.google.com/?q=${lat},${lng}`);
-                    alert('Location link copied to clipboard!');
-                  }
-                }} className="mt-2 bg-kipita-red text-white font-bold text-sm px-4 py-2 rounded-full">
-                  📤 Share Location
+
+                {/* Share location */}
+                <button
+                  onClick={() => {
+                    if (navigator.share) {
+                      navigator.share({ title: 'My Location', text: sosMessage });
+                    } else {
+                      navigator.clipboard.writeText(sosMessage);
+                      alert('Location link copied to clipboard!');
+                    }
+                  }}
+                  className="w-full bg-muted text-foreground font-semibold text-xs px-4 py-3 rounded-xl hover:bg-muted/70 transition-colors"
+                >
+                  📤 Share Location with Anyone
                 </button>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
 
       {/* Profile dropdown */}
       {showProfile && (

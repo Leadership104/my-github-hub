@@ -184,23 +184,39 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   ];
 
   // Map hint strings to section IDs and optional chip catId
-  const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string }> = {
+  // Map hint → { sectionId, chipCatId, subLabel? } where subLabel pins to a specific
+  // sub-chip (e.g. "Mechanic" within Auto Care, "Market" within Shopping).
+  const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string; subLabel?: string }> = {
     food: { sectionId: 'eat', chipCatId: 'food' },
     cafe: { sectionId: 'eat', chipCatId: 'cafe' },
     coffee: { sectionId: 'eat', chipCatId: 'cafe' },
     drinks: { sectionId: 'eat', chipCatId: 'drinks' },
     gas: { sectionId: 'transport', chipCatId: 'gas' },
     transport: { sectionId: 'transport', chipCatId: 'transport' },
+    auto: { sectionId: 'transport', chipCatId: 'auto' },
+    mechanic: { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Mechanic' },
+    oil_change: { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Oil Change' },
+    tire: { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Tire Shop' },
     medical: { sectionId: 'medical' },
     pharmacy: { sectionId: 'medical', chipCatId: 'pharmacy' },
     hospital: { sectionId: 'medical', chipCatId: 'hospital' },
     hotel: { sectionId: 'stay' },
     shop: { sectionId: 'shop' },
+    farmers_market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Farmers Market' },
+    market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Market' },
+    grocery: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Grocery' },
     atm: { sectionId: 'money' },
     gym: { sectionId: 'wellness' },
     spa: { sectionId: 'wellness', chipCatId: 'spa' },
     nightlife: { sectionId: 'explore', chipCatId: 'nightlife' },
+    attractions: { sectionId: 'explore', chipCatId: 'attractions' },
+    museum: { sectionId: 'explore', chipCatId: 'attractions', subLabel: 'Museums' },
     library: { sectionId: 'library' },
+  };
+
+  // Inject ad-hoc sub-chip queries (Farmers Market doesn't exist as a stock sub).
+  const AD_HOC_SUBS: Record<string, { label: string; query: string; emoji: string }> = {
+    'Farmers Market': { label: 'Farmers Market', query: 'farmers market produce', emoji: '🌽' },
   };
 
   // Auto-open section + chip from initialView hint
@@ -220,33 +236,45 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const section = BIG_SECTIONS.find(s => s.id === mapping.sectionId);
     if (!section) return;
 
+    // Resolve sub-chip target (subLabel pins a specific sub like "Mechanic" or "Farmers Market").
+    const findSub = (catId: string | undefined, label: string | undefined) => {
+      if (!label) return null;
+      if (AD_HOC_SUBS[label]) return AD_HOC_SUBS[label];
+      if (!catId) return null;
+      const subs = CATEGORY_SUBS[catId] || [];
+      return subs.find(s => s.label.toLowerCase() === label.toLowerCase()) || null;
+    };
+
     if (mapping.sectionId === 'eat') {
-      if (mapping.chipCatId && mapping.chipCatId !== 'food') {
-        // Auto-select first chip from the specific sub-category (e.g. cafe, drinks)
+      const pinned = findSub(mapping.chipCatId, mapping.subLabel);
+      if (pinned) {
+        selectChip(pinned);
+      } else if (mapping.chipCatId && mapping.chipCatId !== 'food') {
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
-        if (subs.length > 0) {
-          selectChip(subs[0]);
-        }
+        if (subs.length > 0) selectChip(subs[0]);
       } else {
         loadFoodGuide('all');
       }
     } else {
-      // For non-eat sections, find the right chip
       const sectionCats = categories.filter(c => section.catIds.includes(c.id));
       let targetChip: { label: string; query: string; emoji: string } | null = null;
 
-      if (mapping.chipCatId) {
+      // 1. Pinned sub (highest priority — guarantees direct landing)
+      const pinned = findSub(mapping.chipCatId, mapping.subLabel);
+      if (pinned) targetChip = pinned;
+
+      // 2. Otherwise first sub of given chipCatId
+      if (!targetChip && mapping.chipCatId) {
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
-        if (subs.length > 0) {
-          targetChip = subs[0];
-        } else {
+        if (subs.length > 0) targetChip = subs[0];
+        else {
           const cat = categories.find(c => c.id === mapping.chipCatId);
           if (cat) targetChip = { label: cat.label, query: cat.query, emoji: cat.emoji };
         }
       }
 
+      // 3. Fallback to first chip in section
       if (!targetChip) {
-        // Default to first chip in section
         for (const cat of sectionCats) {
           const subs = CATEGORY_SUBS[cat.id] || [];
           if (subs.length > 0) { targetChip = subs[0]; break; }
