@@ -47,3 +47,13 @@ ios/**/.DS_Store
 ios/**/DerivedData/
 ios/**/*.xcuserstate
 ios/**/*.xcworkspace/xcuserdata/
+
+# Web build artifacts
+node_modules/
+dist/
+
+# Environment files (do NOT commit real secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
