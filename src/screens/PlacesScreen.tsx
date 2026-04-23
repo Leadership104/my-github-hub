@@ -266,7 +266,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     if (view === 'subcategory' && selectedSub) {
       (async () => {
         setLoading(true);
-        const places = await fetchGooglePlaces('search', { query: `${selectedSub.label} near ${locationName}`, lat, lng, radius: 5000 });
+        const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
+        const places = await fetchGooglePlaces('search', { query: `${term} near ${locationName}`, lat, lng, radius: 5000 });
         setLivePlaces(places);
         setLoading(false);
       })();
@@ -285,11 +286,25 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setSelectedSub({ label, query });
     setView('subcategory');
     setLoading(true);
-    const places = await fetchGooglePlaces('search', { query: `${label} near ${locationName}`, lat, lng, radius: 5000 });
+    // Use the explicit subcategory query so Google returns businesses, not the locality.
+    const searchTerm = (query && query.trim()) || label;
+    const RADIUS_M = 5000;
+    const RADIUS_KM = RADIUS_M / 1000;
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm} near ${locationName}`, lat, lng, radius: RADIUS_M });
+    const places = rawPlaces.filter(p => {
+      const types = p.types || [];
+      const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
+      if (isLocality) return false;
+      // Hard distance cap: never show a result outside the selected city's radius.
+      if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+        return haversine(lat, lng, p.lat, p.lng) <= RADIUS_KM * 3; // 15km tolerance
+      }
+      return true;
+    });
     const sorted = [...places].sort((a, b) => {
       if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
-      const distA = a.lat && a.lng ? Math.hypot(a.lat - lat, a.lng - lng) : 999;
-      const distB = b.lat && b.lng ? Math.hypot(b.lat - lat, b.lng - lng) : 999;
+      const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
+      const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
       return distA - distB;
     });
     setLivePlaces(sorted);
@@ -360,11 +375,26 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     }
     setActiveChip(chip);
     setChipLoading(true);
-    const places = await fetchGooglePlaces('search', { query: `${chip.label} near ${locationName}`, lat, lng, radius: 5000 });
+    // Use the explicit query (e.g. "american restaurant") not just the label ("American"),
+    // otherwise Google can return the locality itself (e.g. "Santa Clarita") instead of restaurants.
+    const searchTerm = (chip.query && chip.query.trim()) || chip.label;
+    const RADIUS_M = 5000;
+    const RADIUS_KM = RADIUS_M / 1000;
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm} near ${locationName}`, lat, lng, radius: RADIUS_M });
+    // Drop locality / non-business results AND anything outside the selected city's radius.
+    const places = rawPlaces.filter(p => {
+      const types = p.types || [];
+      const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
+      if (isLocality) return false;
+      if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+        return haversine(lat, lng, p.lat, p.lng) <= RADIUS_KM * 3; // 15km tolerance
+      }
+      return true;
+    });
     const sorted = [...places].sort((a, b) => {
       if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
-      const distA = a.lat && a.lng ? Math.hypot(a.lat - lat, a.lng - lng) : 999;
-      const distB = b.lat && b.lng ? Math.hypot(b.lat - lat, b.lng - lng) : 999;
+      const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
+      const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
       return distA - distB;
     });
     setChipResults(sorted);

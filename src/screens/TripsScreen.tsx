@@ -17,9 +17,10 @@ interface Props {
   trips: Trip[];
   onSaveTrips: (updated: Trip[]) => void;
   onBack?: () => void;
+  onSwitchTab?: (tab: import('../types').TabId, hint?: string) => void;
 }
 
-export default function TripsScreen({ trips, onSaveTrips, onBack }: Props) {
+export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
@@ -461,30 +462,40 @@ export default function TripsScreen({ trips, onSaveTrips, onBack }: Props) {
 
       <div className="flex-1 overflow-y-auto px-5 pb-24">
         {/* AI Banner */}
-        <button onClick={() => setShowAiPlanner(true)} className="w-full flex items-center gap-3 bg-gradient-to-r from-[#1a1a2e] to-kipita-red rounded-kipita p-4 mb-4 text-left">
+        <button onClick={() => setShowAiPlanner(true)} className="w-full flex items-center gap-3 bg-card rounded-kipita p-4 mb-4 text-left hover:shadow-md transition-shadow shadow-sm">
           <span className="text-2xl">✨</span>
           <div className="flex-1">
-            <div className="text-white font-extrabold text-sm">Plan & Book with AI</div>
-            <div className="text-white/60 text-xs">Generate itineraries, book hotels, flights & more</div>
+            <div className="text-foreground font-extrabold text-sm">Plan & Book with AI</div>
+            <div className="text-muted-foreground text-xs">Generate itineraries, book hotels, flights & more</div>
           </div>
         </button>
 
-        {/* Destinations, Phrases & Groups buttons */}
+        {/* Travel utilities */}
         <div className="grid grid-cols-3 gap-2 mb-4">
           <button onClick={() => setTripsView('destinations')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-r from-kipita-navy to-kipita-navy-card rounded-kipita text-center">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">🌍</span>
-            <div className="text-white font-bold text-[11px]">Destinations</div>
+            <div className="text-foreground font-bold text-[11px]">Destinations</div>
           </button>
           <button onClick={() => setTripsView('phrases')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-r from-kipita-red to-kipita-red-dk rounded-kipita text-center">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">🌐</span>
-            <div className="text-white font-bold text-[11px]">Phrases</div>
+            <div className="text-foreground font-bold text-[11px]">Phrases</div>
           </button>
           <button onClick={() => setTripsView('groups')}
-            className="flex flex-col items-center gap-1.5 p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-kipita text-center">
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
             <span className="text-xl">👥</span>
-            <div className="text-white font-bold text-[11px]">Groups</div>
+            <div className="text-foreground font-bold text-[11px]">Groups</div>
+          </button>
+          <button onClick={() => onSwitchTab?.('maps')}
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+            <span className="text-xl">🗺️</span>
+            <div className="text-foreground font-bold text-[11px]">Maps</div>
+          </button>
+          <button onClick={() => onSwitchTab?.('wallet')}
+            className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+            <span className="text-xl">💱</span>
+            <div className="text-foreground font-bold text-[11px]">Currency</div>
           </button>
         </div>
 

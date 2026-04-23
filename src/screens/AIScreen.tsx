@@ -1,211 +1,325 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatMessage, Trip, Booking } from '../types';
+import type { ChatMessage, Trip, Booking, TabId } from '../types';
 import { DESTINATIONS } from '../data';
 import { supabase } from '../integrations/supabase/client';
 
-/* ── Markdown renderer ────────────────────────────────────────────────────── */
-function parseInline(str: string, key: string): React.ReactNode[] {
-  const tokens = str.split(/(\*\*\[[^\]]+\]\([^)]+\)\*\*|\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\([^)]+\))/g);
-  return tokens.map((tok, j) => {
-    const boldLink = tok.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
-    if (boldLink) return <a key={`${key}bl${j}`} href={boldLink[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-bold">{boldLink[1]}</a>;
-    if (/^\*\*(.+)\*\*$/.test(tok)) return <strong key={`${key}b${j}`}>{tok.slice(2, -2)}</strong>;
-    if (/^\*(.+)\*$/.test(tok)) return <em key={`${key}i${j}`}>{tok.slice(1, -1)}</em>;
-    if (/^`(.+)`$/.test(tok)) return <code key={`${key}c${j}`} className="bg-muted/60 px-1 rounded text-[11px] font-mono">{tok.slice(1, -1)}</code>;
-    const link = tok.match(/^\[(.+?)\]\((.+?)\)$/);
-    if (link) return <a key={`${key}a${j}`} href={link[2]} target="_blank" rel="noopener noreferrer" className="text-kipita-red underline font-semibold">{link[1]}</a>;
-    return <span key={`${key}t${j}`}>{tok}</span>;
-  });
-}
-
-function renderMarkdown(text: string): React.ReactNode {
-  const lines = text.split('\n');
-  const out: React.ReactNode[] = [];
-  let i = 0;
-  while (i < lines.length) {
-    const raw = lines[i];
-    const line = raw.trim();
-    if (line.startsWith('## ')) {
-      out.push(<p key={i} className="text-sm font-bold text-foreground mt-2 mb-0.5">{line.slice(3)}</p>);
-      i++;
-    } else if (line.startsWith('### ')) {
-      out.push(<p key={i} className="text-xs font-semibold text-foreground mt-1.5 mb-0.5">{line.slice(4)}</p>);
-      i++;
-    } else if (line === '---') {
-      out.push(<hr key={i} className="border-border my-1.5" />);
-      i++;
-    } else if (line.startsWith('- ') || line.startsWith('• ')) {
-      const items: React.ReactNode[] = [];
-      while (i < lines.length && (lines[i].trim().startsWith('- ') || lines[i].trim().startsWith('• '))) {
-        const content = lines[i].trim().replace(/^[-•]\s/, '');
-        items.push(<li key={i} className="leading-snug">{parseInline(content, `li${i}`)}</li>);
-        i++;
-      }
-      out.push(<ul key={`ul${i}`} className="list-disc pl-4 space-y-0.5 my-1 text-sm">{items}</ul>);
-    } else if (/^\d+\.\s/.test(line)) {
-      const items: React.ReactNode[] = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i].trim())) {
-        const content = lines[i].trim().replace(/^\d+\.\s/, '');
-        items.push(<li key={i} className="leading-snug">{parseInline(content, `ol${i}`)}</li>);
-        i++;
-      }
-      out.push(<ol key={`ol${i}`} className="list-decimal pl-4 space-y-0.5 my-1 text-sm">{items}</ol>);
-    } else if (line === '') {
-      if (out.length > 0) out.push(<div key={i} className="h-1" />);
-      i++;
-    } else {
-      out.push(<p key={i} className="text-sm leading-relaxed">{parseInline(line, `p${i}`)}</p>);
-      i++;
-    }
-  }
-  return <>{out}</>;
-}
-
-/* ── Follow-up suggestion generator ──────────────────────────────────────── */
-function getFollowUps(aiText: string, location: string): string[] {
-  const t = aiText.toLowerCase();
-  const loc = location?.split(',')[0] || 'Bali';
-  const rules: [RegExp, string[]][] = [
-    [/visa|entry require|passport|border/, [`How long can I stay in ${loc}?`, 'Digital nomad visas available?', 'Do I need travel insurance?']],
-    [/cost|budget|per month|expensive|cheap|price/, ['Cheapest neighborhoods to stay?', 'What\'s a good daily budget?', 'How does it compare to NYC?']],
-    [/hotel|hostel|airbnb|accommodation|coliv/, ['Best neighborhoods to stay in?', 'Long-term rental options?', 'Coliving spaces near me?']],
-    [/safe|crime|danger|scam|security/, ['Which areas to avoid?', 'Common scams to watch out for?', 'Emergency numbers?']],
-    [/food|restaurant|eat|cuisine|street food/, ['Best street food spots?', 'Vegan/vegetarian options?', 'How much is a typical meal?']],
-    [/nomad|cowork|remote work|wifi|internet/, ['Best coworking spaces?', 'Is internet fast enough for video calls?', 'Nomad community tips?']],
-    [/flight|airport|airline|fly|transit/, ['Budget airlines for this route?', 'Best time to book?', 'Airport to city center transport?']],
-    [/itinerary|day 1|day 2|week|schedule|plan/, [`Create a ${loc} trip in my app`, 'What to pack?', 'Best day trips nearby?']],
-    [/bitcoin|btc|crypto|exchange rate|currency/, ['Where to exchange USD?', 'Fee-free banking abroad?', 'Bitcoin-friendly spots?']],
-    [/weather|climate|season|rainy|monsoon/, ['Best time of year to visit?', 'What to pack for the weather?', 'Shoulder season benefits?']],
-    [/health|vaccine|hospital|insurance|medical/, ['Do I need vaccines?', 'What travel insurance do you recommend?', 'Quality of healthcare?']],
-  ];
-  for (const [rx, sugg] of rules) {
-    if (rx.test(t)) return sugg;
-  }
-  return [`Cost of living in ${loc}?`, `Is ${loc} safe for solo travelers?`, `Digital nomad tips for ${loc}?`];
-}
-
-function extractDest(msg: string) {
+function extractDestFromMsg(msg: string) {
   const known = DESTINATIONS.find(d => msg.toLowerCase().includes(d.city.toLowerCase()));
   if (known) return `${known.city}, ${known.country}`;
-  const cleaned = msg.replace(/plan|a|my|trip|to|travel|for|in|visit|itinerary|i want|go to|take me to|tell me about|what about|how is|\?/gi, ' ').replace(/\s+/g, ' ').trim();
+  const cleaned = msg
+    .replace(/plan|a|my|trip|to|travel|for|in|visit|itinerary|i want|go to|take me to|tell me about|what about|how is|\?/gi, ' ')
+    .replace(/\s+/g, ' ').trim();
   return cleaned.length > 2 ? cleaned.replace(/\b\w/g, c => c.toUpperCase()) : null;
 }
 
-const CHAT_STORAGE_KEY = 'kipita_ai_messages_v2';
+interface PlaceChip {
+  name: string;
+  type: string;
+  rating?: number;
+  reviews?: number;
+  openNow?: boolean;
+  summary?: string;
+}
 
-/* ── Component ────────────────────────────────────────────────────────────── */
 interface Props {
   btcPrice?: number;
   locationName?: string;
   countryCode?: string;
+  lat?: number;
+  lng?: number;
   weather?: { emoji: string; temp: string; desc: string };
+  advisoryScore?: number;
   trips?: Trip[];
   onCreateTrip?: (dest: string, country: string, days: number) => void;
   onAddBooking?: (tripId: string, booking: Booking) => void;
   onBack?: () => void;
+  onSwitchTab?: (tab: TabId, hint?: string) => void;
 }
 
-const WELCOME: ChatMessage = {
-  id: '0', role: 'ai', timestamp: 0,
-  text: "Hi! I'm **Kipita AI** — your real-time travel intelligence companion.\n\nI know visa requirements, cost of living, safety conditions, nomad hotspots, and more — with live exchange rates and destination data built in.\n\n💡 Try: *\"Plan 7 days in Bali\"* · *\"Is Mexico City safe?\"* · *\"Cheapest nomad cities under $1k/mo\"*",
-};
+function placeTypeToHint(type: string): string {
+  const t = type.toLowerCase();
+  if (t.includes('restaurant') || t.includes('food')) return 'food';
+  if (t.includes('cafe') || t.includes('coffee')) return 'coffee';
+  if (t.includes('bar') || t.includes('pub') || t.includes('night')) return 'nightlife';
+  if (t.includes('attraction') || t.includes('museum') || t.includes('park')) return 'attractions';
+  if (t.includes('shop') || t.includes('store') || t.includes('mall')) return 'shopping';
+  return 'food';
+}
 
-export default function AIScreen({ btcPrice, locationName, countryCode, weather, trips, onCreateTrip, onAddBooking: _onAddBooking, onBack: _onBack }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [thinkingStep, setThinkingStep] = useState(0);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [lastTrip, setLastTrip] = useState<{ dest: string; country: string; days: number } | null>(null);
-  const [tripToast, setTripToast] = useState('');
-  const [listening, setListening] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const recogRef = useRef<any>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+// ── Live Stats Bar ────────────────────────────────────────────────────────────
+function StatsBar({
+  weather, advisoryScore, locationName,
+}: {
+  weather?: { emoji: string; temp: string; desc: string };
+  advisoryScore?: number;
+  locationName?: string;
+}) {
+  const safetyColor =
+    advisoryScore == null   ? '#64748b'
+    : advisoryScore <= 1.5  ? '#22c55e'
+    : advisoryScore <= 2.5  ? '#84cc16'
+    : advisoryScore <= 3.5  ? '#eab308'
+    : advisoryScore <= 4.2  ? '#f97316' : '#ef4444';
+  const safetyLabel =
+    advisoryScore == null   ? 'No data'
+    : advisoryScore <= 1.5  ? 'Very safe'
+    : advisoryScore <= 2.5  ? 'Generally safe'
+    : advisoryScore <= 3.5  ? 'Stay alert'
+    : advisoryScore <= 4.2  ? 'High risk' : 'Extreme risk';
 
-  const THINKING_STEPS = [
-    'Analyzing your question…',
-    'Fetching live travel data…',
-    'Checking destination insights…',
-    'Querying city intelligence…',
-    'Compiling your answer…',
-  ];
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  if (!weather && advisoryScore == null) return null;
+
+  return (
+    <div className="flex gap-2 px-3 py-2 border-b border-border bg-card/60 overflow-x-auto scrollbar-hide flex-shrink-0">
+      {weather && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1">
+          <span className="text-sm">{weather.emoji}</span>
+          <span className="text-[11px] font-bold text-foreground">{weather.temp}</span>
+          <span className="text-[10px] text-muted-foreground hidden sm:block">{weather.desc}</span>
+        </div>
+      )}
+      {advisoryScore != null && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1">
+          <span className="text-sm">🛡️</span>
+          <span className="text-[11px] font-bold" style={{ color: safetyColor }}>{safetyLabel}</span>
+        </div>
+      )}
+      <div className="flex items-center gap-1 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1">
+        <span className="text-[10px] text-muted-foreground">🕒 {timeStr}</span>
+      </div>
+      {locationName && (
+        <div className="flex items-center gap-1 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1 ml-auto">
+          <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">📍 {locationName}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Place Chips ───────────────────────────────────────────────────────────────
+function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip) => void }) {
+  if (!places.length) return null;
+  return (
+    <div className="px-1 pb-2">
+      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
+        📍 Nearby — tap to explore
+      </p>
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {places.map((p, i) => (
+          <button
+            key={`${p.name}-${i}`}
+            onClick={() => onTap(p)}
+            className="flex-shrink-0 bg-card border border-border rounded-xl px-3 py-2 text-left hover:border-kipita-red/40 hover:bg-muted transition-all max-w-[180px] active:scale-95"
+          >
+            <div className="text-xs font-bold text-foreground truncate">{p.name}</div>
+            <div className="flex items-center gap-1.5 mt-0.5">
+              {p.rating && <span className="text-[10px] font-semibold text-amber-500">★ {p.rating}</span>}
+              {p.openNow === true  && <span className="text-[10px] text-emerald-500 font-medium">Open</span>}
+              {p.openNow === false && <span className="text-[10px] text-muted-foreground">Closed</span>}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.type}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Suggestion Chips ──────────────────────────────────────────────────────────
+function SuggestionChips({ suggestions, onTap }: { suggestions: string[]; onTap: (s: string) => void }) {
+  if (!suggestions.length) return null;
+  return (
+    <div className="px-1 pb-1">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {suggestions.map((s, i) => (
+          <button
+            key={i}
+            onClick={() => onTap(s)}
+            className="flex-shrink-0 text-[11px] font-medium text-kipita-red border border-kipita-red/30 bg-kipita-red/5 rounded-full px-3 py-1.5 hover:bg-kipita-red/10 transition-colors active:scale-95 max-w-[200px] truncate"
+          >
+            {s.replace(/^\*Ask me: /, '').replace(/\*$/, '').replace(/^"|"$/, '')}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Message Bubble ────────────────────────────────────────────────────────────
+function MessageBubble({ msg }: { msg: ChatMessage }) {
+  const isAI = msg.role === 'ai';
+  return (
+    <div className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}>
+      <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
+        isAI
+          ? 'bg-card border border-border text-foreground rounded-bl-sm'
+          : 'bg-kipita-red text-white rounded-br-sm'
+      }`}>
+        {msg.text.split(/(\*\*\[.*?\]\(.*?\)\*\*|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
+          const boldLink = part.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
+          if (boldLink) return (
+            <a key={i} href={boldLink[2]} target="_blank" rel="noopener noreferrer"
+              className="text-kipita-red underline font-bold">{boldLink[1]}</a>
+          );
+          const bold = part.match(/^\*\*(.+?)\*\*$/);
+          if (bold) return <strong key={i}>{bold[1]}</strong>;
+          const link = part.match(/^\[(.+?)\]\((.+?)\)$/);
+          if (link) return (
+            <a key={i} href={link[2]} target="_blank" rel="noopener noreferrer"
+              className={isAI ? 'text-kipita-red underline font-semibold' : 'text-white underline font-semibold'}>{link[1]}</a>
+          );
+          return <span key={i}>{part}</span>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Typing Indicator ──────────────────────────────────────────────────────────
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="bg-card border border-border rounded-2xl px-4 py-3 rounded-bl-sm">
+        <div className="flex gap-1 items-center">
+          <span className="w-2 h-2 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+          <span className="w-2 h-2 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+          <span className="w-2 h-2 bg-kipita-red/70 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Quick Actions ─────────────────────────────────────────────────────────────
+const QUICK_ACTIONS = [
+  { emoji: '🗺️', label: 'Brief me',        prompt: 'Give me a full Know Before You Go briefing for where I am right now.' },
+  { emoji: '🛡️', label: 'Safety intel',   prompt: 'What\'s the real safety situation here? What should I specifically watch out for?' },
+  { emoji: '🍽️', label: 'Best food',       prompt: 'What\'s the best food near me right now? Be specific with real spots.' },
+  { emoji: '✈️', label: 'Plan a trip',      prompt: 'Help me plan a 7-day trip as a digital nomad. What\'s the best destination right now?' },
+  { emoji: '💰', label: 'Money tips',       prompt: 'What do I need to know about money here? ATMs, cards, budget, tips.' },
+  { emoji: '🌃', label: 'Tonight',          prompt: 'What\'s the best thing to do tonight? Give me something specific and exciting.' },
+  { emoji: '🏨', label: 'Where to stay',   prompt: 'What\'s the best neighborhood to stay in here, and what\'s a realistic hotel budget?' },
+  { emoji: '🚕', label: 'Get around',       prompt: 'How do I get around safely here? Uber, taxis, transit — what\'s the real deal?' },
+];
+
+// ── Main Screen ───────────────────────────────────────────────────────────────
+export default function AIScreen({
+  btcPrice, locationName, countryCode, lat, lng,
+  weather, advisoryScore, trips,
+  onCreateTrip, onBack, onSwitchTab,
+}: Props) {
+  const [messages, setMessages]         = useState<ChatMessage[]>([]);
+  const [suggestions, setSuggestions]   = useState<string[]>([]);
+  const [input, setInput]               = useState('');
+  const [loading, setLoading]           = useState(false);
+  const [briefingLoading, setBriefingLoading] = useState(false);
+  const [lastTrip, setLastTrip]         = useState<{ dest: string; country: string; days: number } | null>(null);
+  const [tripCreatedToast, setTripCreatedToast] = useState('');
+  const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
+  const bottomRef                       = useRef<HTMLDivElement>(null);
+  const briefingKeyRef                  = useRef<string>('');
+  const textareaRef                     = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (!loading) { setThinkingStep(0); return; }
-    const iv = setInterval(() => setThinkingStep(s => (s + 1) % THINKING_STEPS.length), 1600);
-    return () => clearInterval(iv);
-  }, [loading]);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, suggestions]);
 
-  const city = locationName?.split(',')[0] || 'Bangkok';
-
-  /* Persist messages */
+  // Auto-resize textarea
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(CHAT_STORAGE_KEY);
-      if (saved) {
-        const parsed: ChatMessage[] = JSON.parse(saved);
-        if (parsed.length > 1) { setMessages(parsed); return; }
-      }
-    } catch { /* ignore */ }
-  }, []);
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+  }, [input]);
 
+  // Agentic auto-briefing when location changes
   useEffect(() => {
-    if (messages.length > 1) {
-      try { localStorage.setItem(CHAT_STORAGE_KEY, JSON.stringify(messages.slice(-30))); } catch { /* ignore */ }
+    if (!locationName) return;
+    const key = `${locationName}|${countryCode || ''}`;
+    if (briefingKeyRef.current === key) return;
+    briefingKeyRef.current = key;
+
+    setMessages([{
+      id: 'briefing-loading',
+      role: 'ai',
+      text: `🧭 Scouting **${locationName}** for you…\n\nPulling live spots, conditions, and local intel.`,
+      timestamp: Date.now(),
+    }]);
+    setNearbyPlaces([]);
+    setSuggestions([]);
+    setBriefingLoading(true);
+
+    supabase.functions.invoke('ai-chat', {
+      body: {
+        message: 'agentic-briefing',
+        history: [],
+        agenticBriefing: true,
+        context: {
+          location: locationName,
+          countryCode,
+          lat,
+          lng,
+          btcPrice,
+          weather: weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : undefined,
+          advisoryScore,
+        },
+      },
+    }).then(({ data, error }) => {
+      if (error) throw error;
+      const reply = data?.reply || `Here's the vibe for **${locationName}** — ask me anything!`;
+      setMessages([{ id: 'briefing-result', role: 'ai', text: reply, timestamp: Date.now() }]);
+      if (data?.places?.length) setNearbyPlaces(data.places);
+      if (data?.suggestions?.length) setSuggestions(data.suggestions);
+    }).catch(() => {
+      setMessages([{
+        id: 'briefing-fallback',
+        role: 'ai',
+        text: `Hey! I'm your Kipita travel intelligence AI — your ultimate "Know Before You Go" expert.\n\n📍 **${locationName || 'Wherever you are'}** — I'm ready to help.\n\nAsk me about safety, food, money, transport, or let me give you a full briefing.`,
+        timestamp: Date.now(),
+      }]);
+    }).finally(() => setBriefingLoading(false));
+  }, [locationName, countryCode, lat, lng, weather, advisoryScore, btcPrice]);
+
+  const handlePlaceChipTap = useCallback((place: PlaceChip) => {
+    if (onSwitchTab) onSwitchTab('places', placeTypeToHint(place.type));
+  }, [onSwitchTab]);
+
+  const handleCreateTrip = (dest: string) => {
+    const knownDest = DESTINATIONS.find(d => dest.toLowerCase().includes(d.city.toLowerCase()));
+    const cityName = knownDest?.city || dest.split(',')[0].trim();
+    const countryName = knownDest?.country || dest.split(',')[1]?.trim() || '';
+    const days = 7;
+    if (onCreateTrip) {
+      onCreateTrip(cityName, countryName, days);
+      setTripCreatedToast(cityName);
+      setTimeout(() => setTripCreatedToast(''), 3000);
     }
-  }, [messages]);
-
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
-
-  /* Voice input */
-  const hasVoice = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-
-  const toggleVoice = () => {
-    if (listening) { recogRef.current?.abort(); setListening(false); return; }
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SR) return;
-    const rec = new SR();
-    rec.lang = 'en-US';
-    rec.onresult = (e: any) => { setInput(e.results[0][0].transcript); setListening(false); inputRef.current?.focus(); };
-    rec.onerror = () => setListening(false);
-    rec.onend = () => setListening(false);
-    recogRef.current = rec;
-    rec.start();
-    setListening(true);
+    setLastTrip(null);
   };
 
-  /* Quick actions */
-  const quickActions = [
-    { emoji: '🗺️', label: 'Plan Trip',      prompt: `Plan a 7-day digital nomad trip to ${city}. Give a day-by-day itinerary.` },
-    { emoji: '💰', label: 'Cost of Living', prompt: `What does it cost to live comfortably in ${city} for one month? Break it down.` },
-    { emoji: '🛂', label: 'Visa Info',      prompt: `What are the visa and entry requirements for ${locationName?.split(',')[1]?.trim() || city}? US passport.` },
-    { emoji: '🛡️', label: 'Safety',         prompt: `Is ${city} safe right now? What should a traveler know about safety there?` },
-    { emoji: '💻', label: 'Nomad Life',     prompt: `Is ${city} good for digital nomads? Cover coworking, wifi speeds, community, and vibe.` },
-    { emoji: '🏨', label: 'Where to Stay',  prompt: `Best neighborhoods and accommodation options for a traveler in ${city}. All budgets.` },
-    { emoji: '🍜', label: 'Food & Eats',    prompt: `Best local food, must-try dishes, and top restaurants in ${city}.` },
-    { emoji: '💱', label: 'Currency Tips',  prompt: `Currency and money tips for ${locationName || city} — best exchange apps, ATM strategy, avoid fees.` },
-  ];
-
-  /* Send message */
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: text.trim(), timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
-    setLoading(true);
     setSuggestions([]);
-    setLastTrip(null);
+    setLoading(true);
 
     try {
       const context: Record<string, unknown> = {};
-      if (locationName)  context.location    = locationName;
-      if (countryCode)   context.countryCode = countryCode;
-      if (btcPrice)      context.btcPrice    = btcPrice;
-      if (weather)       context.weather     = `${weather.emoji} ${weather.temp} ${weather.desc}`;
-      if (trips?.length) context.trips       = trips;
+      if (locationName) context.location = locationName;
+      if (countryCode) context.countryCode = countryCode;
+      if (typeof lat === 'number') context.lat = lat;
+      if (typeof lng === 'number') context.lng = lng;
+      if (btcPrice) context.btcPrice = btcPrice;
+      if (weather) context.weather = `${weather.emoji} ${weather.temp} ${weather.desc}`;
+      if (typeof advisoryScore === 'number') context.advisoryScore = advisoryScore;
+      if (trips && trips.length > 0) context.trips = trips;
 
-      const history = messages.slice(-12).map(m => ({ role: m.role, text: m.text }));
+      const history = messages.slice(-10).map(m => ({ role: m.role, text: m.text }));
 
       const { data, error } = await supabase.functions.invoke('ai-chat', {
         body: { message: text.trim(), history, context },
@@ -213,176 +327,130 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
 
       if (error) throw error;
 
-      const reply = data?.reply || "I'm having trouble connecting. Please try again.";
-      const sources: string[] = data?.sources || [];
-      const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now(), sources };
-      setMessages(prev => [...prev.slice(-20), aiMsg]);
-      setSuggestions(getFollowUps(reply, locationName || ''));
+      const reply = data?.reply || "I'm sorry, I couldn't process that. Please try again.";
+      const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now() };
+      setMessages(prev => [...prev.slice(-18), aiMsg]);
 
-      // Detect trip intent
-      if (/\b(plan|trip|travel|visit|itinerary|go to)\b/i.test(text) && !/\b(my trips?|show|bookings?)\b/i.test(text)) {
-        const dest = extractDest(text) || 'New Destination';
-        const known = DESTINATIONS.find(d => text.toLowerCase().includes(d.city.toLowerCase()));
+      if (data?.places?.length) setNearbyPlaces(data.places);
+      if (data?.suggestions?.length) setSuggestions(data.suggestions);
+
+      // Detect trip planning intent
+      if (
+        /\b(plan|trip|travel|visit|itinerary|go to)\b/.test(text.toLowerCase()) &&
+        !/\b(my trips?|my bookings?|show)\b/.test(text.toLowerCase())
+      ) {
+        const dest = extractDestFromMsg(text) || 'New Destination';
+        const knownDest = DESTINATIONS.find(d => text.toLowerCase().includes(d.city.toLowerCase()));
         const days = parseInt(text.match(/(\d+)\s*days?/i)?.[1] || '7');
-        setLastTrip({ dest, country: known?.country || '', days });
+        setLastTrip({ dest, country: knownDest?.country || '', days });
       }
-    } catch (err) {
-      console.error('AI chat error:', err);
+    } catch {
       setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(), role: 'ai', timestamp: Date.now(),
-        text: '⚠️ Connection issue. Check your network and try again.',
+        id: (Date.now() + 1).toString(),
+        role: 'ai',
+        text: '⚠️ Having trouble connecting right now. Check your connection and try again.',
+        timestamp: Date.now(),
       }]);
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, locationName, countryCode, btcPrice, weather, trips]);
+  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips]);
 
-  const handleCreateTrip = (dest: string) => {
-    const known = DESTINATIONS.find(d => dest.toLowerCase().includes(d.city.toLowerCase()));
-    const city  = known?.city    || dest.split(',')[0].trim();
-    const cntry = known?.country || dest.split(',')[1]?.trim() || '';
-    if (onCreateTrip) { onCreateTrip(city, cntry, lastTrip?.days ?? 7); }
-    setTripToast(city);
-    setTimeout(() => setTripToast(''), 3000);
-    setLastTrip(null);
-  };
-
-  const clearChat = () => {
-    setMessages([WELCOME]);
+  const handleRefresh = () => {
+    briefingKeyRef.current = '';
+    setNearbyPlaces([]);
     setSuggestions([]);
     setLastTrip(null);
-    try { localStorage.removeItem(CHAT_STORAGE_KEY); } catch { /* ignore */ }
+    setMessages([{
+      id: '0',
+      role: 'ai',
+      text: `Fresh start! I'm your Kipita travel intelligence AI — "Know Before You Go" expert.\n\nAsk me anything about ${locationName || 'where you are'}, or tap a quick action to dive in. 🌍`,
+      timestamp: Date.now(),
+    }]);
   };
 
   return (
     <div className="flex flex-col h-full">
-      {/* Trip created toast */}
-      {tripToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-kipita-green text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-          ✅ Trip to {tripToast} created!
+      {/* Toast */}
+      {tripCreatedToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[100] bg-kipita-green text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg animate-fade-in">
+          ✅ Trip to {tripCreatedToast} created!
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-kipita-navy to-kipita-red flex items-center justify-center text-lg flex-shrink-0">✨</div>
+      <div className="flex items-center gap-3 p-4 border-b border-border bg-card flex-shrink-0">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-kipita-navy via-kipita-red to-kipita-teal flex items-center justify-center flex-shrink-0">
+          <span className="text-lg">✦</span>
+        </div>
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-foreground text-sm">Kipita AI</h3>
-          <p className="text-[10px] text-muted-foreground truncate">
-            {loading ? `● ${THINKING_STEPS[thinkingStep]}` : 'Gemini 2.5 · 7 live data tools · Always-on intelligence'}
+          <h3 className="font-bold text-foreground">Kipita AI</h3>
+          <p className="text-xs text-muted-foreground truncate">
+            {briefingLoading
+              ? `🔍 Scouting ${locationName}…`
+              : loading
+              ? '💭 Thinking…'
+              : `Know Before You Go · ${locationName || 'Locating…'}`}
           </p>
         </div>
-        <button onClick={clearChat} title="Clear chat"
-          className="ms text-muted-foreground text-xl hover:text-foreground transition-colors flex-shrink-0">
+        <button
+          onClick={handleRefresh}
+          className="ms text-muted-foreground text-xl hover:text-foreground transition-colors p-1"
+          title="Fresh start"
+        >
           refresh
         </button>
       </div>
 
-      {/* Live context bar — location + weather only; BTC surfaced on demand */}
-      {(locationName || weather) && (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted/30 border-b border-border overflow-x-auto scrollbar-hide flex-shrink-0">
-          <span className="text-[9px] text-muted-foreground/50 uppercase tracking-wider flex-shrink-0 mr-0.5">AI context:</span>
-          {locationName && (
-            <span className="text-[10px] text-muted-foreground bg-card border border-border rounded-full px-2 py-0.5 flex-shrink-0">
-              📍 {locationName.split(',')[0]}
-            </span>
-          )}
-          {weather && (
-            <span className="text-[10px] text-muted-foreground bg-card border border-border rounded-full px-2 py-0.5 flex-shrink-0">
-              {weather.emoji} {weather.temp}
-            </span>
-          )}
-          {(trips?.length ?? 0) > 0 && (
-            <span className="text-[10px] text-muted-foreground bg-card border border-border rounded-full px-2 py-0.5 flex-shrink-0">
-              ✈️ {trips!.length} trip{trips!.length > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-      )}
+      {/* Live stats bar */}
+      <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} />
 
-      {/* Quick action chips */}
-      <div className="flex gap-2 px-3 py-2 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border">
-        {quickActions.map(a => (
-          <button key={a.label} onClick={() => sendMessage(a.prompt)}
-            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-[11px] font-semibold text-foreground hover:border-kipita-red/50 hover:bg-muted transition-all">
-            <span>{a.emoji}</span><span>{a.label}</span>
+      {/* Quick actions horizontal scroll */}
+      <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
+        {QUICK_ACTIONS.map(a => (
+          <button
+            key={a.label}
+            onClick={() => sendMessage(a.prompt)}
+            disabled={loading || briefingLoading}
+            className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-semibold hover:bg-muted hover:border-kipita-red/30 transition-all disabled:opacity-40 active:scale-95"
+          >
+            <span>{a.emoji}</span>
+            <span>{a.label}</span>
           </button>
         ))}
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map((msg, idx) => {
-          const isLastAi = msg.role === 'ai' && idx === messages.length - 1 && !loading;
-          return (
-            <div key={msg.id}>
-              <div className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                {msg.role === 'ai' && (
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-kipita-navy to-kipita-red flex items-center justify-center text-[10px] mr-2 flex-shrink-0 mt-1">✨</div>
-                )}
-                <div className={`max-w-[82%] rounded-2xl px-4 py-3 ${
-                  msg.role === 'user'
-                    ? 'bg-kipita-red text-white rounded-br-sm text-sm leading-relaxed'
-                    : 'bg-card border border-border text-foreground rounded-bl-sm'
-                }`}>
-                  {msg.role === 'user'
-                    ? msg.text
-                    : renderMarkdown(msg.text)
-                  }
-                </div>
-              </div>
+        {messages.map(msg => (
+          <MessageBubble key={msg.id} msg={msg} />
+        ))}
 
-              {/* Sources badges — what live data was consulted */}
-              {msg.role === 'ai' && msg.sources && msg.sources.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1.5 ml-8">
-                  {msg.sources.map(s => (
-                    <span key={s} className="text-[9px] bg-muted/40 border border-border rounded-full px-2 py-0.5 text-muted-foreground/70">
-                      🔗 {s}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {/* Follow-up suggestion chips after last AI message */}
-              {isLastAi && suggestions.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2 ml-8">
-                  {suggestions.map(s => (
-                    <button key={s} onClick={() => sendMessage(s)}
-                      className="text-[11px] px-2.5 py-1 bg-muted/50 border border-border rounded-full text-muted-foreground hover:text-foreground hover:border-kipita-red/40 transition-all">
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Agentic thinking indicator */}
-        {loading && (
-          <div className="flex items-start gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-kipita-navy to-kipita-red flex items-center justify-center text-[10px] flex-shrink-0 mt-1">✨</div>
-            <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-3">
-              <p className="text-[11px] text-muted-foreground mb-1.5">{THINKING_STEPS[thinkingStep]}</p>
-              <div className="flex gap-1">
-                {[0, 150, 300].map(delay => (
-                  <span key={delay} className="w-1.5 h-1.5 bg-muted-foreground/60 rounded-full animate-bounce"
-                    style={{ animationDelay: `${delay}ms` }} />
-                ))}
-              </div>
-            </div>
-          </div>
+        {/* Nearby place chips (shown after briefing) */}
+        {!loading && !briefingLoading && nearbyPlaces.length > 0 && (
+          <PlaceChips places={nearbyPlaces} onTap={handlePlaceChipTap} />
         )}
 
-        {/* Create Trip CTA */}
+        {/* Suggestion chips */}
+        {!loading && !briefingLoading && suggestions.length > 0 && (
+          <SuggestionChips suggestions={suggestions} onTap={sendMessage} />
+        )}
+
+        {(loading || briefingLoading) && <TypingIndicator />}
+
+        {/* Create trip CTA */}
         {lastTrip && !loading && (
-          <div className="flex justify-center gap-2 py-1">
-            <button onClick={() => handleCreateTrip(lastTrip.dest)}
-              className="px-4 py-2 bg-kipita-green text-white rounded-full text-xs font-bold hover:opacity-90 transition-opacity">
+          <div className="flex justify-center gap-2">
+            <button
+              onClick={() => handleCreateTrip(lastTrip.dest)}
+              className="px-4 py-2 bg-kipita-green text-white rounded-full text-xs font-bold hover:opacity-90 transition-opacity active:scale-95"
+            >
               ✈️ Create Trip: {lastTrip.dest}
             </button>
-            <button onClick={() => setLastTrip(null)}
-              className="px-3 py-2 bg-muted text-muted-foreground rounded-full text-xs font-semibold hover:bg-muted/80">
+            <button
+              onClick={() => setLastTrip(null)}
+              className="px-3 py-2 bg-muted text-muted-foreground rounded-full text-xs font-semibold"
+            >
               Dismiss
             </button>
           </div>
@@ -391,29 +459,27 @@ export default function AIScreen({ btcPrice, locationName, countryCode, weather,
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar */}
-      <div className="flex items-end gap-2 px-3 py-3 border-t border-border bg-card flex-shrink-0">
-        {hasVoice && (
-          <button onClick={toggleVoice} title={listening ? 'Stop listening' : 'Voice input'}
-            className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all ${
-              listening
-                ? 'bg-kipita-red text-white animate-pulse'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
-            }`}>
-            <span className="ms text-lg">{listening ? 'mic' : 'mic_none'}</span>
-          </button>
-        )}
+      {/* Input */}
+      <div className="flex items-end gap-2 p-3 border-t border-border bg-card flex-shrink-0">
         <textarea
-          ref={inputRef}
+          ref={textareaRef}
           value={input}
           onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input); } }}
-          placeholder="Ask anything about travel, visas, costs, safety…"
+          onKeyDown={e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              sendMessage(input);
+            }
+          }}
+          placeholder="Ask anything about this destination…"
           rows={1}
-          className="flex-1 resize-none bg-background border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red transition-colors"
+          className="flex-1 resize-none bg-background border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red transition-colors min-h-[40px] max-h-[120px]"
         />
-        <button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}
-          className="w-9 h-9 bg-kipita-red text-white rounded-full flex items-center justify-center flex-shrink-0 hover:bg-kipita-red/90 disabled:opacity-40 transition-all">
+        <button
+          onClick={() => sendMessage(input)}
+          disabled={!input.trim() || loading}
+          className="w-10 h-10 bg-kipita-red text-white rounded-full flex items-center justify-center flex-shrink-0 hover:bg-kipita-red/90 transition-all disabled:opacity-40 active:scale-95"
+        >
           <span className="ms text-lg">send</span>
         </button>
       </div>

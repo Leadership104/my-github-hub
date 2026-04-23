@@ -36,10 +36,6 @@ fix_*.js
 .codex_android/
 .kotlin/
 
-# Web build artifacts
-node_modules/
-dist/
-
 # Claude Code session data
 .claude/
 
@@ -51,3 +47,13 @@ ios/**/.DS_Store
 ios/**/DerivedData/
 ios/**/*.xcuserstate
 ios/**/*.xcworkspace/xcuserdata/
+
+# Web build artifacts
+node_modules/
+dist/
+
+# Environment files (do NOT commit real secrets)
+.env
+.env.local
+.env.*.local
+!.env.example
