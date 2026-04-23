@@ -31,9 +31,77 @@ interface Props {
   advisoryScore?: number;
   trips?: Trip[];
   onCreateTrip?: (dest: string, country: string, days: number) => void;
+  onCreateFullTrip?: (trip: Trip) => void;
   onAddBooking?: (tripId: string, booking: Booking) => void;
   onBack?: () => void;
   onSwitchTab?: (tab: TabId, hint?: string) => void;
+}
+
+// ── Trip Booking Wizard ───────────────────────────────────────────────────────
+type WizardStep = 'destination' | 'dates' | 'duration' | 'confirm';
+
+interface WizardState {
+  step: WizardStep;
+  destination: string;
+  country: string;
+  startDate: string;
+  days: number;
+}
+
+function buildItinerary(dest: string, days: number, startDate: string): import('../types').ItineraryItem[] {
+  const templates: Record<string, string[][]> = {
+    Tokyo: [
+      ['10:00', '✈️ Arrive at Narita Airport (NRT) – Collect luggage, clear customs. Pick up pocket Wi-Fi.', 'Narita International Airport'],
+      ['14:00', '🚄 Narita Express → Shinjuku – Take the N\'EX express train. 90-minute scenic ride.', 'Narita → Shinjuku'],
+      ['16:00', '🏨 Hotel Check-in – Freshen up and enjoy the city-view lobby.', 'Shinjuku, Tokyo'],
+      ['19:00', '🍜 Ramen at Ichiran Shinjuku – Solo ramen booths — an iconic Tokyo experience.', 'Shinjuku'],
+    ],
+    Bali: [
+      ['12:00', '✈️ Arrive at Ngurah Rai Airport – Transfer to Canggu area.', 'Denpasar Airport'],
+      ['15:00', '🏨 Check-in to Villa or Hostel – Drop bags and head to the pool.', 'Canggu'],
+      ['18:00', '🌅 Sunset at Echo Beach – Watch surfers and the famous Bali sunset.', 'Canggu Beach'],
+      ['20:00', '🍻 Dinner at Single Fin – Rooftop bar and restaurant with ocean views.', 'Uluwatu'],
+    ],
+    Paris: [
+      ['10:00', '✈️ Arrive CDG Airport – Take the RER B to central Paris.', 'Charles de Gaulle Airport'],
+      ['13:00', '🗼 Eiffel Tower – Visit and take the lift to the second floor.', 'Champ de Mars, Paris'],
+      ['15:30', '🥐 Café de Flore – Iconic Parisian café. Enjoy a croque monsieur.', 'Saint-Germain-des-Prés'],
+      ['19:00', '🍷 Dinner in Le Marais – Walk the cobblestone streets and dine at a bistro.', 'Le Marais'],
+    ],
+    Bangkok: [
+      ['11:00', '✈️ Arrive Suvarnabhumi Airport – Take Airport Rail Link to city.', 'Suvarnabhumi Airport'],
+      ['14:00', '🛕 Grand Palace & Wat Phra Kaew – Thailand\'s most sacred temple complex.', 'Old City'],
+      ['17:00', '🛶 Chao Phraya River Cruise – Jump on the orange flag boat.', 'Tha Tien Pier'],
+      ['20:00', '🍢 Street Food at Yaowarat (Chinatown) – Seafood, noodles, and durian.', 'Yaowarat Road'],
+    ],
+  };
+
+  const city = Object.keys(templates).find(k => dest.toLowerCase().includes(k.toLowerCase())) || '';
+  const dayItems: import('../types').ItineraryItem[] = [];
+  const startMs = new Date(startDate).getTime();
+
+  for (let d = 1; d <= days; d++) {
+    const dayMs = startMs + (d - 1) * 86400000;
+    const date = new Date(dayMs);
+
+    if (d === 1 && city && templates[city]) {
+      templates[city].forEach((row, idx) => {
+        dayItems.push({ id: `ai-d${d}-${idx}`, day: d, time: row[0], title: `${row[1]}${row[2] ? '\n📍 ' + row[2] : ''}`, done: false });
+      });
+    } else {
+      const genericDay = [
+        { time: '09:00', title: `🌅 Morning exploration – Start the day with a local breakfast` },
+        { time: '11:30', title: `🗺️ Sightseeing – Explore a landmark or neighborhood in ${dest}` },
+        { time: '13:00', title: `🍽️ Lunch – Try a local restaurant recommended by Kipita AI` },
+        { time: '15:30', title: `🛍️ Shopping or activity – Markets, tours, or a cultural experience` },
+        { time: '19:00', title: `🌆 Evening dinner – Rooftop, riverside, or local street food` },
+      ];
+      genericDay.forEach((item, idx) => {
+        dayItems.push({ id: `ai-d${d}-${idx}`, day: d, time: item.time, title: item.title, done: false });
+      });
+    }
+  }
+  return dayItems;
 }
 
 function placeTypeToHint(type: string): string {
@@ -198,7 +266,7 @@ const QUICK_ACTIONS = [
   { emoji: '🗺️', label: 'Brief me',        prompt: 'Give me a full Know Before You Go briefing for where I am right now.' },
   { emoji: '🛡️', label: 'Safety intel',   prompt: 'What\'s the real safety situation here? What should I specifically watch out for?' },
   { emoji: '🍽️', label: 'Best food',       prompt: 'What\'s the best food near me right now? Be specific with real spots.' },
-  { emoji: '✈️', label: 'Plan a trip',      prompt: 'Help me plan a 7-day trip as a digital nomad. What\'s the best destination right now?' },
+  { emoji: '✈️', label: 'Plan a trip',      prompt: '__OPEN_WIZARD__' },
   { emoji: '💰', label: 'Money tips',       prompt: 'What do I need to know about money here? ATMs, cards, budget, tips.' },
   { emoji: '🌃', label: 'Tonight',          prompt: 'What\'s the best thing to do tonight? Give me something specific and exciting.' },
   { emoji: '🏨', label: 'Where to stay',   prompt: 'What\'s the best neighborhood to stay in here, and what\'s a realistic hotel budget?' },
@@ -209,7 +277,7 @@ const QUICK_ACTIONS = [
 export default function AIScreen({
   btcPrice, locationName, countryCode, lat, lng,
   weather, advisoryScore, trips,
-  onCreateTrip, onBack, onSwitchTab,
+  onCreateTrip, onCreateFullTrip, onBack, onSwitchTab,
 }: Props) {
   const [messages, setMessages]         = useState<ChatMessage[]>([]);
   const [suggestions, setSuggestions]   = useState<string[]>([]);
@@ -219,6 +287,7 @@ export default function AIScreen({
   const [lastTrip, setLastTrip]         = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripCreatedToast, setTripCreatedToast] = useState('');
   const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
+  const [wizard, setWizard]             = useState<WizardState | null>(null);
   const bottomRef                       = useRef<HTMLDivElement>(null);
   const briefingKeyRef                  = useRef<string>('');
   const textareaRef                     = useRef<HTMLTextAreaElement>(null);
@@ -297,6 +366,50 @@ export default function AIScreen({
       setTripCreatedToast(cityName);
       setTimeout(() => setTripCreatedToast(''), 3000);
     }
+    setLastTrip(null);
+  };
+
+  const openWizard = (dest?: string) => {
+    const knownDest = dest ? DESTINATIONS.find(d => dest.toLowerCase().includes(d.city.toLowerCase())) : null;
+    const today = new Date();
+    today.setDate(today.getDate() + 14);
+    setWizard({
+      step: 'destination',
+      destination: knownDest?.city || dest || '',
+      country: knownDest?.country || '',
+      startDate: today.toISOString().split('T')[0],
+      days: 7,
+    });
+  };
+
+  const saveWizardTrip = () => {
+    if (!wizard) return;
+    const emojis = ['🏔️', '🌴', '🏖️', '🌺', '🗼', '🏙️', '🗽', '🏝️'];
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+    const endDate = new Date(wizard.startDate);
+    endDate.setDate(endDate.getDate() + wizard.days);
+    const items = buildItinerary(wizard.destination, wizard.days, wizard.startDate);
+    const trip: Trip = {
+      id: Date.now().toString(),
+      dest: wizard.destination,
+      country: wizard.country,
+      emoji,
+      start: wizard.startDate,
+      end: endDate.toISOString().split('T')[0],
+      notes: `AI-planned ${wizard.days}-day trip to ${wizard.destination}`,
+      status: 'upcoming',
+      items,
+      bookings: [],
+      createdAt: Date.now(),
+    };
+    if (onCreateFullTrip) {
+      onCreateFullTrip(trip);
+    } else if (onCreateTrip) {
+      onCreateTrip(wizard.destination, wizard.country, wizard.days);
+    }
+    setTripCreatedToast(wizard.destination);
+    setTimeout(() => setTripCreatedToast(''), 3500);
+    setWizard(null);
     setLastTrip(null);
   };
 
@@ -410,7 +523,7 @@ export default function AIScreen({
         {QUICK_ACTIONS.map(a => (
           <button
             key={a.label}
-            onClick={() => sendMessage(a.prompt)}
+            onClick={() => a.prompt === '__OPEN_WIZARD__' ? openWizard() : sendMessage(a.prompt)}
             disabled={loading || briefingLoading}
             className="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 bg-card border border-border rounded-full text-xs font-semibold hover:bg-muted hover:border-kipita-red/30 transition-all disabled:opacity-40 active:scale-95"
           >
@@ -419,6 +532,144 @@ export default function AIScreen({
           </button>
         ))}
       </div>
+
+      {/* Trip Booking Wizard Modal */}
+      {wizard && (
+        <div className="fixed inset-0 z-[200] bg-black/60 flex items-end justify-center" onClick={() => setWizard(null)}>
+          <div className="w-full max-w-md bg-card rounded-t-2xl shadow-2xl p-5 pb-8" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-extrabold text-base">✈️ Plan a Trip</h3>
+              <button onClick={() => setWizard(null)} className="text-muted-foreground text-xl leading-none">✕</button>
+            </div>
+
+            {/* Step indicator */}
+            <div className="flex gap-1.5 mb-5">
+              {(['destination', 'dates', 'duration', 'confirm'] as WizardStep[]).map((s, i) => (
+                <div key={s} className={`flex-1 h-1 rounded-full transition-colors ${
+                  ['destination', 'dates', 'duration', 'confirm'].indexOf(wizard.step) >= i
+                    ? 'bg-kipita-red' : 'bg-muted'
+                }`} />
+              ))}
+            </div>
+
+            {wizard.step === 'destination' && (
+              <div className="space-y-4">
+                <p className="text-sm font-semibold text-foreground">Where do you want to go?</p>
+                <input
+                  autoFocus
+                  value={wizard.destination}
+                  onChange={e => setWizard({ ...wizard, destination: e.target.value })}
+                  placeholder="e.g. Tokyo, Bali, Paris…"
+                  className="w-full bg-background border border-border rounded-kipita-sm px-4 py-3 text-sm outline-none focus:border-kipita-red"
+                />
+                <input
+                  value={wizard.country}
+                  onChange={e => setWizard({ ...wizard, country: e.target.value })}
+                  placeholder="Country (optional)"
+                  className="w-full bg-background border border-border rounded-kipita-sm px-4 py-3 text-sm outline-none focus:border-kipita-red"
+                />
+                <div className="flex flex-wrap gap-2">
+                  {['Tokyo', 'Bali', 'Bangkok', 'Paris', 'Lisbon', 'NYC'].map(d => (
+                    <button key={d} onClick={() => {
+                      const kd = DESTINATIONS.find(x => x.city === d);
+                      setWizard({ ...wizard, destination: d, country: kd?.country || '' });
+                    }} className="px-3 py-1.5 bg-muted rounded-full text-xs font-semibold hover:bg-muted/80 transition-colors">
+                      {d}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => wizard.destination && setWizard({ ...wizard, step: 'dates' })}
+                  disabled={!wizard.destination}
+                  className="w-full bg-kipita-red text-white py-3 rounded-kipita-sm font-bold text-sm disabled:opacity-40 hover:opacity-90 transition-opacity"
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+
+            {wizard.step === 'dates' && (
+              <div className="space-y-4">
+                <p className="text-sm font-semibold text-foreground">When are you leaving?</p>
+                <div>
+                  <label className="text-xs font-bold text-muted-foreground mb-1 block">Departure Date</label>
+                  <input
+                    type="date"
+                    value={wizard.startDate}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={e => setWizard({ ...wizard, startDate: e.target.value })}
+                    className="w-full bg-background border border-border rounded-kipita-sm px-4 py-3 text-sm outline-none focus:border-kipita-red"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setWizard({ ...wizard, step: 'destination' })}
+                    className="flex-1 py-3 bg-muted rounded-kipita-sm text-sm font-semibold text-muted-foreground">
+                    ← Back
+                  </button>
+                  <button onClick={() => setWizard({ ...wizard, step: 'duration' })}
+                    className="flex-1 bg-kipita-red text-white py-3 rounded-kipita-sm font-bold text-sm hover:opacity-90 transition-opacity">
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {wizard.step === 'duration' && (
+              <div className="space-y-4">
+                <p className="text-sm font-semibold text-foreground">How many days?</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {[3, 5, 7, 10, 14, 21].map(d => (
+                    <button key={d} onClick={() => setWizard({ ...wizard, days: d })}
+                      className={`py-3 rounded-kipita-sm text-sm font-bold border transition-all ${
+                        wizard.days === d ? 'bg-kipita-red text-white border-kipita-red' : 'bg-muted border-border text-foreground'
+                      }`}>
+                      {d}d
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setWizard({ ...wizard, step: 'dates' })}
+                    className="flex-1 py-3 bg-muted rounded-kipita-sm text-sm font-semibold text-muted-foreground">
+                    ← Back
+                  </button>
+                  <button onClick={() => setWizard({ ...wizard, step: 'confirm' })}
+                    className="flex-1 bg-kipita-red text-white py-3 rounded-kipita-sm font-bold text-sm hover:opacity-90 transition-opacity">
+                    Next →
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {wizard.step === 'confirm' && (
+              <div className="space-y-4">
+                <div className="bg-muted/60 rounded-kipita p-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Destination</span>
+                    <span className="font-bold">{wizard.destination}{wizard.country ? `, ${wizard.country}` : ''}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Departure</span>
+                    <span className="font-bold">{wizard.startDate}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Duration</span>
+                    <span className="font-bold">{wizard.days} days</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground text-center">Kipita AI will generate a full day-by-day itinerary for your trip.</p>
+                <button onClick={saveWizardTrip}
+                  className="w-full bg-gradient-to-r from-kipita-navy to-kipita-red text-white py-3.5 rounded-kipita-sm font-extrabold text-sm hover:opacity-90 transition-opacity">
+                  ✈️ Save Trip + Generate Itinerary
+                </button>
+                <button onClick={() => setWizard({ ...wizard, step: 'duration' })}
+                  className="w-full py-2 text-xs text-muted-foreground hover:text-foreground transition-colors">
+                  ← Back
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -440,19 +691,28 @@ export default function AIScreen({
 
         {/* Create trip CTA */}
         {lastTrip && !loading && (
-          <div className="flex justify-center gap-2">
-            <button
-              onClick={() => handleCreateTrip(lastTrip.dest)}
-              className="px-4 py-2 bg-kipita-green text-white rounded-full text-xs font-bold hover:opacity-90 transition-opacity active:scale-95"
-            >
-              ✈️ Create Trip: {lastTrip.dest}
-            </button>
-            <button
-              onClick={() => setLastTrip(null)}
-              className="px-3 py-2 bg-muted text-muted-foreground rounded-full text-xs font-semibold"
-            >
-              Dismiss
-            </button>
+          <div className="mx-2 p-4 bg-card border border-kipita-red/30 rounded-kipita shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xl">✈️</span>
+              <div>
+                <div className="text-xs font-extrabold text-foreground">Trip Detected: {lastTrip.dest}</div>
+                <div className="text-[10px] text-muted-foreground">Build a full itinerary with AI</div>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => openWizard(lastTrip.dest)}
+                className="flex-1 py-2.5 bg-kipita-red text-white rounded-kipita-sm text-xs font-bold hover:opacity-90 transition-opacity active:scale-95"
+              >
+                ✈️ Plan This Trip
+              </button>
+              <button
+                onClick={() => setLastTrip(null)}
+                className="px-3 py-2 bg-muted text-muted-foreground rounded-kipita-sm text-xs font-semibold"
+              >
+                Dismiss
+              </button>
+            </div>
           </div>
         )}
 

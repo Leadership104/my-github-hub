@@ -17,15 +17,61 @@ const FOOD_SUBS = [
   { emoji: '🍽️', label: 'Restaurants', hint: 'food' },
   { emoji: '🍸', label: 'Drinks', hint: 'drinks' },
   { emoji: '☕', label: 'Coffee', hint: 'cafe' },
-  { emoji: '🍺', label: 'Bars', hint: 'nightlife' },
+  { emoji: '🍺', label: 'Bars', hint: 'bars' },
 ];
 
-const FEATURED_CATEGORIES = [
-  { emoji: '🌽', label: "Farmers\nMarket", hint: 'shop', featured: true },
-  { emoji: '🔧', label: 'Auto\nRepair', hint: 'places', featured: true },
-  { emoji: '🏥', label: 'Medical', hint: 'medical', featured: false },
-  { emoji: '🗺️', label: 'Attractions', hint: 'places', featured: false },
-];
+type FeaturedCategory = { emoji: string; label: string; hint: string; featured: boolean };
+
+function getSituationalCategories(): FeaturedCategory[] {
+  const hour = new Date().getHours();
+  const day = new Date().getDay();
+  const isWeekend = day === 0 || day === 6;
+
+  if (hour >= 6 && hour < 11) {
+    // Morning
+    return isWeekend
+      ? [
+          { emoji: '🌽', label: "Farmers\nMarket", hint: 'market', featured: true },
+          { emoji: '☕', label: 'Coffee', hint: 'cafe', featured: true },
+          { emoji: '🎭', label: 'Attractions', hint: 'attractions', featured: false },
+          { emoji: '🛍️', label: 'Shopping', hint: 'shop', featured: false },
+        ]
+      : [
+          { emoji: '☕', label: 'Coffee', hint: 'cafe', featured: true },
+          { emoji: '🍳', label: 'Breakfast', hint: 'breakfast', featured: true },
+          { emoji: '⛽', label: 'Fuel', hint: 'fuel', featured: false },
+          { emoji: '🔧', label: 'Auto\nRepair', hint: 'auto-repair', featured: false },
+        ];
+  }
+
+  if (hour >= 11 && hour < 17) {
+    // Afternoon
+    return [
+      { emoji: '🎭', label: 'Attractions', hint: 'attractions', featured: true },
+      { emoji: '🛍️', label: 'Shopping', hint: 'shop', featured: true },
+      { emoji: '🌽', label: "Farmers\nMarket", hint: 'market', featured: false },
+      { emoji: '🔧', label: 'Auto\nRepair', hint: 'auto-repair', featured: false },
+    ];
+  }
+
+  if (hour >= 17 && hour < 21) {
+    // Evening
+    return [
+      { emoji: '🍽️', label: 'Dinner', hint: 'dinner', featured: true },
+      { emoji: '🍺', label: 'Bars', hint: 'bars', featured: true },
+      { emoji: '🎭', label: 'Shows', hint: 'attractions', featured: false },
+      { emoji: '🏧', label: 'ATM', hint: 'atm', featured: false },
+    ];
+  }
+
+  // Night
+  return [
+    { emoji: '🎉', label: 'Nightlife', hint: 'nightlife', featured: true },
+    { emoji: '🍜', label: 'Late Night', hint: 'food', featured: true },
+    { emoji: '🏧', label: 'ATM', hint: 'atm', featured: false },
+    { emoji: '⛽', label: 'Fuel', hint: 'fuel', featured: false },
+  ];
+}
 
 export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
   const liveSafety = useTravelSafety(countryCode);
@@ -165,13 +211,17 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           </div>
         )}
 
-        {/* Featured Near Me */}
+        {/* Featured Near Me — situation-based */}
         <h2 className="text-sm font-bold text-foreground mt-4 mb-3">Featured Near Me</h2>
         <div className="grid grid-cols-4 gap-2 mb-5">
-          {FEATURED_CATEGORIES.map(cat => (
+          {getSituationalCategories().map(cat => (
             <button
               key={cat.label}
-              onClick={() => onSwitchTab('places', cat.hint)}
+              onClick={() => {
+                if (cat.hint === 'fuel') onSwitchTab('fuel');
+                else if (cat.hint === 'atm') onSwitchTab('atm');
+                else onSwitchTab('places', cat.hint);
+              }}
               className={`flex flex-col items-center justify-center gap-1.5 py-4 rounded-kipita-sm border-2 transition-all hover:shadow-sm active:scale-95 ${
                 cat.featured
                   ? 'bg-card border-yellow-400'

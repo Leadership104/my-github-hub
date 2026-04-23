@@ -92,6 +92,10 @@ export default function App() {
     saveTrips([t, ...trips]);
   }, [trips, saveTrips]);
 
+  const handleCreateFullTrip = useCallback((trip: Trip) => {
+    saveTrips([trip, ...trips]);
+  }, [trips, saveTrips]);
+
   const handleAddBooking = useCallback((tripId: string, booking: Booking) => {
     saveTrips(trips.map(t => t.id === tripId ? { ...t, bookings: [...(t.bookings || []), booking] } : t));
   }, [trips, saveTrips]);
@@ -194,7 +198,7 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home': return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} onSwitchTab={switchTab} />;
-      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} />;
+      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onCreateFullTrip={handleCreateFullTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} />;
       case 'trips': return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} />;
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} onBack={goBack} />;
       case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} onBack={goBack} />;

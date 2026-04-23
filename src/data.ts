@@ -305,6 +305,7 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'All Bars', query: 'bars lounges', emoji: '🥂' },
   ],
   shop: [
+    { label: 'Farmers Market', query: 'farmers market fresh produce', emoji: '🌽' },
     { label: 'Mall', query: 'shopping mall', emoji: '🏬' },
     { label: 'Grocery', query: 'supermarket grocery', emoji: '🛒' },
     { label: 'Electronics', query: 'electronics store', emoji: '📱' },

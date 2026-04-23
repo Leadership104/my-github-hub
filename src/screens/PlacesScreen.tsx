@@ -183,8 +183,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     { id: 'library', label: 'Libraries', emoji: '📚', icon: Monitor, catIds: ['library'] },
   ];
 
-  // Map hint strings to section IDs and optional chip catId
-  const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string }> = {
+  // Map hint strings to section IDs, optional chip catId, and optional specific sub label
+  const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string; subLabel?: string }> = {
     food: { sectionId: 'eat', chipCatId: 'food' },
     cafe: { sectionId: 'eat', chipCatId: 'cafe' },
     coffee: { sectionId: 'eat', chipCatId: 'cafe' },
@@ -201,6 +201,18 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     spa: { sectionId: 'wellness', chipCatId: 'spa' },
     nightlife: { sectionId: 'explore', chipCatId: 'nightlife' },
     library: { sectionId: 'library' },
+    // Direct deep-links for Featured Near Me
+    market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Farmers Market' },
+    'farmers-market': { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Farmers Market' },
+    auto: { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Mechanic' },
+    'auto-repair': { sectionId: 'transport', chipCatId: 'auto', subLabel: 'Mechanic' },
+    maintenance: { sectionId: 'transport', chipCatId: 'auto' },
+    attractions: { sectionId: 'explore', chipCatId: 'attractions', subLabel: 'Attractions' },
+    entertainment: { sectionId: 'explore', chipCatId: 'attractions' },
+    breakfast: { sectionId: 'eat', chipCatId: 'food', subLabel: 'Breakfast' },
+    lunch: { sectionId: 'eat', chipCatId: 'food' },
+    dinner: { sectionId: 'eat', chipCatId: 'food' },
+    bars: { sectionId: 'explore', chipCatId: 'nightlife', subLabel: 'Bar' },
   };
 
   // Auto-open section + chip from initialView hint
@@ -222,31 +234,38 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
     if (mapping.sectionId === 'eat') {
       if (mapping.chipCatId && mapping.chipCatId !== 'food') {
-        // Auto-select first chip from the specific sub-category (e.g. cafe, drinks)
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
-        if (subs.length > 0) {
-          selectChip(subs[0]);
-        }
+        const target = mapping.subLabel
+          ? (subs.find(s => s.label === mapping.subLabel) || subs[0])
+          : subs[0];
+        if (target) selectChip(target);
       } else {
-        loadFoodGuide('all');
+        // Direct sub by label within food subs
+        if (mapping.subLabel) {
+          const foodSubs = CATEGORY_SUBS['food'] || [];
+          const target = foodSubs.find(s => s.label === mapping.subLabel) || foodSubs[0];
+          if (target) selectChip(target);
+        } else {
+          loadFoodGuide('all');
+        }
       }
     } else {
-      // For non-eat sections, find the right chip
       const sectionCats = categories.filter(c => section.catIds.includes(c.id));
       let targetChip: { label: string; query: string; emoji: string } | null = null;
 
       if (mapping.chipCatId) {
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
-        if (subs.length > 0) {
-          targetChip = subs[0];
-        } else {
+        // Pick specific sub by label if provided, else first
+        targetChip = mapping.subLabel
+          ? (subs.find(s => s.label === mapping.subLabel) || subs[0] || null)
+          : (subs[0] || null);
+        if (!targetChip) {
           const cat = categories.find(c => c.id === mapping.chipCatId);
           if (cat) targetChip = { label: cat.label, query: cat.query, emoji: cat.emoji };
         }
       }
 
       if (!targetChip) {
-        // Default to first chip in section
         for (const cat of sectionCats) {
           const subs = CATEGORY_SUBS[cat.id] || [];
           if (subs.length > 0) { targetChip = subs[0]; break; }
