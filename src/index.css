@@ -110,11 +110,11 @@ body {
   content: '';
   position: absolute; inset: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, hsl(0 0% 100% / 0.35), hsl(0 0% 100% / 0));
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.18), hsl(0 0% 100% / 0));
   pointer-events: none;
 }
-.btn-3d:hover { transform: translateY(-3px); box-shadow: var(--shadow-3d-hover); }
-.btn-3d:active { transform: translateY(0) scale(0.97); box-shadow: var(--shadow-3d-press); transition-duration: 90ms; }
+.btn-3d:hover { transform: translateY(-1px); box-shadow: var(--shadow-3d-hover); }
+.btn-3d:active { transform: translateY(0) scale(0.99); box-shadow: var(--shadow-3d-press); transition-duration: 90ms; }
 
 /* Glass surface — translucent with subtle border */
 .glass {
