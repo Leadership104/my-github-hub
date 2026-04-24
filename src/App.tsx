@@ -269,7 +269,7 @@ export default function App() {
               <div className="flex items-center gap-2 bg-muted rounded-kipita-sm px-3 py-2.5">
                 <span className="ms text-muted-foreground text-lg">search</span>
                 <input value={locationSearch} onChange={e => handleLocationSearch(e.target.value)}
-                  placeholder="Search city or address…" autoFocus
+                  placeholder="City, neighborhood, or postal code…" autoFocus
                   className="flex-1 bg-transparent outline-none text-sm" />
                 {locationSearch && (
                   <button onClick={() => { setLocationSearch(''); setLocationSuggestions([]); }} className="text-muted-foreground text-sm">✕</button>
