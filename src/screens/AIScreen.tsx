@@ -258,13 +258,21 @@ function TypingIndicator() {
 // ── Quick Actions ─────────────────────────────────────────────────────────────
 const QUICK_ACTIONS = [
   { emoji: '✈️', label: 'Plan a trip',      prompt: '__OPEN_WIZARD__' },
-  { emoji: '🗺️', label: 'Brief me',        prompt: 'Give me a full Know Before You Go briefing for where I am right now.' },
-  { emoji: '🛡️', label: 'Safety intel',   prompt: 'What\'s the real safety situation here? What should I specifically watch out for?' },
-  { emoji: '🍽️', label: 'Best food',       prompt: 'What\'s the best food near me right now? Be specific with real spots.' },
+  { emoji: '🗺️', label: 'Brief me',         prompt: 'Give me a full Know Before You Go briefing for where I am right now.' },
+  { emoji: '🛡️', label: 'Safety',           prompt: 'What\'s the real safety situation here? What should I specifically watch out for?' },
+  { emoji: '🔥', label: 'Wildfires',        prompt: 'Are there any active wildfires near me right now? Use the live NASA FIRMS data and tell me distance, confidence, and whether smoke or evacuations could affect me.' },
+  { emoji: '🌫️', label: 'Air quality',      prompt: 'How is the air quality and pollution near me right now? Use live AQI/PM2.5 data and tell me if it\'s safe to be outside or exercise.' },
+  { emoji: '🌍', label: 'Earthquakes',      prompt: 'Any recent earthquakes near me? Use live USGS data and tell me magnitudes, distance, and whether this region is seismically active.' },
+  { emoji: '🚨', label: 'Disasters',        prompt: 'What active disasters or major incidents are happening in this country right now? Use ReliefWeb data.' },
+  { emoji: '🍽️', label: 'Best food',        prompt: 'What\'s the best food near me right now? Be specific with real spots.' },
   { emoji: '🏥', label: 'Health',           prompt: 'Give me a real health briefing for this area right now — air quality, water safety, disease risks, vaccines, and the nearest hospital. Use live data.' },
+  { emoji: '💧', label: 'Tap water',        prompt: 'Is the tap water safe to drink here? Cite the CDC and explain risks if not.' },
+  { emoji: '🛂', label: 'Visas & entry',    prompt: 'What are the entry/visa requirements for this country and any docs I need to have ready?' },
+  { emoji: '💱', label: 'Money & ATMs',     prompt: 'How should I handle money here — ATMs, cards, cash, tipping, and a realistic daily budget?' },
   { emoji: '🌃', label: 'Tonight',          prompt: 'What\'s the best thing to do tonight? Give me something specific and exciting.' },
-  { emoji: '🏨', label: 'Where to stay',   prompt: 'What\'s the best neighborhood to stay in here, and what\'s a realistic hotel budget?' },
+  { emoji: '🏨', label: 'Where to stay',    prompt: 'What\'s the best neighborhood to stay in here, and what\'s a realistic hotel budget?' },
   { emoji: '🚕', label: 'Get around',       prompt: 'How do I get around safely here? Uber, taxis, transit — what\'s the real deal?' },
+  { emoji: '⛽', label: 'Cheap gas',        prompt: 'I want to save on gas — what cashback or fuel rewards work here?' },
 ];
 
 // ── Main Screen ───────────────────────────────────────────────────────────────
