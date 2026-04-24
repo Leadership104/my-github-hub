@@ -780,7 +780,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
                         {POPULAR_DESTS.map(d => (
                           <button key={d.city}
                             onClick={() => pickDestination(d.city, d.country)}
-                            className="p-4 rounded-kipita border-2 border-border bg-card text-left hover:border-kipita-red/30 transition-all"
+                            className="btn-3d p-4 rounded-kipita glass text-left"
                           >
                             <div className="text-2xl mb-1">{d.emoji}</div>
                             <div className="text-sm font-bold">{d.city}</div>
