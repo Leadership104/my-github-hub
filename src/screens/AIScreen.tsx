@@ -524,10 +524,15 @@ export default function AIScreen({
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} onInAppNav={onSwitchTab} />
-        ))}
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {messages.map((msg, idx) => {
+          const isLastAi = msg.role === 'ai' && idx === messages.length - 1;
+          return (
+            <div key={msg.id} ref={isLastAi ? lastAiMsgRef : undefined}>
+              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
+            </div>
+          );
+        })}
 
         {/* Nearby place chips (shown after briefing) */}
         {!loading && !briefingLoading && nearbyPlaces.length > 0 && (
