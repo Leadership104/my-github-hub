@@ -417,6 +417,68 @@ function inferDisasterCategories(message: string): DisasterCategory[] {
   return hits;
 }
 
+type PlaceBucketKey = "restaurants" | "cafes" | "attractions" | "bars" | "hospitals";
+
+// Decide which "Recommended near you" chips (if any) to surface based on the user's
+// situational intent. Returns [] when nothing place-shaped was asked — UI hides the row.
+function pickSituationalPlaces(args: {
+  message: string;
+  reply: string;
+  agenticBriefing: boolean;
+  buckets: Record<PlaceBucketKey, PlaceChip[]>;
+}): PlaceChip[] {
+  const { message, reply, agenticBriefing, buckets } = args;
+  const m = (message || "").toLowerCase();
+  const r = (reply || "").toLowerCase();
+
+  // Hard skip: clearly non-place questions. Avoid suggesting unrelated chips.
+  const nonPlaceOnly =
+    /\b(currency|exchange rate|fx|btc|bitcoin|crypto|sats?|tip(ping)?|visa|passport|sim card|esim|plug|outlet|voltage|tap water|vaccin|jet ?lag|language|phrase|translate|scam|customs|airport tax)\b/.test(m) &&
+    !/\b(eat|food|restaurant|cafe|coffee|bar|drink|attraction|museum|park|sight|hospital|pharmacy|clinic|hotel|stay|do|see|nightlife)\b/.test(m);
+  if (nonPlaceOnly) return [];
+
+  // Pure safety/emergency questions → no recommended chips (handled by Safety screen).
+  const pureSafety =
+    /\b(safety|safe|danger|risk|threat|warning|alert|wildfire|earthquake|quake|disaster|evacuat|emergenc|sos)\b/.test(m) &&
+    !/\b(eat|food|restaurant|cafe|coffee|bar|drink|attraction|museum|park|sight|hotel|stay|do|see|nightlife|hospital|pharmacy|clinic)\b/.test(m);
+  if (pureSafety) return [];
+
+  // Score each bucket from the message + the assistant's own reply (so a "where to eat" answer
+  // surfaces restaurants even if the message was vague like "I'm hungry").
+  const text = `${m} \n ${r}`;
+  const wantFood = /\b(eat|food|restaurant|hungry|lunch|dinner|breakfast|brunch|meal|cuisine|dish|local food|street food)\b/.test(text);
+  const wantCoffee = /\b(coffee|cafe|espresso|latte|tea house|brunch spot)\b/.test(text);
+  const wantBars = /\b(bar|drink|drinks|cocktail|beer|wine|pub|nightlife|night out|club)\b/.test(text);
+  const wantAttractions = /\b(do|see|visit|sight|sights|attraction|museum|park|landmark|tour|explore|things to do|activities|itinerary)\b/.test(text);
+  const wantHospital = /\b(hospital|clinic|er|emergency room|doctor|medical|pharmacy|chemist|injur|sick)\b/.test(text);
+
+  const out: PlaceChip[] = [];
+  const take = (arr: PlaceChip[], n: number) => {
+    for (const p of arr.slice(0, n)) if (p.name) out.push(p);
+  };
+
+  if (wantHospital) take(buckets.hospitals, 2);
+  if (wantFood) take(buckets.restaurants, 4);
+  if (wantCoffee) take(buckets.cafes, 3);
+  if (wantBars) take(buckets.bars, 3);
+  if (wantAttractions) take(buckets.attractions, 4);
+
+  // Agentic briefing: only show a small mixed set if we genuinely have content to recommend.
+  // Briefings are situational by design — eat + do.
+  if (out.length === 0 && agenticBriefing) {
+    take(buckets.restaurants, 2);
+    take(buckets.attractions, 2);
+  }
+
+  // Dedupe by name
+  const seen = new Set<string>();
+  return out.filter((p) => {
+    const key = p.name.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 
 const SYSTEM_PROMPT = `You are Kipita — a "Know Before You Go" travel intelligence assistant. Talk like a sharp, well-traveled friend texting you back: confident, warm, useful.
