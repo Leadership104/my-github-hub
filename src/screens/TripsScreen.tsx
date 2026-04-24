@@ -685,7 +685,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
         {/* AI Planner Modal */}
         {showAiPlanner && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-3 border-b border-border bg-card flex-shrink-0">
               <button onClick={() => setShowAiPlanner(false)} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
               <h3 className="font-bold text-sm flex-1">AI Trip Planner</h3>
@@ -698,7 +698,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
         {/* Plan a Trip wizard modal */}
         {showWizard && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-4 border-b border-border bg-card flex-shrink-0">
               <button onClick={resetWizard} className="ms text-xl text-muted-foreground">close</button>
               <h3 className="font-bold text-base flex-1">Plan a Trip</h3>
