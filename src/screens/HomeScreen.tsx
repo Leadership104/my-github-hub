@@ -300,19 +300,20 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 ✕
               </button>
             </div>
-            <div className="overflow-x-auto -mx-3 px-3 scrollbar-none snap-x snap-mandatory">
-              <div className="flex gap-2 pb-1" style={{ width: 'max-content' }}>
-                {ESSENTIAL_CHIPS[expandedTile].map(chip => (
-                  <button
-                    key={chip.label}
-                    onClick={() => { handleChipTap(chip, expandedTile); setExpandedTile(null); }}
-                    className="btn-3d flex items-center gap-1.5 px-3 py-2 bg-card rounded-full text-left snap-start flex-shrink-0"
-                    style={{ width: 'calc((100vw - 2.5rem) / 4.5)', maxWidth: '140px', minWidth: '80px' }}
-                  >
-                    <span className="text-base flex-shrink-0">{chip.emoji}</span>
-                    <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
-                  </button>
-                ))}
+            <div className="@container">
+              <div className="overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
+                <div className="flex gap-2 pb-1 w-max">
+                  {ESSENTIAL_CHIPS[expandedTile].map(chip => (
+                    <button
+                      key={chip.label}
+                      onClick={() => { handleChipTap(chip, expandedTile); setExpandedTile(null); }}
+                      className="btn-3d flex items-center gap-1.5 px-3 py-2 bg-card rounded-full text-left snap-start flex-shrink-0 w-[calc((100cqw-2.5rem)/4.5)]"
+                    >
+                      <span className="text-base flex-shrink-0">{chip.emoji}</span>
+                      <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -372,19 +373,20 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 <span className="text-base">{tile.emoji}</span>
                 <span className="text-[10px] font-bold truncate">View all {tile.label.replace(/\n/g, ' ')}</span>
               </button>
-              <div className="overflow-x-auto -mx-3 px-3 scrollbar-none snap-x snap-mandatory">
-                <div className="flex gap-2 pb-1" style={{ width: 'max-content' }}>
-                  {tile.chips.map(chip => (
-                    <button
-                      key={chip.label}
-                      onClick={() => { onSwitchTab('places', chip.hint); setExpandedTile(null); }}
-                      className="btn-3d flex items-center gap-1.5 px-3 py-2 bg-card rounded-full text-left snap-start flex-shrink-0"
-                      style={{ width: 'calc((100vw - 2.5rem) / 4.5)', maxWidth: '140px', minWidth: '80px' }}
-                    >
-                      <span className="text-base flex-shrink-0">{chip.emoji}</span>
-                      <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
-                    </button>
-                  ))}
+              <div className="@container">
+                <div className="overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
+                  <div className="flex gap-2 pb-1 w-max">
+                    {tile.chips.map(chip => (
+                      <button
+                        key={chip.label}
+                        onClick={() => { onSwitchTab('places', chip.hint); setExpandedTile(null); }}
+                        className="btn-3d flex items-center gap-1.5 px-3 py-2 bg-card rounded-full text-left snap-start flex-shrink-0 w-[calc((100cqw-2.5rem)/4.5)]"
+                      >
+                        <span className="text-base flex-shrink-0">{chip.emoji}</span>
+                        <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
