@@ -325,29 +325,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
           );
         })()}
 
-        {/* Summary + history + area overview */}
-        {(trip.summary || tripRich?.summary || tripRich?.history || tripRich?.areaOverview) && (
-          <div className="bg-card border-b border-border px-4 py-3 flex-shrink-0 space-y-3">
-            {(trip.summary || tripRich?.summary) && (
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
-                <p className="text-xs text-foreground leading-relaxed">{trip.summary || tripRich?.summary}</p>
-              </div>
-            )}
-            {tripRich?.history && (
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">HISTORY</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">{tripRich.history}</p>
-              </div>
-            )}
-            {tripRich?.areaOverview && (
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">THE AREA</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{tripRich.areaOverview}</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* (Summary moved into scrollable area below for fold visibility) */}
 
         <div className="flex-1 overflow-y-auto pb-24">
           {/* BOOK & MANAGE row */}
