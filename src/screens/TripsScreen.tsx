@@ -67,6 +67,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [wPickedHistory, setWPickedHistory] = useState<string | undefined>();
   const [wPickedArea, setWPickedArea] = useState<string | undefined>();
   const [wPickedHero, setWPickedHero] = useState<string | undefined>();
+  const [wPickedNews, setWPickedNews] = useState<NewsItem[]>([]);
   const [wLoadingDetails, setWLoadingDetails] = useState(false);
   const [tripRich, setTripRich] = useState<DestinationDetails | null>(null);
   const [tripRichLoading, setTripRichLoading] = useState(false);
