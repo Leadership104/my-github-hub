@@ -85,6 +85,22 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [wSearchQuery]);
 
+  // When a trip is selected, fetch rich details (gallery + history + overview)
+  useEffect(() => {
+    if (!selectedTrip) { setTripRich(null); setActivePhoto(null); return; }
+    let cancelled = false;
+    setTripRichLoading(true);
+    setTripRich(null);
+    setActivePhoto(selectedTrip.photo || null);
+    getRichDestinationDetails(selectedTrip.dest, selectedTrip.country).then(d => {
+      if (cancelled) return;
+      setTripRich(d);
+      setActivePhoto(prev => prev || d.photo || null);
+      setTripRichLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [selectedTrip]);
+
   // Hydrate photo + summary when destination picked
   const pickDestination = async (city: string, country: string) => {
     setWDest(city); setWCountry(country);
