@@ -802,11 +802,16 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
                     <h4 className="text-xl font-extrabold mb-1">Ready?</h4>
                     <p className="text-sm text-muted-foreground">We'll generate a starter itinerary. You can refine details after.</p>
                   </div>
-                  <div className="bg-card border border-border rounded-kipita p-4 space-y-2">
-                    <div className="flex items-center gap-2"><span className="text-2xl">{pickEmoji(wDest, wCountry)}</span><span className="font-bold text-lg">{wDest}{wCountry ? `, ${wCountry}` : ''}</span></div>
-                    <div className="text-sm text-muted-foreground">📅 Starts {wStart || 'in ~2 weeks'}</div>
-                    <div className="text-sm text-muted-foreground">⏱️ {wDays} days</div>
-                    {wInvites.length > 0 && <div className="text-sm text-muted-foreground">👥 {wInvites.length} member{wInvites.length > 1 ? 's' : ''}</div>}
+                  <div className="bg-card border border-border rounded-kipita overflow-hidden">
+                    {wPickedPhoto && (
+                      <img src={wPickedPhoto} alt={wDest} className="w-full h-32 object-cover" />
+                    )}
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-center gap-2"><span className="text-2xl">{pickEmoji(wDest, wCountry)}</span><span className="font-bold text-lg">{wDest}{wCountry ? `, ${wCountry}` : ''}</span></div>
+                      <div className="text-sm text-muted-foreground">📅 Starts {wStart || 'in ~2 weeks'}</div>
+                      <div className="text-sm text-muted-foreground">⏱️ {wDays} days</div>
+                      {wInvites.length > 0 && <div className="text-sm text-muted-foreground">👥 {wInvites.length} member{wInvites.length > 1 ? 's' : ''}</div>}
+                    </div>
                   </div>
                 </div>
               )}
