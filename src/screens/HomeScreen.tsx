@@ -300,18 +300,20 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 ✕
               </button>
             </div>
-            <div className="max-h-44 overflow-y-auto pr-1 -mr-1">
-              <div className="grid grid-cols-3 gap-2">
-                {ESSENTIAL_CHIPS[expandedTile].map(chip => (
-                  <button
-                    key={chip.label}
-                    onClick={() => { handleChipTap(chip, expandedTile); setExpandedTile(null); }}
-                    className="btn-3d flex items-center gap-1.5 px-2.5 py-2 bg-card rounded-full text-left"
-                  >
-                    <span className="text-base flex-shrink-0">{chip.emoji}</span>
-                    <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
-                  </button>
-                ))}
+            <div className="@container">
+              <div className="overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-1 px-1">
+                <div className="flex gap-2 pb-1 w-max">
+                  {ESSENTIAL_CHIPS[expandedTile].map(chip => (
+                    <button
+                      key={chip.label}
+                      onClick={() => { handleChipTap(chip, expandedTile); setExpandedTile(null); }}
+                      className="btn-3d flex items-center gap-1.5 px-3 py-2 bg-card rounded-full text-left snap-start flex-shrink-0 w-[calc((100cqw-2.5rem)/4.5)]"
+                    >
+                      <span className="text-base flex-shrink-0">{chip.emoji}</span>
+                      <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
@@ -364,25 +366,27 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                   ✕
                 </button>
               </div>
-              <div className="max-h-44 overflow-y-auto pr-1 -mr-1">
-                <div className="grid grid-cols-3 gap-2">
-                  <button
-                    onClick={() => { onSwitchTab('places', tile.hint); setExpandedTile(null); }}
-                    className="btn-3d flex items-center gap-1.5 px-2.5 py-2 bg-kipita-red text-white rounded-full text-left col-span-3"
-                  >
-                    <span className="text-base">{tile.emoji}</span>
-                    <span className="text-[10px] font-bold truncate">View all {tile.label.replace(/\n/g, ' ')}</span>
-                  </button>
-                  {tile.chips.map(chip => (
-                    <button
-                      key={chip.label}
-                      onClick={() => { onSwitchTab('places', chip.hint); setExpandedTile(null); }}
-                      className="btn-3d flex items-center gap-1.5 px-2.5 py-2 bg-card rounded-full text-left"
-                    >
-                      <span className="text-base flex-shrink-0">{chip.emoji}</span>
-                      <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
-                    </button>
-                  ))}
+              <button
+                onClick={() => { onSwitchTab('places', tile.hint); setExpandedTile(null); }}
+                className="btn-3d w-full flex items-center justify-center gap-1.5 px-2.5 py-2 mb-2 bg-kipita-red text-white rounded-full"
+              >
+                <span className="text-base">{tile.emoji}</span>
+                <span className="text-[10px] font-bold truncate">View all {tile.label.replace(/\n/g, ' ')}</span>
+              </button>
+              <div className="@container">
+                <div className="overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-1 px-1">
+                  <div className="flex gap-2 pb-1 w-max">
+                    {tile.chips.map(chip => (
+                      <button
+                        key={chip.label}
+                        onClick={() => { onSwitchTab('places', chip.hint); setExpandedTile(null); }}
+                        className="btn-3d flex items-center gap-1.5 px-3 py-2 bg-card rounded-full text-left snap-start flex-shrink-0 w-[calc((100cqw-2.5rem)/4.5)]"
+                      >
+                        <span className="text-base flex-shrink-0">{chip.emoji}</span>
+                        <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
