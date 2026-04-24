@@ -19,6 +19,7 @@ interface PlaceChip {
   reviews?: number;
   openNow?: boolean;
   summary?: string;
+  distanceMi?: number;
 }
 
 interface Props {
