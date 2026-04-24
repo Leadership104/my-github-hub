@@ -639,10 +639,22 @@ serve(async (req) => {
         }
 
         if (includeDisasters && disasters && disasters.length) {
-          liveDataBlock += `\n\n=== ACTIVE DISASTERS (ReliefWeb, country-level) ===`;
-          liveDataBlock += `\n` + disasters.slice(0, 4).map((d) =>
-            `  • ${d.type}: ${d.name}${d.status ? ` [${d.status}]` : ""}`
-          ).join("\n");
+          // Quick-filter: if the user asked about safety/healthcare/weather, surface those first.
+          const filterCats = disasterCategories.length ? disasterCategories : (["safety","healthcare","weather"] as DisasterCategory[]);
+          const matched = disasters.filter((d) => filterCats.includes(d.category));
+          const others = disasters.filter((d) => !filterCats.includes(d.category));
+          const ordered = [...matched, ...others];
+          const filterLabel = disasterCategories.length
+            ? ` · prioritized by quick filter: ${disasterCategories.join(", ")}`
+            : "";
+          liveDataBlock += `\n\n=== ACTIVE DISASTERS (ReliefWeb, country-level${filterLabel}) ===`;
+          liveDataBlock += `\n` + ordered.slice(0, 6).map((d) => {
+            const tag = filterCats.includes(d.category) ? ` 🎯 [${d.category}]` : ` [${d.category}]`;
+            return `  • ${d.type}: ${d.name}${d.status ? ` [${d.status}]` : ""}${tag}`;
+          }).join("\n");
+          if (disasterCategories.length && matched.length === 0) {
+            liveDataBlock += `\n- (No active incidents in country match the user's quick filter — listed are most recent of any category.)`;
+          }
         }
 
         // Hint to the assistant: if Safety chip was tapped (wantsSafetyDeep) but we DIDN'T fetch
