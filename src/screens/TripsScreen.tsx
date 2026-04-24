@@ -346,6 +346,39 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
             </div>
           </div>
 
+          {/* About destination — collapsible (Overview / History / The Area) */}
+          {(trip.summary || tripRich?.summary || tripRich?.history || tripRich?.areaOverview) && (() => {
+            const overview = trip.summary || tripRich?.summary;
+            return (
+              <details className="group bg-card border-b border-border">
+                <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-muted-foreground tracking-widest">ABOUT {trip.dest.toUpperCase()}</p>
+                  <span className="ms text-muted-foreground text-lg group-open:rotate-180 transition-transform">expand_more</span>
+                </summary>
+                <div className="px-4 pb-4 space-y-3">
+                  {overview && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
+                      <p className="text-xs text-foreground leading-relaxed">{overview}</p>
+                    </div>
+                  )}
+                  {tripRich?.history && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">HISTORY</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{tripRich.history}</p>
+                    </div>
+                  )}
+                  {tripRich?.areaOverview && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">THE AREA</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{tripRich.areaOverview}</p>
+                    </div>
+                  )}
+                </div>
+              </details>
+            );
+          })()}
+
           {/* Itinerary section */}
           <div className="px-4 pt-4">
             <div className="flex items-center justify-between mb-3">
