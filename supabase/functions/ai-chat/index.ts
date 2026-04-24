@@ -704,9 +704,72 @@ Use the LIVE TRAVEL CONTEXT data. Be tight — every section 1–2 sentences max
     }
 
     const data = await response.json();
-    const reply =
+    let reply =
       data.choices?.[0]?.message?.content ||
       "I'm sorry, I couldn't generate a response. Please try again.";
+
+    // ── Safety consistency check ──────────────────────────────────────────────
+    // Safety replies were occasionally giving conflicting verdicts ("very safe" + "high crime
+    // risk" in the same answer). For any safety-flavored query, run a fast audit pass that
+    // detects contradictions vs. the live advisory score and rewrites if needed. Cheap model,
+    // tight prompt, only fires when triggered — adds ~600ms in the worst case.
+    const lowerForAudit = (typeof message === "string" ? message : "").toLowerCase();
+    const isSafetyQuery =
+      /\b(safe|safety|danger|risk|crime|scam|threat|warning|alert|wildfire|earthquake|disaster|emergenc)\b/.test(
+        lowerForAudit
+      ) || agenticBriefing === true;
+
+    if (isSafetyQuery && reply && reply.length > 80) {
+      try {
+        const advisoryLabel =
+          context?.advisoryScore == null ? "unknown"
+          : context.advisoryScore <= 1.5 ? "very safe"
+          : context.advisoryScore <= 2.5 ? "generally safe"
+          : context.advisoryScore <= 3.5 ? "stay alert / elevated risk"
+          : context.advisoryScore <= 4.2 ? "high risk"
+          : "extreme risk";
+
+        const auditPrompt = `You are a strict editor checking a Kipita travel-safety reply for INTERNAL CONTRADICTIONS and misalignment with the official advisory level.
+
+Official advisory score: ${context?.advisoryScore ?? "unknown"} → "${advisoryLabel}"
+Location: ${context?.location || "unknown"}
+
+REPLY TO AUDIT:
+"""
+${reply}
+"""
+
+CHECKS:
+1. Does the headline verdict match the advisory label? (e.g., advisory "very safe" but reply says "extreme caution" = contradiction)
+2. Does the reply contradict itself? (e.g., "low crime" then "very high crime risk")
+3. Are live-data claims labeled (NASA FIRMS / USGS / ReliefWeb / AQI) vs general knowledge?
+4. Does the reply invent emergency numbers that weren't in the live data?
+
+If the reply is internally consistent and aligned, respond with EXACTLY: OK
+Otherwise, respond with ONLY a corrected version of the reply (same format, same length, same in-app links/CTAs preserved). No preamble. No explanation. Just the rewritten reply.`;
+
+        const auditResp = await fetch(AI_GATEWAY, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-lite",
+            messages: [{ role: "user", content: auditPrompt }],
+            max_tokens: 700,
+            temperature: 0.2,
+          }),
+        });
+        if (auditResp.ok) {
+          const auditData = await auditResp.json();
+          const auditOut = (auditData.choices?.[0]?.message?.content || "").trim();
+          if (auditOut && auditOut !== "OK" && !/^ok[.!\s]*$/i.test(auditOut) && auditOut.length > 60) {
+            console.log("Safety audit rewrote reply for consistency.");
+            reply = auditOut;
+          }
+        }
+      } catch (e) {
+        console.error("Safety audit pass failed (non-fatal):", e);
+      }
+    }
 
     // Extract contextual follow-up suggestions based on what was asked
     const suggestions = buildSuggestions(message, context);
