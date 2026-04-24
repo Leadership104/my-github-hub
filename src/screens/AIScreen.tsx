@@ -290,11 +290,38 @@ export default function AIScreen({
   const [tripCreatedToast, setTripCreatedToast] = useState('');
   const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
   const bottomRef                       = useRef<HTMLDivElement>(null);
+  const scrollContainerRef              = useRef<HTMLDivElement>(null);
+  const lastAiMsgRef                    = useRef<HTMLDivElement>(null);
   const briefingKeyRef                  = useRef<string>('');
   const textareaRef                     = useRef<HTMLTextAreaElement>(null);
+  const prevMsgCountRef                 = useRef<number>(0);
 
+  // Smart scroll:
+  // - When a NEW AI message arrives, anchor to the TOP of that message so the user
+  //   reads from the beginning (long safety/briefing replies were being cut off at the bottom).
+  // - When the user sends a message (or suggestions/places update), keep them pinned to the bottom.
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const prevCount = prevMsgCountRef.current;
+    prevMsgCountRef.current = messages.length;
+    const last = messages[messages.length - 1];
+    const grew = messages.length > prevCount;
+
+    if (grew && last?.role === 'ai') {
+      // Defer to next frame so the bubble has laid out
+      requestAnimationFrame(() => {
+        const el = lastAiMsgRef.current;
+        const container = scrollContainerRef.current;
+        if (el && container) {
+          // Position the top of the AI bubble near the top of the viewport with a little breathing room
+          const top = el.offsetTop - 12;
+          container.scrollTo({ top, behavior: 'smooth' });
+        } else {
+          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    } else {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
   }, [messages, suggestions]);
 
   // Auto-resize textarea
