@@ -140,7 +140,7 @@ body {
 .lift {
   transition: transform 220ms cubic-bezier(.34,1.56,.64,1), box-shadow 220ms ease;
 }
-.lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-3d-hover); }
+.lift:hover { transform: translateY(-1px); box-shadow: var(--shadow-3d-hover); }
 
 /* Scrollbar styling */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
