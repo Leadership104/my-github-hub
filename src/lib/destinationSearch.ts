@@ -20,6 +20,14 @@ export interface DestinationDetails {
   history?: string;
   areaOverview?: string;
   gallery?: string[];   // 3-4 supplemental real photos
+  news?: NewsItem[];    // latest live news for the area
+}
+
+export interface NewsItem {
+  title: string;
+  url: string;
+  source?: string;
+  publishedAt?: string;
 }
 
 /* ── Search cities by typed query (live, debounced from caller) ── */
@@ -79,7 +87,7 @@ export async function getRichDestinationDetails(
   const out: DestinationDetails = {};
   const candidates = countryName ? [`${cityName}, ${countryName}`, cityName] : [cityName];
 
-  // 1. Hero summary + photo (Wikipedia REST)
+  // 1. Hero summary + HD photo (Wikipedia REST)
   let resolvedTitle: string | undefined;
   for (const title of candidates) {
     try {
@@ -89,7 +97,8 @@ export async function getRichDestinationDetails(
       if (!res.ok) continue;
       const j = await res.json();
       if (j.type === 'disambiguation') continue;
-      out.photo = j.thumbnail?.source || j.originalimage?.source;
+      // Prefer the original (full-resolution) image — typically 1920px+ wide → HD/4K class
+      out.photo = j.originalimage?.source || j.thumbnail?.source;
       out.summary = j.extract;
       resolvedTitle = j.title || title;
       break;
@@ -98,11 +107,11 @@ export async function getRichDestinationDetails(
 
   if (!resolvedTitle) return out;
 
-  // 2. Gallery — pull pageimages from Wikipedia API
+  // 2. HD Gallery — pull pageimages from Wikipedia API (1600px thumbs ≈ HD)
   try {
     const galleryRes = await fetch(
       `https://en.wikipedia.org/w/api.php?` +
-      `action=query&format=json&origin=*&prop=images&imlimit=25&titles=${encodeURIComponent(resolvedTitle)}`
+      `action=query&format=json&origin=*&prop=images&imlimit=40&titles=${encodeURIComponent(resolvedTitle)}`
     );
     const gj = await galleryRes.json();
     const pages = gj.query?.pages || {};
@@ -111,14 +120,14 @@ export async function getRichDestinationDetails(
       .map((i: any) => i.title as string)
       .filter((t: string) =>
         /\.(jpg|jpeg|png)$/i.test(t) &&
-        !/(commons-logo|wiki|edit-icon|flag of|coat of arms|location|map|svg)/i.test(t)
+        !/(commons-logo|wiki|edit-icon|flag of|coat of arms|location|map|svg|seal of|emblem)/i.test(t)
       )
-      .slice(0, 8);
+      .slice(0, 12);
 
     if (imageTitles.length) {
       const infoRes = await fetch(
         `https://en.wikipedia.org/w/api.php?` +
-        `action=query&format=json&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=600&titles=${encodeURIComponent(imageTitles.join('|'))}`
+        `action=query&format=json&origin=*&prop=imageinfo&iiprop=url|size&iiurlwidth=1600&titles=${encodeURIComponent(imageTitles.join('|'))}`
       );
       const ij = await infoRes.json();
       const infoPages = ij.query?.pages || {};
@@ -151,5 +160,34 @@ export async function getRichDestinationDetails(
     }
   } catch { /* optional */ }
 
+  // 4. Live news for the destination — GDELT DOC API (free, CORS-enabled, no key)
+  try {
+    out.news = await getDestinationNews(cityName, countryName);
+  } catch { /* optional */ }
+
   return out;
+}
+
+/* ── Live news for the destination via GDELT DOC API (no key, CORS-enabled) ── */
+export async function getDestinationNews(
+  cityName: string,
+  countryName?: string
+): Promise<NewsItem[]> {
+  const query = countryName ? `"${cityName}" "${countryName}"` : `"${cityName}"`;
+  try {
+    const res = await fetch(
+      `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=ArtList&maxrecords=8&format=json&sort=DateDesc&sourcelang=eng`
+    );
+    if (!res.ok) return [];
+    const j = await res.json();
+    const arts: any[] = j.articles || [];
+    return arts.slice(0, 6).map(a => ({
+      title: a.title,
+      url: a.url,
+      source: a.domain,
+      publishedAt: a.seendate,
+    })).filter(n => n.title && n.url);
+  } catch {
+    return [];
+  }
 }

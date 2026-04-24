@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Trip, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import { buildTrip, pickEmoji } from '../lib/tripPlanner';
-import { searchDestinations, getRichDestinationDetails, type DestinationResult, type DestinationDetails } from '../lib/destinationSearch';
+import { searchDestinations, getRichDestinationDetails, type DestinationResult, type DestinationDetails, type NewsItem } from '../lib/destinationSearch';
 import AIScreen from './AIScreen';
 import GroupsScreen from './GroupsScreen';
 import InAppBrowser from '../components/InAppBrowser';
@@ -67,6 +67,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [wPickedHistory, setWPickedHistory] = useState<string | undefined>();
   const [wPickedArea, setWPickedArea] = useState<string | undefined>();
   const [wPickedHero, setWPickedHero] = useState<string | undefined>();
+  const [wPickedNews, setWPickedNews] = useState<NewsItem[]>([]);
   const [wLoadingDetails, setWLoadingDetails] = useState(false);
   const [tripRich, setTripRich] = useState<DestinationDetails | null>(null);
   const [tripRichLoading, setTripRichLoading] = useState(false);
@@ -124,7 +125,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setWDest(city); setWCountry(country);
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
     setWPickedGallery([]); setWPickedHistory(undefined); setWPickedArea(undefined);
-    setWPickedHero(undefined);
+    setWPickedHero(undefined); setWPickedNews([]);
     setWLoadingDetails(true);
     const d = await getRichDestinationDetails(city, country);
     setWPickedPhoto(d.photo);
@@ -133,6 +134,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setWPickedGallery(d.gallery || []);
     setWPickedHistory(d.history);
     setWPickedArea(d.areaOverview);
+    setWPickedNews(d.news || []);
     setWLoadingDetails(false);
   };
 
@@ -721,281 +723,233 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           </div>
         )}
 
-        {/* Plan a Trip wizard modal */}
+        {/* Plan a Trip — single-screen form */}
         {showWizard && (
           <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-4 border-b border-border bg-card flex-shrink-0">
               <button onClick={resetWizard} className="ms text-xl text-muted-foreground">close</button>
               <h3 className="font-bold text-base flex-1">Plan a Trip</h3>
-              <span className="text-[10px] font-bold text-muted-foreground tracking-wider">
-                {wStep === 'dest' ? '1/5' : wStep === 'date' ? '2/5' : wStep === 'days' ? '3/5' : wStep === 'invites' ? '4/5' : '5/5'}
-              </span>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5">
-              {/* Step 1: Destination — live search like a travel company */}
-              {wStep === 'dest' && (
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-xl font-extrabold mb-1">Where to?</h4>
-                    <p className="text-sm text-muted-foreground">Search any city in the world — we'll show you a real photo and overview.</p>
-                  </div>
-
-                  {/* Live search input */}
-                  <div className="relative">
-                    <span className="ms text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-lg">search</span>
-                    <input
-                      value={wSearchQuery}
-                      onChange={e => setWSearchQuery(e.target.value)}
-                      autoFocus
-                      placeholder="Try: Lisbon, Reykjavik, Cartagena…"
-                      className="w-full bg-card border border-border rounded-kipita-sm pl-10 pr-10 py-3 text-sm outline-none focus:border-kipita-red"
-                    />
-                    {wSearching && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">…</span>
-                    )}
-                  </div>
-
-                  {/* Live search results */}
-                  {wSearchResults.length > 0 && (
-                    <div className="bg-card border border-border rounded-kipita divide-y divide-border max-h-64 overflow-y-auto">
-                      {wSearchResults.map((r, i) => (
-                        <button
-                          key={`${r.name}-${i}`}
-                          onClick={() => { pickDestination(r.name, r.country); setWSearchQuery(''); setWSearchResults([]); }}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
-                        >
-                          <span className="ms text-muted-foreground text-lg">place</span>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-bold truncate">{r.name}</div>
-                            <div className="text-[11px] text-muted-foreground truncate">
-                              {[r.region, r.country].filter(Boolean).join(', ')}
-                              {r.population ? ` · ${(r.population / 1000).toFixed(0)}k` : ''}
-                            </div>
-                          </div>
-                          <span className="ms text-muted-foreground">chevron_right</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Picked destination preview — full hero + 4 thumbs + summary/history/area + booking CTA */}
-                  {wDest && (() => {
-                    const pool = [
-                      ...(wPickedPhoto ? [wPickedPhoto] : []),
-                      ...wPickedGallery,
-                    ];
-                    const unique = Array.from(new Set(pool));
-                    const hero = wPickedHero || wPickedPhoto;
-                    const thumbs = unique.filter(u => u !== hero).slice(0, 4);
-                    return (
-                      <div className="rounded-kipita overflow-hidden bg-card shadow-lg border border-border/40">
-                        {/* Hero image */}
-                        <div className="relative h-56 bg-gradient-to-br from-kipita-navy to-slate-700">
-                          {wLoadingDetails && !hero ? (
-                            <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
-                              Loading photo…
-                            </div>
-                          ) : hero ? (
-                            <img src={hero} alt={wDest} className="absolute inset-0 w-full h-full object-cover" />
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center text-7xl">
-                              {pickEmoji(wDest, wCountry)}
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                          <button
-                            onClick={() => { setWDest(''); setWCountry(''); setWPickedPhoto(undefined); setWPickedSummary(undefined); setWPickedGallery([]); setWPickedHero(undefined); setWPickedHistory(undefined); setWPickedArea(undefined); }}
-                            className="btn-3d absolute top-3 right-3 glass-dark text-white text-[10px] font-bold px-3 py-1.5 rounded-full"
-                          >
-                            Change
-                          </button>
-                          <div className="absolute bottom-3 left-4 right-4 text-white">
-                            <div className="flex items-center gap-2">
-                              <span className="text-2xl drop-shadow">{pickEmoji(wDest, wCountry)}</span>
-                              <div>
-                                <div className="font-extrabold text-xl drop-shadow">{wDest}</div>
-                                <div className="text-[11px] text-white/90 drop-shadow">{wCountry}</div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* 4 thumbnails */}
-                        {(thumbs.length > 0 || wLoadingDetails) && (
-                          <div className="px-3 py-3 grid grid-cols-4 gap-2 bg-card">
-                            {wLoadingDetails && thumbs.length === 0
-                              ? [0,1,2,3].map(i => <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />)
-                              : thumbs.map(url => (
-                                  <button
-                                    key={url}
-                                    onClick={() => setWPickedHero(url)}
-                                    className={`btn-3d aspect-square rounded-lg overflow-hidden ${wPickedHero === url ? 'ring-2 ring-kipita-red ring-offset-2 ring-offset-card' : ''}`}
-                                  >
-                                    <img src={url} alt="" className="w-full h-full object-cover" />
-                                  </button>
-                                ))
-                            }
-                          </div>
-                        )}
-
-                        {/* Summary / history / area */}
-                        <div className="px-4 pb-3 space-y-3">
-                          {wPickedSummary && (
-                            <div>
-                              <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
-                              <p className="text-xs text-foreground leading-relaxed line-clamp-5">{wPickedSummary}</p>
-                            </div>
-                          )}
-                          {wPickedHistory && (
-                            <div>
-                              <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">HISTORY</p>
-                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{wPickedHistory}</p>
-                            </div>
-                          )}
-                          {wPickedArea && (
-                            <div>
-                              <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">THE AREA</p>
-                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{wPickedArea}</p>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="px-4 pb-4">
-                          <p className="text-[10px] text-center text-muted-foreground">
-                            Tap <span className="font-bold text-foreground">Next</span> to pick dates, then book flights, hotels & cruises in-app.
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  {/* Popular shortcuts (only when nothing picked / searched) */}
-                  {!wDest && wSearchResults.length === 0 && !wSearching && (
-                    <div>
-                      <p className="text-[11px] font-bold text-muted-foreground tracking-wider mb-2">POPULAR DESTINATIONS</p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {POPULAR_DESTS.map(d => (
-                          <button key={d.city}
-                            onClick={() => pickDestination(d.city, d.country)}
-                            className="btn-3d p-4 rounded-kipita glass text-left"
-                          >
-                            <div className="text-2xl mb-1">{d.emoji}</div>
-                            <div className="text-sm font-bold">{d.city}</div>
-                            <div className="text-[11px] text-muted-foreground">{d.country}</div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* ── Destination search ── */}
+              <section className="space-y-3">
+                <div>
+                  <h4 className="text-lg font-extrabold mb-1">1. Where to?</h4>
+                  <p className="text-xs text-muted-foreground">Search any city — we pull a real HD photo, summary & latest news.</p>
+                </div>
+                <div className="relative">
+                  <span className="ms text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-lg">search</span>
+                  <input
+                    value={wSearchQuery}
+                    onChange={e => setWSearchQuery(e.target.value)}
+                    placeholder="Try: Lisbon, Reykjavik, Cartagena…"
+                    className="w-full bg-card border border-border rounded-kipita-sm pl-10 pr-10 py-3 text-sm outline-none focus:border-kipita-red"
+                  />
+                  {wSearching && (
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">…</span>
                   )}
                 </div>
-              )}
 
-              {/* Step 2: Date */}
-              {wStep === 'date' && (
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-xl font-extrabold mb-1">When?</h4>
-                    <p className="text-sm text-muted-foreground">Pick a departure date — leave blank for ~2 weeks out.</p>
-                  </div>
-                  <input type="date" value={wStart} onChange={e => setWStart(e.target.value)}
-                    className="w-full bg-card border border-border rounded-kipita-sm px-3 py-4 text-base outline-none focus:border-kipita-red" />
-                </div>
-              )}
-
-              {/* Step 3: Days */}
-              {wStep === 'days' && (
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-xl font-extrabold mb-1">How long?</h4>
-                    <p className="text-sm text-muted-foreground">Trip duration in days.</p>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[3, 5, 7, 10, 14, 21, 30].map(d => (
-                      <button key={d} onClick={() => setWDays(d)}
-                        className={`py-4 rounded-kipita border-2 font-bold text-sm transition-all ${wDays === d ? 'border-kipita-red bg-kipita-red text-white' : 'border-border bg-card text-foreground'}`}
+                {wSearchResults.length > 0 && (
+                  <div className="bg-card border border-border rounded-kipita divide-y divide-border max-h-56 overflow-y-auto">
+                    {wSearchResults.map((r, i) => (
+                      <button
+                        key={`${r.name}-${i}`}
+                        onClick={() => { pickDestination(r.name, r.country); setWSearchQuery(''); setWSearchResults([]); }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
                       >
-                        {d}d
+                        <span className="ms text-muted-foreground text-lg">place</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-bold truncate">{r.name}</div>
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {[r.region, r.country].filter(Boolean).join(', ')}
+                            {r.population ? ` · ${(r.population / 1000).toFixed(0)}k` : ''}
+                          </div>
+                        </div>
+                        <span className="ms text-muted-foreground">chevron_right</span>
                       </button>
                     ))}
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground">Or custom</label>
-                    <input type="number" min={1} max={90} value={wDays} onChange={e => setWDays(Math.max(1, parseInt(e.target.value) || 1))}
-                      className="mt-1 w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                  </div>
-                </div>
-              )}
+                )}
 
-              {/* Step 4: Invites */}
-              {wStep === 'invites' && (
-                <div className="space-y-4">
+                {!wDest && wSearchResults.length === 0 && !wSearching && (
                   <div>
-                    <h4 className="text-xl font-extrabold mb-1">Travel companions?</h4>
-                    <p className="text-sm text-muted-foreground">Add emails — they'll get SOS alerts during the trip.</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <input value={wInviteInput} onChange={e => setWInviteInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter' && wInviteInput.trim()) { setWInvites([...wInvites, wInviteInput.trim()]); setWInviteInput(''); } }}
-                      placeholder="email@example.com"
-                      className="flex-1 bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                    <button onClick={() => { if (wInviteInput.trim()) { setWInvites([...wInvites, wInviteInput.trim()]); setWInviteInput(''); } }}
-                      className="px-4 py-3 bg-kipita-red text-white rounded-kipita-sm text-sm font-bold">Add</button>
-                  </div>
-                  {wInvites.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
-                      {wInvites.map(em => (
-                        <span key={em} className="text-xs bg-muted px-3 py-1.5 rounded-full font-semibold flex items-center gap-1">
-                          {em}
-                          <button onClick={() => setWInvites(wInvites.filter(x => x !== em))} className="text-muted-foreground hover:text-kipita-red">×</button>
-                        </span>
+                    <p className="text-[11px] font-bold text-muted-foreground tracking-wider mb-2">POPULAR DESTINATIONS</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {POPULAR_DESTS.map(d => (
+                        <button key={d.city}
+                          onClick={() => pickDestination(d.city, d.country)}
+                          className="btn-3d p-3 rounded-kipita glass text-left"
+                        >
+                          <div className="text-2xl mb-1">{d.emoji}</div>
+                          <div className="text-xs font-bold">{d.city}</div>
+                          <div className="text-[10px] text-muted-foreground">{d.country}</div>
+                        </button>
                       ))}
                     </div>
-                  )}
-                  <p className="text-xs text-muted-foreground">Optional — you can skip this step.</p>
-                </div>
-              )}
+                  </div>
+                )}
 
-              {/* Step 5: Confirm */}
-              {wStep === 'confirm' && (
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-xl font-extrabold mb-1">Ready?</h4>
-                    <p className="text-sm text-muted-foreground">We'll generate a starter itinerary. You can refine details after.</p>
-                  </div>
-                  <div className="bg-card border border-border rounded-kipita overflow-hidden">
-                    {wPickedPhoto && (
-                      <img src={wPickedPhoto} alt={wDest} className="w-full h-32 object-cover" />
-                    )}
-                    <div className="p-4 space-y-2">
-                      <div className="flex items-center gap-2"><span className="text-2xl">{pickEmoji(wDest, wCountry)}</span><span className="font-bold text-lg">{wDest}{wCountry ? `, ${wCountry}` : ''}</span></div>
-                      <div className="text-sm text-muted-foreground">📅 Starts {wStart || 'in ~2 weeks'}</div>
-                      <div className="text-sm text-muted-foreground">⏱️ {wDays} days</div>
-                      {wInvites.length > 0 && <div className="text-sm text-muted-foreground">👥 {wInvites.length} member{wInvites.length > 1 ? 's' : ''}</div>}
+                {/* Picked destination preview */}
+                {wDest && (() => {
+                  const pool = [
+                    ...(wPickedPhoto ? [wPickedPhoto] : []),
+                    ...wPickedGallery,
+                  ];
+                  const unique = Array.from(new Set(pool));
+                  const hero = wPickedHero || wPickedPhoto;
+                  const thumbs = unique.filter(u => u !== hero).slice(0, 4);
+                  return (
+                    <div className="rounded-kipita overflow-hidden bg-card shadow-lg border border-border/40">
+                      <div className="relative h-56 bg-gradient-to-br from-kipita-navy to-slate-700">
+                        {wLoadingDetails && !hero ? (
+                          <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
+                            Loading HD photo…
+                          </div>
+                        ) : hero ? (
+                          <img src={hero} alt={wDest} loading="eager" className="absolute inset-0 w-full h-full object-cover" />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-7xl">{pickEmoji(wDest, wCountry)}</div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                        <button
+                          onClick={() => { setWDest(''); setWCountry(''); setWPickedPhoto(undefined); setWPickedSummary(undefined); setWPickedGallery([]); setWPickedHero(undefined); setWPickedHistory(undefined); setWPickedArea(undefined); }}
+                          className="btn-3d absolute top-3 right-3 glass-dark text-white text-[10px] font-bold px-3 py-1.5 rounded-full"
+                        >
+                          Change
+                        </button>
+                        <div className="absolute bottom-3 left-4 right-4 text-white">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl drop-shadow">{pickEmoji(wDest, wCountry)}</span>
+                            <div>
+                              <div className="font-extrabold text-xl drop-shadow">{wDest}</div>
+                              <div className="text-[11px] text-white/90 drop-shadow">{wCountry}</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {(thumbs.length > 0 || wLoadingDetails) && (
+                        <div className="px-3 py-3 grid grid-cols-4 gap-2 bg-card">
+                          {wLoadingDetails && thumbs.length === 0
+                            ? [0,1,2,3].map(i => <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />)
+                            : thumbs.map(url => (
+                                <button
+                                  key={url}
+                                  onClick={() => setWPickedHero(url)}
+                                  className={`btn-3d aspect-square rounded-lg overflow-hidden ${wPickedHero === url ? 'ring-2 ring-kipita-red ring-offset-2 ring-offset-card' : ''}`}
+                                >
+                                  <img src={url} alt="" loading="lazy" className="w-full h-full object-cover" />
+                                </button>
+                              ))
+                          }
+                        </div>
+                      )}
+
+                      <div className="px-4 pb-4 space-y-3">
+                        {wPickedSummary && (
+                          <div>
+                            <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
+                            <p className="text-xs text-foreground leading-relaxed">{wPickedSummary}</p>
+                          </div>
+                        )}
+                        {wPickedNews && wPickedNews.length > 0 && (
+                          <div>
+                            <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1.5">📰 LATEST NEWS</p>
+                            <div className="space-y-1.5">
+                              {wPickedNews.slice(0, 4).map((n, i) => (
+                                <button
+                                  key={i}
+                                  onClick={() => openInternal(n.url, n.source || 'News')}
+                                  className="w-full text-left bg-muted/40 hover:bg-muted rounded-lg p-2 transition-colors"
+                                >
+                                  <div className="text-[11px] font-bold text-foreground line-clamp-2 leading-snug">{n.title}</div>
+                                  {n.source && (
+                                    <div className="text-[10px] text-muted-foreground mt-0.5">{n.source}</div>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {wPickedHistory && (
+                          <details>
+                            <summary className="text-[10px] font-bold text-muted-foreground tracking-widest cursor-pointer">HISTORY</summary>
+                            <p className="text-xs text-muted-foreground leading-relaxed mt-1">{wPickedHistory}</p>
+                          </details>
+                        )}
+                        {wPickedArea && (
+                          <details>
+                            <summary className="text-[10px] font-bold text-muted-foreground tracking-widest cursor-pointer">THE AREA</summary>
+                            <p className="text-xs text-muted-foreground leading-relaxed mt-1">{wPickedArea}</p>
+                          </details>
+                        )}
+                      </div>
                     </div>
-                  </div>
+                  );
+                })()}
+              </section>
+
+              {/* ── Dates ── */}
+              <section className="space-y-2">
+                <h4 className="text-lg font-extrabold">2. When?</h4>
+                <input type="date" value={wStart} onChange={e => setWStart(e.target.value)}
+                  className="w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
+                <p className="text-[11px] text-muted-foreground">Leave blank for ~2 weeks out.</p>
+              </section>
+
+              {/* ── Duration ── */}
+              <section className="space-y-2">
+                <h4 className="text-lg font-extrabold">3. How long?</h4>
+                <div className="grid grid-cols-7 gap-1.5">
+                  {[3, 5, 7, 10, 14, 21, 30].map(d => (
+                    <button key={d} onClick={() => setWDays(d)}
+                      className={`py-3 rounded-kipita-sm border-2 font-bold text-xs transition-all ${wDays === d ? 'border-kipita-red bg-kipita-red text-white' : 'border-border bg-card text-foreground'}`}
+                    >
+                      {d}d
+                    </button>
+                  ))}
                 </div>
-              )}
+                <input type="number" min={1} max={90} value={wDays} onChange={e => setWDays(Math.max(1, parseInt(e.target.value) || 1))}
+                  placeholder="Custom days"
+                  className="w-full bg-card border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red" />
+              </section>
+
+              {/* ── Invites ── */}
+              <section className="space-y-2">
+                <h4 className="text-lg font-extrabold">4. Travel companions <span className="text-xs font-normal text-muted-foreground">(optional)</span></h4>
+                <div className="flex gap-2">
+                  <input value={wInviteInput} onChange={e => setWInviteInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter' && wInviteInput.trim()) { setWInvites([...wInvites, wInviteInput.trim()]); setWInviteInput(''); } }}
+                    placeholder="email@example.com"
+                    className="flex-1 bg-card border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red" />
+                  <button onClick={() => { if (wInviteInput.trim()) { setWInvites([...wInvites, wInviteInput.trim()]); setWInviteInput(''); } }}
+                    className="px-4 py-2.5 bg-muted text-foreground rounded-kipita-sm text-sm font-bold">Add</button>
+                </div>
+                {wInvites.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {wInvites.map(em => (
+                      <span key={em} className="text-xs bg-muted px-3 py-1.5 rounded-full font-semibold flex items-center gap-1">
+                        {em}
+                        <button onClick={() => setWInvites(wInvites.filter(x => x !== em))} className="text-muted-foreground hover:text-kipita-red">×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </section>
             </div>
 
-            {/* Wizard footer nav */}
-            <div className="flex gap-2 p-4 border-t border-border bg-card flex-shrink-0">
-              {wStep !== 'dest' && (
-                <button onClick={() => setWStep(wStep === 'date' ? 'dest' : wStep === 'days' ? 'date' : wStep === 'invites' ? 'days' : 'invites')}
-                  className="px-4 py-3 bg-muted text-foreground rounded-kipita-sm text-sm font-bold">Back</button>
-              )}
-              {wStep !== 'confirm' ? (
-                <button onClick={() => setWStep(wStep === 'dest' ? 'date' : wStep === 'date' ? 'days' : wStep === 'days' ? 'invites' : 'confirm')}
-                  disabled={wStep === 'dest' && !wDest}
-                  className="flex-1 bg-kipita-red text-white py-3 rounded-kipita-sm font-bold text-sm disabled:opacity-40">
-                  Next
-                </button>
-              ) : (
-                <button onClick={finishWizard}
-                  className="flex-1 bg-kipita-green text-white py-3 rounded-kipita-sm font-bold text-sm">
-                  ✈️ Create Trip
-                </button>
-              )}
+            {/* Single submit button */}
+            <div className="p-4 border-t border-border bg-card flex-shrink-0">
+              <button
+                onClick={finishWizard}
+                disabled={!wDest}
+                className="w-full bg-kipita-green hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed text-white py-4 rounded-kipita font-extrabold text-sm shadow-lg active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+              >
+                <span className="ms text-lg">check_circle</span>
+                {wDest ? `Create trip to ${wDest}` : 'Pick a destination first'}
+              </button>
             </div>
           </div>
         )}
