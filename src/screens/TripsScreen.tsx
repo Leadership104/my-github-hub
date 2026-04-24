@@ -628,32 +628,105 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
             </div>
 
             <div className="flex-1 overflow-y-auto p-5">
-              {/* Step 1: Destination */}
+              {/* Step 1: Destination — live search like a travel company */}
               {wStep === 'dest' && (
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-xl font-extrabold mb-1">Where to?</h4>
-                    <p className="text-sm text-muted-foreground">Pick a city or type your own.</p>
+                    <p className="text-sm text-muted-foreground">Search any city in the world — we'll show you a real photo and overview.</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {POPULAR_DESTS.map(d => (
-                      <button key={d.city}
-                        onClick={() => { setWDest(d.city); setWCountry(d.country); }}
-                        className={`p-4 rounded-kipita border-2 text-left transition-all ${wDest === d.city ? 'border-kipita-red bg-kipita-red/5' : 'border-border bg-card hover:border-kipita-red/30'}`}
-                      >
-                        <div className="text-2xl mb-1">{d.emoji}</div>
-                        <div className="text-sm font-bold">{d.city}</div>
-                        <div className="text-[11px] text-muted-foreground">{d.country}</div>
-                      </button>
-                    ))}
+
+                  {/* Live search input */}
+                  <div className="relative">
+                    <span className="ms text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-lg">search</span>
+                    <input
+                      value={wSearchQuery}
+                      onChange={e => setWSearchQuery(e.target.value)}
+                      autoFocus
+                      placeholder="Try: Lisbon, Reykjavik, Cartagena…"
+                      className="w-full bg-card border border-border rounded-kipita-sm pl-10 pr-10 py-3 text-sm outline-none focus:border-kipita-red"
+                    />
+                    {wSearching && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">…</span>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground">Or type a destination</label>
-                    <input value={wDest} onChange={e => setWDest(e.target.value)} placeholder="e.g. Reykjavik"
-                      className="mt-1 w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                    <input value={wCountry} onChange={e => setWCountry(e.target.value)} placeholder="Country"
-                      className="mt-2 w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                  </div>
+
+                  {/* Live search results */}
+                  {wSearchResults.length > 0 && (
+                    <div className="bg-card border border-border rounded-kipita divide-y divide-border max-h-64 overflow-y-auto">
+                      {wSearchResults.map((r, i) => (
+                        <button
+                          key={`${r.name}-${i}`}
+                          onClick={() => { pickDestination(r.name, r.country); setWSearchQuery(''); setWSearchResults([]); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
+                        >
+                          <span className="ms text-muted-foreground text-lg">place</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold truncate">{r.name}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {[r.region, r.country].filter(Boolean).join(', ')}
+                              {r.population ? ` · ${(r.population / 1000).toFixed(0)}k` : ''}
+                            </div>
+                          </div>
+                          <span className="ms text-muted-foreground">chevron_right</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Picked destination preview — real photo + summary */}
+                  {wDest && (
+                    <div className="bg-card border-2 border-kipita-red rounded-kipita overflow-hidden">
+                      {wLoadingDetails ? (
+                        <div className="h-40 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
+                          Loading photo…
+                        </div>
+                      ) : wPickedPhoto ? (
+                        <img src={wPickedPhoto} alt={wDest} className="w-full h-40 object-cover" />
+                      ) : (
+                        <div className="h-40 bg-gradient-to-br from-kipita-navy to-slate-700 flex items-center justify-center text-6xl">
+                          {pickEmoji(wDest, wCountry)}
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-2xl">{pickEmoji(wDest, wCountry)}</span>
+                          <div className="flex-1">
+                            <div className="font-extrabold text-base">{wDest}</div>
+                            <div className="text-[11px] text-muted-foreground">{wCountry}</div>
+                          </div>
+                          <button
+                            onClick={() => { setWDest(''); setWCountry(''); setWPickedPhoto(undefined); setWPickedSummary(undefined); }}
+                            className="text-[11px] text-muted-foreground hover:text-kipita-red"
+                          >
+                            Change
+                          </button>
+                        </div>
+                        {wPickedSummary && (
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-2 line-clamp-4">{wPickedSummary}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Popular shortcuts (only when nothing picked / searched) */}
+                  {!wDest && wSearchResults.length === 0 && !wSearching && (
+                    <div>
+                      <p className="text-[11px] font-bold text-muted-foreground tracking-wider mb-2">POPULAR DESTINATIONS</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {POPULAR_DESTS.map(d => (
+                          <button key={d.city}
+                            onClick={() => pickDestination(d.city, d.country)}
+                            className="p-4 rounded-kipita border-2 border-border bg-card text-left hover:border-kipita-red/30 transition-all"
+                          >
+                            <div className="text-2xl mb-1">{d.emoji}</div>
+                            <div className="text-sm font-bold">{d.city}</div>
+                            <div className="text-[11px] text-muted-foreground">{d.country}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
