@@ -151,6 +151,52 @@ async function fetchCountryInfo(countryCode: string): Promise<string> {
   }
 }
 
+// ── Live health: air quality + UV from Open-Meteo (no key required) ──────────
+interface LiveHealth {
+  pm25?: number;
+  pm10?: number;
+  ozone?: number;
+  no2?: number;
+  usAqi?: number;
+  uvIndex?: number;
+  pollen?: { grass?: number; tree?: number; weed?: number };
+}
+
+function aqiCategory(aqi?: number): string {
+  if (aqi == null) return "unknown";
+  if (aqi <= 50) return "Good";
+  if (aqi <= 100) return "Moderate";
+  if (aqi <= 150) return "Unhealthy for sensitive groups";
+  if (aqi <= 200) return "Unhealthy";
+  if (aqi <= 300) return "Very unhealthy";
+  return "Hazardous";
+}
+
+async function fetchLiveHealth(lat: number, lng: number): Promise<LiveHealth | null> {
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10,pm2_5,ozone,nitrogen_dioxide,us_aqi,uv_index,grass_pollen,birch_pollen,ragweed_pollen&timezone=auto`;
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const c = data.current || {};
+    return {
+      pm25: c.pm2_5,
+      pm10: c.pm10,
+      ozone: c.ozone,
+      no2: c.nitrogen_dioxide,
+      usAqi: c.us_aqi,
+      uvIndex: c.uv_index,
+      pollen: {
+        grass: c.grass_pollen,
+        tree: c.birch_pollen,
+        weed: c.ragweed_pollen,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── Ultimate Travel Expert System Prompt ──────────────────────────────────────
 const SYSTEM_PROMPT = `You are Kipita — the ultimate "Know Before You Go" travel intelligence system. Think: part seasoned travel journalist, part safety analyst, part well-traveled local who's lived in every city.
 
@@ -259,17 +305,22 @@ serve(async (req) => {
         if (health) liveDataBlock += `\n- Health advisory: ${health}`;
       }
 
-      // Live nearby places
+      // Live nearby places + live health (air quality / UV / pollen)
+      let liveHealth: LiveHealth | null = null;
+      let nearestHospital: PlaceChip | null = null;
       if (typeof context.lat === "number" && typeof context.lng === "number") {
-        const [restaurants, cafes, attractions, bars, hospitals] = await Promise.all([
+        const [restaurants, cafes, attractions, bars, hospitals, health] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
           fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
           fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
           fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
           fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
+          fetchLiveHealth(context.lat, context.lng),
         ]);
 
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
+        liveHealth = health;
+        nearestHospital = hospitals[0] || null;
 
         const fmt = (label: string, arr: PlaceChip[]) =>
           arr.length
@@ -282,6 +333,22 @@ serve(async (req) => {
         liveDataBlock += fmt("Nearby bars", bars);
         if (hospitals.length) {
           liveDataBlock += fmt("Nearest hospitals", hospitals);
+        }
+
+        if (liveHealth) {
+          liveDataBlock += `\n\n=== LIVE HEALTH DATA (real-time, from Open-Meteo Air Quality API) ===`;
+          if (liveHealth.usAqi != null) liveDataBlock += `\n- US AQI: ${Math.round(liveHealth.usAqi)} (${aqiCategory(liveHealth.usAqi)})`;
+          if (liveHealth.pm25 != null) liveDataBlock += `\n- PM2.5: ${liveHealth.pm25.toFixed(1)} µg/m³`;
+          if (liveHealth.pm10 != null) liveDataBlock += `\n- PM10: ${liveHealth.pm10.toFixed(1)} µg/m³`;
+          if (liveHealth.ozone != null) liveDataBlock += `\n- Ozone: ${liveHealth.ozone.toFixed(0)} µg/m³`;
+          if (liveHealth.no2 != null) liveDataBlock += `\n- NO₂: ${liveHealth.no2.toFixed(0)} µg/m³`;
+          if (liveHealth.uvIndex != null) liveDataBlock += `\n- UV Index: ${liveHealth.uvIndex.toFixed(1)}${liveHealth.uvIndex >= 8 ? " (very high — sun protection essential)" : liveHealth.uvIndex >= 6 ? " (high)" : liveHealth.uvIndex >= 3 ? " (moderate)" : " (low)"}`;
+          const p = liveHealth.pollen || {};
+          const pollenParts: string[] = [];
+          if (p.grass != null && p.grass > 0) pollenParts.push(`grass ${p.grass.toFixed(1)}`);
+          if (p.tree != null && p.tree > 0) pollenParts.push(`tree ${p.tree.toFixed(1)}`);
+          if (p.weed != null && p.weed > 0) pollenParts.push(`weed ${p.weed.toFixed(1)}`);
+          if (pollenParts.length) liveDataBlock += `\n- Pollen (grains/m³): ${pollenParts.join(", ")}`;
         }
       }
 
@@ -325,7 +392,7 @@ Use ALL live data from the LIVE TRAVEL CONTEXT above. Format exactly like this:
 
 **✨ Do this today:** 2 specific things to do right now, based on time of day and weather. Pull from live attractions. Make it sound exciting, not generic.
 
-**💰 Money intel:** Local currency, ATM reality, card acceptance culture, rough daily budget for a traveler.${health ? `\n\n**🏥 Health note:** ${health}` : ""}${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
+**🏥 Health right now:** Use the LIVE HEALTH DATA from above (US AQI, PM2.5, UV index, pollen) and state plainly what it means today (e.g., "AQI 42 — Good, breathe easy" or "UV 9 — wear SPF 50+, limit midday sun"). Then add tap-water safety, top disease risks, and any vaccines worth knowing for ${context.location}.${health ? ` Local health note: ${health}` : ""}${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
 
 *Ask me: "What neighborhood should I stay in?" · "Is the tap water safe?" · "What do I need to know about visas?"*
 
