@@ -19,6 +19,23 @@ export default function PerksScreen({ onBack }: Props) {
 
   const filtered = activeCategory === 'all' ? PERKS : PERKS.filter(p => p.category === activeCategory);
 
+  // Providers that block iframe embedding (X-Frame-Options / CSP frame-ancestors).
+  // These must open in a new browser tab instead of the in-app browser.
+  const EXTERNAL_ONLY_HOSTS = ['upside.com', 'expedia.com', 'hotels.com', 'apple.com', 'play.google.com'];
+  const isExternalOnly = (url: string) => {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      return EXTERNAL_ONLY_HOSTS.some(h => host === h || host.endsWith('.' + h));
+    } catch { return false; }
+  };
+  const openPerk = (url: string, title: string) => {
+    if (isExternalOnly(url)) {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } else {
+      setBrowser({ url, title });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -58,7 +75,7 @@ export default function PerksScreen({ onBack }: Props) {
           {filtered.map(p => (
             <button
               key={p.title}
-              onClick={() => setBrowser({ url: p.url, title: p.title })}
+              onClick={() => openPerk(p.url, p.title)}
               className="flex flex-col items-center justify-center gap-2 p-5 bg-card border border-border rounded-kipita-sm hover:shadow-md hover:border-kipita-red/40 transition-all text-center active:scale-95"
             >
               <span className="text-3xl">{p.icon}</span>
