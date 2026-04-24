@@ -107,6 +107,18 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     return () => { cancelled = true; };
   }, [selectedTrip]);
 
+  // Auto-open wizard from external hint, e.g. "plan:Lisbon|Portugal"
+  useEffect(() => {
+    if (!initialHint || !initialHint.startsWith('plan:')) return;
+    const payload = initialHint.slice(5);
+    const [city, country = ''] = payload.split('|');
+    if (!city) return;
+    setShowWizard(true);
+    setWStep('dest');
+    pickDestination(city.trim(), country.trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialHint]);
+
   // Hydrate photo + summary + gallery + history when destination picked
   const pickDestination = async (city: string, country: string) => {
     setWDest(city); setWCountry(country);
