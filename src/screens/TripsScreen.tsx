@@ -259,16 +259,15 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
             <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-3">BOOK & MANAGE</p>
             <div className="grid grid-cols-5 gap-2">
               {BOOK_MANAGE_TILES.map(t => (
-                <a
+                <button
                   key={t.label}
-                  href={t.url}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl border border-border hover:border-kipita-red/40 hover:shadow-sm transition-all no-underline text-center active:scale-95"
+                  onClick={() => openInternal(t.url, `${t.label} · ${trip.dest}`)}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl border border-border hover:border-kipita-red/40 hover:shadow-sm transition-all text-center active:scale-95"
                 >
                   <span className="text-xl">{t.emoji}</span>
                   <span className={`text-[10px] font-bold ${t.active ? 'text-kipita-red' : 'text-foreground'}`}>{t.label}</span>
                   <span className="text-[9px] text-muted-foreground truncate w-full">{t.sub}</span>
-                </a>
+                </button>
               ))}
             </div>
           </div>
