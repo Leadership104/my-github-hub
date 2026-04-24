@@ -231,6 +231,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
+        {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
         {/* Hero image */}
         <div className="relative h-56 bg-gradient-to-br from-kipita-navy via-slate-700 to-slate-900 flex-shrink-0 overflow-hidden">
           {trip.photo && (
@@ -873,6 +874,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
           </div>
         )}
       </div>
+      {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
     </div>
   );
 }
