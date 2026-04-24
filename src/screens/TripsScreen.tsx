@@ -58,11 +58,50 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
   const [wInvites, setWInvites] = useState<string[]>([]);
   const [wInviteInput, setWInviteInput] = useState('');
 
+  // Live destination search
+  const [wSearchQuery, setWSearchQuery] = useState('');
+  const [wSearchResults, setWSearchResults] = useState<DestinationResult[]>([]);
+  const [wSearching, setWSearching] = useState(false);
+  const [wPickedPhoto, setWPickedPhoto] = useState<string | undefined>();
+  const [wPickedSummary, setWPickedSummary] = useState<string | undefined>();
+  const [wLoadingDetails, setWLoadingDetails] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // In-app browser for affiliate links
+  const [browserUrl, setBrowserUrl] = useState<string | null>(null);
+  const [browserTitle, setBrowserTitle] = useState<string>('');
+  const openInternal = (url: string, title: string) => { setBrowserUrl(url); setBrowserTitle(title); };
+
+  // Debounced live search
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (wSearchQuery.trim().length < 2) { setWSearchResults([]); return; }
+    setWSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      const results = await searchDestinations(wSearchQuery);
+      setWSearchResults(results);
+      setWSearching(false);
+    }, 350);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [wSearchQuery]);
+
+  // Hydrate photo + summary when destination picked
+  const pickDestination = async (city: string, country: string) => {
+    setWDest(city); setWCountry(country);
+    setWPickedPhoto(undefined); setWPickedSummary(undefined);
+    setWLoadingDetails(true);
+    const d = await getDestinationDetails(city, country);
+    setWPickedPhoto(d.photo); setWPickedSummary(d.summary);
+    setWLoadingDetails(false);
+  };
+
   const resetWizard = () => {
     setShowWizard(false);
     setWStep('dest');
     setWDest(''); setWCountry(''); setWStart(''); setWDays(7);
     setWInvites([]); setWInviteInput('');
+    setWSearchQuery(''); setWSearchResults([]);
+    setWPickedPhoto(undefined); setWPickedSummary(undefined);
   };
 
   const finishWizard = () => {
