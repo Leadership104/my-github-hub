@@ -61,6 +61,10 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
   const [wSearching, setWSearching] = useState(false);
   const [wPickedPhoto, setWPickedPhoto] = useState<string | undefined>();
   const [wPickedSummary, setWPickedSummary] = useState<string | undefined>();
+  const [wPickedGallery, setWPickedGallery] = useState<string[]>([]);
+  const [wPickedHistory, setWPickedHistory] = useState<string | undefined>();
+  const [wPickedArea, setWPickedArea] = useState<string | undefined>();
+  const [wPickedHero, setWPickedHero] = useState<string | undefined>();
   const [wLoadingDetails, setWLoadingDetails] = useState(false);
   const [tripRich, setTripRich] = useState<DestinationDetails | null>(null);
   const [tripRichLoading, setTripRichLoading] = useState(false);
@@ -101,13 +105,20 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
     return () => { cancelled = true; };
   }, [selectedTrip]);
 
-  // Hydrate photo + summary when destination picked
+  // Hydrate photo + summary + gallery + history when destination picked
   const pickDestination = async (city: string, country: string) => {
     setWDest(city); setWCountry(country);
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
+    setWPickedGallery([]); setWPickedHistory(undefined); setWPickedArea(undefined);
+    setWPickedHero(undefined);
     setWLoadingDetails(true);
-    const d = await getDestinationDetails(city, country);
-    setWPickedPhoto(d.photo); setWPickedSummary(d.summary);
+    const d = await getRichDestinationDetails(city, country);
+    setWPickedPhoto(d.photo);
+    setWPickedHero(d.photo);
+    setWPickedSummary(d.summary);
+    setWPickedGallery(d.gallery || []);
+    setWPickedHistory(d.history);
+    setWPickedArea(d.areaOverview);
     setWLoadingDetails(false);
   };
 
@@ -118,6 +129,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
     setWInvites([]); setWInviteInput('');
     setWSearchQuery(''); setWSearchResults([]);
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
+    setWPickedGallery([]); setWPickedHistory(undefined); setWPickedArea(undefined);
+    setWPickedHero(undefined);
   };
 
   const finishWizard = () => {
@@ -126,9 +139,13 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
       dest: wDest, country: wCountry, days: wDays,
       startDate: wStart || undefined, invites: wInvites,
       photo: wPickedPhoto, summary: wPickedSummary,
+      gallery: wPickedGallery, history: wPickedHistory, areaOverview: wPickedArea,
     });
     save([t, ...trips]);
     resetWizard();
+    // Land directly into the new trip so user sees booking flow
+    setSelectedTrip(t);
+    setExpandedDays({ 1: true });
   };
 
   const createTripFromAi = (dest: string, country: string, days: number) => {
