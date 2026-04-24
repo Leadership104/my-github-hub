@@ -514,6 +514,12 @@ serve(async (req) => {
     let systemPrompt = SYSTEM_PROMPT;
     let liveDataBlock = "";
     let allPlaces: PlaceChip[] = [];
+    // Per-bucket lists so we can return ONLY situationally relevant chips.
+    let bucketRestaurants: PlaceChip[] = [];
+    let bucketCafes: PlaceChip[] = [];
+    let bucketAttractions: PlaceChip[] = [];
+    let bucketBars: PlaceChip[] = [];
+    let bucketHospitals: PlaceChip[] = [];
 
     if (context) {
       const now = new Date();
