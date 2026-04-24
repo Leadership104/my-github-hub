@@ -151,6 +151,52 @@ async function fetchCountryInfo(countryCode: string): Promise<string> {
   }
 }
 
+// ── Live health: air quality + UV from Open-Meteo (no key required) ──────────
+interface LiveHealth {
+  pm25?: number;
+  pm10?: number;
+  ozone?: number;
+  no2?: number;
+  usAqi?: number;
+  uvIndex?: number;
+  pollen?: { grass?: number; tree?: number; weed?: number };
+}
+
+function aqiCategory(aqi?: number): string {
+  if (aqi == null) return "unknown";
+  if (aqi <= 50) return "Good";
+  if (aqi <= 100) return "Moderate";
+  if (aqi <= 150) return "Unhealthy for sensitive groups";
+  if (aqi <= 200) return "Unhealthy";
+  if (aqi <= 300) return "Very unhealthy";
+  return "Hazardous";
+}
+
+async function fetchLiveHealth(lat: number, lng: number): Promise<LiveHealth | null> {
+  try {
+    const url = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=pm10,pm2_5,ozone,nitrogen_dioxide,us_aqi,uv_index,grass_pollen,birch_pollen,ragweed_pollen&timezone=auto`;
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const c = data.current || {};
+    return {
+      pm25: c.pm2_5,
+      pm10: c.pm10,
+      ozone: c.ozone,
+      no2: c.nitrogen_dioxide,
+      usAqi: c.us_aqi,
+      uvIndex: c.uv_index,
+      pollen: {
+        grass: c.grass_pollen,
+        tree: c.birch_pollen,
+        weed: c.ragweed_pollen,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ── Ultimate Travel Expert System Prompt ──────────────────────────────────────
 const SYSTEM_PROMPT = `You are Kipita — the ultimate "Know Before You Go" travel intelligence system. Think: part seasoned travel journalist, part safety analyst, part well-traveled local who's lived in every city.
 
