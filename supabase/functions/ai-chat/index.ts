@@ -377,27 +377,23 @@ serve(async (req) => {
       const emergency = EMERGENCY_NUMBERS[cc];
       const health = HEALTH_NOTES[cc];
 
-      userMessage = `Generate a concise "Know Before You Go" briefing for someone who just arrived at or is about to visit **${context.location}**.
+      userMessage = `Generate a SHORT "Know Before You Go" briefing for **${context.location}**.
 
-Use ALL live data from the LIVE TRAVEL CONTEXT above. Format exactly like this:
+Use the LIVE TRAVEL CONTEXT data. Be tight — every section 1–2 sentences max. Total ≤ 160 words.
 
 **📍 ${context.location}**
 
-**🛡️ Safety right now:** Honest, calibrated assessment based on advisory score (${safetyVibe}). Mention specific things to watch for — neighborhoods, times, common threats. Don't be vague.
+**🛡️ Safety:** Calibrated take (${safetyVibe}) + ONE specific thing to watch for. End with [Safety details](kipita://tab/safety).
 
-**🌡️ Conditions:** Reference the ACTUAL weather data. Say what it means for plans — recommend specific indoor or outdoor activities given conditions.
+**🌡️ Right now:** Weather + what it means for today's plan in 1 sentence.
 
-**🍽️ Go eat here:** Pick the 2–3 BEST spots from the live nearby restaurants list. Name them by name. State if open/closed. One sentence on why each is worth it. Be opinionated.
+**🍽️ Eat:** Pick the single best open spot from live restaurants — name it. End with [More food spots](kipita://tab/places?hint=food).
 
-**☕ Best coffee:** One specific cafe from live data. Why it's worth it.
+**✨ Do:** 1 specific thing from live attractions. End with [Open map](kipita://tab/maps).
 
-**✨ Do this today:** 2 specific things to do right now, based on time of day and weather. Pull from live attractions. Make it sound exciting, not generic.
+**🏥 Health:** State live AQI + UV in plain words (e.g., "AQI 42, UV 6 — fine, wear sunscreen"). Tap water: safe / unsafe.${health ? ` ${health}` : ""} Source: [CDC Travelers' Health](https://wwwnc.cdc.gov/travel).${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
 
-**🏥 Health right now:** Use the LIVE HEALTH DATA from above (US AQI, PM2.5, UV index, pollen) and state plainly what it means today (e.g., "AQI 42 — Good, breathe easy" or "UV 9 — wear SPF 50+, limit midday sun"). Then add tap-water safety, top disease risks, and any vaccines worth knowing for ${context.location}.${health ? ` Local health note: ${health}` : ""}${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
-
-*Ask me: "What neighborhood should I stay in?" · "Is the tap water safe?" · "What do I need to know about visas?"*
-
-Keep it under 280 words. Sound like a brilliant friend who actually knows this place. Use real names from the live data.`;
+*Ask me: "Best neighborhood to stay?" · "Is tap water safe?" · "What scams here?"*`;
     }
 
     const messages = [
