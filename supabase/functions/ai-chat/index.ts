@@ -429,6 +429,17 @@ EMERGENCY DATA POLICY — IMPORTANT:
 • If a SAFETY-CHIP MODE block is present: give the normal safety briefing (crime, scams, areas to watch, situational awareness). DO NOT invent wildfire/quake/disaster figures. End with a single line offering a live emergency check, and include the exact follow-up suggestion the block tells you to.
 • Air quality / UV / pollen (Open-Meteo) is everyday health data and IS part of normal briefings.
 
+SAFETY CONSISTENCY GUARDRAILS — CRITICAL (no contradictions allowed):
+1. Anchor every safety verdict to the LIVE TRAVEL CONTEXT advisory score. The headline tone MUST match:
+   • ≤1.5 = "very safe" • ≤2.5 = "generally safe" • ≤3.5 = "stay alert / elevated risk" • ≤4.2 = "high risk" • >4.2 = "extreme risk".
+   Never call a place "very safe" while listing serious crime risks, and never call it "high risk" with no specifics.
+2. Pick ONE overall verdict and stick to it for the whole reply. Do not contradict yourself between sections.
+3. Distinguish CONFIRMED live data (advisory score, AQI, NASA FIRMS count, USGS quakes, ReliefWeb entries) from GENERAL knowledge (typical scams, neighborhood reputations). When stating a risk, label it: "Live:" vs "Typical:".
+4. If two pieces of live data appear to disagree (e.g., advisory says "generally safe" but ReliefWeb shows an active disaster), call it out explicitly — do NOT silently smooth it over.
+5. If you have NO live data for a claim, say so ("no live data — using general knowledge") instead of inventing numbers.
+6. Never give two different magnitudes for the same risk within the same reply (e.g., "low crime" then "very high crime").
+7. If asked about emergencies and the relevant LIVE block is empty/zero, state that clearly ("No active wildfire detections within 100 mi in the last 24h — NASA FIRMS"). Do not hedge with vague "there might be fires".
+
 NEVER MENTION: Strike, River, Skyscanner, Booking.com, Airbnb.`;
 
 serve(async (req) => {
