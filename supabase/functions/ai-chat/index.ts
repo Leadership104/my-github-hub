@@ -392,7 +392,7 @@ Use ALL live data from the LIVE TRAVEL CONTEXT above. Format exactly like this:
 
 **✨ Do this today:** 2 specific things to do right now, based on time of day and weather. Pull from live attractions. Make it sound exciting, not generic.
 
-**💰 Money intel:** Local currency, ATM reality, card acceptance culture, rough daily budget for a traveler.${health ? `\n\n**🏥 Health note:** ${health}` : ""}${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
+**🏥 Health right now:** Use the LIVE HEALTH DATA from above (US AQI, PM2.5, UV index, pollen) and state plainly what it means today (e.g., "AQI 42 — Good, breathe easy" or "UV 9 — wear SPF 50+, limit midday sun"). Then add tap-water safety, top disease risks, and any vaccines worth knowing for ${context.location}.${health ? ` Local health note: ${health}` : ""}${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
 
 *Ask me: "What neighborhood should I stay in?" · "Is the tap water safe?" · "What do I need to know about visas?"*
 
