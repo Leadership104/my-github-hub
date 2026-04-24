@@ -13,16 +13,19 @@ interface Props {
  * Note: Many partner sites block being embedded via iframe (X-Frame-Options).
  * We provide a fallback "Open in new tab" button for those cases.
  */
-const EXTERNAL_ONLY_HOSTS = ['upside.com', 'expedia.com', 'hotels.com', 'apple.com', 'play.google.com'];
-const isExternalOnly = (url: string) => {
+// Hosts that always block iframe embedding. Expedia/Hotels.com are NOT in this list
+// because their affiliate redirect URLs (e.g. expedia.com/affiliate/...) do load in iframes.
+// Only the bare partner homepages truly refuse — and the iframe's onLoad heuristic catches those.
+const ALWAYS_EXTERNAL_HOSTS = ['upside.com', 'apple.com', 'play.google.com'];
+const isAlwaysExternal = (url: string) => {
   try {
     const host = new URL(url).hostname.replace(/^www\./, '');
-    return EXTERNAL_ONLY_HOSTS.some(h => host === h || host.endsWith('.' + h));
+    return ALWAYS_EXTERNAL_HOSTS.some(h => host === h || host.endsWith('.' + h));
   } catch { return false; }
 };
 
 export default function InAppBrowser({ url, title, onClose }: Props) {
-  const [blocked, setBlocked] = useState(isExternalOnly(url));
+  const [blocked, setBlocked] = useState(isAlwaysExternal(url));
 
   return (
     <div className="fixed inset-0 z-[400] flex flex-col bg-background">
