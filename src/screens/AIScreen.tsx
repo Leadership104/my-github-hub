@@ -103,16 +103,16 @@ function StatsBar({
 function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip) => void }) {
   if (!places.length) return null;
   return (
-    <div className="px-1 pb-2">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
-        📍 Nearby — tap to explore
+    <div className="px-1 pb-2 pt-1">
+      <p className="text-[10px] font-bold text-kipita-red uppercase tracking-wider mb-1.5 px-1">
+        ✨ Open these in Places
       </p>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {places.map((p, i) => (
           <button
             key={`${p.name}-${i}`}
             onClick={() => onTap(p)}
-            className="flex-shrink-0 bg-card border border-border rounded-xl px-3 py-2 text-left hover:border-kipita-red/40 hover:bg-muted transition-all max-w-[180px] active:scale-95"
+            className="flex-shrink-0 bg-kipita-red/5 border border-kipita-red/30 rounded-xl px-3 py-2 text-left hover:border-kipita-red hover:bg-kipita-red/10 transition-all max-w-[180px] active:scale-95"
           >
             <div className="text-xs font-bold text-foreground truncate">{p.name}</div>
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -120,7 +120,7 @@ function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceCh
               {p.openNow === true  && <span className="text-[10px] text-emerald-500 font-medium">Open</span>}
               {p.openNow === false && <span className="text-[10px] text-muted-foreground">Closed</span>}
             </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.type}</div>
+            <div className="text-[10px] text-kipita-red mt-0.5 truncate font-semibold">→ {p.type}</div>
           </button>
         ))}
       </div>
