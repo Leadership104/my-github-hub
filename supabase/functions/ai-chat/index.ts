@@ -345,13 +345,43 @@ async function fetchEarthquakes(lat: number, lng: number, radiusMi = 200, minMag
 }
 
 // ── ReliefWeb disaster alerts (no key required) ───────────────────────────────
-interface DisasterHit { name: string; type: string; date?: string; status?: string; }
+// We bucket every ReliefWeb disaster type into one of three quick-filter categories so the AI
+// can prioritize incidents that match what the user actually asked about.
+//   • safety     — conflict, civil unrest, crime spillover, terrorism, mass-casualty events
+//   • healthcare — disease outbreaks, epidemics, food/water emergencies
+//   • weather    — storms, floods, fires, earthquakes, droughts, volcanic, extreme temps
+export type DisasterCategory = "safety" | "healthcare" | "weather" | "other";
+
+interface DisasterHit {
+  name: string;
+  type: string;
+  category: DisasterCategory;
+  date?: string;
+  status?: string;
+}
+
+function classifyDisasterType(typeName: string): DisasterCategory {
+  const t = (typeName || "").toLowerCase();
+  // Healthcare / disease
+  if (/(epidemic|outbreak|disease|cholera|ebola|covid|measles|polio|dengue|malaria|virus|infect|health|food insecurity|famine|nutrition)/.test(t)) {
+    return "healthcare";
+  }
+  // Safety / human-caused
+  if (/(conflict|war|violence|unrest|terror|attack|displace|refugee|complex emergency|mine action|insecurity)/.test(t)) {
+    return "safety";
+  }
+  // Weather / natural
+  if (/(flood|storm|cyclone|hurricane|typhoon|tornado|wind|fire|wildfire|drought|earthquake|tsunami|volcan|landslide|mud|snow|cold wave|heat wave|extreme temp|severe local storm|surge|tropical)/.test(t)) {
+    return "weather";
+  }
+  return "other";
+}
+
 async function fetchDisasters(countryCode: string): Promise<DisasterHit[]> {
   if (!countryCode) return [];
   try {
-    const url = `https://api.reliefweb.int/v1/disasters?appname=kipita-ai&filter[field]=country.iso3&limit=4&sort[]=date:desc&fields[include][]=name&fields[include][]=type.name&fields[include][]=status&fields[include][]=date`;
-    // ReliefWeb uses ISO3; map common ISO2 -> ISO3 (best-effort, lowercase 3-letter via fallback)
-    // Most users won't see this fail because we just no-op on miss.
+    // Pull more results so we have enough to filter by category client-side.
+    const url = `https://api.reliefweb.int/v1/disasters?appname=kipita-ai&filter[field]=country.iso3&limit=20&sort[]=date:desc&fields[include][]=name&fields[include][]=type.name&fields[include][]=status&fields[include][]=date`;
     const iso3Map: Record<string, string> = {
       US:"USA",CA:"CAN",MX:"MEX",GB:"GBR",FR:"FRA",DE:"DEU",IT:"ITA",ES:"ESP",PT:"PRT",NL:"NLD",BE:"BEL",CH:"CHE",AT:"AUT",SE:"SWE",NO:"NOR",DK:"DNK",GR:"GRC",TR:"TUR",
       TH:"THA",JP:"JPN",KR:"KOR",CN:"CHN",HK:"HKG",SG:"SGP",MY:"MYS",ID:"IDN",PH:"PHL",VN:"VNM",IN:"IND",AE:"ARE",EG:"EGY",ZA:"ZAF",MA:"MAR",
@@ -362,16 +392,31 @@ async function fetchDisasters(countryCode: string): Promise<DisasterHit[]> {
     const resp = await fetch(`${url}&filter[value]=${iso3}`);
     if (!resp.ok) return [];
     const data = await resp.json();
-    return (data.data || []).map((d: any) => ({
-      name: d.fields?.name,
-      type: d.fields?.type?.[0]?.name || "Disaster",
-      date: d.fields?.date?.created,
-      status: d.fields?.status,
-    })).filter((x: DisasterHit) => x.name);
+    return (data.data || []).map((d: any) => {
+      const typeName = d.fields?.type?.[0]?.name || "Disaster";
+      return {
+        name: d.fields?.name,
+        type: typeName,
+        category: classifyDisasterType(typeName),
+        date: d.fields?.date?.created,
+        status: d.fields?.status,
+      };
+    }).filter((x: DisasterHit) => x.name);
   } catch {
     return [];
   }
 }
+
+// Detect which disaster category the user's question is asking about. Returns priority order.
+function inferDisasterCategories(message: string): DisasterCategory[] {
+  const m = (message || "").toLowerCase();
+  const hits: DisasterCategory[] = [];
+  if (/(safety|safe|crime|conflict|war|unrest|protest|terror|violence|kidnap|civil|refugee)/.test(m)) hits.push("safety");
+  if (/(health|healthcare|hospital|medical|disease|outbreak|epidemic|virus|sick|vaccine|cholera|dengue|malaria|covid|food.{0,5}safety|famine)/.test(m)) hits.push("healthcare");
+  if (/(weather|storm|hurricane|typhoon|cyclone|flood|wildfire|fire|drought|earthquake|tsunami|volcan|heat|cold|snow|landslide|tornado)/.test(m)) hits.push("weather");
+  return hits;
+}
+
 
 
 const SYSTEM_PROMPT = `You are Kipita — a "Know Before You Go" travel intelligence assistant. Talk like a sharp, well-traveled friend texting you back: confident, warm, useful.
@@ -426,6 +471,7 @@ WATER & HEALTH SOURCING — when discussing water safety, vaccines, or disease r
 EMERGENCY DATA POLICY — IMPORTANT:
 • Wildfire (NASA FIRMS), earthquake (USGS), and active-disaster (ReliefWeb) data are EMERGENCY data — only used when the user explicitly asks (Safety chip follow-up, "wildfires near me", "earthquakes", "any disasters"). They are NEVER part of a default city briefing.
 • If a LIVE WILDFIRE, EARTHQUAKE, or DISASTER block is present in context, lead with the specific number (e.g., "3 active fires within 60 mi · nearest 24 mi") and cite the source by name: NASA FIRMS, USGS, ReliefWeb. Add [Safety screen](kipita://tab/safety).
+• ReliefWeb DISASTER quick filters: each incident is tagged [safety], [healthcare], [weather], or [other]. When the block header says "prioritized by quick filter: …", focus your reply on those tagged incidents (the ones marked 🎯) — they directly answer what the user asked about. Briefly mention any unrelated active incidents only if space allows.
 • If a SAFETY-CHIP MODE block is present: give the normal safety briefing (crime, scams, areas to watch, situational awareness). DO NOT invent wildfire/quake/disaster figures. End with a single line offering a live emergency check, and include the exact follow-up suggestion the block tells you to.
 • Air quality / UV / pollen (Open-Meteo) is everyday health data and IS part of normal briefings.
 
@@ -513,14 +559,16 @@ serve(async (req) => {
         const lowerMsg = (typeof message === "string" ? message : "").toLowerCase();
         const wantsWildfires = /\b(wildfire|wild fire|fires?|smoke|evacuat|firms|burning|brush fire)\b/.test(lowerMsg);
         const wantsQuakes = /\b(earthquake|quake|seismic|tremor|aftershock|usgs)\b/.test(lowerMsg);
-        const wantsDisasters = /\b(disaster|hurricane|typhoon|cyclone|flood|tsunami|volcan|emergenc|evacuat|reliefweb)\b/.test(lowerMsg);
+        const wantsDisasters = /\b(disaster|hurricane|typhoon|cyclone|flood|tsunami|volcan|emergenc|evacuat|reliefweb|outbreak|epidemic|conflict|unrest)\b/.test(lowerMsg);
         const wantsSafetyDeep = /\b(safety|safe|danger|risk|threat|warning|alert)\b/.test(lowerMsg);
         // Safety chip = normal safety brief + offer emergency follow-up. Only pull emergency feeds
         // when user explicitly asks for them OR also explicitly asks for live emergency check.
         const wantsLiveEmergencyCheck = /live emergency check|wildfires?, earthquakes?|active disasters?/.test(lowerMsg);
+        // Quick-filter categories the user is asking about — drives ReliefWeb prioritization.
+        const disasterCategories = inferDisasterCategories(lowerMsg);
         const includeFires = wantsWildfires || wantsLiveEmergencyCheck;
         const includeQuakes = wantsQuakes || wantsLiveEmergencyCheck;
-        const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck;
+        const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck || disasterCategories.length > 0;
 
         const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
@@ -592,10 +640,22 @@ serve(async (req) => {
         }
 
         if (includeDisasters && disasters && disasters.length) {
-          liveDataBlock += `\n\n=== ACTIVE DISASTERS (ReliefWeb, country-level) ===`;
-          liveDataBlock += `\n` + disasters.slice(0, 4).map((d) =>
-            `  • ${d.type}: ${d.name}${d.status ? ` [${d.status}]` : ""}`
-          ).join("\n");
+          // Quick-filter: if the user asked about safety/healthcare/weather, surface those first.
+          const filterCats = disasterCategories.length ? disasterCategories : (["safety","healthcare","weather"] as DisasterCategory[]);
+          const matched = disasters.filter((d) => filterCats.includes(d.category));
+          const others = disasters.filter((d) => !filterCats.includes(d.category));
+          const ordered = [...matched, ...others];
+          const filterLabel = disasterCategories.length
+            ? ` · prioritized by quick filter: ${disasterCategories.join(", ")}`
+            : "";
+          liveDataBlock += `\n\n=== ACTIVE DISASTERS (ReliefWeb, country-level${filterLabel}) ===`;
+          liveDataBlock += `\n` + ordered.slice(0, 6).map((d) => {
+            const tag = filterCats.includes(d.category) ? ` 🎯 [${d.category}]` : ` [${d.category}]`;
+            return `  • ${d.type}: ${d.name}${d.status ? ` [${d.status}]` : ""}${tag}`;
+          }).join("\n");
+          if (disasterCategories.length && matched.length === 0) {
+            liveDataBlock += `\n- (No active incidents in country match the user's quick filter — listed are most recent of any category.)`;
+          }
         }
 
         // Hint to the assistant: if Safety chip was tapped (wantsSafetyDeep) but we DIDN'T fetch
