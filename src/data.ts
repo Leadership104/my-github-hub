@@ -626,58 +626,27 @@ export const PHRASES: Record<string, { label: string; phrases: { en: string; loc
   ]},
 };
 
+// Only verified Kipita affiliate partners. Do NOT add Skyscanner, Booking.com, Airbnb, RentalCars, Uber, Lyft, Airalo, NordVPN, etc.
 export const TRANSPORT_LINKS = [
-  { emoji: '✈️', label: 'Flights', url: 'https://www.skyscanner.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA10' },
+  { emoji: '✈️', label: 'Flights', url: 'https://expedia.com/affiliate/eA2cKky' },
   { emoji: '🏨', label: 'Hotels', url: 'https://www.hotels.com/affiliate/RrZ7bmg' },
-  { emoji: '🏨', label: 'Expedia', url: 'https://expedia.com/affiliate/eA2cKky' },
-  { emoji: '🚗', label: 'Car Rental', url: 'https://www.rentalcars.com/?utm_source=kipita&utm_medium=app' },
   { emoji: '🚢', label: 'Cruise', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w' },
-  { emoji: '🚕', label: 'Uber', url: 'https://uber.com/?utm_source=kipita&utm_medium=app' },
-  { emoji: '🛻', label: 'Lyft', url: 'https://lyft.com/?utm_source=kipita&utm_medium=app' },
 ];
 
 export const BOOKING_TILES = [
-  { emoji: '✈️', label: 'Flights', desc: 'Compare & book flights worldwide', url: 'https://www.skyscanner.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA10', provider: 'Skyscanner' },
-  { emoji: '🏨', label: 'Hotels', desc: 'Best rates on 2M+ properties', url: 'https://www.booking.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAGENI', provider: 'Booking.com' },
-  { emoji: '🏨', label: 'Expedia', desc: 'Bundle deals on flights + hotels', url: 'https://expedia.com/affiliate/eA2cKky', provider: 'Expedia' },
-  { emoji: '🏨', label: 'Hotels.com', desc: 'Earn free nights on every 10 stays', url: 'https://www.hotels.com/affiliate/RrZ7bmg', provider: 'Hotels.com' },
-  { emoji: '🏠', label: 'Stays', desc: 'Unique homes & apartments', url: 'https://www.airbnb.com/', provider: 'Airbnb' },
-  { emoji: '🚗', label: 'Car Rental', desc: 'Vehicles in 60,000+ locations', url: 'https://www.rentalcars.com/?utm_source=kipita&utm_medium=app', provider: 'RentalCars' },
+  { emoji: '✈️', label: 'Flights', desc: 'Bundle deals on flights worldwide', url: 'https://expedia.com/affiliate/eA2cKky', provider: 'Expedia' },
+  { emoji: '🏨', label: 'Hotels', desc: 'Earn a free night for every 10 stays', url: 'https://www.hotels.com/affiliate/RrZ7bmg', provider: 'Hotels.com' },
   { emoji: '🚢', label: 'Cruises', desc: 'Deals on cruises worldwide', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w', provider: 'Expedia Cruises' },
-  { emoji: '🛡️', label: 'Insurance', desc: 'Travel insurance for nomads', url: 'https://www.worldnomads.com/', provider: 'World Nomads' },
-  { emoji: '📶', label: 'eSIM Data', desc: 'Instant data in 200+ countries', url: 'https://www.airalo.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA5', provider: 'Airalo' },
-  { emoji: '🔐', label: 'VPN', desc: 'Secure connection worldwide', url: 'https://nordvpn.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAVPN', provider: 'NordVPN' },
-];
-
-export const SAVETRAVELDEALS = [
-  { emoji: '✈️', label: 'Flights & Hotels', desc: 'Search and book at the best prices', url: 'https://savetraveldeals.com/book-hotels-app/' },
-  { emoji: '🚗', label: 'Car Rental', desc: 'Rent a car anywhere in the world', url: 'https://savetraveldeals.com/car-rental-app/' },
-  { emoji: '🚐', label: 'Airport Transfers', desc: 'Reliable airport transfer services', url: 'https://savetraveldeals.com/airport-transfers/' },
-  { emoji: '🚲', label: 'Bike Rental', desc: 'Explore cities on two wheels', url: 'https://savetraveldeals.com/bike-rental-app/' },
 ];
 
 export const PERKS = [
-  { icon: '✈️', title: 'Skyscanner', desc: '10% off flights when booked through Kipita.', code: 'KIPITA10', expiry: 'Dec 2026', url: 'https://www.skyscanner.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA10', category: 'travel' },
-  { icon: '🏨', title: 'Booking.com', desc: 'Genius Level 2 instant unlock — up to 20% off.', code: 'KIPITAGENI', expiry: 'Ongoing', url: 'https://www.booking.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAGENI', category: 'travel' },
-  { icon: '🏨', title: 'Expedia', desc: 'Bundle & save on flights + hotels.', code: '', expiry: 'Ongoing', url: 'https://expedia.com/affiliate/eA2cKky', category: 'travel' },
-  { icon: '🏨', title: 'Hotels.com', desc: 'Earn a free night for every 10 stays.', code: '', expiry: 'Ongoing', url: 'https://www.hotels.com/affiliate/RrZ7bmg', category: 'travel' },
-  { icon: '🏠', title: 'Airbnb', desc: '$25 off your first stay with Kipita referral.', code: 'KIPITABNB', expiry: 'Mar 2027', url: 'https://www.airbnb.com/', category: 'travel' },
-  { icon: '🚢', title: 'Expedia Cruises', desc: 'Exclusive nomad cruise deals + onboard credits.', code: 'KIPITACRUISE', expiry: 'Ongoing', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w', category: 'travel' },
-  { icon: '🚕', title: 'Uber', desc: 'Rides worldwide — fast & reliable.', code: '', expiry: 'Ongoing', url: 'https://uber.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
-  { icon: '🛻', title: 'Lyft', desc: 'Affordable rides across North America.', code: '', expiry: 'Ongoing', url: 'https://lyft.com/?utm_source=kipita&utm_medium=app', category: 'travel' },
-  { icon: '🦢', title: 'Swan Bitcoin', desc: 'Auto-stack sats — $10 free Bitcoin on signup.', code: 'KIPITASWAN', expiry: 'Dec 2026', url: 'https://www.swanbitcoin.com/kipita/', category: 'btc' },
-  { icon: '💳', title: 'Fold Card', desc: 'Earn BTC rewards on every purchase. Spin the wheel daily.', code: 'MAJL4MYU', expiry: 'Ongoing', url: 'https://use.foldapp.com/r/MAJL4MYU', category: 'btc' },
-  
-  
-  { icon: '🥇', title: 'Kinesis', desc: 'Gold & silver-backed digital currency. Trade precious metals.', code: 'KM00083150', expiry: 'Ongoing', url: 'https://kms.kinesis.money/signup/KM00083150', category: 'btc' },
-  { icon: '⛽', title: 'Upside', desc: 'Cash back on gas, food & groceries.', code: '', expiry: 'Ongoing', url: 'https://upside.com/', category: 'btc' },
-  { icon: '🗺️', title: 'BTCMap', desc: 'Find Bitcoin merchants worldwide.', code: '', expiry: 'Ongoing', url: 'https://btcmap.org/?utm_source=kipita&utm_medium=app', category: 'btc' },
-  { icon: '💻', title: 'NomadList Pro', desc: '3 months free NomadList Pro subscription.', code: 'KIPITANOMAD', expiry: 'Mar 2027', url: 'https://nomadlist.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITANOMAD', category: 'tools' },
-  { icon: '📶', title: 'Airalo eSIM', desc: '5% off any eSIM data plan worldwide.', code: 'KIPITA5', expiry: 'Jun 2026', url: 'https://www.airalo.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITA5', category: 'tools' },
-  { icon: '🏋️', title: 'ClassPass', desc: 'First month free — access gyms, yoga and fitness globally.', code: 'KIPITAFIT', expiry: 'Ongoing', url: 'https://classpass.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAFIT', category: 'tools' },
-  { icon: '🔐', title: 'NordVPN', desc: '2-year plan at 70% off. Secure your connection.', code: 'KIPITAVPN', expiry: 'Dec 2026', url: 'https://nordvpn.com/?utm_source=kipita&utm_medium=app&utm_campaign=KIPITAVPN', category: 'tools' },
-  { icon: '🛡️', title: 'World Nomads', desc: 'Travel insurance built for nomads. 10% off with code.', code: 'KIPITASAFE', expiry: 'Ongoing', url: 'https://www.worldnomads.com/', category: 'tools' },
-  { icon: '💼', title: 'Wise', desc: 'Multi-currency account. First transfer free.', code: 'KIPITAWISE', expiry: 'Ongoing', url: 'https://wise.com/', category: 'tools' },
+  { icon: '✈️', title: 'Expedia', url: 'https://expedia.com/affiliate/eA2cKky', category: 'travel' },
+  { icon: '🏨', title: 'Hotels.com', url: 'https://www.hotels.com/affiliate/RrZ7bmg', category: 'travel' },
+  { icon: '🚢', title: 'Expedia Cruises', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w', category: 'travel' },
+  { icon: '🦢', title: 'Swan Bitcoin', url: 'https://www.swanbitcoin.com/kipita/', category: 'btc' },
+  { icon: '💳', title: 'Fold Card', url: 'https://use.foldapp.com/r/MAJL4MYU', category: 'btc' },
+  { icon: '🥇', title: 'Kinesis', url: 'https://kms.kinesis.money/signup/KM00083150', category: 'btc' },
+  { icon: '⛽', title: 'Upside', url: 'https://upside.com/', category: 'tools' },
 ];
 
 export const DEMO_REVIEWS = [
