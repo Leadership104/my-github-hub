@@ -24,6 +24,13 @@
   --muted-foreground: 215 14% 46%;
   --primary: 4 79% 56%;
   --primary-foreground: 0 0% 100%;
+
+  /* Reusable design tokens for glass + 3D shadow */
+  --shadow-3d: 0 1px 2px hsl(220 30% 12% / 0.06), 0 4px 12px hsl(220 30% 12% / 0.08), 0 12px 24px -8px hsl(220 30% 12% / 0.10);
+  --shadow-3d-hover: 0 2px 4px hsl(220 30% 12% / 0.08), 0 12px 28px hsl(220 30% 12% / 0.14), 0 24px 48px -12px hsl(220 30% 12% / 0.18);
+  --shadow-3d-press: 0 1px 1px hsl(220 30% 12% / 0.05), 0 2px 4px hsl(220 30% 12% / 0.08);
+  --glass-bg: linear-gradient(180deg, hsl(0 0% 100% / 0.78) 0%, hsl(0 0% 100% / 0.62) 100%);
+  --glass-border: hsl(0 0% 100% / 0.55);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,7 +53,7 @@ body {
   -webkit-font-smoothing: antialiased; user-select: none; vertical-align: middle;
 }
 
-/* Animations */
+/* ───────────── Animations ───────────── */
 @keyframes fadeSlideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -67,10 +74,73 @@ body {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
+@keyframes bubbly-pop {
+  0% { transform: scale(0.85); }
+  55% { transform: scale(1.18); }
+  80% { transform: scale(0.96); }
+  100% { transform: scale(1.08); }
+}
+@keyframes float-in {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
 
 .animate-fadeSlideUp { animation: fadeSlideUp 0.4s cubic-bezier(.22,.68,0,1.2) both; }
 .animate-sos { animation: sos-pulse 2s ease-in-out infinite; }
 .animate-pulse-dot { animation: pulse-dot 2s infinite; }
+.animate-bubbly { animation: bubbly-pop 0.45s cubic-bezier(.34,1.56,.64,1) both; }
+.animate-float-in { animation: float-in 0.35s cubic-bezier(.22,.68,0,1.2) both; }
+
+/* ───────────── Glassmorphism + 3D button system ─────────────
+   Apply `.btn-3d` to any tappable surface. Adds:
+     • subtle layered shadow → "lifted" feel
+     • light glass film over background colour
+     • springy hover lift + press
+*/
+.btn-3d {
+  position: relative;
+  transition: transform 220ms cubic-bezier(.34,1.56,.64,1),
+              box-shadow 220ms ease,
+              background 220ms ease;
+  box-shadow: var(--shadow-3d);
+  transform: translateY(0);
+  will-change: transform, box-shadow;
+}
+.btn-3d::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.35), hsl(0 0% 100% / 0));
+  pointer-events: none;
+}
+.btn-3d:hover { transform: translateY(-3px); box-shadow: var(--shadow-3d-hover); }
+.btn-3d:active { transform: translateY(0) scale(0.97); box-shadow: var(--shadow-3d-press); transition-duration: 90ms; }
+
+/* Glass surface — translucent with subtle border */
+.glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-3d);
+}
+.glass-dark {
+  background: linear-gradient(180deg, hsl(218 47% 18% / 0.78), hsl(218 56% 11% / 0.72));
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid hsl(0 0% 100% / 0.10);
+  color: hsl(0 0% 100%);
+}
+
+/* Bubbly tab — for nav active state */
+.tab-bubbly { transition: transform 320ms cubic-bezier(.34,1.56,.64,1); }
+.tab-bubbly[data-active="true"] { animation: bubbly-pop 0.45s cubic-bezier(.34,1.56,.64,1); }
+
+/* Subtle hover lift for any card */
+.lift {
+  transition: transform 220ms cubic-bezier(.34,1.56,.64,1), box-shadow 220ms ease;
+}
+.lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-3d-hover); }
 
 /* Scrollbar styling */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
