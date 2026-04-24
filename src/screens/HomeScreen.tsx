@@ -308,10 +308,10 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                     <button
                       key={chip.label}
                       onClick={() => { handleChipTap(chip, expandedTile); setExpandedTile(null); }}
-                      className="btn-3d flex items-center gap-1.5 px-3 py-2 bg-card rounded-full text-left snap-start flex-shrink-0 w-[calc((100cqw-2.5rem)/4.5)]"
+                      className="btn-3d flex items-center gap-2 px-4 py-2.5 bg-card rounded-full text-left snap-start flex-shrink-0"
                     >
-                      <span className="text-base flex-shrink-0">{chip.emoji}</span>
-                      <span className="text-[10px] font-semibold text-foreground truncate">{chip.label}</span>
+                      <span className="text-lg flex-shrink-0">{chip.emoji}</span>
+                      <span className="text-xs font-semibold text-foreground whitespace-nowrap">{chip.label}</span>
                     </button>
                   ))}
                 </div>
