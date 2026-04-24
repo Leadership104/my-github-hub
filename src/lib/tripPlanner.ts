@@ -138,6 +138,9 @@ export function buildTrip(opts: {
   invites?: string[];
   photo?: string;
   summary?: string;
+  gallery?: string[];
+  history?: string;
+  areaOverview?: string;
 }): Trip {
   const start = opts.startDate ? new Date(opts.startDate) : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d; })();
   const end = new Date(start);
@@ -156,6 +159,9 @@ export function buildTrip(opts: {
     invites: opts.invites || [],
     photo: opts.photo,
     summary: opts.summary,
+    gallery: opts.gallery,
+    history: opts.history,
+    areaOverview: opts.areaOverview,
     createdAt: Date.now(),
   };
 }

@@ -49,8 +49,11 @@ export interface Trip {
   invites?: string[];
   isSample?: boolean;
   createdAt?: number;
-  photo?: string;     // real city photo (Wikipedia)
-  summary?: string;   // city summary
+  photo?: string;          // real city photo (hero)
+  summary?: string;        // city overview
+  gallery?: string[];      // 3-4 supplemental real photos
+  history?: string;        // historical blurb
+  areaOverview?: string;   // area / geography blurb
 }
 
 export interface ItineraryItem {
