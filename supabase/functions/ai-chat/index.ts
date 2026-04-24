@@ -426,12 +426,6 @@ WATER & HEALTH SOURCING — when discussing water safety, vaccines, or disease r
 WILDFIRE / EARTHQUAKE / DISASTER DATA — when LIVE WILDFIRE, EARTHQUAKE, or DISASTER blocks are present in context, lead with the specific number (e.g., "3 active fires within 60 mi") and cite the source briefly. Sources to mention by name when used: NASA FIRMS (wildfires), USGS (earthquakes), ReliefWeb (disasters), Open-Meteo Air Quality (PM2.5/AQI). Add a [Safety screen](kipita://tab/safety) link.
 
 NEVER MENTION: Strike, River, Skyscanner, Booking.com, Airbnb.`;
-Do NOT add affiliate links to safety, food, health, or chit-chat replies.
-
-WATER & HEALTH SOURCING — when discussing water safety, vaccines, or disease risk, cite the CDC:
-• [CDC Travelers' Health](https://wwwnc.cdc.gov/travel) — and when possible link the country page directly: https://wwwnc.cdc.gov/travel/destinations/traveler/none/<country-slug>
-
-NEVER MENTION: Strike, River, Skyscanner, Booking.com, Airbnb.`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
