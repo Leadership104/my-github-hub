@@ -15,7 +15,7 @@ export default function FuelScreen({ onBack }: Props) {
           <span className="ms text-xl text-foreground">arrow_back</span>
         </button>
         <div className="flex-1">
-          <h1 className="text-base font-bold text-foreground">⛽ Fuel & Cash Back</h1>
+          <h1 className="text-base font-bold text-foreground">⛽ Gas/EV & Cash Back</h1>
           <p className="text-xs text-muted-foreground">Earn cash back every time you fill up</p>
         </div>
       </div>
@@ -26,7 +26,7 @@ export default function FuelScreen({ onBack }: Props) {
           {/* Hero */}
           <div className="glass rounded-kipita p-6 text-center mb-4">
             <div className="text-6xl mb-3">⛽</div>
-            <h2 className="text-xl font-extrabold text-foreground mb-1">Cash Back on Fuel</h2>
+            <h2 className="text-xl font-extrabold text-foreground mb-1">Cash Back on Gas/EV</h2>
             <p className="text-sm text-muted-foreground mb-4">
               Powered by Upside — earn up to 25¢/gallon at thousands of gas stations near you.
             </p>
