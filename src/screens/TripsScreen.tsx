@@ -11,9 +11,6 @@ const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
   flight: { emoji: '✈️', label: 'Flight' },
   hotel: { emoji: '🏨', label: 'Hotel' },
   cruise: { emoji: '🚢', label: 'Cruise' },
-  car: { emoji: '🚗', label: 'Car Rental' },
-  insurance: { emoji: '🛡️', label: 'Insurance' },
-  esim: { emoji: '📶', label: 'eSIM' },
 };
 
 const POPULAR_DESTS = [
