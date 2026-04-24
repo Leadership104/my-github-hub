@@ -503,13 +503,16 @@ serve(async (req) => {
       let liveHealth: LiveHealth | null = null;
       let nearestHospital: PlaceChip | null = null;
       if (typeof context.lat === "number" && typeof context.lng === "number") {
-        const [restaurants, cafes, attractions, bars, hospitals, health] = await Promise.all([
+        const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
           fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
           fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
           fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
           fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
           fetchLiveHealth(context.lat, context.lng),
+          fetchWildfires(context.lat, context.lng, 100),
+          fetchEarthquakes(context.lat, context.lng, 200, 2.5),
+          context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
         ]);
 
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
@@ -530,7 +533,7 @@ serve(async (req) => {
         }
 
         if (liveHealth) {
-          liveDataBlock += `\n\n=== LIVE HEALTH DATA (real-time, from Open-Meteo Air Quality API) ===`;
+          liveDataBlock += `\n\n=== LIVE AIR QUALITY & UV (Open-Meteo Air Quality API, real-time) ===`;
           if (liveHealth.usAqi != null) liveDataBlock += `\n- US AQI: ${Math.round(liveHealth.usAqi)} (${aqiCategory(liveHealth.usAqi)})`;
           if (liveHealth.pm25 != null) liveDataBlock += `\n- PM2.5: ${liveHealth.pm25.toFixed(1)} µg/m³`;
           if (liveHealth.pm10 != null) liveDataBlock += `\n- PM10: ${liveHealth.pm10.toFixed(1)} µg/m³`;
@@ -543,6 +546,39 @@ serve(async (req) => {
           if (p.tree != null && p.tree > 0) pollenParts.push(`tree ${p.tree.toFixed(1)}`);
           if (p.weed != null && p.weed > 0) pollenParts.push(`weed ${p.weed.toFixed(1)}`);
           if (pollenParts.length) liveDataBlock += `\n- Pollen (grains/m³): ${pollenParts.join(", ")}`;
+        }
+
+        if (fires) {
+          liveDataBlock += `\n\n=== LIVE WILDFIRE DATA (NASA FIRMS — VIIRS NOAA-20 NRT, last 24h, 100mi radius) ===`;
+          if (fires.count === 0) {
+            liveDataBlock += `\n- No active fire detections within 100 mi in the last 24h.`;
+          } else {
+            liveDataBlock += `\n- Active fire detections: ${fires.count} (high-confidence: ${fires.highConfidence})`;
+            if (fires.nearestMi != null) liveDataBlock += `\n- Nearest detection: ${fires.nearestMi} mi away`;
+            if (fires.totalFrpMw > 0) liveDataBlock += `\n- Combined fire radiative power: ~${fires.totalFrpMw} MW`;
+            if (fires.hits.length) {
+              liveDataBlock += `\n- Top hits:\n` + fires.hits.slice(0, 5).map((h) =>
+                `  • ${h.distanceMi} mi away${h.frp ? ` · ${Math.round(h.frp)} MW` : ""}${h.confidence ? ` · conf=${h.confidence}` : ""}${h.acqDate ? ` · ${h.acqDate} ${h.acqTime || ""}` : ""}`
+              ).join("\n");
+            }
+            liveDataBlock += `\n- Map: https://firms.modaps.eosdis.nasa.gov/usfs/map/`;
+          }
+        } else if (!NASA_FIRMS_MAP_KEY()) {
+          liveDataBlock += `\n\n(Wildfire data unavailable: NASA_FIRMS_MAP_KEY not configured)`;
+        }
+
+        if (quakes && quakes.length) {
+          liveDataBlock += `\n\n=== RECENT EARTHQUAKES (USGS, M2.5+, 200mi radius, last 30d) ===`;
+          liveDataBlock += `\n` + quakes.slice(0, 5).map((q) =>
+            `  • M${q.mag.toFixed(1)} — ${q.place} (${q.distanceMi} mi away)`
+          ).join("\n");
+        }
+
+        if (disasters && disasters.length) {
+          liveDataBlock += `\n\n=== ACTIVE DISASTERS (ReliefWeb, country-level) ===`;
+          liveDataBlock += `\n` + disasters.slice(0, 4).map((d) =>
+            `  • ${d.type}: ${d.name}${d.status ? ` [${d.status}]` : ""}`
+          ).join("\n");
         }
       }
 
