@@ -101,6 +101,16 @@ interface PlaceChip {
   reviews?: number;
   openNow?: boolean;
   summary?: string;
+  distanceMi?: number;
+}
+
+function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const R = 3958.8; // miles
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
 async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5): Promise<PlaceChip[]> {
@@ -113,7 +123,7 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary",
+          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location",
       },
       body: JSON.stringify({
         includedTypes: [type],
@@ -124,14 +134,23 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
     });
     if (!resp.ok) return [];
     const data = await resp.json();
-    return (data.places || []).map((p: any) => ({
-      name: p.displayName?.text,
-      type: p.primaryTypeDisplayName?.text || type,
-      rating: p.rating,
-      reviews: p.userRatingCount,
-      openNow: p.currentOpeningHours?.openNow,
-      summary: p.editorialSummary?.text,
-    }));
+    return (data.places || []).map((p: any) => {
+      const plat = p.location?.latitude;
+      const plng = p.location?.longitude;
+      const distanceMi =
+        typeof plat === "number" && typeof plng === "number"
+          ? Math.round(haversineMi(lat, lng, plat, plng) * 10) / 10
+          : undefined;
+      return {
+        name: p.displayName?.text,
+        type: p.primaryTypeDisplayName?.text || type,
+        rating: p.rating,
+        reviews: p.userRatingCount,
+        openNow: p.currentOpeningHours?.openNow,
+        summary: p.editorialSummary?.text,
+        distanceMi,
+      };
+    });
   } catch {
     return [];
   }
@@ -228,6 +247,13 @@ EXTERNAL TRAVEL LINKS (use only when actually booking-related):
 • BTC Rewards Card: [Fold Card](https://use.foldapp.com/r/MAJL4MYU)
 • Gold/Silver: [Kinesis](https://kms.kinesis.money/signup/KM00083150)
 • Cashback Gas/Groceries: [Upside](https://upside.com/)
+
+CONTEXTUAL AFFILIATE CTAs (append at the END of the relevant reply, ONLY if it makes sense):
+• Where to stay / hotels / accommodation / neighborhoods → finish with one line:
+  *Book it:* [Hotels.com](https://www.hotels.com/affiliate/RrZ7bmg) · [Expedia](https://expedia.com/affiliate/eA2cKky)
+• Get around / transport / rental / road trip / fuel → finish with one line:
+  *Save on the road:* [Upside cashback](https://upside.com/) (gas) — and if rental car talk: [Expedia cars](https://expedia.com/affiliate/eA2cKky)
+Do NOT add affiliate links to safety, food, health, or chit-chat replies.
 
 WATER & HEALTH SOURCING — when discussing water safety, vaccines, or disease risk, cite the CDC:
 • [CDC Travelers' Health](https://wwwnc.cdc.gov/travel) — and when possible link the country page directly: https://wwwnc.cdc.gov/travel/destinations/traveler/none/<country-slug>

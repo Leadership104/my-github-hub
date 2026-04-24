@@ -19,6 +19,7 @@ interface PlaceChip {
   reviews?: number;
   openNow?: boolean;
   summary?: string;
+  distanceMi?: number;
 }
 
 interface Props {
@@ -105,22 +106,29 @@ function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceCh
   return (
     <div className="px-1 pb-2 pt-1">
       <p className="text-[10px] font-bold text-kipita-red uppercase tracking-wider mb-1.5 px-1">
-        ✨ Open these in Places
+        ✨ Recommended near you
       </p>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {places.map((p, i) => (
           <button
             key={`${p.name}-${i}`}
             onClick={() => onTap(p)}
-            className="flex-shrink-0 bg-kipita-red/5 border border-kipita-red/30 rounded-xl px-3 py-2 text-left hover:border-kipita-red hover:bg-kipita-red/10 transition-all max-w-[180px] active:scale-95"
+            className="relative flex-shrink-0 bg-white border border-neutral-200 rounded-xl px-3 py-2 pb-4 text-left hover:border-neutral-400 transition-all min-w-[160px] max-w-[200px] active:scale-95 shadow-sm"
           >
-            <div className="text-xs font-bold text-foreground truncate">{p.name}</div>
+            <div className="text-xs font-bold text-black truncate">{p.name}</div>
             <div className="flex items-center gap-1.5 mt-0.5">
-              {p.rating && <span className="text-[10px] font-semibold text-amber-500">★ {p.rating}</span>}
-              {p.openNow === true  && <span className="text-[10px] text-emerald-500 font-medium">Open</span>}
-              {p.openNow === false && <span className="text-[10px] text-muted-foreground">Closed</span>}
+              {p.rating != null && (
+                <span className="text-[10px] font-semibold text-amber-400">★ <span className="text-black">{p.rating}</span></span>
+              )}
+              {p.openNow === true  && <span className="text-[10px] text-emerald-600 font-medium">Open</span>}
+              {p.openNow === false && <span className="text-[10px] text-neutral-500">Closed</span>}
             </div>
-            <div className="text-[10px] text-kipita-red mt-0.5 truncate font-semibold">→ {p.type}</div>
+            <div className="text-[10px] text-neutral-600 mt-0.5 truncate">{p.type}</div>
+            {p.distanceMi != null && (
+              <div className="absolute bottom-1 right-2 text-[9px] font-medium text-neutral-400">
+                {p.distanceMi < 0.1 ? '<0.1' : p.distanceMi.toFixed(1)} mi
+              </div>
+            )}
           </button>
         ))}
       </div>
