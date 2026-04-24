@@ -217,7 +217,163 @@ async function fetchLiveHealth(lat: number, lng: number): Promise<LiveHealth | n
   }
 }
 
-// ── Ultimate Travel Expert System Prompt ──────────────────────────────────────
+// ── Wildfires (NASA FIRMS — VIIRS NOAA-20 NRT, last 24h) ──────────────────────
+interface WildfireHit {
+  lat: number;
+  lng: number;
+  distanceMi: number;
+  brightness?: number;   // brightness temp (K)
+  frp?: number;          // fire radiative power (MW)
+  confidence?: string;   // l/n/h or numeric 0-100
+  acqDate?: string;
+  acqTime?: string;
+  daynight?: string;
+}
+
+interface WildfireSummary {
+  count: number;
+  nearestMi?: number;
+  highConfidence: number;
+  totalFrpMw: number;
+  source: string;
+  hits: WildfireHit[];
+}
+
+async function fetchWildfires(lat: number, lng: number, radiusMi = 100): Promise<WildfireSummary | null> {
+  const key = NASA_FIRMS_MAP_KEY();
+  if (!key) return null;
+  // Approx 1° lat ≈ 69 mi. Build a small bbox around the point.
+  const dLat = radiusMi / 69;
+  const dLng = radiusMi / (69 * Math.max(0.1, Math.cos((lat * Math.PI) / 180)));
+  const minLng = (lng - dLng).toFixed(4);
+  const minLat = (lat - dLat).toFixed(4);
+  const maxLng = (lng + dLng).toFixed(4);
+  const maxLat = (lat + dLat).toFixed(4);
+  // FIRMS area CSV: /api/area/csv/{KEY}/{SOURCE}/{W,S,E,N}/{DAY_RANGE}
+  const source = "VIIRS_NOAA20_NRT";
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${source}/${minLng},${minLat},${maxLng},${maxLat}/1`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const text = await resp.text();
+    if (!text || text.startsWith("Invalid") || text.startsWith("No fire")) {
+      return { count: 0, highConfidence: 0, totalFrpMw: 0, source: "NASA FIRMS (VIIRS NOAA-20 NRT)", hits: [] };
+    }
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) {
+      return { count: 0, highConfidence: 0, totalFrpMw: 0, source: "NASA FIRMS (VIIRS NOAA-20 NRT)", hits: [] };
+    }
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
+    const idx = (name: string) => header.indexOf(name);
+    const iLat = idx("latitude");
+    const iLng = idx("longitude");
+    const iBright = idx("bright_ti4");
+    const iFrp = idx("frp");
+    const iConf = idx("confidence");
+    const iDate = idx("acq_date");
+    const iTime = idx("acq_time");
+    const iDN = idx("daynight");
+
+    const hits: WildfireHit[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      if (cols.length < 4) continue;
+      const fLat = parseFloat(cols[iLat]);
+      const fLng = parseFloat(cols[iLng]);
+      if (!isFinite(fLat) || !isFinite(fLng)) continue;
+      const distanceMi = Math.round(haversineMi(lat, lng, fLat, fLng) * 10) / 10;
+      if (distanceMi > radiusMi) continue;
+      hits.push({
+        lat: fLat,
+        lng: fLng,
+        distanceMi,
+        brightness: iBright >= 0 ? parseFloat(cols[iBright]) : undefined,
+        frp: iFrp >= 0 ? parseFloat(cols[iFrp]) : undefined,
+        confidence: iConf >= 0 ? cols[iConf] : undefined,
+        acqDate: iDate >= 0 ? cols[iDate] : undefined,
+        acqTime: iTime >= 0 ? cols[iTime] : undefined,
+        daynight: iDN >= 0 ? cols[iDN] : undefined,
+      });
+    }
+    hits.sort((a, b) => a.distanceMi - b.distanceMi);
+    const highConfidence = hits.filter((h) => {
+      const c = (h.confidence || "").toLowerCase();
+      if (c === "h" || c === "high") return true;
+      const n = parseFloat(c);
+      return isFinite(n) && n >= 80;
+    }).length;
+    const totalFrpMw = Math.round(hits.reduce((s, h) => s + (h.frp || 0), 0));
+    return {
+      count: hits.length,
+      nearestMi: hits[0]?.distanceMi,
+      highConfidence,
+      totalFrpMw,
+      source: "NASA FIRMS (VIIRS NOAA-20 NRT)",
+      hits: hits.slice(0, 5),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── Recent earthquakes (USGS, no key required) ────────────────────────────────
+interface QuakeHit {
+  mag: number;
+  place: string;
+  time: number;
+  distanceMi: number;
+}
+async function fetchEarthquakes(lat: number, lng: number, radiusMi = 200, minMag = 2.5): Promise<QuakeHit[]> {
+  const radiusKm = Math.round(radiusMi * 1.60934);
+  const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lng}&maxradiuskm=${radiusKm}&minmagnitude=${minMag}&orderby=time&limit=8`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.features || []).map((f: any) => {
+      const [qLng, qLat] = f.geometry?.coordinates || [];
+      return {
+        mag: f.properties?.mag,
+        place: f.properties?.place || "Unknown",
+        time: f.properties?.time,
+        distanceMi: typeof qLat === "number" ? Math.round(haversineMi(lat, lng, qLat, qLng) * 10) / 10 : 0,
+      };
+    }).filter((q: QuakeHit) => isFinite(q.mag));
+  } catch {
+    return [];
+  }
+}
+
+// ── ReliefWeb disaster alerts (no key required) ───────────────────────────────
+interface DisasterHit { name: string; type: string; date?: string; status?: string; }
+async function fetchDisasters(countryCode: string): Promise<DisasterHit[]> {
+  if (!countryCode) return [];
+  try {
+    const url = `https://api.reliefweb.int/v1/disasters?appname=kipita-ai&filter[field]=country.iso3&limit=4&sort[]=date:desc&fields[include][]=name&fields[include][]=type.name&fields[include][]=status&fields[include][]=date`;
+    // ReliefWeb uses ISO3; map common ISO2 -> ISO3 (best-effort, lowercase 3-letter via fallback)
+    // Most users won't see this fail because we just no-op on miss.
+    const iso3Map: Record<string, string> = {
+      US:"USA",CA:"CAN",MX:"MEX",GB:"GBR",FR:"FRA",DE:"DEU",IT:"ITA",ES:"ESP",PT:"PRT",NL:"NLD",BE:"BEL",CH:"CHE",AT:"AUT",SE:"SWE",NO:"NOR",DK:"DNK",GR:"GRC",TR:"TUR",
+      TH:"THA",JP:"JPN",KR:"KOR",CN:"CHN",HK:"HKG",SG:"SGP",MY:"MYS",ID:"IDN",PH:"PHL",VN:"VNM",IN:"IND",AE:"ARE",EG:"EGY",ZA:"ZAF",MA:"MAR",
+      BR:"BRA",AR:"ARG",CL:"CHL",CO:"COL",PE:"PER",RU:"RUS",IL:"ISR",AU:"AUS",NZ:"NZL",
+    };
+    const iso3 = iso3Map[countryCode.toUpperCase()];
+    if (!iso3) return [];
+    const resp = await fetch(`${url}&filter[value]=${iso3}`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.data || []).map((d: any) => ({
+      name: d.fields?.name,
+      type: d.fields?.type?.[0]?.name || "Disaster",
+      date: d.fields?.date?.created,
+      status: d.fields?.status,
+    })).filter((x: DisasterHit) => x.name);
+  } catch {
+    return [];
+  }
+}
+
+
 const SYSTEM_PROMPT = `You are Kipita — a "Know Before You Go" travel intelligence assistant. Talk like a sharp, well-traveled friend texting you back: confident, warm, useful.
 
 KNOWLEDGE: safety, health (water/food/air/vaccines), entry & visas, money, culture, transport, food, accommodation, current conditions.
