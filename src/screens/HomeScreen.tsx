@@ -301,7 +301,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
               </button>
             </div>
             <div className="@container">
-              <div className="overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
+              <div className="overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-1 px-1">
                 <div className="flex gap-2 pb-1 w-max">
                   {ESSENTIAL_CHIPS[expandedTile].map(chip => (
                     <button
@@ -374,7 +374,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 <span className="text-[10px] font-bold truncate">View all {tile.label.replace(/\n/g, ' ')}</span>
               </button>
               <div className="@container">
-                <div className="overflow-x-auto scrollbar-none snap-x snap-mandatory -mx-1 px-1">
+                <div className="overflow-x-auto scrollbar-hide snap-x snap-mandatory -mx-1 px-1">
                   <div className="flex gap-2 pb-1 w-max">
                     {tile.chips.map(chip => (
                       <button
