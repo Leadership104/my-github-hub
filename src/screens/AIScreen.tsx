@@ -199,7 +199,7 @@ const QUICK_ACTIONS = [
   { emoji: '🗺️', label: 'Brief me',        prompt: 'Give me a full Know Before You Go briefing for where I am right now.' },
   { emoji: '🛡️', label: 'Safety intel',   prompt: 'What\'s the real safety situation here? What should I specifically watch out for?' },
   { emoji: '🍽️', label: 'Best food',       prompt: 'What\'s the best food near me right now? Be specific with real spots.' },
-  { emoji: '💰', label: 'Money tips',       prompt: 'What do I need to know about money here? ATMs, cards, budget, tips.' },
+  { emoji: '🏥', label: 'Health',           prompt: 'Give me a real health briefing for this area right now — air quality, water safety, disease risks, vaccines, and the nearest hospital. Use live data.' },
   { emoji: '🌃', label: 'Tonight',          prompt: 'What\'s the best thing to do tonight? Give me something specific and exciting.' },
   { emoji: '🏨', label: 'Where to stay',   prompt: 'What\'s the best neighborhood to stay in here, and what\'s a realistic hotel budget?' },
   { emoji: '🚕', label: 'Get around',       prompt: 'How do I get around safely here? Uber, taxis, transit — what\'s the real deal?' },
