@@ -754,40 +754,104 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
                     </div>
                   )}
 
-                  {/* Picked destination preview — real photo + summary */}
-                  {wDest && (
-                    <div className="glass rounded-kipita overflow-hidden">
-                      {wLoadingDetails ? (
-                        <div className="h-40 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
-                          Loading photo…
-                        </div>
-                      ) : wPickedPhoto ? (
-                        <img src={wPickedPhoto} alt={wDest} className="w-full h-40 object-cover" />
-                      ) : (
-                        <div className="h-40 bg-gradient-to-br from-kipita-navy to-slate-700 flex items-center justify-center text-6xl">
-                          {pickEmoji(wDest, wCountry)}
-                        </div>
-                      )}
-                      <div className="p-4">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-2xl">{pickEmoji(wDest, wCountry)}</span>
-                          <div className="flex-1">
-                            <div className="font-extrabold text-base">{wDest}</div>
-                            <div className="text-[11px] text-muted-foreground">{wCountry}</div>
-                          </div>
+                  {/* Picked destination preview — full hero + 4 thumbs + summary/history/area + booking CTA */}
+                  {wDest && (() => {
+                    const pool = [
+                      ...(wPickedPhoto ? [wPickedPhoto] : []),
+                      ...wPickedGallery,
+                    ];
+                    const unique = Array.from(new Set(pool));
+                    const hero = wPickedHero || wPickedPhoto;
+                    const thumbs = unique.filter(u => u !== hero).slice(0, 4);
+                    return (
+                      <div className="rounded-kipita overflow-hidden bg-card shadow-lg border border-border/40">
+                        {/* Hero image */}
+                        <div className="relative h-56 bg-gradient-to-br from-kipita-navy to-slate-700">
+                          {wLoadingDetails && !hero ? (
+                            <div className="absolute inset-0 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
+                              Loading photo…
+                            </div>
+                          ) : hero ? (
+                            <img src={hero} alt={wDest} className="absolute inset-0 w-full h-full object-cover" />
+                          ) : (
+                            <div className="absolute inset-0 flex items-center justify-center text-7xl">
+                              {pickEmoji(wDest, wCountry)}
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                           <button
-                            onClick={() => { setWDest(''); setWCountry(''); setWPickedPhoto(undefined); setWPickedSummary(undefined); }}
-                            className="text-[11px] text-muted-foreground hover:text-kipita-red"
+                            onClick={() => { setWDest(''); setWCountry(''); setWPickedPhoto(undefined); setWPickedSummary(undefined); setWPickedGallery([]); setWPickedHero(undefined); setWPickedHistory(undefined); setWPickedArea(undefined); }}
+                            className="btn-3d absolute top-3 right-3 glass-dark text-white text-[10px] font-bold px-3 py-1.5 rounded-full"
                           >
                             Change
                           </button>
+                          <div className="absolute bottom-3 left-4 right-4 text-white">
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl drop-shadow">{pickEmoji(wDest, wCountry)}</span>
+                              <div>
+                                <div className="font-extrabold text-xl drop-shadow">{wDest}</div>
+                                <div className="text-[11px] text-white/90 drop-shadow">{wCountry}</div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        {wPickedSummary && (
-                          <p className="text-xs text-muted-foreground leading-relaxed mt-2 line-clamp-4">{wPickedSummary}</p>
+
+                        {/* 4 thumbnails */}
+                        {(thumbs.length > 0 || wLoadingDetails) && (
+                          <div className="px-3 py-3 grid grid-cols-4 gap-2 bg-card">
+                            {wLoadingDetails && thumbs.length === 0
+                              ? [0,1,2,3].map(i => <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />)
+                              : thumbs.map(url => (
+                                  <button
+                                    key={url}
+                                    onClick={() => setWPickedHero(url)}
+                                    className={`btn-3d aspect-square rounded-lg overflow-hidden ${wPickedHero === url ? 'ring-2 ring-kipita-red ring-offset-2 ring-offset-card' : ''}`}
+                                  >
+                                    <img src={url} alt="" className="w-full h-full object-cover" />
+                                  </button>
+                                ))
+                            }
+                          </div>
                         )}
+
+                        {/* Summary / history / area */}
+                        <div className="px-4 pb-3 space-y-3">
+                          {wPickedSummary && (
+                            <div>
+                              <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
+                              <p className="text-xs text-foreground leading-relaxed line-clamp-5">{wPickedSummary}</p>
+                            </div>
+                          )}
+                          {wPickedHistory && (
+                            <div>
+                              <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">HISTORY</p>
+                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{wPickedHistory}</p>
+                            </div>
+                          )}
+                          {wPickedArea && (
+                            <div>
+                              <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">THE AREA</p>
+                              <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{wPickedArea}</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Booking CTA — leads into rest of wizard which finishes in trip detail w/ Flights/Hotels/Cruises */}
+                        <div className="px-4 pb-4">
+                          <button
+                            onClick={() => setWStep('date')}
+                            className="btn-3d w-full bg-kipita-red text-white py-3 rounded-kipita-sm font-extrabold text-sm flex items-center justify-center gap-2"
+                          >
+                            Continue to booking
+                            <span className="ms text-lg">arrow_forward</span>
+                          </button>
+                          <p className="text-[10px] text-center text-muted-foreground mt-2">
+                            Next: dates · duration · then book flights, hotels & cruises in-app
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    );
+                  })()}
 
                   {/* Popular shortcuts (only when nothing picked / searched) */}
                   {!wDest && wSearchResults.length === 0 && !wSearching && (
