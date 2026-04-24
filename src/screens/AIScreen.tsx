@@ -302,6 +302,12 @@ export default function AIScreen({
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
+    // Intercept Plan-a-trip quick action → jump straight to wizard at current location
+    if (text.trim() === '__OPEN_WIZARD__') {
+      const hint = locationName ? `plan:${locationName}|${countryCode || ''}` : '';
+      onSwitchTab?.('trips', hint);
+      return;
+    }
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: text.trim(), timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
@@ -354,7 +360,7 @@ export default function AIScreen({
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips]);
+  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips, onSwitchTab]);
 
   const handleRefresh = () => {
     briefingKeyRef.current = '';
@@ -438,18 +444,29 @@ export default function AIScreen({
 
         {(loading || briefingLoading) && <TypingIndicator />}
 
-        {/* Create trip CTA */}
+        {/* Open in Planner CTA — preferred path: rich preview + dates + duration */}
         {lastTrip && !loading && (
-          <div className="flex justify-center gap-2">
+          <div className="flex flex-col items-center gap-2 my-2">
+            <button
+              onClick={() => {
+                const cityFromDest = lastTrip.dest.split(',')[0].trim();
+                const hint = `plan:${cityFromDest}|${lastTrip.country}`;
+                setLastTrip(null);
+                onSwitchTab?.('trips', hint);
+              }}
+              className="px-4 py-2 bg-kipita-red text-white rounded-full text-xs font-bold hover:opacity-90 transition-opacity active:scale-95 shadow-md"
+            >
+              ✈️ Open {lastTrip.dest.split(',')[0]} in Trip Planner
+            </button>
             <button
               onClick={() => handleCreateTrip(lastTrip.dest)}
-              className="px-4 py-2 bg-kipita-green text-white rounded-full text-xs font-bold hover:opacity-90 transition-opacity active:scale-95"
+              className="text-[11px] text-muted-foreground underline"
             >
-              ✈️ Create Trip: {lastTrip.dest}
+              Or quick-create a {lastTrip.days}-day trip
             </button>
             <button
               onClick={() => setLastTrip(null)}
-              className="px-3 py-2 bg-muted text-muted-foreground rounded-full text-xs font-semibold"
+              className="text-[10px] text-muted-foreground"
             >
               Dismiss
             </button>

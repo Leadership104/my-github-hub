@@ -27,11 +27,13 @@ interface Props {
   onSaveTrips: (updated: Trip[]) => void;
   onBack?: () => void;
   onSwitchTab?: (tab: import('../types').TabId, hint?: string) => void;
+  /** Optional hint of form "plan:City|Country" to auto-open wizard pre-filled */
+  initialHint?: string;
 }
 
 type WizardStep = 'dest' | 'date' | 'days' | 'invites' | 'confirm';
 
-export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }: Props) {
+export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, initialHint }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
@@ -104,6 +106,18 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
     });
     return () => { cancelled = true; };
   }, [selectedTrip]);
+
+  // Auto-open wizard from external hint, e.g. "plan:Lisbon|Portugal"
+  useEffect(() => {
+    if (!initialHint || !initialHint.startsWith('plan:')) return;
+    const payload = initialHint.slice(5);
+    const [city, country = ''] = payload.split('|');
+    if (!city) return;
+    setShowWizard(true);
+    setWStep('dest');
+    pickDestination(city.trim(), country.trim());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialHint]);
 
   // Hydrate photo + summary + gallery + history when destination picked
   const pickDestination = async (city: string, country: string) => {
@@ -325,29 +339,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
           );
         })()}
 
-        {/* Summary + history + area overview */}
-        {(trip.summary || tripRich?.summary || tripRich?.history || tripRich?.areaOverview) && (
-          <div className="bg-card border-b border-border px-4 py-3 flex-shrink-0 space-y-3">
-            {(trip.summary || tripRich?.summary) && (
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
-                <p className="text-xs text-foreground leading-relaxed">{trip.summary || tripRich?.summary}</p>
-              </div>
-            )}
-            {tripRich?.history && (
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">HISTORY</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">{tripRich.history}</p>
-              </div>
-            )}
-            {tripRich?.areaOverview && (
-              <div>
-                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">THE AREA</p>
-                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{tripRich.areaOverview}</p>
-              </div>
-            )}
-          </div>
-        )}
+        {/* (Summary moved into scrollable area below for fold visibility) */}
 
         <div className="flex-1 overflow-y-auto pb-24">
           {/* BOOK & MANAGE row */}
@@ -367,6 +359,39 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
               ))}
             </div>
           </div>
+
+          {/* About destination — collapsible (Overview / History / The Area) */}
+          {(trip.summary || tripRich?.summary || tripRich?.history || tripRich?.areaOverview) && (() => {
+            const overview = trip.summary || tripRich?.summary;
+            return (
+              <details className="group bg-card border-b border-border">
+                <summary className="cursor-pointer list-none px-4 py-3 flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-muted-foreground tracking-widest">ABOUT {trip.dest.toUpperCase()}</p>
+                  <span className="ms text-muted-foreground text-lg group-open:rotate-180 transition-transform">expand_more</span>
+                </summary>
+                <div className="px-4 pb-4 space-y-3">
+                  {overview && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
+                      <p className="text-xs text-foreground leading-relaxed">{overview}</p>
+                    </div>
+                  )}
+                  {tripRich?.history && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">HISTORY</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{tripRich.history}</p>
+                    </div>
+                  )}
+                  {tripRich?.areaOverview && (
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">THE AREA</p>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{tripRich.areaOverview}</p>
+                    </div>
+                  )}
+                </div>
+              </details>
+            );
+          })()}
 
           {/* Itinerary section */}
           <div className="px-4 pt-4">
@@ -685,7 +710,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
         {/* AI Planner Modal */}
         {showAiPlanner && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-3 border-b border-border bg-card flex-shrink-0">
               <button onClick={() => setShowAiPlanner(false)} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
               <h3 className="font-bold text-sm flex-1">AI Trip Planner</h3>
@@ -698,7 +723,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
         {/* Plan a Trip wizard modal */}
         {showWizard && (
-          <div className="fixed inset-0 z-50 flex flex-col bg-background">
+          <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-4 border-b border-border bg-card flex-shrink-0">
               <button onClick={resetWizard} className="ms text-xl text-muted-foreground">close</button>
               <h3 className="font-bold text-base flex-1">Plan a Trip</h3>
@@ -836,17 +861,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
                           )}
                         </div>
 
-                        {/* Booking CTA — leads into rest of wizard which finishes in trip detail w/ Flights/Hotels/Cruises */}
                         <div className="px-4 pb-4">
-                          <button
-                            onClick={() => setWStep('date')}
-                            className="btn-3d w-full bg-kipita-red text-white py-3 rounded-kipita-sm font-extrabold text-sm flex items-center justify-center gap-2"
-                          >
-                            Continue to booking
-                            <span className="ms text-lg">arrow_forward</span>
-                          </button>
-                          <p className="text-[10px] text-center text-muted-foreground mt-2">
-                            Next: dates · duration · then book flights, hotels & cruises in-app
+                          <p className="text-[10px] text-center text-muted-foreground">
+                            Tap <span className="font-bold text-foreground">Next</span> to pick dates, then book flights, hotels & cruises in-app.
                           </p>
                         </div>
                       </div>
