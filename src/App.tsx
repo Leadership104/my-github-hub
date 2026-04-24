@@ -129,19 +129,35 @@ export default function App() {
     if (val.trim().length < 2) { setLocationSuggestions([]); return; }
     searchTimerRef.current = setTimeout(async () => {
       try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+        // Use addressdetails + extratags + namedetails so we can resolve
+        // neighborhoods, suburbs, postal codes, hamlets — not just cities.
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=8&addressdetails=1&extratags=1&namedetails=1&accept-language=en`;
+        const r = await fetch(url, { headers: { 'Accept': 'application/json' } });
         const d = await r.json();
-        setLocationSuggestions(d.map((item: any) => ({
-          lat: parseFloat(item.lat),
-          lng: parseFloat(item.lon),
-          name: (() => {
-            const city = item.address?.city || item.address?.town || item.address?.village || item.display_name?.split(',')[0] || val;
-            const country = item.address?.country_code?.toUpperCase() || '';
-            return city + (country ? `, ${country}` : '');
-          })(),
-          fullAddress: item.display_name || val,
-          countryCode: item.address?.country_code?.toUpperCase() || '',
-        })));
+        setLocationSuggestions(d.map((item: any) => {
+          const a = item.address || {};
+          // Prefer the most specific named place the user likely typed.
+          const locality =
+            a.neighbourhood || a.suburb || a.quarter || a.hamlet ||
+            a.village || a.town || a.city_district || a.city ||
+            a.municipality || a.county || item.namedetails?.name ||
+            item.display_name?.split(',')[0] || val;
+          const region = a.city || a.town || a.state || '';
+          const postcode = a.postcode || '';
+          const country = a.country_code?.toUpperCase() || '';
+          // Build a compact label like "Whalley Range, Manchester, GB"
+          const parts: string[] = [locality];
+          if (region && region !== locality) parts.push(region);
+          if (postcode && !region) parts.push(postcode);
+          if (country) parts.push(country);
+          return {
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+            name: parts.join(', '),
+            fullAddress: item.display_name || val,
+            countryCode: country,
+          };
+        }));
       } catch { setLocationSuggestions([]); }
     }, 400);
   }, []);
@@ -253,7 +269,7 @@ export default function App() {
               <div className="flex items-center gap-2 bg-muted rounded-kipita-sm px-3 py-2.5">
                 <span className="ms text-muted-foreground text-lg">search</span>
                 <input value={locationSearch} onChange={e => handleLocationSearch(e.target.value)}
-                  placeholder="Search city or address…" autoFocus
+                  placeholder="City, neighborhood, or postal code…" autoFocus
                   className="flex-1 bg-transparent outline-none text-sm" />
                 {locationSearch && (
                   <button onClick={() => { setLocationSearch(''); setLocationSuggestions([]); }} className="text-muted-foreground text-sm">✕</button>
