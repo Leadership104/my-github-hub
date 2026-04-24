@@ -305,17 +305,22 @@ serve(async (req) => {
         if (health) liveDataBlock += `\n- Health advisory: ${health}`;
       }
 
-      // Live nearby places
+      // Live nearby places + live health (air quality / UV / pollen)
+      let liveHealth: LiveHealth | null = null;
+      let nearestHospital: PlaceChip | null = null;
       if (typeof context.lat === "number" && typeof context.lng === "number") {
-        const [restaurants, cafes, attractions, bars, hospitals] = await Promise.all([
+        const [restaurants, cafes, attractions, bars, hospitals, health] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
           fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
           fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
           fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
           fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
+          fetchLiveHealth(context.lat, context.lng),
         ]);
 
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
+        liveHealth = health;
+        nearestHospital = hospitals[0] || null;
 
         const fmt = (label: string, arr: PlaceChip[]) =>
           arr.length
@@ -328,6 +333,22 @@ serve(async (req) => {
         liveDataBlock += fmt("Nearby bars", bars);
         if (hospitals.length) {
           liveDataBlock += fmt("Nearest hospitals", hospitals);
+        }
+
+        if (liveHealth) {
+          liveDataBlock += `\n\n=== LIVE HEALTH DATA (real-time, from Open-Meteo Air Quality API) ===`;
+          if (liveHealth.usAqi != null) liveDataBlock += `\n- US AQI: ${Math.round(liveHealth.usAqi)} (${aqiCategory(liveHealth.usAqi)})`;
+          if (liveHealth.pm25 != null) liveDataBlock += `\n- PM2.5: ${liveHealth.pm25.toFixed(1)} µg/m³`;
+          if (liveHealth.pm10 != null) liveDataBlock += `\n- PM10: ${liveHealth.pm10.toFixed(1)} µg/m³`;
+          if (liveHealth.ozone != null) liveDataBlock += `\n- Ozone: ${liveHealth.ozone.toFixed(0)} µg/m³`;
+          if (liveHealth.no2 != null) liveDataBlock += `\n- NO₂: ${liveHealth.no2.toFixed(0)} µg/m³`;
+          if (liveHealth.uvIndex != null) liveDataBlock += `\n- UV Index: ${liveHealth.uvIndex.toFixed(1)}${liveHealth.uvIndex >= 8 ? " (very high — sun protection essential)" : liveHealth.uvIndex >= 6 ? " (high)" : liveHealth.uvIndex >= 3 ? " (moderate)" : " (low)"}`;
+          const p = liveHealth.pollen || {};
+          const pollenParts: string[] = [];
+          if (p.grass != null && p.grass > 0) pollenParts.push(`grass ${p.grass.toFixed(1)}`);
+          if (p.tree != null && p.tree > 0) pollenParts.push(`tree ${p.tree.toFixed(1)}`);
+          if (p.weed != null && p.weed > 0) pollenParts.push(`weed ${p.weed.toFixed(1)}`);
+          if (pollenParts.length) liveDataBlock += `\n- Pollen (grains/m³): ${pollenParts.join(", ")}`;
         }
       }
 
