@@ -847,17 +847,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
                           )}
                         </div>
 
-                        {/* Booking CTA — leads into rest of wizard which finishes in trip detail w/ Flights/Hotels/Cruises */}
                         <div className="px-4 pb-4">
-                          <button
-                            onClick={() => setWStep('date')}
-                            className="btn-3d w-full bg-kipita-red text-white py-3 rounded-kipita-sm font-extrabold text-sm flex items-center justify-center gap-2"
-                          >
-                            Continue to booking
-                            <span className="ms text-lg">arrow_forward</span>
-                          </button>
-                          <p className="text-[10px] text-center text-muted-foreground mt-2">
-                            Next: dates · duration · then book flights, hotels & cruises in-app
+                          <p className="text-[10px] text-center text-muted-foreground">
+                            Tap <span className="font-bold text-foreground">Next</span> to pick dates, then book flights, hotels & cruises in-app.
                           </p>
                         </div>
                       </div>
