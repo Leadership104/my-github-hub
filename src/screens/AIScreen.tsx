@@ -302,6 +302,12 @@ export default function AIScreen({
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
+    // Intercept Plan-a-trip quick action → jump straight to wizard at current location
+    if (text.trim() === '__OPEN_WIZARD__') {
+      const hint = locationName ? `plan:${locationName}|${countryCode || ''}` : '';
+      onSwitchTab?.('trips', hint);
+      return;
+    }
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: text.trim(), timestamp: Date.now() };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
