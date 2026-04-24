@@ -434,7 +434,9 @@ export default function AIScreen({
       const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now() };
       setMessages(prev => [...prev.slice(-18), aiMsg]);
 
-      if (data?.places?.length) setNearbyPlaces(data.places);
+      // Recommended chips are situational — clear them when the new reply has none,
+      // so stale chips from a prior question don't linger.
+      setNearbyPlaces(data?.places?.length ? data.places : []);
       if (data?.suggestions?.length) setSuggestions(data.suggestions);
 
       // Detect trip planning intent
