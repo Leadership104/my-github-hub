@@ -106,7 +106,11 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
   const finishWizard = () => {
     if (!wDest) return;
-    const t = buildTrip({ dest: wDest, country: wCountry, days: wDays, startDate: wStart || undefined, invites: wInvites });
+    const t = buildTrip({
+      dest: wDest, country: wCountry, days: wDays,
+      startDate: wStart || undefined, invites: wInvites,
+      photo: wPickedPhoto, summary: wPickedSummary,
+    });
     save([t, ...trips]);
     resetWizard();
   };
