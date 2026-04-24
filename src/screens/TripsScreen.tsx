@@ -133,10 +133,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
     const providerMap: Record<string, { provider: string; url: string }> = {
       hotel: { provider: 'Hotels.com', url: 'https://www.hotels.com/affiliate/RrZ7bmg' },
       flight: { provider: 'Expedia', url: 'https://expedia.com/affiliate/eA2cKky' },
-      cruise: { provider: 'Expedia Cruises', url: 'https://www.expedia.com/' },
-      car: { provider: 'RentalCars', url: 'https://www.rentalcars.com/?utm_source=kipita' },
-      insurance: { provider: 'World Nomads', url: 'https://www.worldnomads.com/' },
-      esim: { provider: 'Airalo', url: 'https://www.airalo.com/?utm_source=kipita' },
+      cruise: { provider: 'Expedia Cruises', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w' },
     };
     const p = providerMap[bookingForm.type] || providerMap.hotel;
     const booking: Booking = {
@@ -210,21 +207,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
         active: !!hotelBooking,
       },
       {
-        emoji: '🚗', label: 'Car Rental',
+        emoji: '🚢', label: 'Cruises',
         sub: 'Search',
-        url: 'https://www.rentalcars.com/?utm_source=kipita',
-        active: false,
-      },
-      {
-        emoji: '🚕', label: 'Uber',
-        sub: 'Request',
-        url: 'https://uber.com/?utm_source=kipita',
-        active: false,
-      },
-      {
-        emoji: '🛻', label: 'Lyft',
-        sub: 'Request',
-        url: 'https://lyft.com/?utm_source=kipita',
+        url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w',
         active: false,
       },
     ];
