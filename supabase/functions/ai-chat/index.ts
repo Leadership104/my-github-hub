@@ -846,8 +846,24 @@ Otherwise, respond with ONLY a corrected version of the reply (same format, same
     const suggestions = buildSuggestions(message, context);
 
     const responseBody: Record<string, unknown> = { reply, suggestions };
-    if (allPlaces.length > 0) {
-      responseBody.places = allPlaces.slice(0, 12);
+
+    // Situational "Recommended near you" chips.
+    // Only include chips when the user's question (or the agentic briefing) is about a place
+    // category that maps to one of our buckets. Otherwise return nothing so the UI hides the row.
+    const situationalPlaces = pickSituationalPlaces({
+      message: typeof message === "string" ? message : "",
+      reply,
+      agenticBriefing: !!agenticBriefing,
+      buckets: {
+        restaurants: bucketRestaurants,
+        cafes: bucketCafes,
+        attractions: bucketAttractions,
+        bars: bucketBars,
+        hospitals: bucketHospitals,
+      },
+    });
+    if (situationalPlaces.length > 0) {
+      responseBody.places = situationalPlaces.slice(0, 8);
     }
 
     return new Response(JSON.stringify(responseBody), {
