@@ -25,10 +25,10 @@
   --primary: 4 79% 56%;
   --primary-foreground: 0 0% 100%;
 
-  /* Reusable design tokens for glass + 3D shadow */
-  --shadow-3d: 0 1px 2px hsl(220 30% 12% / 0.06), 0 4px 12px hsl(220 30% 12% / 0.08), 0 12px 24px -8px hsl(220 30% 12% / 0.10);
-  --shadow-3d-hover: 0 2px 4px hsl(220 30% 12% / 0.08), 0 12px 28px hsl(220 30% 12% / 0.14), 0 24px 48px -12px hsl(220 30% 12% / 0.18);
-  --shadow-3d-press: 0 1px 1px hsl(220 30% 12% / 0.05), 0 2px 4px hsl(220 30% 12% / 0.08);
+  /* Reusable design tokens for glass + 3D shadow — lightened */
+  --shadow-3d: 0 1px 1px hsl(220 30% 12% / 0.03), 0 2px 6px hsl(220 30% 12% / 0.04), 0 6px 14px -8px hsl(220 30% 12% / 0.05);
+  --shadow-3d-hover: 0 1px 2px hsl(220 30% 12% / 0.04), 0 6px 14px hsl(220 30% 12% / 0.07), 0 14px 28px -12px hsl(220 30% 12% / 0.09);
+  --shadow-3d-press: 0 1px 1px hsl(220 30% 12% / 0.03), 0 1px 2px hsl(220 30% 12% / 0.04);
   --glass-bg: linear-gradient(180deg, hsl(0 0% 100% / 0.78) 0%, hsl(0 0% 100% / 0.62) 100%);
   --glass-border: hsl(0 0% 100% / 0.55);
 }
@@ -75,13 +75,13 @@ body {
   100% { background-position: 200% 0; }
 }
 @keyframes bubbly-pop {
-  0% { transform: scale(0.85); }
-  55% { transform: scale(1.18); }
-  80% { transform: scale(0.96); }
-  100% { transform: scale(1.08); }
+  0% { transform: scale(0.96); }
+  55% { transform: scale(1.06); }
+  80% { transform: scale(0.99); }
+  100% { transform: scale(1.03); }
 }
 @keyframes float-in {
-  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  0% { opacity: 0; transform: translateY(4px) scale(0.99); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
@@ -110,11 +110,11 @@ body {
   content: '';
   position: absolute; inset: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, hsl(0 0% 100% / 0.35), hsl(0 0% 100% / 0));
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.18), hsl(0 0% 100% / 0));
   pointer-events: none;
 }
-.btn-3d:hover { transform: translateY(-3px); box-shadow: var(--shadow-3d-hover); }
-.btn-3d:active { transform: translateY(0) scale(0.97); box-shadow: var(--shadow-3d-press); transition-duration: 90ms; }
+.btn-3d:hover { transform: translateY(-1px); box-shadow: var(--shadow-3d-hover); }
+.btn-3d:active { transform: translateY(0) scale(0.99); box-shadow: var(--shadow-3d-press); transition-duration: 90ms; }
 
 /* Glass surface — translucent with subtle border */
 .glass {
@@ -140,7 +140,7 @@ body {
 .lift {
   transition: transform 220ms cubic-bezier(.34,1.56,.64,1), box-shadow 220ms ease;
 }
-.lift:hover { transform: translateY(-2px); box-shadow: var(--shadow-3d-hover); }
+.lift:hover { transform: translateY(-1px); box-shadow: var(--shadow-3d-hover); }
 
 /* Scrollbar styling */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
