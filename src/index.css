@@ -25,10 +25,10 @@
   --primary: 4 79% 56%;
   --primary-foreground: 0 0% 100%;
 
-  /* Reusable design tokens for glass + 3D shadow */
-  --shadow-3d: 0 1px 2px hsl(220 30% 12% / 0.06), 0 4px 12px hsl(220 30% 12% / 0.08), 0 12px 24px -8px hsl(220 30% 12% / 0.10);
-  --shadow-3d-hover: 0 2px 4px hsl(220 30% 12% / 0.08), 0 12px 28px hsl(220 30% 12% / 0.14), 0 24px 48px -12px hsl(220 30% 12% / 0.18);
-  --shadow-3d-press: 0 1px 1px hsl(220 30% 12% / 0.05), 0 2px 4px hsl(220 30% 12% / 0.08);
+  /* Reusable design tokens for glass + 3D shadow — lightened */
+  --shadow-3d: 0 1px 1px hsl(220 30% 12% / 0.03), 0 2px 6px hsl(220 30% 12% / 0.04), 0 6px 14px -8px hsl(220 30% 12% / 0.05);
+  --shadow-3d-hover: 0 1px 2px hsl(220 30% 12% / 0.04), 0 6px 14px hsl(220 30% 12% / 0.07), 0 14px 28px -12px hsl(220 30% 12% / 0.09);
+  --shadow-3d-press: 0 1px 1px hsl(220 30% 12% / 0.03), 0 1px 2px hsl(220 30% 12% / 0.04);
   --glass-bg: linear-gradient(180deg, hsl(0 0% 100% / 0.78) 0%, hsl(0 0% 100% / 0.62) 100%);
   --glass-border: hsl(0 0% 100% / 0.55);
 }
