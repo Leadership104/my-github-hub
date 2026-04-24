@@ -149,8 +149,68 @@ function SuggestionChips({ suggestions, onTap }: { suggestions: string[]; onTap:
 }
 
 // ── Message Bubble ────────────────────────────────────────────────────────────
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+// ── Message Bubble ────────────────────────────────────────────────────────────
+function MessageBubble({
+  msg,
+  onInAppNav,
+}: {
+  msg: ChatMessage;
+  onInAppNav?: (tab: TabId, hint?: string) => void;
+}) {
   const isAI = msg.role === 'ai';
+
+  // kipita://tab/<tab>?hint=<hint>  → in-app navigation
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith('kipita://')) {
+      e.preventDefault();
+      try {
+        const u = new URL(href);
+        // host = "tab", pathname = "/<tabId>"
+        const tab = (u.pathname.replace(/^\//, '') || u.host) as TabId;
+        const hint = u.searchParams.get('hint') || undefined;
+        onInAppNav?.(tab, hint);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const renderLink = (label: string, href: string, bold = false) => {
+    const isInApp = href.startsWith('kipita://');
+    if (isInApp) {
+      return (
+        <button
+          onClick={() => {
+            try {
+              const u = new URL(href);
+              const tab = (u.pathname.replace(/^\//, '') || u.host) as TabId;
+              const hint = u.searchParams.get('hint') || undefined;
+              onInAppNav?.(tab, hint);
+            } catch { /* ignore */ }
+          }}
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold align-baseline mx-0.5 ${
+            isAI
+              ? 'bg-kipita-red/10 text-kipita-red border border-kipita-red/30 hover:bg-kipita-red/20'
+              : 'bg-white/20 text-white border border-white/40 hover:bg-white/30'
+          } transition-colors`}
+        >
+          → {label}
+        </button>
+      );
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => handleAnchorClick(e, href)}
+        className={`${isAI ? 'text-kipita-red' : 'text-white'} underline ${bold ? 'font-bold' : 'font-semibold'}`}
+      >
+        {label}
+      </a>
+    );
+  };
+
   return (
     <div className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}>
       <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
@@ -160,17 +220,11 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       }`}>
         {msg.text.split(/(\*\*\[.*?\]\(.*?\)\*\*|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
           const boldLink = part.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
-          if (boldLink) return (
-            <a key={i} href={boldLink[2]} target="_blank" rel="noopener noreferrer"
-              className="text-kipita-red underline font-bold">{boldLink[1]}</a>
-          );
+          if (boldLink) return <span key={i}>{renderLink(boldLink[1], boldLink[2], true)}</span>;
           const bold = part.match(/^\*\*(.+?)\*\*$/);
           if (bold) return <strong key={i}>{bold[1]}</strong>;
           const link = part.match(/^\[(.+?)\]\((.+?)\)$/);
-          if (link) return (
-            <a key={i} href={link[2]} target="_blank" rel="noopener noreferrer"
-              className={isAI ? 'text-kipita-red underline font-semibold' : 'text-white underline font-semibold'}>{link[1]}</a>
-          );
+          if (link) return <span key={i}>{renderLink(link[1], link[2])}</span>;
           return <span key={i}>{part}</span>;
         })}
       </div>
