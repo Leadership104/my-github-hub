@@ -360,7 +360,7 @@ export default function AIScreen({
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips]);
+  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips, onSwitchTab]);
 
   const handleRefresh = () => {
     briefingKeyRef.current = '';
