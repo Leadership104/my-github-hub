@@ -13,8 +13,16 @@ interface Props {
  * Note: Many partner sites block being embedded via iframe (X-Frame-Options).
  * We provide a fallback "Open in new tab" button for those cases.
  */
+const EXTERNAL_ONLY_HOSTS = ['upside.com', 'expedia.com', 'hotels.com', 'apple.com', 'play.google.com'];
+const isExternalOnly = (url: string) => {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    return EXTERNAL_ONLY_HOSTS.some(h => host === h || host.endsWith('.' + h));
+  } catch { return false; }
+};
+
 export default function InAppBrowser({ url, title, onClose }: Props) {
-  const [blocked, setBlocked] = useState(false);
+  const [blocked, setBlocked] = useState(isExternalOnly(url));
 
   return (
     <div className="fixed inset-0 z-[400] flex flex-col bg-background">
