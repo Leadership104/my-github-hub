@@ -233,9 +233,13 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
       <div className="flex flex-col h-full overflow-hidden">
         {/* Hero image */}
         <div className="relative h-56 bg-gradient-to-br from-kipita-navy via-slate-700 to-slate-900 flex-shrink-0 overflow-hidden">
+          {trip.photo && (
+            <img src={trip.photo} alt={trip.dest} className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30" />
           <button
             onClick={() => { setSelectedTrip(null); setShowInviteForm(false); }}
-            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white z-10"
+            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white z-10"
           >
             <span className="ms text-xl">arrow_back</span>
           </button>
@@ -244,18 +248,26 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
               In {daysUntil} day{daysUntil !== 1 ? 's' : ''}
             </span>
           )}
-          {/* Watermark emoji */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-20 text-[12rem] select-none pointer-events-none">
-            {trip.emoji}
-          </div>
-          <div className="absolute bottom-3 left-4 right-4 text-white">
+          {!trip.photo && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 text-[12rem] select-none pointer-events-none">
+              {trip.emoji}
+            </div>
+          )}
+          <div className="absolute bottom-3 left-4 right-4 text-white z-10">
             <div className="flex items-center gap-2">
               <span className="text-2xl">{trip.emoji}</span>
-              <h2 className="text-2xl font-extrabold">{trip.dest}</h2>
+              <h2 className="text-2xl font-extrabold drop-shadow">{trip.dest}</h2>
             </div>
-            <p className="text-white/80 text-xs mt-1">{formatRange()} · {tripDays} days</p>
+            <p className="text-white/90 text-xs mt-1 drop-shadow">{formatRange()} · {tripDays} days</p>
           </div>
         </div>
+
+        {/* Summary about the destination */}
+        {trip.summary && (
+          <div className="bg-card border-b border-border px-4 py-3 flex-shrink-0">
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{trip.summary}</p>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto pb-24">
           {/* BOOK & MANAGE row */}
