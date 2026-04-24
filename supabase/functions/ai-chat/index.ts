@@ -558,14 +558,16 @@ serve(async (req) => {
         const lowerMsg = (typeof message === "string" ? message : "").toLowerCase();
         const wantsWildfires = /\b(wildfire|wild fire|fires?|smoke|evacuat|firms|burning|brush fire)\b/.test(lowerMsg);
         const wantsQuakes = /\b(earthquake|quake|seismic|tremor|aftershock|usgs)\b/.test(lowerMsg);
-        const wantsDisasters = /\b(disaster|hurricane|typhoon|cyclone|flood|tsunami|volcan|emergenc|evacuat|reliefweb)\b/.test(lowerMsg);
+        const wantsDisasters = /\b(disaster|hurricane|typhoon|cyclone|flood|tsunami|volcan|emergenc|evacuat|reliefweb|outbreak|epidemic|conflict|unrest)\b/.test(lowerMsg);
         const wantsSafetyDeep = /\b(safety|safe|danger|risk|threat|warning|alert)\b/.test(lowerMsg);
         // Safety chip = normal safety brief + offer emergency follow-up. Only pull emergency feeds
         // when user explicitly asks for them OR also explicitly asks for live emergency check.
         const wantsLiveEmergencyCheck = /live emergency check|wildfires?, earthquakes?|active disasters?/.test(lowerMsg);
+        // Quick-filter categories the user is asking about — drives ReliefWeb prioritization.
+        const disasterCategories = inferDisasterCategories(lowerMsg);
         const includeFires = wantsWildfires || wantsLiveEmergencyCheck;
         const includeQuakes = wantsQuakes || wantsLiveEmergencyCheck;
-        const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck;
+        const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck || disasterCategories.length > 0;
 
         const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
