@@ -503,6 +503,21 @@ serve(async (req) => {
       let liveHealth: LiveHealth | null = null;
       let nearestHospital: PlaceChip | null = null;
       if (typeof context.lat === "number" && typeof context.lng === "number") {
+        // Detect emergency/safety intent — only THEN do we hit NASA FIRMS, USGS, ReliefWeb.
+        // Wildfire, earthquake, and disaster data are NOT part of the default brief; they live behind
+        // the Safety chip / explicit ask, exactly like the user requested.
+        const lowerMsg = (typeof message === "string" ? message : "").toLowerCase();
+        const wantsWildfires = /\b(wildfire|wild fire|fires?|smoke|evacuat|firms|burning|brush fire)\b/.test(lowerMsg);
+        const wantsQuakes = /\b(earthquake|quake|seismic|tremor|aftershock|usgs)\b/.test(lowerMsg);
+        const wantsDisasters = /\b(disaster|hurricane|typhoon|cyclone|flood|tsunami|volcan|emergenc|evacuat|reliefweb)\b/.test(lowerMsg);
+        const wantsSafetyDeep = /\b(safety|safe|danger|risk|threat|warning|alert)\b/.test(lowerMsg);
+        // Safety chip = normal safety brief + offer emergency follow-up. Only pull emergency feeds
+        // when user explicitly asks for them OR also explicitly asks for live emergency check.
+        const wantsLiveEmergencyCheck = /live emergency check|wildfires?, earthquakes?|active disasters?/.test(lowerMsg);
+        const includeFires = wantsWildfires || wantsLiveEmergencyCheck;
+        const includeQuakes = wantsQuakes || wantsLiveEmergencyCheck;
+        const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck;
+
         const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
           fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
@@ -510,9 +525,9 @@ serve(async (req) => {
           fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
           fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
           fetchLiveHealth(context.lat, context.lng),
-          fetchWildfires(context.lat, context.lng, 100),
-          fetchEarthquakes(context.lat, context.lng, 200, 2.5),
-          context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
+          includeFires ? fetchWildfires(context.lat, context.lng, 100) : Promise.resolve(null),
+          includeQuakes ? fetchEarthquakes(context.lat, context.lng, 200, 2.5) : Promise.resolve([]),
+          includeDisasters && context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
         ]);
 
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
@@ -548,7 +563,7 @@ serve(async (req) => {
           if (pollenParts.length) liveDataBlock += `\n- Pollen (grains/m³): ${pollenParts.join(", ")}`;
         }
 
-        if (fires) {
+        if (includeFires && fires) {
           liveDataBlock += `\n\n=== LIVE WILDFIRE DATA (NASA FIRMS — VIIRS NOAA-20 NRT, last 24h, 100mi radius) ===`;
           if (fires.count === 0) {
             liveDataBlock += `\n- No active fire detections within 100 mi in the last 24h.`;
@@ -563,22 +578,26 @@ serve(async (req) => {
             }
             liveDataBlock += `\n- Map: https://firms.modaps.eosdis.nasa.gov/usfs/map/`;
           }
-        } else if (!NASA_FIRMS_MAP_KEY()) {
-          liveDataBlock += `\n\n(Wildfire data unavailable: NASA_FIRMS_MAP_KEY not configured)`;
         }
 
-        if (quakes && quakes.length) {
+        if (includeQuakes && quakes && quakes.length) {
           liveDataBlock += `\n\n=== RECENT EARTHQUAKES (USGS, M2.5+, 200mi radius, last 30d) ===`;
           liveDataBlock += `\n` + quakes.slice(0, 5).map((q) =>
             `  • M${q.mag.toFixed(1)} — ${q.place} (${q.distanceMi} mi away)`
           ).join("\n");
         }
 
-        if (disasters && disasters.length) {
+        if (includeDisasters && disasters && disasters.length) {
           liveDataBlock += `\n\n=== ACTIVE DISASTERS (ReliefWeb, country-level) ===`;
           liveDataBlock += `\n` + disasters.slice(0, 4).map((d) =>
             `  • ${d.type}: ${d.name}${d.status ? ` [${d.status}]` : ""}`
           ).join("\n");
+        }
+
+        // Hint to the assistant: if Safety chip was tapped (wantsSafetyDeep) but we DIDN'T fetch
+        // emergency feeds yet, instruct it to end with a one-line offer to run a live emergency check.
+        if (wantsSafetyDeep && !includeFires && !includeQuakes && !includeDisasters) {
+          liveDataBlock += `\n\n=== SAFETY-CHIP MODE ===\n- User asked the normal safety question. Give the standard briefing (crime, scams, areas to avoid, what to watch for).\n- DO NOT fabricate wildfire/earthquake/disaster numbers. End the reply with ONE follow-up offer like: *Want a live emergency check?* — and include exactly this suggestion in your *Ask me:* line: "Run a live emergency check (wildfires, earthquakes, active disasters)" so they can tap it.`;
         }
       }
 
