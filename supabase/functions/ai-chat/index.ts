@@ -600,6 +600,11 @@ serve(async (req) => {
         ]);
 
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
+        bucketRestaurants = restaurants;
+        bucketCafes = cafes;
+        bucketAttractions = attractions;
+        bucketBars = bars;
+        bucketHospitals = hospitals;
         liveHealth = health;
         nearestHospital = hospitals[0] || null;
 
