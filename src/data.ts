@@ -368,13 +368,6 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Lake', query: 'lake waterfront', emoji: '🏞️' },
     { label: 'Hiking', query: 'hiking trail nature', emoji: '🥾' },
   ],
-  attractions: [
-    { label: 'Museums', query: 'museum art gallery', emoji: '🏛️' },
-    { label: 'Tours', query: 'sightseeing tour', emoji: '🗺️' },
-    { label: 'Theme Parks', query: 'theme park amusement', emoji: '🎢' },
-    { label: 'Landmarks', query: 'landmark monument', emoji: '🗽' },
-    { label: 'Events', query: 'events concerts festivals', emoji: '🎪' },
-  ],
   gas: [
     { label: 'Gas Station', query: 'gas station fuel', emoji: '⛽' },
     { label: 'Diesel', query: 'diesel fuel station', emoji: '🛢️' },
