@@ -483,7 +483,7 @@ export default function AIScreen({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <MessageBubble key={msg.id} msg={msg} onInAppNav={onSwitchTab} />
         ))}
 
         {/* Nearby place chips (shown after briefing) */}
