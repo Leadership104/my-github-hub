@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Trip, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import { buildTrip, pickEmoji } from '../lib/tripPlanner';
+import { searchDestinations, getDestinationDetails, type DestinationResult } from '../lib/destinationSearch';
 import AIScreen from './AIScreen';
 import GroupsScreen from './GroupsScreen';
+import InAppBrowser from '../components/InAppBrowser';
 
 const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
   flight: { emoji: '✈️', label: 'Flight' },
@@ -56,16 +58,59 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
   const [wInvites, setWInvites] = useState<string[]>([]);
   const [wInviteInput, setWInviteInput] = useState('');
 
+  // Live destination search
+  const [wSearchQuery, setWSearchQuery] = useState('');
+  const [wSearchResults, setWSearchResults] = useState<DestinationResult[]>([]);
+  const [wSearching, setWSearching] = useState(false);
+  const [wPickedPhoto, setWPickedPhoto] = useState<string | undefined>();
+  const [wPickedSummary, setWPickedSummary] = useState<string | undefined>();
+  const [wLoadingDetails, setWLoadingDetails] = useState(false);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // In-app browser for affiliate links
+  const [browserUrl, setBrowserUrl] = useState<string | null>(null);
+  const [browserTitle, setBrowserTitle] = useState<string>('');
+  const openInternal = (url: string, title: string) => { setBrowserUrl(url); setBrowserTitle(title); };
+
+  // Debounced live search
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (wSearchQuery.trim().length < 2) { setWSearchResults([]); return; }
+    setWSearching(true);
+    searchTimerRef.current = setTimeout(async () => {
+      const results = await searchDestinations(wSearchQuery);
+      setWSearchResults(results);
+      setWSearching(false);
+    }, 350);
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
+  }, [wSearchQuery]);
+
+  // Hydrate photo + summary when destination picked
+  const pickDestination = async (city: string, country: string) => {
+    setWDest(city); setWCountry(country);
+    setWPickedPhoto(undefined); setWPickedSummary(undefined);
+    setWLoadingDetails(true);
+    const d = await getDestinationDetails(city, country);
+    setWPickedPhoto(d.photo); setWPickedSummary(d.summary);
+    setWLoadingDetails(false);
+  };
+
   const resetWizard = () => {
     setShowWizard(false);
     setWStep('dest');
     setWDest(''); setWCountry(''); setWStart(''); setWDays(7);
     setWInvites([]); setWInviteInput('');
+    setWSearchQuery(''); setWSearchResults([]);
+    setWPickedPhoto(undefined); setWPickedSummary(undefined);
   };
 
   const finishWizard = () => {
     if (!wDest) return;
-    const t = buildTrip({ dest: wDest, country: wCountry, days: wDays, startDate: wStart || undefined, invites: wInvites });
+    const t = buildTrip({
+      dest: wDest, country: wCountry, days: wDays,
+      startDate: wStart || undefined, invites: wInvites,
+      photo: wPickedPhoto, summary: wPickedSummary,
+    });
     save([t, ...trips]);
     resetWizard();
   };
@@ -186,11 +231,16 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
+        {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
         {/* Hero image */}
         <div className="relative h-56 bg-gradient-to-br from-kipita-navy via-slate-700 to-slate-900 flex-shrink-0 overflow-hidden">
+          {trip.photo && (
+            <img src={trip.photo} alt={trip.dest} className="absolute inset-0 w-full h-full object-cover" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30" />
           <button
             onClick={() => { setSelectedTrip(null); setShowInviteForm(false); }}
-            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center text-white z-10"
+            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white z-10"
           >
             <span className="ms text-xl">arrow_back</span>
           </button>
@@ -199,18 +249,26 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
               In {daysUntil} day{daysUntil !== 1 ? 's' : ''}
             </span>
           )}
-          {/* Watermark emoji */}
-          <div className="absolute inset-0 flex items-center justify-center opacity-20 text-[12rem] select-none pointer-events-none">
-            {trip.emoji}
-          </div>
-          <div className="absolute bottom-3 left-4 right-4 text-white">
+          {!trip.photo && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-20 text-[12rem] select-none pointer-events-none">
+              {trip.emoji}
+            </div>
+          )}
+          <div className="absolute bottom-3 left-4 right-4 text-white z-10">
             <div className="flex items-center gap-2">
               <span className="text-2xl">{trip.emoji}</span>
-              <h2 className="text-2xl font-extrabold">{trip.dest}</h2>
+              <h2 className="text-2xl font-extrabold drop-shadow">{trip.dest}</h2>
             </div>
-            <p className="text-white/80 text-xs mt-1">{formatRange()} · {tripDays} days</p>
+            <p className="text-white/90 text-xs mt-1 drop-shadow">{formatRange()} · {tripDays} days</p>
           </div>
         </div>
+
+        {/* Summary about the destination */}
+        {trip.summary && (
+          <div className="bg-card border-b border-border px-4 py-3 flex-shrink-0">
+            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{trip.summary}</p>
+          </div>
+        )}
 
         <div className="flex-1 overflow-y-auto pb-24">
           {/* BOOK & MANAGE row */}
@@ -218,16 +276,15 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
             <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-3">BOOK & MANAGE</p>
             <div className="grid grid-cols-5 gap-2">
               {BOOK_MANAGE_TILES.map(t => (
-                <a
+                <button
                   key={t.label}
-                  href={t.url}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex flex-col items-center gap-1 p-2 rounded-xl border border-border hover:border-kipita-red/40 hover:shadow-sm transition-all no-underline text-center active:scale-95"
+                  onClick={() => openInternal(t.url, `${t.label} · ${trip.dest}`)}
+                  className="flex flex-col items-center gap-1 p-2 rounded-xl border border-border hover:border-kipita-red/40 hover:shadow-sm transition-all text-center active:scale-95"
                 >
                   <span className="text-xl">{t.emoji}</span>
                   <span className={`text-[10px] font-bold ${t.active ? 'text-kipita-red' : 'text-foreground'}`}>{t.label}</span>
                   <span className="text-[9px] text-muted-foreground truncate w-full">{t.sub}</span>
-                </a>
+                </button>
               ))}
             </div>
           </div>
@@ -572,32 +629,105 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
             </div>
 
             <div className="flex-1 overflow-y-auto p-5">
-              {/* Step 1: Destination */}
+              {/* Step 1: Destination — live search like a travel company */}
               {wStep === 'dest' && (
                 <div className="space-y-4">
                   <div>
                     <h4 className="text-xl font-extrabold mb-1">Where to?</h4>
-                    <p className="text-sm text-muted-foreground">Pick a city or type your own.</p>
+                    <p className="text-sm text-muted-foreground">Search any city in the world — we'll show you a real photo and overview.</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {POPULAR_DESTS.map(d => (
-                      <button key={d.city}
-                        onClick={() => { setWDest(d.city); setWCountry(d.country); }}
-                        className={`p-4 rounded-kipita border-2 text-left transition-all ${wDest === d.city ? 'border-kipita-red bg-kipita-red/5' : 'border-border bg-card hover:border-kipita-red/30'}`}
-                      >
-                        <div className="text-2xl mb-1">{d.emoji}</div>
-                        <div className="text-sm font-bold">{d.city}</div>
-                        <div className="text-[11px] text-muted-foreground">{d.country}</div>
-                      </button>
-                    ))}
+
+                  {/* Live search input */}
+                  <div className="relative">
+                    <span className="ms text-muted-foreground absolute left-3 top-1/2 -translate-y-1/2 text-lg">search</span>
+                    <input
+                      value={wSearchQuery}
+                      onChange={e => setWSearchQuery(e.target.value)}
+                      autoFocus
+                      placeholder="Try: Lisbon, Reykjavik, Cartagena…"
+                      className="w-full bg-card border border-border rounded-kipita-sm pl-10 pr-10 py-3 text-sm outline-none focus:border-kipita-red"
+                    />
+                    {wSearching && (
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">…</span>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-xs font-bold text-muted-foreground">Or type a destination</label>
-                    <input value={wDest} onChange={e => setWDest(e.target.value)} placeholder="e.g. Reykjavik"
-                      className="mt-1 w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                    <input value={wCountry} onChange={e => setWCountry(e.target.value)} placeholder="Country"
-                      className="mt-2 w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                  </div>
+
+                  {/* Live search results */}
+                  {wSearchResults.length > 0 && (
+                    <div className="bg-card border border-border rounded-kipita divide-y divide-border max-h-64 overflow-y-auto">
+                      {wSearchResults.map((r, i) => (
+                        <button
+                          key={`${r.name}-${i}`}
+                          onClick={() => { pickDestination(r.name, r.country); setWSearchQuery(''); setWSearchResults([]); }}
+                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-muted/40 transition-colors"
+                        >
+                          <span className="ms text-muted-foreground text-lg">place</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-bold truncate">{r.name}</div>
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {[r.region, r.country].filter(Boolean).join(', ')}
+                              {r.population ? ` · ${(r.population / 1000).toFixed(0)}k` : ''}
+                            </div>
+                          </div>
+                          <span className="ms text-muted-foreground">chevron_right</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Picked destination preview — real photo + summary */}
+                  {wDest && (
+                    <div className="bg-card border-2 border-kipita-red rounded-kipita overflow-hidden">
+                      {wLoadingDetails ? (
+                        <div className="h-40 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
+                          Loading photo…
+                        </div>
+                      ) : wPickedPhoto ? (
+                        <img src={wPickedPhoto} alt={wDest} className="w-full h-40 object-cover" />
+                      ) : (
+                        <div className="h-40 bg-gradient-to-br from-kipita-navy to-slate-700 flex items-center justify-center text-6xl">
+                          {pickEmoji(wDest, wCountry)}
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-2xl">{pickEmoji(wDest, wCountry)}</span>
+                          <div className="flex-1">
+                            <div className="font-extrabold text-base">{wDest}</div>
+                            <div className="text-[11px] text-muted-foreground">{wCountry}</div>
+                          </div>
+                          <button
+                            onClick={() => { setWDest(''); setWCountry(''); setWPickedPhoto(undefined); setWPickedSummary(undefined); }}
+                            className="text-[11px] text-muted-foreground hover:text-kipita-red"
+                          >
+                            Change
+                          </button>
+                        </div>
+                        {wPickedSummary && (
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-2 line-clamp-4">{wPickedSummary}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Popular shortcuts (only when nothing picked / searched) */}
+                  {!wDest && wSearchResults.length === 0 && !wSearching && (
+                    <div>
+                      <p className="text-[11px] font-bold text-muted-foreground tracking-wider mb-2">POPULAR DESTINATIONS</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {POPULAR_DESTS.map(d => (
+                          <button key={d.city}
+                            onClick={() => pickDestination(d.city, d.country)}
+                            className="p-4 rounded-kipita border-2 border-border bg-card text-left hover:border-kipita-red/30 transition-all"
+                          >
+                            <div className="text-2xl mb-1">{d.emoji}</div>
+                            <div className="text-sm font-bold">{d.city}</div>
+                            <div className="text-[11px] text-muted-foreground">{d.country}</div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -673,11 +803,16 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
                     <h4 className="text-xl font-extrabold mb-1">Ready?</h4>
                     <p className="text-sm text-muted-foreground">We'll generate a starter itinerary. You can refine details after.</p>
                   </div>
-                  <div className="bg-card border border-border rounded-kipita p-4 space-y-2">
-                    <div className="flex items-center gap-2"><span className="text-2xl">{pickEmoji(wDest, wCountry)}</span><span className="font-bold text-lg">{wDest}{wCountry ? `, ${wCountry}` : ''}</span></div>
-                    <div className="text-sm text-muted-foreground">📅 Starts {wStart || 'in ~2 weeks'}</div>
-                    <div className="text-sm text-muted-foreground">⏱️ {wDays} days</div>
-                    {wInvites.length > 0 && <div className="text-sm text-muted-foreground">👥 {wInvites.length} member{wInvites.length > 1 ? 's' : ''}</div>}
+                  <div className="bg-card border border-border rounded-kipita overflow-hidden">
+                    {wPickedPhoto && (
+                      <img src={wPickedPhoto} alt={wDest} className="w-full h-32 object-cover" />
+                    )}
+                    <div className="p-4 space-y-2">
+                      <div className="flex items-center gap-2"><span className="text-2xl">{pickEmoji(wDest, wCountry)}</span><span className="font-bold text-lg">{wDest}{wCountry ? `, ${wCountry}` : ''}</span></div>
+                      <div className="text-sm text-muted-foreground">📅 Starts {wStart || 'in ~2 weeks'}</div>
+                      <div className="text-sm text-muted-foreground">⏱️ {wDays} days</div>
+                      {wInvites.length > 0 && <div className="text-sm text-muted-foreground">👥 {wInvites.length} member{wInvites.length > 1 ? 's' : ''}</div>}
+                    </div>
                   </div>
                 </div>
               )}
@@ -739,6 +874,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
           </div>
         )}
       </div>
+      {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
     </div>
   );
 }

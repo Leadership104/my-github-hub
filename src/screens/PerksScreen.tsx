@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { PERKS } from '../data';
+import InAppBrowser from '../components/InAppBrowser';
 
 interface Props {
   onBack: () => void;
@@ -14,6 +15,7 @@ const CATEGORY_TABS = [
 
 export default function PerksScreen({ onBack }: Props) {
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [browser, setBrowser] = useState<{ url: string; title: string } | null>(null);
 
   const filtered = activeCategory === 'all' ? PERKS : PERKS.filter(p => p.category === activeCategory);
 
@@ -54,20 +56,20 @@ export default function PerksScreen({ onBack }: Props) {
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="grid grid-cols-2 gap-3">
           {filtered.map(p => (
-            <a
+            <button
               key={p.title}
-              href={p.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex flex-col items-center justify-center gap-2 p-5 bg-card border border-border rounded-kipita-sm hover:shadow-md hover:border-kipita-red/40 transition-all no-underline text-center active:scale-95"
+              onClick={() => setBrowser({ url: p.url, title: p.title })}
+              className="flex flex-col items-center justify-center gap-2 p-5 bg-card border border-border rounded-kipita-sm hover:shadow-md hover:border-kipita-red/40 transition-all text-center active:scale-95"
             >
               <span className="text-3xl">{p.icon}</span>
               <span className="text-sm font-bold text-foreground">{p.title}</span>
               <span className="text-[10px] text-kipita-red font-semibold">Visit →</span>
-            </a>
+            </button>
           ))}
         </div>
       </div>
+
+      {browser && <InAppBrowser url={browser.url} title={browser.title} onClose={() => setBrowser(null)} />}
     </div>
   );
 }
