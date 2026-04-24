@@ -414,8 +414,8 @@ Use the LIVE TRAVEL CONTEXT data. Be tight — every section 1–2 sentences max
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages,
-        max_tokens: 1400,
-        temperature: 0.75,
+        max_tokens: 700,
+        temperature: 0.7,
       }),
     });
 
