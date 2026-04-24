@@ -705,7 +705,7 @@ function buildSuggestions(message: string, context: any): string[] {
     return [`What's the local dish I must try?`, "Where do locals eat (not tourist traps)?", "Is the street food safe to eat?"];
   }
   if (msg.includes("hotel") || msg.includes("stay") || msg.includes("accommodation")) {
-    return [`What's the best neighborhood to stay in?`, "What's a realistic daily budget?", "Is [Hotels.com](https://www.hotels.com/affiliate/RrZ7bmg) the best option here?"];
+    return [`What's the best neighborhood to stay in?`, "What's a realistic daily budget?", "I want to book a hotel here"];
   }
   if (msg.includes("visa") || msg.includes("entry") || msg.includes("passport")) {
     return ["What vaccines do I need?", "Can I get visa on arrival?", "What shouldn't I bring through customs?"];
@@ -721,6 +721,15 @@ function buildSuggestions(message: string, context: any): string[] {
   }
   if (msg.includes("trip") || msg.includes("plan") || msg.includes("itinerary")) {
     return ["What's the one thing I absolutely can't miss?", "How many days do I really need?", "What are the best day trips from here?"];
+  }
+  if (msg.includes("fire") || msg.includes("wildfire") || msg.includes("smoke")) {
+    return ["Is the air quality safe outside?", "Are any evacuations active nearby?", "Show me the FIRMS map"];
+  }
+  if (msg.includes("air") || msg.includes("aqi") || msg.includes("pollution") || msg.includes("smog")) {
+    return ["Safe to exercise outside today?", "Should I wear a mask?", "What's driving the air quality?"];
+  }
+  if (msg.includes("earthquake") || msg.includes("quake") || msg.includes("tsunami") || msg.includes("disaster")) {
+    return ["Any recent earthquakes nearby?", "Is this area quake-prone?", "What active disasters are in the country?"];
   }
 
   // Default: general discovery prompts
