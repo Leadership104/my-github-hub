@@ -103,16 +103,16 @@ function StatsBar({
 function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip) => void }) {
   if (!places.length) return null;
   return (
-    <div className="px-1 pb-2">
-      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5 px-1">
-        📍 Nearby — tap to explore
+    <div className="px-1 pb-2 pt-1">
+      <p className="text-[10px] font-bold text-kipita-red uppercase tracking-wider mb-1.5 px-1">
+        ✨ Open these in Places
       </p>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {places.map((p, i) => (
           <button
             key={`${p.name}-${i}`}
             onClick={() => onTap(p)}
-            className="flex-shrink-0 bg-card border border-border rounded-xl px-3 py-2 text-left hover:border-kipita-red/40 hover:bg-muted transition-all max-w-[180px] active:scale-95"
+            className="flex-shrink-0 bg-kipita-red/5 border border-kipita-red/30 rounded-xl px-3 py-2 text-left hover:border-kipita-red hover:bg-kipita-red/10 transition-all max-w-[180px] active:scale-95"
           >
             <div className="text-xs font-bold text-foreground truncate">{p.name}</div>
             <div className="flex items-center gap-1.5 mt-0.5">
@@ -120,7 +120,7 @@ function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceCh
               {p.openNow === true  && <span className="text-[10px] text-emerald-500 font-medium">Open</span>}
               {p.openNow === false && <span className="text-[10px] text-muted-foreground">Closed</span>}
             </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.type}</div>
+            <div className="text-[10px] text-kipita-red mt-0.5 truncate font-semibold">→ {p.type}</div>
           </button>
         ))}
       </div>
@@ -149,8 +149,68 @@ function SuggestionChips({ suggestions, onTap }: { suggestions: string[]; onTap:
 }
 
 // ── Message Bubble ────────────────────────────────────────────────────────────
-function MessageBubble({ msg }: { msg: ChatMessage }) {
+// ── Message Bubble ────────────────────────────────────────────────────────────
+function MessageBubble({
+  msg,
+  onInAppNav,
+}: {
+  msg: ChatMessage;
+  onInAppNav?: (tab: TabId, hint?: string) => void;
+}) {
   const isAI = msg.role === 'ai';
+
+  // kipita://tab/<tab>?hint=<hint>  → in-app navigation
+  const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith('kipita://')) {
+      e.preventDefault();
+      try {
+        const u = new URL(href);
+        // host = "tab", pathname = "/<tabId>"
+        const tab = (u.pathname.replace(/^\//, '') || u.host) as TabId;
+        const hint = u.searchParams.get('hint') || undefined;
+        onInAppNav?.(tab, hint);
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const renderLink = (label: string, href: string, bold = false) => {
+    const isInApp = href.startsWith('kipita://');
+    if (isInApp) {
+      return (
+        <button
+          onClick={() => {
+            try {
+              const u = new URL(href);
+              const tab = (u.pathname.replace(/^\//, '') || u.host) as TabId;
+              const hint = u.searchParams.get('hint') || undefined;
+              onInAppNav?.(tab, hint);
+            } catch { /* ignore */ }
+          }}
+          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold align-baseline mx-0.5 ${
+            isAI
+              ? 'bg-kipita-red/10 text-kipita-red border border-kipita-red/30 hover:bg-kipita-red/20'
+              : 'bg-white/20 text-white border border-white/40 hover:bg-white/30'
+          } transition-colors`}
+        >
+          → {label}
+        </button>
+      );
+    }
+    return (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => handleAnchorClick(e, href)}
+        className={`${isAI ? 'text-kipita-red' : 'text-white'} underline ${bold ? 'font-bold' : 'font-semibold'}`}
+      >
+        {label}
+      </a>
+    );
+  };
+
   return (
     <div className={`flex ${isAI ? 'justify-start' : 'justify-end'}`}>
       <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap ${
@@ -160,17 +220,11 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
       }`}>
         {msg.text.split(/(\*\*\[.*?\]\(.*?\)\*\*|\*\*.*?\*\*|\[.*?\]\(.*?\))/g).map((part, i) => {
           const boldLink = part.match(/^\*\*\[(.+?)\]\((.+?)\)\*\*$/);
-          if (boldLink) return (
-            <a key={i} href={boldLink[2]} target="_blank" rel="noopener noreferrer"
-              className="text-kipita-red underline font-bold">{boldLink[1]}</a>
-          );
+          if (boldLink) return <span key={i}>{renderLink(boldLink[1], boldLink[2], true)}</span>;
           const bold = part.match(/^\*\*(.+?)\*\*$/);
           if (bold) return <strong key={i}>{bold[1]}</strong>;
           const link = part.match(/^\[(.+?)\]\((.+?)\)$/);
-          if (link) return (
-            <a key={i} href={link[2]} target="_blank" rel="noopener noreferrer"
-              className={isAI ? 'text-kipita-red underline font-semibold' : 'text-white underline font-semibold'}>{link[1]}</a>
-          );
+          if (link) return <span key={i}>{renderLink(link[1], link[2])}</span>;
           return <span key={i}>{part}</span>;
         })}
       </div>
@@ -429,7 +483,7 @@ export default function AIScreen({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map(msg => (
-          <MessageBubble key={msg.id} msg={msg} />
+          <MessageBubble key={msg.id} msg={msg} onInAppNav={onSwitchTab} />
         ))}
 
         {/* Nearby place chips (shown after briefing) */}
