@@ -62,6 +62,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
   const [wPickedPhoto, setWPickedPhoto] = useState<string | undefined>();
   const [wPickedSummary, setWPickedSummary] = useState<string | undefined>();
   const [wLoadingDetails, setWLoadingDetails] = useState(false);
+  const [tripRich, setTripRich] = useState<DestinationDetails | null>(null);
+  const [tripRichLoading, setTripRichLoading] = useState(false);
+  const [activePhoto, setActivePhoto] = useState<string | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // In-app browser for affiliate links
