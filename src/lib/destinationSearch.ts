@@ -20,6 +20,14 @@ export interface DestinationDetails {
   history?: string;
   areaOverview?: string;
   gallery?: string[];   // 3-4 supplemental real photos
+  news?: NewsItem[];    // latest live news for the area
+}
+
+export interface NewsItem {
+  title: string;
+  url: string;
+  source?: string;
+  publishedAt?: string;
 }
 
 /* ── Search cities by typed query (live, debounced from caller) ── */
