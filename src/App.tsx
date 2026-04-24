@@ -471,18 +471,28 @@ export default function App() {
         {renderScreen()}
       </main>
 
-      {/* Bottom Nav */}
-      <nav className="h-[84px] bg-card/95 backdrop-blur-xl border-t border-border shadow-[0_-4px_24px_rgba(0,0,0,.06)] flex items-stretch flex-shrink-0 z-[100] overflow-x-auto scrollbar-hide"
+      {/* Bottom Nav — bubbly motion */}
+      <nav className="h-[84px] glass border-t border-white/40 shadow-[0_-4px_24px_rgba(0,0,0,.06)] flex items-stretch flex-shrink-0 z-[100] overflow-x-auto scrollbar-hide"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {NAV_ITEMS.map(item => (
-          <button key={item.id} onClick={() => switchTab(item.id)}
-            className={`flex-1 min-w-[60px] flex flex-col items-center justify-center gap-1 py-2.5 px-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
-              tab === item.id ? 'text-kipita-red' : 'text-muted-foreground'
-            }`}>
-            <span className={`ms text-2xl ${tab === item.id ? 'text-kipita-red' : ''}`}>{item.icon}</span>
-            {item.label}
-          </button>
-        ))}
+        {NAV_ITEMS.map(item => {
+          const active = tab === item.id;
+          return (
+            <button key={item.id} onClick={() => switchTab(item.id)}
+              className={`flex-1 min-w-[60px] flex flex-col items-center justify-center gap-1 py-2.5 px-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
+                active ? 'text-kipita-red' : 'text-muted-foreground'
+              }`}>
+              <span
+                key={`${item.id}-${active}`}
+                data-active={active}
+                className={`ms text-2xl tab-bubbly ${active ? 'text-kipita-red' : ''}`}
+                style={active ? { transform: 'scale(1.15)' } : undefined}
+              >
+                {item.icon}
+              </span>
+              {item.label}
+            </button>
+          );
+        })}
       </nav>
     </div>
   );
