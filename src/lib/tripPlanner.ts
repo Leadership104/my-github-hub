@@ -136,6 +136,8 @@ export function buildTrip(opts: {
   startDate?: string; // YYYY-MM-DD
   notes?: string;
   invites?: string[];
+  photo?: string;
+  summary?: string;
 }): Trip {
   const start = opts.startDate ? new Date(opts.startDate) : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d; })();
   const end = new Date(start);
@@ -152,6 +154,8 @@ export function buildTrip(opts: {
     items: generateItinerary(opts.dest, opts.days),
     bookings: [],
     invites: opts.invites || [],
+    photo: opts.photo,
+    summary: opts.summary,
     createdAt: Date.now(),
   };
 }
