@@ -235,7 +235,10 @@ serve(async (req) => {
         liveDataBlock += `\n- Travel advisory: ${context.advisoryScore.toFixed(1)}/5 — ${safetyDesc}`;
       }
 
-      if (context.btcPrice) liveDataBlock += `\n- BTC price: $${context.btcPrice.toLocaleString()}`;
+      // Only surface BTC price when the user explicitly asks about it
+      const userMsg = (typeof message === "string" ? message : "").toLowerCase();
+      const asksAboutBtc = /\b(btc|bitcoin|crypto|sats?|satoshis?)\b/.test(userMsg);
+      if (context.btcPrice && asksAboutBtc) liveDataBlock += `\n- BTC price: $${context.btcPrice.toLocaleString()}`;
 
       // Country info
       if (context.countryCode) {
