@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = () => Deno.env.get("LOVABLE_API_KEY") || "";
 const GOOGLE_PLACES_API_KEY = () => Deno.env.get("GOOGLE_PLACES_API_KEY") || "";
+const NASA_FIRMS_MAP_KEY = () => Deno.env.get("NASA_FIRMS_MAP_KEY") || "";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // ── Emergency contacts by ISO-2 country code ─────────────────────────────────
