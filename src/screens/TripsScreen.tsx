@@ -739,7 +739,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
                   {/* Picked destination preview — real photo + summary */}
                   {wDest && (
-                    <div className="bg-card border-2 border-kipita-red rounded-kipita overflow-hidden">
+                    <div className="glass rounded-kipita overflow-hidden">
                       {wLoadingDetails ? (
                         <div className="h-40 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
                           Loading photo…
