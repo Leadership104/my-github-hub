@@ -125,7 +125,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setWDest(city); setWCountry(country);
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
     setWPickedGallery([]); setWPickedHistory(undefined); setWPickedArea(undefined);
-    setWPickedHero(undefined);
+    setWPickedHero(undefined); setWPickedNews([]);
     setWLoadingDetails(true);
     const d = await getRichDestinationDetails(city, country);
     setWPickedPhoto(d.photo);
@@ -134,6 +134,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setWPickedGallery(d.gallery || []);
     setWPickedHistory(d.history);
     setWPickedArea(d.areaOverview);
+    setWPickedNews(d.news || []);
     setWLoadingDetails(false);
   };
 
