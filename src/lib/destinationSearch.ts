@@ -14,13 +14,20 @@ export interface DestinationResult {
   population?: number;
 }
 
+export interface DestinationDetails {
+  photo?: string;
+  summary?: string;
+  history?: string;
+  areaOverview?: string;
+  gallery?: string[];   // 3-4 supplemental real photos
+}
+
 /* ── Search cities by typed query (live, debounced from caller) ── */
 export async function searchDestinations(query: string): Promise<DestinationResult[]> {
   const q = query.trim();
   if (q.length < 2) return [];
 
   try {
-    // Open-Meteo geocoding: fast, returns city + country + coords
     const r = await fetch(
       `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=8&language=en&format=json`
     );
@@ -39,12 +46,11 @@ export async function searchDestinations(query: string): Promise<DestinationResu
   }
 }
 
-/* ── Hydrate a destination with Wikipedia photo + summary ── */
+/* ── Light-weight: just hero photo + short summary (used for cards) ── */
 export async function getDestinationDetails(
   cityName: string,
   countryName?: string
 ): Promise<{ photo?: string; summary?: string }> {
-  // Try "City, Country" first then fall back to just city
   const candidates = countryName ? [`${cityName}, ${countryName}`, cityName] : [cityName];
   for (const title of candidates) {
     try {
@@ -63,4 +69,87 @@ export async function getDestinationDetails(
     }
   }
   return {};
+}
+
+/* ── Rich detail: hero + 3-4 gallery + summary + history + area overview ── */
+export async function getRichDestinationDetails(
+  cityName: string,
+  countryName?: string
+): Promise<DestinationDetails> {
+  const out: DestinationDetails = {};
+  const candidates = countryName ? [`${cityName}, ${countryName}`, cityName] : [cityName];
+
+  // 1. Hero summary + photo (Wikipedia REST)
+  let resolvedTitle: string | undefined;
+  for (const title of candidates) {
+    try {
+      const res = await fetch(
+        `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
+      );
+      if (!res.ok) continue;
+      const j = await res.json();
+      if (j.type === 'disambiguation') continue;
+      out.photo = j.thumbnail?.source || j.originalimage?.source;
+      out.summary = j.extract;
+      resolvedTitle = j.title || title;
+      break;
+    } catch { /* try next */ }
+  }
+
+  if (!resolvedTitle) return out;
+
+  // 2. Gallery — pull pageimages from Wikipedia API
+  try {
+    const galleryRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?` +
+      `action=query&format=json&origin=*&prop=images&imlimit=25&titles=${encodeURIComponent(resolvedTitle)}`
+    );
+    const gj = await galleryRes.json();
+    const pages = gj.query?.pages || {};
+    const page: any = Object.values(pages)[0];
+    const imageTitles: string[] = (page?.images || [])
+      .map((i: any) => i.title as string)
+      .filter((t: string) =>
+        /\.(jpg|jpeg|png)$/i.test(t) &&
+        !/(commons-logo|wiki|edit-icon|flag of|coat of arms|location|map|svg)/i.test(t)
+      )
+      .slice(0, 8);
+
+    if (imageTitles.length) {
+      const infoRes = await fetch(
+        `https://en.wikipedia.org/w/api.php?` +
+        `action=query&format=json&origin=*&prop=imageinfo&iiprop=url&iiurlwidth=600&titles=${encodeURIComponent(imageTitles.join('|'))}`
+      );
+      const ij = await infoRes.json();
+      const infoPages = ij.query?.pages || {};
+      const urls: string[] = Object.values(infoPages)
+        .map((p: any) => p.imageinfo?.[0]?.thumburl || p.imageinfo?.[0]?.url)
+        .filter(Boolean) as string[];
+      out.gallery = urls.filter(u => u !== out.photo).slice(0, 4);
+    }
+  } catch { /* gallery is optional */ }
+
+  // 3. History + area overview — pull section extracts
+  try {
+    const sectionRes = await fetch(
+      `https://en.wikipedia.org/w/api.php?` +
+      `action=query&format=json&origin=*&prop=extracts&explaintext=1&exsectionformat=plain&titles=${encodeURIComponent(resolvedTitle)}`
+    );
+    const sj = await sectionRes.json();
+    const sPages = sj.query?.pages || {};
+    const sPage: any = Object.values(sPages)[0];
+    const fullText: string = sPage?.extract || '';
+    if (fullText) {
+      const historyMatch = fullText.match(/History[\s\S]{20,800}/i);
+      if (historyMatch) {
+        out.history = historyMatch[0].slice(0, 600).replace(/\s+/g, ' ').trim() + '…';
+      }
+      const geoMatch = fullText.match(/(Geography|Climate|Demographics)[\s\S]{20,500}/i);
+      if (geoMatch) {
+        out.areaOverview = geoMatch[0].slice(0, 400).replace(/\s+/g, ' ').trim() + '…';
+      }
+    }
+  } catch { /* optional */ }
+
+  return out;
 }

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Trip, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import { buildTrip, pickEmoji } from '../lib/tripPlanner';
-import { searchDestinations, getDestinationDetails, type DestinationResult } from '../lib/destinationSearch';
+import { searchDestinations, getDestinationDetails, getRichDestinationDetails, type DestinationResult, type DestinationDetails } from '../lib/destinationSearch';
 import AIScreen from './AIScreen';
 import GroupsScreen from './GroupsScreen';
 import InAppBrowser from '../components/InAppBrowser';
@@ -62,6 +62,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
   const [wPickedPhoto, setWPickedPhoto] = useState<string | undefined>();
   const [wPickedSummary, setWPickedSummary] = useState<string | undefined>();
   const [wLoadingDetails, setWLoadingDetails] = useState(false);
+  const [tripRich, setTripRich] = useState<DestinationDetails | null>(null);
+  const [tripRichLoading, setTripRichLoading] = useState(false);
+  const [activePhoto, setActivePhoto] = useState<string | null>(null);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // In-app browser for affiliate links
@@ -81,6 +84,22 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
     }, 350);
     return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current); };
   }, [wSearchQuery]);
+
+  // When a trip is selected, fetch rich details (gallery + history + overview)
+  useEffect(() => {
+    if (!selectedTrip) { setTripRich(null); setActivePhoto(null); return; }
+    let cancelled = false;
+    setTripRichLoading(true);
+    setTripRich(null);
+    setActivePhoto(selectedTrip.photo || null);
+    getRichDestinationDetails(selectedTrip.dest, selectedTrip.country).then(d => {
+      if (cancelled) return;
+      setTripRich(d);
+      setActivePhoto(prev => prev || d.photo || null);
+      setTripRichLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [selectedTrip]);
 
   // Hydrate photo + summary when destination picked
   const pickDestination = async (city: string, country: string) => {
@@ -214,41 +233,102 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
     return (
       <div className="flex flex-col h-full overflow-hidden">
         {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
-        {/* Hero image */}
-        <div className="relative h-56 bg-gradient-to-br from-kipita-navy via-slate-700 to-slate-900 flex-shrink-0 overflow-hidden">
-          {trip.photo && (
-            <img src={trip.photo} alt={trip.dest} className="absolute inset-0 w-full h-full object-cover" />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-black/30" />
-          <button
-            onClick={() => { setSelectedTrip(null); setShowInviteForm(false); }}
-            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white z-10"
-          >
-            <span className="ms text-xl">arrow_back</span>
-          </button>
-          {daysUntil > 0 && (
-            <span className="absolute top-4 right-4 bg-kipita-red text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full z-10">
-              In {daysUntil} day{daysUntil !== 1 ? 's' : ''}
-            </span>
-          )}
-          {!trip.photo && (
-            <div className="absolute inset-0 flex items-center justify-center opacity-20 text-[12rem] select-none pointer-events-none">
-              {trip.emoji}
+        {/* Hero image — main + thumbnails */}
+        {(() => {
+          const heroPhoto = activePhoto || trip.photo || tripRich?.photo;
+          const galleryPool: string[] = [
+            ...(trip.photo ? [trip.photo] : []),
+            ...(tripRich?.photo ? [tripRich.photo] : []),
+            ...(tripRich?.gallery || []),
+          ];
+          const galleryUnique = Array.from(new Set(galleryPool)).slice(0, 5);
+          return (
+            <div className="relative h-56 bg-gradient-to-br from-kipita-navy via-slate-700 to-slate-900 flex-shrink-0 overflow-hidden">
+              {heroPhoto && (
+                <img src={heroPhoto} alt={trip.dest} className="absolute inset-0 w-full h-full object-cover transition-opacity duration-300" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/30" />
+              <button
+                onClick={() => { setSelectedTrip(null); setShowInviteForm(false); }}
+                className="btn-3d absolute top-4 left-4 w-10 h-10 rounded-full glass-dark flex items-center justify-center text-white z-10"
+              >
+                <span className="ms text-xl">arrow_back</span>
+              </button>
+              {daysUntil > 0 && (
+                <span className="absolute top-4 right-4 glass-dark text-white text-[11px] font-extrabold px-3 py-1.5 rounded-full z-10">
+                  In {daysUntil} day{daysUntil !== 1 ? 's' : ''}
+                </span>
+              )}
+              {!heroPhoto && (
+                <div className="absolute inset-0 flex items-center justify-center opacity-20 text-[12rem] select-none pointer-events-none">
+                  {trip.emoji}
+                </div>
+              )}
+              <div className="absolute bottom-3 left-4 right-4 text-white z-10">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">{trip.emoji}</span>
+                  <h2 className="text-2xl font-extrabold drop-shadow">{trip.dest}</h2>
+                </div>
+                <p className="text-white/90 text-xs mt-1 drop-shadow">{formatRange()} · {tripDays} days</p>
+              </div>
             </div>
-          )}
-          <div className="absolute bottom-3 left-4 right-4 text-white z-10">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{trip.emoji}</span>
-              <h2 className="text-2xl font-extrabold drop-shadow">{trip.dest}</h2>
-            </div>
-            <p className="text-white/90 text-xs mt-1 drop-shadow">{formatRange()} · {tripDays} days</p>
-          </div>
-        </div>
+          );
+        })()}
 
-        {/* Summary about the destination */}
-        {trip.summary && (
-          <div className="bg-card border-b border-border px-4 py-3 flex-shrink-0">
-            <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{trip.summary}</p>
+        {/* Photo gallery thumbnails */}
+        {(() => {
+          const galleryPool: string[] = [
+            ...(trip.photo ? [trip.photo] : []),
+            ...(tripRich?.photo ? [tripRich.photo] : []),
+            ...(tripRich?.gallery || []),
+          ];
+          const galleryUnique = Array.from(new Set(galleryPool)).slice(0, 5);
+          if (galleryUnique.length < 2 && !tripRichLoading) return null;
+          return (
+            <div className="bg-card border-b border-border px-4 py-3 flex-shrink-0">
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                {tripRichLoading && galleryUnique.length === 0 && (
+                  <>
+                    {[0,1,2,3].map(i => (
+                      <div key={i} className="w-20 h-20 rounded-xl bg-muted animate-pulse flex-shrink-0" />
+                    ))}
+                  </>
+                )}
+                {galleryUnique.map((url) => (
+                  <button
+                    key={url}
+                    onClick={() => setActivePhoto(url)}
+                    className={`btn-3d relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 ${activePhoto === url ? 'ring-2 ring-kipita-red ring-offset-2 ring-offset-card' : ''}`}
+                  >
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Summary + history + area overview */}
+        {(trip.summary || tripRich?.summary || tripRich?.history || tripRich?.areaOverview) && (
+          <div className="bg-card border-b border-border px-4 py-3 flex-shrink-0 space-y-3">
+            {(trip.summary || tripRich?.summary) && (
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">OVERVIEW</p>
+                <p className="text-xs text-foreground leading-relaxed">{trip.summary || tripRich?.summary}</p>
+              </div>
+            )}
+            {tripRich?.history && (
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">HISTORY</p>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">{tripRich.history}</p>
+              </div>
+            )}
+            {tripRich?.areaOverview && (
+              <div>
+                <p className="text-[10px] font-bold text-muted-foreground tracking-widest mb-1">THE AREA</p>
+                <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{tripRich.areaOverview}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -659,7 +739,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
 
                   {/* Picked destination preview — real photo + summary */}
                   {wDest && (
-                    <div className="bg-card border-2 border-kipita-red rounded-kipita overflow-hidden">
+                    <div className="glass rounded-kipita overflow-hidden">
                       {wLoadingDetails ? (
                         <div className="h-40 bg-muted animate-pulse flex items-center justify-center text-xs text-muted-foreground">
                           Loading photo…
@@ -700,7 +780,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }:
                         {POPULAR_DESTS.map(d => (
                           <button key={d.city}
                             onClick={() => pickDestination(d.city, d.country)}
-                            className="p-4 rounded-kipita border-2 border-border bg-card text-left hover:border-kipita-red/30 transition-all"
+                            className="btn-3d p-4 rounded-kipita glass text-left"
                           >
                             <div className="text-2xl mb-1">{d.emoji}</div>
                             <div className="text-sm font-bold">{d.city}</div>

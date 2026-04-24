@@ -3,6 +3,7 @@ import type { TabId } from '../types';
 import type { ForecastDay } from '../hooks';
 import { useTravelSafety } from '../hooks';
 import { computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel } from '../lib/safetyEngine';
+import { getDestinationDetails } from '../lib/destinationSearch';
 
 interface Props {
   weather: { emoji: string; temp: string; desc: string };
@@ -26,10 +27,9 @@ type FeaturedTile = { emoji: string; label: string; hint: string };
 function getFeaturedNearMe(): FeaturedTile[] {
   const now = new Date();
   const hour = now.getHours();
-  const day = now.getDay(); // 0=Sun, 6=Sat
+  const day = now.getDay();
   const isWeekend = day === 0 || day === 6;
 
-  // Late night: 11pm–4am
   if (hour >= 23 || hour < 4) {
     return [
       { emoji: '🌃', label: 'Nightlife', hint: 'nightlife' },
@@ -38,7 +38,6 @@ function getFeaturedNearMe(): FeaturedTile[] {
       { emoji: '⛽', label: 'Gas', hint: 'gas' },
     ];
   }
-  // Evening: 6pm–11pm
   if (hour >= 18) {
     return [
       { emoji: '🍽️', label: 'Dinner', hint: 'food' },
@@ -47,7 +46,6 @@ function getFeaturedNearMe(): FeaturedTile[] {
       { emoji: '☕', label: 'Coffee', hint: 'coffee' },
     ];
   }
-  // Weekend morning: 5am–noon
   if (isWeekend && hour < 12) {
     return [
       { emoji: '🌽', label: "Farmers\nMarket", hint: 'farmers_market' },
@@ -56,7 +54,6 @@ function getFeaturedNearMe(): FeaturedTile[] {
       { emoji: '🛍️', label: 'Shopping', hint: 'shop' },
     ];
   }
-  // Weekday morning: 5am–11am
   if (hour < 11) {
     return [
       { emoji: '☕', label: 'Coffee', hint: 'coffee' },
@@ -65,7 +62,6 @@ function getFeaturedNearMe(): FeaturedTile[] {
       { emoji: '🥐', label: 'Breakfast', hint: 'food' },
     ];
   }
-  // Lunch / afternoon: 11am–6pm
   return [
     { emoji: '🍽️', label: 'Lunch', hint: 'food' },
     { emoji: '🎭', label: 'Attractions', hint: 'attractions' },
@@ -78,6 +74,18 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   const liveSafety = useTravelSafety(countryCode);
   const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
   const [foodExpanded, setFoodExpanded] = useState(false);
+  const [bgPhoto, setBgPhoto] = useState<string | undefined>();
+
+  // Pull a real photo of the current city for the background
+  useEffect(() => {
+    if (!locationName) return;
+    const [city, country] = locationName.split(',').map(s => s.trim());
+    let cancelled = false;
+    getDestinationDetails(city, country).then(d => {
+      if (!cancelled && d.photo) setBgPhoto(d.photo);
+    });
+    return () => { cancelled = true; };
+  }, [locationName]);
 
   useEffect(() => {
     if (!liveSafety) return;
@@ -93,7 +101,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     setSafetyResult({ score: result.score, ...sl });
   }, [liveSafety]);
 
-  /* 5-level safety dots */
   const level = safetyResult?.level ?? -1;
   const DOTS = [
     { min: 0, color: '#ef4444' },
@@ -105,24 +112,12 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
   const handleEssentialTap = (id: string) => {
     switch (id) {
-      case 'food':
-        setFoodExpanded(prev => !prev);
-        break;
-      case 'fun':
-        onSwitchTab('places', 'nightlife');
-        break;
-      case 'shopping':
-        onSwitchTab('places', 'shop');
-        break;
-      case 'fuel':
-        onSwitchTab('fuel');
-        break;
-      case 'maps':
-        onSwitchTab('maps');
-        break;
-      case 'atm':
-        onSwitchTab('atm');
-        break;
+      case 'food': setFoodExpanded(prev => !prev); break;
+      case 'fun': onSwitchTab('places', 'nightlife'); break;
+      case 'shopping': onSwitchTab('places', 'shop'); break;
+      case 'fuel': onSwitchTab('fuel'); break;
+      case 'maps': onSwitchTab('maps'); break;
+      case 'atm': onSwitchTab('atm'); break;
     }
   };
 
@@ -136,9 +131,19 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   ];
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="relative flex flex-col h-full overflow-hidden">
+      {/* Faint city photo background */}
+      {bgPhoto && (
+        <div
+          className="absolute inset-0 bg-cover bg-center pointer-events-none"
+          style={{ backgroundImage: `url(${bgPhoto})`, opacity: 0.18 }}
+          aria-hidden
+        />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background pointer-events-none" aria-hidden />
+
       {/* Safety bar */}
-      <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
+      <div className="relative bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-medium truncate leading-tight">{locationName || 'Detecting…'}</p>
@@ -161,11 +166,11 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-24">
+      <div className="relative flex-1 overflow-y-auto px-4 pt-4 pb-24">
 
-        {/* AI CTA — Know B4 U Go */}
+        {/* AI CTA */}
         <button onClick={() => onSwitchTab('ai')}
-          className="w-full flex items-center gap-3 bg-card rounded-kipita p-4 mb-5 text-left hover:shadow-md transition-shadow shadow-sm">
+          className="btn-3d w-full flex items-center gap-3 glass rounded-kipita p-4 mb-5 text-left">
           <div className="w-11 h-11 rounded-full bg-kipita-red-lt flex items-center justify-center">
             <span className="ms text-kipita-red text-xl">auto_awesome</span>
           </div>
@@ -183,9 +188,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <button
               key={item.id}
               onClick={() => handleEssentialTap(item.id)}
-              className={`flex flex-col items-center justify-center gap-2 py-5 bg-card border rounded-kipita-sm shadow-sm transition-all hover:shadow-md active:scale-95 ${
-                item.id === 'food' && foodExpanded ? 'border-kipita-red' : 'border-border'
-              }`}
+              className="btn-3d flex flex-col items-center justify-center gap-2 py-5 glass rounded-kipita-sm"
             >
               <span className="text-3xl">{item.emoji}</span>
               <span className="text-xs font-bold text-foreground">{item.label}</span>
@@ -193,16 +196,16 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           ))}
         </div>
 
-        {/* Food sub-options (expandable) */}
+        {/* Food sub-options */}
         {foodExpanded && (
-          <div className="bg-muted/60 rounded-kipita-sm p-3 mb-3 -mx-0">
+          <div className="glass rounded-kipita-sm p-3 mb-3 animate-float-in">
             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">Choose a category</p>
             <div className="grid grid-cols-4 gap-2">
               {FOOD_SUBS.map(sub => (
                 <button
                   key={sub.label}
                   onClick={() => { onSwitchTab('places', sub.hint); setFoodExpanded(false); }}
-                  className="flex flex-col items-center gap-1.5 py-3 bg-card border border-border rounded-kipita-sm hover:shadow-sm transition-all active:scale-95"
+                  className="btn-3d flex flex-col items-center gap-1.5 py-3 bg-card rounded-kipita-sm"
                 >
                   <span className="text-xl">{sub.emoji}</span>
                   <span className="text-[10px] font-semibold text-foreground text-center leading-tight">{sub.label}</span>
@@ -212,7 +215,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           </div>
         )}
 
-        {/* Featured Near Me — situational */}
+        {/* Featured Near Me */}
         <h2 className="text-sm font-bold text-foreground mt-4 mb-1">Featured Near Me</h2>
         <p className="text-[10px] text-muted-foreground mb-3">Curated for right now · 1-tap</p>
         <div className="grid grid-cols-4 gap-2 mb-5">
@@ -220,7 +223,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <button
               key={cat.label}
               onClick={() => onSwitchTab('places', cat.hint)}
-              className="flex flex-col items-center justify-center gap-1.5 py-4 rounded-kipita-sm border-2 bg-card border-yellow-400 transition-all hover:shadow-sm active:scale-95"
+              className="btn-3d flex flex-col items-center justify-center gap-1.5 py-4 rounded-kipita-sm glass"
             >
               <span className="text-2xl">{cat.emoji}</span>
               <span className="text-[10px] font-semibold text-center leading-tight whitespace-pre-line text-foreground">
@@ -230,10 +233,10 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           ))}
         </div>
 
-        {/* Kipita Perks button */}
+        {/* Kipita Perks */}
         <button
           onClick={() => onSwitchTab('perks')}
-          className="w-full flex items-center justify-between gap-3 p-4 bg-card border-2 border-kipita-green rounded-kipita shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+          className="btn-3d w-full flex items-center justify-between gap-3 p-4 glass rounded-kipita"
         >
           <div className="flex items-center gap-3">
             <span className="text-xl">🎁</span>
