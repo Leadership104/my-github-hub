@@ -13,8 +13,16 @@ interface Props {
  * Note: Many partner sites block being embedded via iframe (X-Frame-Options).
  * We provide a fallback "Open in new tab" button for those cases.
  */
+const EXTERNAL_ONLY_HOSTS = ['upside.com', 'expedia.com', 'hotels.com', 'apple.com', 'play.google.com'];
+const isExternalOnly = (url: string) => {
+  try {
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    return EXTERNAL_ONLY_HOSTS.some(h => host === h || host.endsWith('.' + h));
+  } catch { return false; }
+};
+
 export default function InAppBrowser({ url, title, onClose }: Props) {
-  const [blocked, setBlocked] = useState(false);
+  const [blocked, setBlocked] = useState(isExternalOnly(url));
 
   return (
     <div className="fixed inset-0 z-[400] flex flex-col bg-background">
@@ -64,18 +72,33 @@ export default function InAppBrowser({ url, title, onClose }: Props) {
             onError={() => setBlocked(true)}
           />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-            <span className="text-4xl mb-3">🔒</span>
-            <p className="text-sm font-bold mb-1">This site can't be embedded</p>
-            <p className="text-xs text-muted-foreground mb-4">Open it in a new tab to continue.</p>
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-kipita-red text-white rounded-full text-xs font-bold no-underline"
-            >
-              Open in new tab
-            </a>
+          <div className="absolute inset-0 overflow-y-auto bg-background">
+            <div className="max-w-md mx-auto px-5 py-8">
+              <div className="glass rounded-kipita p-6 text-center">
+                <div className="text-5xl mb-3">🤝</div>
+                <p className="text-base font-extrabold text-foreground mb-1">{title || 'Partner'}</p>
+                <p className="text-xs text-muted-foreground mb-5 break-all">{url}</p>
+                <p className="text-sm text-foreground mb-5 leading-relaxed">
+                  This partner doesn't allow being shown inside other apps for security reasons.
+                  Tap below to continue with your Kipita perk — you can come right back.
+                </p>
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-3d inline-flex items-center justify-center gap-2 w-full bg-kipita-red text-white font-bold py-3 rounded-full no-underline"
+                >
+                  <span className="ms text-base">open_in_new</span>
+                  Continue to {title || 'partner'}
+                </a>
+                <button
+                  onClick={onClose}
+                  className="mt-3 w-full text-xs text-muted-foreground font-semibold py-2"
+                >
+                  ← Stay in Kipita
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </div>

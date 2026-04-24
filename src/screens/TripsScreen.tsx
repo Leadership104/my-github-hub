@@ -77,21 +77,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   // In-app browser for affiliate links
   const [browserUrl, setBrowserUrl] = useState<string | null>(null);
   const [browserTitle, setBrowserTitle] = useState<string>('');
-  // Providers that block iframe embedding — must open in a new tab.
-  const EXTERNAL_ONLY_HOSTS = ['upside.com', 'expedia.com', 'hotels.com', 'apple.com', 'play.google.com'];
-  const isExternalOnly = (url: string) => {
-    try {
-      const host = new URL(url).hostname.replace(/^www\./, '');
-      return EXTERNAL_ONLY_HOSTS.some(h => host === h || host.endsWith('.' + h));
-    } catch { return false; }
-  };
-  const openInternal = (url: string, title: string) => {
-    if (isExternalOnly(url)) {
-      window.open(url, '_blank', 'noopener,noreferrer');
-      return;
-    }
-    setBrowserUrl(url); setBrowserTitle(title);
-  };
+  const openInternal = (url: string, title: string) => { setBrowserUrl(url); setBrowserTitle(title); };
 
   // Debounced live search
   useEffect(() => {
