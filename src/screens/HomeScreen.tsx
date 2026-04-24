@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import HorizontalScroller from '../components/HorizontalScroller';
 import type { TabId } from '../types';
 import type { ForecastDay } from '../hooks';
 import { useTravelSafety } from '../hooks';
