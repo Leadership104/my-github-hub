@@ -8,6 +8,7 @@ const corsHeaders = {
 
 const LOVABLE_API_KEY = () => Deno.env.get("LOVABLE_API_KEY") || "";
 const GOOGLE_PLACES_API_KEY = () => Deno.env.get("GOOGLE_PLACES_API_KEY") || "";
+const NASA_FIRMS_MAP_KEY = () => Deno.env.get("NASA_FIRMS_MAP_KEY") || "";
 const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 // ── Emergency contacts by ISO-2 country code ─────────────────────────────────
@@ -216,7 +217,163 @@ async function fetchLiveHealth(lat: number, lng: number): Promise<LiveHealth | n
   }
 }
 
-// ── Ultimate Travel Expert System Prompt ──────────────────────────────────────
+// ── Wildfires (NASA FIRMS — VIIRS NOAA-20 NRT, last 24h) ──────────────────────
+interface WildfireHit {
+  lat: number;
+  lng: number;
+  distanceMi: number;
+  brightness?: number;   // brightness temp (K)
+  frp?: number;          // fire radiative power (MW)
+  confidence?: string;   // l/n/h or numeric 0-100
+  acqDate?: string;
+  acqTime?: string;
+  daynight?: string;
+}
+
+interface WildfireSummary {
+  count: number;
+  nearestMi?: number;
+  highConfidence: number;
+  totalFrpMw: number;
+  source: string;
+  hits: WildfireHit[];
+}
+
+async function fetchWildfires(lat: number, lng: number, radiusMi = 100): Promise<WildfireSummary | null> {
+  const key = NASA_FIRMS_MAP_KEY();
+  if (!key) return null;
+  // Approx 1° lat ≈ 69 mi. Build a small bbox around the point.
+  const dLat = radiusMi / 69;
+  const dLng = radiusMi / (69 * Math.max(0.1, Math.cos((lat * Math.PI) / 180)));
+  const minLng = (lng - dLng).toFixed(4);
+  const minLat = (lat - dLat).toFixed(4);
+  const maxLng = (lng + dLng).toFixed(4);
+  const maxLat = (lat + dLat).toFixed(4);
+  // FIRMS area CSV: /api/area/csv/{KEY}/{SOURCE}/{W,S,E,N}/{DAY_RANGE}
+  const source = "VIIRS_NOAA20_NRT";
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${source}/${minLng},${minLat},${maxLng},${maxLat}/1`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return null;
+    const text = await resp.text();
+    if (!text || text.startsWith("Invalid") || text.startsWith("No fire")) {
+      return { count: 0, highConfidence: 0, totalFrpMw: 0, source: "NASA FIRMS (VIIRS NOAA-20 NRT)", hits: [] };
+    }
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) {
+      return { count: 0, highConfidence: 0, totalFrpMw: 0, source: "NASA FIRMS (VIIRS NOAA-20 NRT)", hits: [] };
+    }
+    const header = lines[0].split(",").map((h) => h.trim().toLowerCase());
+    const idx = (name: string) => header.indexOf(name);
+    const iLat = idx("latitude");
+    const iLng = idx("longitude");
+    const iBright = idx("bright_ti4");
+    const iFrp = idx("frp");
+    const iConf = idx("confidence");
+    const iDate = idx("acq_date");
+    const iTime = idx("acq_time");
+    const iDN = idx("daynight");
+
+    const hits: WildfireHit[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      if (cols.length < 4) continue;
+      const fLat = parseFloat(cols[iLat]);
+      const fLng = parseFloat(cols[iLng]);
+      if (!isFinite(fLat) || !isFinite(fLng)) continue;
+      const distanceMi = Math.round(haversineMi(lat, lng, fLat, fLng) * 10) / 10;
+      if (distanceMi > radiusMi) continue;
+      hits.push({
+        lat: fLat,
+        lng: fLng,
+        distanceMi,
+        brightness: iBright >= 0 ? parseFloat(cols[iBright]) : undefined,
+        frp: iFrp >= 0 ? parseFloat(cols[iFrp]) : undefined,
+        confidence: iConf >= 0 ? cols[iConf] : undefined,
+        acqDate: iDate >= 0 ? cols[iDate] : undefined,
+        acqTime: iTime >= 0 ? cols[iTime] : undefined,
+        daynight: iDN >= 0 ? cols[iDN] : undefined,
+      });
+    }
+    hits.sort((a, b) => a.distanceMi - b.distanceMi);
+    const highConfidence = hits.filter((h) => {
+      const c = (h.confidence || "").toLowerCase();
+      if (c === "h" || c === "high") return true;
+      const n = parseFloat(c);
+      return isFinite(n) && n >= 80;
+    }).length;
+    const totalFrpMw = Math.round(hits.reduce((s, h) => s + (h.frp || 0), 0));
+    return {
+      count: hits.length,
+      nearestMi: hits[0]?.distanceMi,
+      highConfidence,
+      totalFrpMw,
+      source: "NASA FIRMS (VIIRS NOAA-20 NRT)",
+      hits: hits.slice(0, 5),
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ── Recent earthquakes (USGS, no key required) ────────────────────────────────
+interface QuakeHit {
+  mag: number;
+  place: string;
+  time: number;
+  distanceMi: number;
+}
+async function fetchEarthquakes(lat: number, lng: number, radiusMi = 200, minMag = 2.5): Promise<QuakeHit[]> {
+  const radiusKm = Math.round(radiusMi * 1.60934);
+  const url = `https://earthquake.usgs.gov/fdsnws/event/1/query?format=geojson&latitude=${lat}&longitude=${lng}&maxradiuskm=${radiusKm}&minmagnitude=${minMag}&orderby=time&limit=8`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.features || []).map((f: any) => {
+      const [qLng, qLat] = f.geometry?.coordinates || [];
+      return {
+        mag: f.properties?.mag,
+        place: f.properties?.place || "Unknown",
+        time: f.properties?.time,
+        distanceMi: typeof qLat === "number" ? Math.round(haversineMi(lat, lng, qLat, qLng) * 10) / 10 : 0,
+      };
+    }).filter((q: QuakeHit) => isFinite(q.mag));
+  } catch {
+    return [];
+  }
+}
+
+// ── ReliefWeb disaster alerts (no key required) ───────────────────────────────
+interface DisasterHit { name: string; type: string; date?: string; status?: string; }
+async function fetchDisasters(countryCode: string): Promise<DisasterHit[]> {
+  if (!countryCode) return [];
+  try {
+    const url = `https://api.reliefweb.int/v1/disasters?appname=kipita-ai&filter[field]=country.iso3&limit=4&sort[]=date:desc&fields[include][]=name&fields[include][]=type.name&fields[include][]=status&fields[include][]=date`;
+    // ReliefWeb uses ISO3; map common ISO2 -> ISO3 (best-effort, lowercase 3-letter via fallback)
+    // Most users won't see this fail because we just no-op on miss.
+    const iso3Map: Record<string, string> = {
+      US:"USA",CA:"CAN",MX:"MEX",GB:"GBR",FR:"FRA",DE:"DEU",IT:"ITA",ES:"ESP",PT:"PRT",NL:"NLD",BE:"BEL",CH:"CHE",AT:"AUT",SE:"SWE",NO:"NOR",DK:"DNK",GR:"GRC",TR:"TUR",
+      TH:"THA",JP:"JPN",KR:"KOR",CN:"CHN",HK:"HKG",SG:"SGP",MY:"MYS",ID:"IDN",PH:"PHL",VN:"VNM",IN:"IND",AE:"ARE",EG:"EGY",ZA:"ZAF",MA:"MAR",
+      BR:"BRA",AR:"ARG",CL:"CHL",CO:"COL",PE:"PER",RU:"RUS",IL:"ISR",AU:"AUS",NZ:"NZL",
+    };
+    const iso3 = iso3Map[countryCode.toUpperCase()];
+    if (!iso3) return [];
+    const resp = await fetch(`${url}&filter[value]=${iso3}`);
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.data || []).map((d: any) => ({
+      name: d.fields?.name,
+      type: d.fields?.type?.[0]?.name || "Disaster",
+      date: d.fields?.date?.created,
+      status: d.fields?.status,
+    })).filter((x: DisasterHit) => x.name);
+  } catch {
+    return [];
+  }
+}
+
+
 const SYSTEM_PROMPT = `You are Kipita — a "Know Before You Go" travel intelligence assistant. Talk like a sharp, well-traveled friend texting you back: confident, warm, useful.
 
 KNOWLEDGE: safety, health (water/food/air/vaccines), entry & visas, money, culture, transport, food, accommodation, current conditions.
@@ -240,7 +397,7 @@ IN-APP CTAs (USE LIBERALLY when relevant — they deep-link inside Kipita):
 • Perks: [Kipita Perks](kipita://tab/perks)
 Always prefer an in-app CTA over an external site when the answer lives inside the app.
 
-EXTERNAL TRAVEL LINKS (use only when actually booking-related):
+EXTERNAL TRAVEL LINKS — REFERENCE ONLY (do NOT include unless explicit booking intent — see strict rules below):
 • Hotels: [Hotels.com](https://www.hotels.com/affiliate/RrZ7bmg)
 • Flights + Hotels: [Expedia](https://expedia.com/affiliate/eA2cKky)
 • Bitcoin: [Swan Bitcoin](https://www.swanbitcoin.com/kipita/) — $10 free BTC
@@ -248,15 +405,25 @@ EXTERNAL TRAVEL LINKS (use only when actually booking-related):
 • Gold/Silver: [Kinesis](https://kms.kinesis.money/signup/KM00083150)
 • Cashback Gas/Groceries: [Upside](https://upside.com/)
 
-CONTEXTUAL AFFILIATE CTAs (append at the END of the relevant reply, ONLY if it makes sense):
-• Where to stay / hotels / accommodation / neighborhoods → finish with one line:
-  *Book it:* [Hotels.com](https://www.hotels.com/affiliate/RrZ7bmg) · [Expedia](https://expedia.com/affiliate/eA2cKky)
-• Get around / transport / rental / road trip / fuel → finish with one line:
-  *Save on the road:* [Upside cashback](https://upside.com/) (gas) — and if rental car talk: [Expedia cars](https://expedia.com/affiliate/eA2cKky)
-Do NOT add affiliate links to safety, food, health, or chit-chat replies.
+AFFILIATE CTA RULES — STRICT (default = NONE):
+1. Affiliate links are OFF by default. Most replies must contain ZERO external affiliate links.
+2. Only attach an affiliate CTA when the user EXPLICITLY signals booking/purchase intent for that exact category. Look for explicit verbs:
+   • Hotels/lodging — only if message contains: "book", "reserve", "find a hotel", "where can I book", "cheapest hotel", "rental", "Airbnb alternative", "vacation rental".
+     → Append exactly: *Book it:* [Hotels.com](https://www.hotels.com/affiliate/RrZ7bmg) · [Expedia](https://expedia.com/affiliate/eA2cKky)
+   • Rental cars — only if message contains: "rent a car", "car rental", "rental car", "hire a car".
+     → Append exactly: *Rentals:* [Expedia cars](https://expedia.com/affiliate/eA2cKky)
+   • Fuel/gas cashback — only if message contains: "save on gas", "gas cashback", "cheapest gas", "fuel rewards".
+     → Append exactly: *Save at the pump:* [Upside cashback](https://upside.com/)
+   • Bitcoin/crypto — only if message contains: "buy btc", "buy bitcoin", "btc rewards card", "btc card".
+     → Append exactly: [Swan Bitcoin](https://www.swanbitcoin.com/kipita/) · [Fold Card](https://use.foldapp.com/r/MAJL4MYU)
+3. NEVER add affiliate links for: generic "what should I do", "where should I stay" (advice ≠ booking), neighborhoods, safety, food, health, weather, transit advice, "is it safe", "tell me about", small-talk, briefings, or follow-up suggestions.
+4. If unsure → DO NOT add an affiliate link. In-app CTAs (kipita://) are always preferred.
+5. Maximum ONE affiliate line per reply, on its own line at the very end, before the *Ask me:* suggestions.
 
 WATER & HEALTH SOURCING — when discussing water safety, vaccines, or disease risk, cite the CDC:
 • [CDC Travelers' Health](https://wwwnc.cdc.gov/travel) — and when possible link the country page directly: https://wwwnc.cdc.gov/travel/destinations/traveler/none/<country-slug>
+
+WILDFIRE / EARTHQUAKE / DISASTER DATA — when LIVE WILDFIRE, EARTHQUAKE, or DISASTER blocks are present in context, lead with the specific number (e.g., "3 active fires within 60 mi") and cite the source briefly. Sources to mention by name when used: NASA FIRMS (wildfires), USGS (earthquakes), ReliefWeb (disasters), Open-Meteo Air Quality (PM2.5/AQI). Add a [Safety screen](kipita://tab/safety) link.
 
 NEVER MENTION: Strike, River, Skyscanner, Booking.com, Airbnb.`;
 
@@ -336,13 +503,16 @@ serve(async (req) => {
       let liveHealth: LiveHealth | null = null;
       let nearestHospital: PlaceChip | null = null;
       if (typeof context.lat === "number" && typeof context.lng === "number") {
-        const [restaurants, cafes, attractions, bars, hospitals, health] = await Promise.all([
+        const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
           fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
           fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
           fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
           fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
           fetchLiveHealth(context.lat, context.lng),
+          fetchWildfires(context.lat, context.lng, 100),
+          fetchEarthquakes(context.lat, context.lng, 200, 2.5),
+          context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
         ]);
 
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
@@ -363,7 +533,7 @@ serve(async (req) => {
         }
 
         if (liveHealth) {
-          liveDataBlock += `\n\n=== LIVE HEALTH DATA (real-time, from Open-Meteo Air Quality API) ===`;
+          liveDataBlock += `\n\n=== LIVE AIR QUALITY & UV (Open-Meteo Air Quality API, real-time) ===`;
           if (liveHealth.usAqi != null) liveDataBlock += `\n- US AQI: ${Math.round(liveHealth.usAqi)} (${aqiCategory(liveHealth.usAqi)})`;
           if (liveHealth.pm25 != null) liveDataBlock += `\n- PM2.5: ${liveHealth.pm25.toFixed(1)} µg/m³`;
           if (liveHealth.pm10 != null) liveDataBlock += `\n- PM10: ${liveHealth.pm10.toFixed(1)} µg/m³`;
@@ -376,6 +546,39 @@ serve(async (req) => {
           if (p.tree != null && p.tree > 0) pollenParts.push(`tree ${p.tree.toFixed(1)}`);
           if (p.weed != null && p.weed > 0) pollenParts.push(`weed ${p.weed.toFixed(1)}`);
           if (pollenParts.length) liveDataBlock += `\n- Pollen (grains/m³): ${pollenParts.join(", ")}`;
+        }
+
+        if (fires) {
+          liveDataBlock += `\n\n=== LIVE WILDFIRE DATA (NASA FIRMS — VIIRS NOAA-20 NRT, last 24h, 100mi radius) ===`;
+          if (fires.count === 0) {
+            liveDataBlock += `\n- No active fire detections within 100 mi in the last 24h.`;
+          } else {
+            liveDataBlock += `\n- Active fire detections: ${fires.count} (high-confidence: ${fires.highConfidence})`;
+            if (fires.nearestMi != null) liveDataBlock += `\n- Nearest detection: ${fires.nearestMi} mi away`;
+            if (fires.totalFrpMw > 0) liveDataBlock += `\n- Combined fire radiative power: ~${fires.totalFrpMw} MW`;
+            if (fires.hits.length) {
+              liveDataBlock += `\n- Top hits:\n` + fires.hits.slice(0, 5).map((h) =>
+                `  • ${h.distanceMi} mi away${h.frp ? ` · ${Math.round(h.frp)} MW` : ""}${h.confidence ? ` · conf=${h.confidence}` : ""}${h.acqDate ? ` · ${h.acqDate} ${h.acqTime || ""}` : ""}`
+              ).join("\n");
+            }
+            liveDataBlock += `\n- Map: https://firms.modaps.eosdis.nasa.gov/usfs/map/`;
+          }
+        } else if (!NASA_FIRMS_MAP_KEY()) {
+          liveDataBlock += `\n\n(Wildfire data unavailable: NASA_FIRMS_MAP_KEY not configured)`;
+        }
+
+        if (quakes && quakes.length) {
+          liveDataBlock += `\n\n=== RECENT EARTHQUAKES (USGS, M2.5+, 200mi radius, last 30d) ===`;
+          liveDataBlock += `\n` + quakes.slice(0, 5).map((q) =>
+            `  • M${q.mag.toFixed(1)} — ${q.place} (${q.distanceMi} mi away)`
+          ).join("\n");
+        }
+
+        if (disasters && disasters.length) {
+          liveDataBlock += `\n\n=== ACTIVE DISASTERS (ReliefWeb, country-level) ===`;
+          liveDataBlock += `\n` + disasters.slice(0, 4).map((d) =>
+            `  • ${d.type}: ${d.name}${d.status ? ` [${d.status}]` : ""}`
+          ).join("\n");
         }
       }
 
@@ -502,7 +705,7 @@ function buildSuggestions(message: string, context: any): string[] {
     return [`What's the local dish I must try?`, "Where do locals eat (not tourist traps)?", "Is the street food safe to eat?"];
   }
   if (msg.includes("hotel") || msg.includes("stay") || msg.includes("accommodation")) {
-    return [`What's the best neighborhood to stay in?`, "What's a realistic daily budget?", "Is [Hotels.com](https://www.hotels.com/affiliate/RrZ7bmg) the best option here?"];
+    return [`What's the best neighborhood to stay in?`, "What's a realistic daily budget?", "I want to book a hotel here"];
   }
   if (msg.includes("visa") || msg.includes("entry") || msg.includes("passport")) {
     return ["What vaccines do I need?", "Can I get visa on arrival?", "What shouldn't I bring through customs?"];
@@ -518,6 +721,15 @@ function buildSuggestions(message: string, context: any): string[] {
   }
   if (msg.includes("trip") || msg.includes("plan") || msg.includes("itinerary")) {
     return ["What's the one thing I absolutely can't miss?", "How many days do I really need?", "What are the best day trips from here?"];
+  }
+  if (msg.includes("fire") || msg.includes("wildfire") || msg.includes("smoke")) {
+    return ["Is the air quality safe outside?", "Are any evacuations active nearby?", "Show me the FIRMS map"];
+  }
+  if (msg.includes("air") || msg.includes("aqi") || msg.includes("pollution") || msg.includes("smog")) {
+    return ["Safe to exercise outside today?", "Should I wear a mask?", "What's driving the air quality?"];
+  }
+  if (msg.includes("earthquake") || msg.includes("quake") || msg.includes("tsunami") || msg.includes("disaster")) {
+    return ["Any recent earthquakes nearby?", "Is this area quake-prone?", "What active disasters are in the country?"];
   }
 
   // Default: general discovery prompts
