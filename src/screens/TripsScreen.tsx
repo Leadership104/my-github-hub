@@ -27,11 +27,13 @@ interface Props {
   onSaveTrips: (updated: Trip[]) => void;
   onBack?: () => void;
   onSwitchTab?: (tab: import('../types').TabId, hint?: string) => void;
+  /** Optional hint of form "plan:City|Country" to auto-open wizard pre-filled */
+  initialHint?: string;
 }
 
 type WizardStep = 'dest' | 'date' | 'days' | 'invites' | 'confirm';
 
-export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab }: Props) {
+export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, initialHint }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
