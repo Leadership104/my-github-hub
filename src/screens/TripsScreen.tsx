@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Trip, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import { buildTrip, pickEmoji } from '../lib/tripPlanner';
+import { searchDestinations, getDestinationDetails, type DestinationResult } from '../lib/destinationSearch';
 import AIScreen from './AIScreen';
 import GroupsScreen from './GroupsScreen';
+import InAppBrowser from '../components/InAppBrowser';
 
 const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
   flight: { emoji: '✈️', label: 'Flight' },
