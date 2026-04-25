@@ -530,31 +530,43 @@ function buildRates(opts: {
   const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
   const policeDiscount = Math.max(0.65, 1 - Math.min(signals.overpass.policeNearby, 12) * 0.03);
 
+  // Storm/cyclone pressure — combines NOAA, GDACS, EONET storm flag, and
+  // raw wind/precip from Open-Meteo (catches typhoons/hurricanes globally).
   const stormFactor =
     1 +
     Math.min(signals.weather.severe, 3) * 0.35 +
-    Math.min(signals.gdacs.maxScore, 3) * 0.25 +
-    Math.min(signals.eonet.activeEvents, 5) * 0.08 +
-    (signals.meteo.windKph >= 60 ? 0.4 : signals.meteo.windKph >= 35 ? 0.15 : 0) +
-    (signals.meteo.precipMm >= 10 ? 0.25 : signals.meteo.precipMm >= 3 ? 0.1 : 0);
+    Math.min(signals.gdacs.maxScore, 3) * 0.30 +
+    (signals.eonet.stormNearby ? 0.30 : 0) +
+    (signals.meteo.windKph >= 90 ? 0.70 : signals.meteo.windKph >= 60 ? 0.40 : signals.meteo.windKph >= 35 ? 0.15 : 0) +
+    (signals.meteo.precipMm >= 25 ? 0.45 : signals.meteo.precipMm >= 10 ? 0.25 : signals.meteo.precipMm >= 3 ? 0.10 : 0);
 
   const quakeFactor =
     1 +
-    (signals.quakes.maxMag >= 5 ? 0.5 : signals.quakes.maxMag >= 3 ? 0.15 : 0) +
+    (signals.quakes.maxMag >= 6 ? 0.85 : signals.quakes.maxMag >= 5 ? 0.50 : signals.quakes.maxMag >= 3 ? 0.15 : 0) +
     Math.min(signals.quakes.count, 10) * 0.02;
 
-  // Wildfire pressure: nearby active fires raise public_disorder/traffic/health
-  // categories (smoke + evacuation + looting risk).
-  const fireFactor = signals.fires.activeFires === 0
+  // Wildfire pressure: combine FIRMS satellite hotspots with NASA EONET fire
+  // events (FIRMS needs an API key; EONET works without one and covers most
+  // major active wildfires globally).
+  const wfActive = signals.fires.activeFires + signals.eonet.wildfiresNearby * 4;
+  const wfNearestKm = Math.min(signals.fires.nearestKm, signals.eonet.nearestWildfireKm);
+  const fireFactor = wfActive === 0
     ? 1
     : 1 +
-      Math.min(signals.fires.activeFires, 25) * 0.015 +
-      (signals.fires.nearestKm < 25 ? 0.35 : signals.fires.nearestKm < 75 ? 0.15 : 0.05);
+      Math.min(wfActive, 40) * 0.015 +
+      (wfNearestKm < 25 ? 0.45 : wfNearestKm < 75 ? 0.20 : wfNearestKm < 150 ? 0.08 : 0.03);
 
-  // Conflict factor: active armed conflict raises every violent + weapons category.
-  // severity 0=peaceful, 1=turbulent, 2=high, 3=extreme.
-  const conflictFactor = 1 + signals.conflict.severity * 0.45 +
-    (signals.conflict.fatalities30d >= 100 ? 0.35 : signals.conflict.fatalities30d >= 25 ? 0.15 : 0);
+  // Conflict factor: active armed conflict raises violent + weapons categories.
+  // Sanctioned states (RU, IR, KP, SY, CU, BY) get an additional uplift on
+  // weapons/kidnapping due to detention/wrongful-arrest risk and weak rule of law.
+  // Travel-advisory level adds a baseline floor even where ACLED events are low.
+  const advisoryUplift = signals.conflict.travelAdvisory * 0.20;
+  const sanctionsUplift = signals.conflict.sanctionsTier * 0.30;
+  const conflictFactor = 1 + signals.conflict.severity * 0.50 +
+    (signals.conflict.fatalities30d >= 500 ? 0.50 : signals.conflict.fatalities30d >= 100 ? 0.30 : signals.conflict.fatalities30d >= 25 ? 0.15 : 0) +
+    advisoryUplift;
+  const detentionFactor = 1 + sanctionsUplift +
+    (signals.conflict.travelAdvisory >= 3 ? 0.25 : 0);
 
   const out: CrimeRates = { ...base };
   for (const k of Object.keys(out) as (keyof CrimeRates)[]) {
@@ -562,8 +574,11 @@ function buildRates(opts: {
     if (k === "traffic_incident") f *= stormFactor * (1 + (fireFactor - 1) * 0.6);
     if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5 + (fireFactor - 1) * 0.5;
     if (k === "home_invasion" || k === "burglary") f *= quakeFactor * (1 + (fireFactor - 1) * 0.4);
-    if (k === "robbery" || k === "assault" || k === "kidnapping" || k === "weapons_offense" || k === "sexual_offense") {
+    if (k === "robbery" || k === "assault" || k === "sexual_offense") {
       f *= conflictFactor;
+    }
+    if (k === "kidnapping" || k === "weapons_offense") {
+      f *= conflictFactor * detentionFactor;
     }
     out[k] = Math.max(0, Math.round(out[k] * f));
   }
