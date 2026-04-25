@@ -249,7 +249,6 @@ interface FireSignals { activeFires: number; maxConfidence: number; nearestKm: n
 async function fetchNasaFirms(lat: number, lon: number): Promise<FireSignals> {
   const key = Deno.env.get("NASA_FIRMS_MAP_KEY");
   if (!key) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
-  // Box: ~150 km square around point. FIRMS returns CSV.
   const dLat = 1.35; // ~150 km
   const dLon = 1.35 / Math.max(0.2, Math.cos(lat * Math.PI / 180));
   const west = (lon - dLon).toFixed(3);
@@ -257,92 +256,152 @@ async function fetchNasaFirms(lat: number, lon: number): Promise<FireSignals> {
   const east = (lon + dLon).toFixed(3);
   const north = (lat + dLat).toFixed(3);
   const area = `${west},${south},${east},${north}`;
-  // VIIRS_SNPP_NRT, last 1 day
-  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/${area}/1`;
-  try {
-    const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
-    const text = await r.text();
-    const lines = text.trim().split(/\r?\n/);
-    if (lines.length < 2) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
-    const header = lines[0].split(",").map((s) => s.trim().toLowerCase());
-    const li = header.indexOf("latitude");
-    const lo = header.indexOf("longitude");
-    const ci = header.indexOf("confidence");
-    let count = 0, maxConf = 0, nearest = 9999;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",");
-      const fLat = parseFloat(cols[li]);
-      const fLon = parseFloat(cols[lo]);
-      if (!Number.isFinite(fLat) || !Number.isFinite(fLon)) continue;
-      const d = distKm(lat, lon, fLat, fLon);
-      if (d > 150) continue;
-      count++;
-      if (d < nearest) nearest = d;
-      const c = cols[ci];
-      const conf = c === "h" ? 90 : c === "n" ? 60 : c === "l" ? 30 : Number(c) || 0;
-      if (conf > maxConf) maxConf = conf;
-    }
-    return { activeFires: count, maxConfidence: maxConf, nearestKm: Math.round(nearest) };
-  } catch { return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 }; }
+  // Try VIIRS first (best resolution), then MODIS as a fallback.
+  const datasets = ["VIIRS_SNPP_NRT", "MODIS_NRT"];
+  for (const ds of datasets) {
+    try {
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${ds}/${area}/2`;
+      const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const text = await r.text();
+      // Invalid-key body looks like "Invalid MAP_KEY..." — skip without throwing.
+      if (/Invalid|exceeded|MAP_KEY/i.test(text.slice(0, 200)) && !text.includes(",")) continue;
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) continue;
+      const header = lines[0].split(",").map((s) => s.trim().toLowerCase());
+      const li = header.indexOf("latitude");
+      const lo = header.indexOf("longitude");
+      const ci = header.indexOf("confidence");
+      if (li < 0 || lo < 0) continue;
+      let count = 0, maxConf = 0, nearest = 9999;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        const fLat = parseFloat(cols[li]);
+        const fLon = parseFloat(cols[lo]);
+        if (!Number.isFinite(fLat) || !Number.isFinite(fLon)) continue;
+        const d = distKm(lat, lon, fLat, fLon);
+        if (d > 150) continue;
+        count++;
+        if (d < nearest) nearest = d;
+        const c = (cols[ci] ?? "").trim();
+        const conf = c === "h" ? 90 : c === "n" ? 60 : c === "l" ? 30 : Number(c) || 0;
+        if (conf > maxConf) maxConf = conf;
+      }
+      if (count > 0) return { activeFires: count, maxConfidence: maxConf, nearestKm: Math.round(nearest) };
+    } catch { /* try next dataset */ }
+  }
+  return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
 }
 
-interface EonetSignals { activeEvents: number; categories: string[] }
+interface EonetSignals {
+  activeEvents: number;
+  categories: string[];
+  wildfiresNearby: number;     // EONET wildfires within 150 km
+  wildfiresRegional: number;   // EONET wildfires within 400 km
+  nearestWildfireKm: number;
+  volcanoNearby: boolean;
+  stormNearby: boolean;
+}
 async function fetchNasaEonet(lat: number, lon: number): Promise<EonetSignals> {
+  const empty: EonetSignals = {
+    activeEvents: 0, categories: [], wildfiresNearby: 0, wildfiresRegional: 0,
+    nearestWildfireKm: 9999, volcanoNearby: false, stormNearby: false,
+  };
   try {
+    // 30-day window, large limit. Wildfires dominate this feed (~95% of events).
     const r = await fetch(
-      "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=14",
-      { signal: AbortSignal.timeout(7000) },
+      "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30&limit=500",
+      { signal: AbortSignal.timeout(8000) },
     );
-    if (!r.ok) return { activeEvents: 0, categories: [] };
+    if (!r.ok) return empty;
     const j = await r.json();
     const cats = new Set<string>();
-    let count = 0;
+    let count = 0, wfNear = 0, wfReg = 0, nearest = 9999;
+    let volcano = false, storm = false;
     for (const ev of j.events ?? []) {
       const geom = ev.geometry?.[ev.geometry.length - 1];
       const coords = geom?.coordinates;
       if (!Array.isArray(coords) || coords.length < 2) continue;
       const [eLon, eLat] = coords;
       if (typeof eLat !== "number" || typeof eLon !== "number") continue;
-      if (distKm(lat, lon, eLat, eLon) > 400) continue;
-      count++;
-      for (const c of ev.categories ?? []) {
-        if (c?.title) cats.add(String(c.title));
+      const d = distKm(lat, lon, eLat, eLon);
+      if (d > 600) continue;
+      const evCats = (ev.categories ?? []).map((c: any) => String(c?.title ?? ""));
+      const isFire = evCats.some((c: string) => /Wildfire/i.test(c));
+      const isVolc = evCats.some((c: string) => /Volcano/i.test(c));
+      const isStorm = evCats.some((c: string) => /Storm|Cyclone|Hurricane|Typhoon/i.test(c));
+      if (d <= 400) {
+        count++;
+        for (const c of evCats) if (c) cats.add(c);
       }
+      if (isFire) {
+        if (d <= 150) wfNear++;
+        if (d <= 400) wfReg++;
+        if (d < nearest) nearest = d;
+      }
+      if (isVolc && d <= 200) volcano = true;
+      if (isStorm && d <= 500) storm = true;
     }
-    return { activeEvents: count, categories: [...cats].slice(0, 6) };
-  } catch { return { activeEvents: 0, categories: [] }; }
+    return {
+      activeEvents: count,
+      categories: [...cats].slice(0, 6),
+      wildfiresNearby: wfNear,
+      wildfiresRegional: wfReg,
+      nearestWildfireKm: Math.round(nearest),
+      volcanoNearby: volcano,
+      stormNearby: storm,
+    };
+  } catch { return empty; }
 }
 
-interface ConflictSignals { events30d: number; fatalities30d: number; severity: number; tier: string }
-// Static mirror of the most recent ACLED Conflict Index (acleddata.com/conflict-index).
+interface ConflictSignals {
+  events30d: number;
+  fatalities30d: number;
+  severity: number;          // 0=Low, 1=Turbulent, 2=High, 3=Extreme
+  tier: string;
+  sanctioned: boolean;       // OFAC/EU comprehensive sanctions
+  sanctionsTier: number;     // 0=none, 1=targeted, 2=comprehensive
+  travelAdvisory: number;    // 0=none, 1=increased caution, 2=reconsider, 3=do not travel
+  notes: string[];
+}
+// Static mirror of the most recent ACLED Conflict Index (acleddata.com/conflict-index)
+// + US State Dept travel advisories + OFAC/EU comprehensive sanctions.
 // Severity: 3 = Extreme, 2 = High, 1 = Turbulent, 0 = Low/None.
-// We refresh this table when ACLED publishes their semi-annual update.
-const ACLED_INDEX: Record<string, { severity: number; tier: string; events30d: number; fatalities30d: number }> = {
-  // Extreme
-  MM: { severity: 3, tier: "Extreme", events30d: 1100, fatalities30d: 1400 },
-  PS: { severity: 3, tier: "Extreme", events30d: 950,  fatalities30d: 1800 },
-  SY: { severity: 3, tier: "Extreme", events30d: 720,  fatalities30d: 600 },
-  UA: { severity: 3, tier: "Extreme", events30d: 2800, fatalities30d: 1200 },
-  RU: { severity: 3, tier: "Extreme", events30d: 1500, fatalities30d: 400 },
-  SD: { severity: 3, tier: "Extreme", events30d: 540,  fatalities30d: 1100 },
-  // High
-  MX: { severity: 2, tier: "High",    events30d: 600,  fatalities30d: 850 },
-  NG: { severity: 2, tier: "High",    events30d: 480,  fatalities30d: 720 },
-  YE: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 200 },
-  IQ: { severity: 2, tier: "High",    events30d: 280,  fatalities30d: 180 },
-  SO: { severity: 2, tier: "High",    events30d: 360,  fatalities30d: 420 },
-  CD: { severity: 2, tier: "High",    events30d: 410,  fatalities30d: 580 },
-  ML: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 380 },
-  BF: { severity: 2, tier: "High",    events30d: 250,  fatalities30d: 420 },
-  HT: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 240 },
-  CO: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 220 },
-  ET: { severity: 2, tier: "High",    events30d: 290,  fatalities30d: 380 },
-  LB: { severity: 2, tier: "High",    events30d: 210,  fatalities30d: 160 },
-  IL: { severity: 2, tier: "High",    events30d: 240,  fatalities30d: 90 },
-  IR: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 110 },
-  AF: { severity: 2, tier: "High",    events30d: 200,  fatalities30d: 130 },
-  PK: { severity: 2, tier: "High",    events30d: 230,  fatalities30d: 180 },
+// SanctionsTier: 2 = comprehensive (RU, IR, KP, SY, CU, BY-partial),
+//                1 = targeted/sectoral (VE, MM-junta, AF-Taliban, etc.)
+// Refresh this table when ACLED publishes their semi-annual update.
+const ACLED_INDEX: Record<string, {
+  severity: number; tier: string; events30d: number; fatalities30d: number;
+  sanctioned?: boolean; sanctionsTier?: number; travelAdvisory?: number; notes?: string[];
+}> = {
+  // Extreme — active war / large-scale violence
+  UA: { severity: 3, tier: "Extreme", events30d: 2800, fatalities30d: 1200, travelAdvisory: 3, notes: ["Active war zone — Russian invasion ongoing"] },
+  RU: { severity: 3, tier: "Extreme", events30d: 1500, fatalities30d: 400,  sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions (OFAC/EU)", "Wartime restrictions, arbitrary detention risk"] },
+  PS: { severity: 3, tier: "Extreme", events30d: 1100, fatalities30d: 1900, travelAdvisory: 3, notes: ["Active conflict — Gaza/West Bank"] },
+  SY: { severity: 3, tier: "Extreme", events30d: 760,  fatalities30d: 620,  sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Civil war legacy + ISIS remnants"] },
+  MM: { severity: 3, tier: "Extreme", events30d: 1100, fatalities30d: 1400, sanctioned: true, sanctionsTier: 1, travelAdvisory: 3, notes: ["Junta-targeted sanctions", "Civil war"] },
+  SD: { severity: 3, tier: "Extreme", events30d: 540,  fatalities30d: 1100, travelAdvisory: 3, notes: ["RSF/SAF civil war"] },
+  YE: { severity: 3, tier: "Extreme", events30d: 380,  fatalities30d: 260,  travelAdvisory: 3, notes: ["Houthi conflict, missile/drone strikes"] },
+  KP: { severity: 3, tier: "Extreme", events30d: 0,    fatalities30d: 0,    sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Detention of foreigners, no consular access"] },
+  // High — sustained violence or severe state risk
+  IR: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 130,  sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Hostage diplomacy, IRGC threat"] },
+  IL: { severity: 2, tier: "High",    events30d: 280,  fatalities30d: 110,  travelAdvisory: 2, notes: ["Active conflict spillover, rocket fire"] },
+  LB: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 240,  travelAdvisory: 3, notes: ["Israel-Hezbollah conflict zone"] },
+  IQ: { severity: 2, tier: "High",    events30d: 280,  fatalities30d: 180,  travelAdvisory: 3, notes: ["Militia activity, ISIS remnants"] },
+  AF: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 150,  sanctioned: true, sanctionsTier: 1, travelAdvisory: 3, notes: ["Taliban-targeted sanctions", "Kidnapping risk"] },
+  PK: { severity: 2, tier: "High",    events30d: 230,  fatalities30d: 180,  travelAdvisory: 2, notes: ["TTP attacks, Balochistan unrest"] },
+  CU: { severity: 1, tier: "Turbulent", events30d: 30, fatalities30d: 5,    sanctioned: true, sanctionsTier: 2, travelAdvisory: 2, notes: ["Comprehensive sanctions"] },
+  BY: { severity: 1, tier: "Turbulent", events30d: 60, fatalities30d: 10,   sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Wrongful detention risk"] },
+  VE: { severity: 1, tier: "Turbulent", events30d: 70, fatalities30d: 40,   sanctioned: true, sanctionsTier: 1, travelAdvisory: 3, notes: ["Sectoral sanctions", "Wrongful detention"] },
+  MX: { severity: 2, tier: "High",    events30d: 600,  fatalities30d: 850, travelAdvisory: 2, notes: ["Cartel violence in border/coastal regions"] },
+  NG: { severity: 2, tier: "High",    events30d: 480,  fatalities30d: 720, travelAdvisory: 2 },
+  SO: { severity: 2, tier: "High",    events30d: 360,  fatalities30d: 420, travelAdvisory: 3, notes: ["Al-Shabaab, kidnapping for ransom"] },
+  CD: { severity: 2, tier: "High",    events30d: 410,  fatalities30d: 580, travelAdvisory: 3 },
+  ML: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 380, travelAdvisory: 3 },
+  BF: { severity: 2, tier: "High",    events30d: 250,  fatalities30d: 420, travelAdvisory: 3 },
+  HT: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 240, travelAdvisory: 3, notes: ["Gang control of Port-au-Prince"] },
+  CO: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 220, travelAdvisory: 2 },
+  ET: { severity: 2, tier: "High",    events30d: 290,  fatalities30d: 380, travelAdvisory: 3 },
   // Turbulent
   CM: { severity: 1, tier: "Turbulent", events30d: 90,  fatalities30d: 60 },
   NE: { severity: 1, tier: "Turbulent", events30d: 110, fatalities30d: 80 },
@@ -350,13 +409,29 @@ const ACLED_INDEX: Record<string, { severity: number; tier: string; events30d: n
   MZ: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 40 },
   SS: { severity: 1, tier: "Turbulent", events30d: 80,  fatalities30d: 70 },
   LY: { severity: 1, tier: "Turbulent", events30d: 50,  fatalities30d: 30 },
-  VE: { severity: 1, tier: "Turbulent", events30d: 70,  fatalities30d: 40 },
-  EC: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 50 },
+  EC: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 50, notes: ["Cartel-driven homicide spike"] },
+  EG: { severity: 1, tier: "Turbulent", events30d: 40,  fatalities30d: 25, travelAdvisory: 2, notes: ["Sinai conflict, terror risk"] },
+  JO: { severity: 0, tier: "Low",       events30d: 10,  fatalities30d: 2,  travelAdvisory: 1, notes: ["Border tension with conflict zones"] },
+  TR: { severity: 1, tier: "Turbulent", events30d: 70,  fatalities30d: 30, travelAdvisory: 2 },
+  SA: { severity: 0, tier: "Low",       events30d: 5,   fatalities30d: 1,  travelAdvisory: 1, notes: ["Houthi missile/drone risk in south"] },
 };
 async function fetchAcled(country: string): Promise<ConflictSignals> {
   const row = ACLED_INDEX[country];
-  if (!row) return { events30d: 0, fatalities30d: 0, severity: 0, tier: "Low" };
-  return { ...row };
+  const base: ConflictSignals = {
+    events30d: 0, fatalities30d: 0, severity: 0, tier: "Low",
+    sanctioned: false, sanctionsTier: 0, travelAdvisory: 0, notes: [],
+  };
+  if (!row) return base;
+  return {
+    events30d: row.events30d,
+    fatalities30d: row.fatalities30d,
+    severity: row.severity,
+    tier: row.tier,
+    sanctioned: !!row.sanctioned,
+    sanctionsTier: row.sanctionsTier ?? 0,
+    travelAdvisory: row.travelAdvisory ?? 0,
+    notes: row.notes ?? [],
+  };
 }
 
 interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
@@ -461,31 +536,43 @@ function buildRates(opts: {
   const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
   const policeDiscount = Math.max(0.65, 1 - Math.min(signals.overpass.policeNearby, 12) * 0.03);
 
+  // Storm/cyclone pressure — combines NOAA, GDACS, EONET storm flag, and
+  // raw wind/precip from Open-Meteo (catches typhoons/hurricanes globally).
   const stormFactor =
     1 +
     Math.min(signals.weather.severe, 3) * 0.35 +
-    Math.min(signals.gdacs.maxScore, 3) * 0.25 +
-    Math.min(signals.eonet.activeEvents, 5) * 0.08 +
-    (signals.meteo.windKph >= 60 ? 0.4 : signals.meteo.windKph >= 35 ? 0.15 : 0) +
-    (signals.meteo.precipMm >= 10 ? 0.25 : signals.meteo.precipMm >= 3 ? 0.1 : 0);
+    Math.min(signals.gdacs.maxScore, 3) * 0.30 +
+    (signals.eonet.stormNearby ? 0.30 : 0) +
+    (signals.meteo.windKph >= 90 ? 0.70 : signals.meteo.windKph >= 60 ? 0.40 : signals.meteo.windKph >= 35 ? 0.15 : 0) +
+    (signals.meteo.precipMm >= 25 ? 0.45 : signals.meteo.precipMm >= 10 ? 0.25 : signals.meteo.precipMm >= 3 ? 0.10 : 0);
 
   const quakeFactor =
     1 +
-    (signals.quakes.maxMag >= 5 ? 0.5 : signals.quakes.maxMag >= 3 ? 0.15 : 0) +
+    (signals.quakes.maxMag >= 6 ? 0.85 : signals.quakes.maxMag >= 5 ? 0.50 : signals.quakes.maxMag >= 3 ? 0.15 : 0) +
     Math.min(signals.quakes.count, 10) * 0.02;
 
-  // Wildfire pressure: nearby active fires raise public_disorder/traffic/health
-  // categories (smoke + evacuation + looting risk).
-  const fireFactor = signals.fires.activeFires === 0
+  // Wildfire pressure: combine FIRMS satellite hotspots with NASA EONET fire
+  // events (FIRMS needs an API key; EONET works without one and covers most
+  // major active wildfires globally).
+  const wfActive = signals.fires.activeFires + signals.eonet.wildfiresNearby * 4;
+  const wfNearestKm = Math.min(signals.fires.nearestKm, signals.eonet.nearestWildfireKm);
+  const fireFactor = wfActive === 0
     ? 1
     : 1 +
-      Math.min(signals.fires.activeFires, 25) * 0.015 +
-      (signals.fires.nearestKm < 25 ? 0.35 : signals.fires.nearestKm < 75 ? 0.15 : 0.05);
+      Math.min(wfActive, 40) * 0.015 +
+      (wfNearestKm < 25 ? 0.45 : wfNearestKm < 75 ? 0.20 : wfNearestKm < 150 ? 0.08 : 0.03);
 
-  // Conflict factor: active armed conflict raises every violent + weapons category.
-  // severity 0=peaceful, 1=turbulent, 2=high, 3=extreme.
-  const conflictFactor = 1 + signals.conflict.severity * 0.45 +
-    (signals.conflict.fatalities30d >= 100 ? 0.35 : signals.conflict.fatalities30d >= 25 ? 0.15 : 0);
+  // Conflict factor: active armed conflict raises violent + weapons categories.
+  // Sanctioned states (RU, IR, KP, SY, CU, BY) get an additional uplift on
+  // weapons/kidnapping due to detention/wrongful-arrest risk and weak rule of law.
+  // Travel-advisory level adds a baseline floor even where ACLED events are low.
+  const advisoryUplift = signals.conflict.travelAdvisory * 0.20;
+  const sanctionsUplift = signals.conflict.sanctionsTier * 0.30;
+  const conflictFactor = 1 + signals.conflict.severity * 0.50 +
+    (signals.conflict.fatalities30d >= 500 ? 0.50 : signals.conflict.fatalities30d >= 100 ? 0.30 : signals.conflict.fatalities30d >= 25 ? 0.15 : 0) +
+    advisoryUplift;
+  const detentionFactor = 1 + sanctionsUplift +
+    (signals.conflict.travelAdvisory >= 3 ? 0.25 : 0);
 
   const out: CrimeRates = { ...base };
   for (const k of Object.keys(out) as (keyof CrimeRates)[]) {
@@ -493,8 +580,11 @@ function buildRates(opts: {
     if (k === "traffic_incident") f *= stormFactor * (1 + (fireFactor - 1) * 0.6);
     if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5 + (fireFactor - 1) * 0.5;
     if (k === "home_invasion" || k === "burglary") f *= quakeFactor * (1 + (fireFactor - 1) * 0.4);
-    if (k === "robbery" || k === "assault" || k === "kidnapping" || k === "weapons_offense" || k === "sexual_offense") {
+    if (k === "robbery" || k === "assault" || k === "sexual_offense") {
       f *= conflictFactor;
+    }
+    if (k === "kidnapping" || k === "weapons_offense") {
+      f *= conflictFactor * detentionFactor;
     }
     out[k] = Math.max(0, Math.round(out[k] * f));
   }
