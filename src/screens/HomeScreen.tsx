@@ -167,8 +167,9 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       setSafetyResult(null);
       return;
     }
-    const rawScore = liveSafety.rawScore ?? 2.5;
-    const baseRates = advisoryToBaseRates(rawScore);
+    const rawScore = liveSafety.rawScore ?? 2.0;
+    const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
+    const baseRates = advisoryToBaseRates(rawScore, variance);
     const timeOfDay = detectTimeOfDay();
     const result = computeSafetyScore({
       context: 'AWAY',
@@ -177,7 +178,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     });
     const sl = safetyLevel(result.score);
     setSafetyResult({ score: result.score, ...sl });
-  }, [liveSafety, countryCode]);
+  }, [liveSafety, countryCode, locationName]);
 
   const level = safetyResult?.level ?? -1;
   const DOTS = [
