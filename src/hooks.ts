@@ -271,9 +271,13 @@ export function useTravelSafety(countryCode?: string) {
   useEffect(() => {
     if (!countryCode || countryCode.length !== 2) { setSafetyData(null); return; }
     const cc = countryCode.toUpperCase();
+    let cancelled = false;
+    // Clear stale data immediately so UI reflects the country change while we refetch
+    setSafetyData(null);
     fetch('https://www.travel-advisory.info/api')
       .then(r => r.json())
       .then(d => {
+        if (cancelled) return;
         const entry = d?.data?.[cc];
         if (entry) {
           const rawScore = parseFloat(entry.advisory?.score) || 2.5;
@@ -284,9 +288,13 @@ export function useTravelSafety(countryCode?: string) {
             advisory: entry.advisory?.message || '',
             source: entry.advisory?.source || 'travel-advisory.info',
           });
+        } else {
+          // No entry for this country — keep null instead of stale prior value
+          setSafetyData(null);
         }
       })
-      .catch(() => setSafetyData(null));
+      .catch(() => { if (!cancelled) setSafetyData(null); });
+    return () => { cancelled = true; };
   }, [countryCode]);
 
   return safetyData;
