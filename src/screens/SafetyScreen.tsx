@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel,
-  categoryRating,
+  categoryRating, cityVarianceFromSeed,
   type SafetyContext, type SafetyResult,
 } from '../lib/safetyEngine';
 
@@ -77,7 +77,14 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [result, setResult] = useState<SafetyResult | null>(null);
 
   const compute = useCallback(() => {
-    const baseRates = advisoryToBaseRates(advisoryScore ?? 2.5);
+    // Domestic US has no entry in travel-advisory.info (which only rates
+    // *other* countries). Default such cases to a low-risk baseline (~1.0)
+    // instead of the API's neutral midpoint of 2.5 — otherwise every US
+    // city defaults to "war zone" math and pegs the score at 0.
+    const isDomesticUS = !countryCode || countryCode.toUpperCase() === 'US';
+    const effectiveRaw = advisoryScore ?? (isDomesticUS ? 1.0 : 2.0);
+    const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
+    const baseRates = advisoryToBaseRates(effectiveRaw, variance);
     const timeOfDay = detectTimeOfDay();
     const r = computeSafetyScore({
       context,
@@ -86,7 +93,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       baseRates,
     });
     setResult(r);
-  }, [context, advisoryScore]);
+  }, [context, advisoryScore, locationName, countryCode]);
 
   useEffect(() => { compute(); }, [compute]);
 
