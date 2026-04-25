@@ -320,6 +320,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
         {/* Live Data Feeds */}
         <LiveFeedsPanel crime={crime} hasLive={hasLive} />
+
+        {/* News Headlines */}
+        <HeadlinesPanel crime={crime} />
       </div>
     </div>
   );
