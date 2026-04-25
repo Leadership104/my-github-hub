@@ -540,14 +540,27 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Cache check (10 min) — keyed by city/state/country + rounded coords.
+    const key = cacheKey(city, state, country, coords.lat, coords.lon);
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+      return new Response(JSON.stringify(hit.payload), {
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+      });
+    }
+
     // Run all live sources concurrently.
-    const [quakes, weather, gdacs, meteo, overpass, fbiAgency] = await Promise.all([
+    const [quakes, weather, gdacs, meteo, overpass, fbiAgency, fires, eonet, conflict, headlines] = await Promise.all([
       fetchQuakes(coords.lat, coords.lon),
       fetchNwsAlerts(coords.lat, coords.lon, country),
       fetchGdacs(coords.lat, coords.lon),
       fetchOpenMeteo(coords.lat, coords.lon),
       fetchOverpass(coords.lat, coords.lon),
       fbiResolveAgency(city, state),
+      fetchNasaFirms(coords.lat, coords.lon),
+      fetchNasaEonet(coords.lat, coords.lon),
+      fetchAcled(country),
+      fetchHeadlines(city, country),
     ]);
 
     let fbiPartial: Partial<CrimeRates> | null = null;
@@ -562,12 +575,12 @@ Deno.serve(async (req) => {
 
     const rates = buildRates({
       fbiPartial,
-      signals: { quakes, weather, gdacs, meteo, overpass },
+      signals: { quakes, weather, gdacs, meteo, overpass, fires, eonet, conflict },
       variance: cityVariance(`${city}|${state ?? ""}|${country}`),
     });
 
-    return new Response(JSON.stringify({
-      source: "LIVE_AGGREGATE",
+    const payload = {
+      source: "LIVE_AGGREGATE" as const,
       coords,
       rates,
       signals: {
@@ -578,11 +591,27 @@ Deno.serve(async (req) => {
         precipMm: meteo.precipMm,
         policeNearby: overpass.policeNearby,
         hospitalsNearby: overpass.hospitalsNearby,
+        wildfires: fires,
+        eonet,
+        conflict,
       },
+      headlines,
       fbi: fbiInfo,
       city, state, country,
       fetchedAt: new Date().toISOString(),
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      cacheTtlSec: Math.round(CACHE_TTL_MS / 1000),
+    };
+
+    cache.set(key, { at: Date.now(), payload });
+    // Light eviction: keep cache bounded.
+    if (cache.size > 200) {
+      const oldest = [...cache.entries()].sort((a, b) => a[1].at - b[1].at).slice(0, 50);
+      for (const [k] of oldest) cache.delete(k);
+    }
+
+    return new Response(JSON.stringify(payload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({
