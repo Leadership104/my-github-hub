@@ -155,12 +155,18 @@ export function computeSafetyScore(params: {
     (SITUATIONAL_MULTIPLIERS.WEATHER[weatherKey] ?? 1);
   const sitMul = Math.min(sitMulRaw, SIT_MUL_CAP);
 
+  const normalize = (crimeType: string, rate: number) =>
+    Math.min(Math.max(rate, 0) / (CATEGORY_RATE_CAPS[crimeType] ?? DEFAULT_RATE_CAP), 1);
+
+  const impactWeight = (crimeType: string) =>
+    (w[crimeType] ?? 0) * (CATEGORY_SEVERITY[crimeType] ?? 1);
+
   const rtContrib: Record<string, number> = {};
   for (const inc of incidents) {
     if (!w[inc.crimeType]) continue;
     const d = recencyDecay(inc.timestamp);
-    const n = Math.min((inc.rateEquivalent ?? 50) / RATE_CAP, 1);
-    rtContrib[inc.crimeType] = (rtContrib[inc.crimeType] ?? 0) + n * w[inc.crimeType] * d;
+    const n = normalize(inc.crimeType, inc.rateEquivalent ?? 50);
+    rtContrib[inc.crimeType] = (rtContrib[inc.crimeType] ?? 0) + n * impactWeight(inc.crimeType) * d;
   }
 
   const hasLive = incidents.length > 0;
@@ -168,14 +174,17 @@ export function computeSafetyScore(params: {
   const br = hasLive ? 0.30 : 1.00;
 
   const allKeys = new Set([...Object.keys(rtContrib), ...Object.keys(baseRates)]);
-  let riskSum = 0;
+  let weightedRisk = 0;
+  let weightTotal = 0;
   const breakdown: Record<string, RiskBreakdown> = {};
 
   for (const k of allKeys) {
+    const iw = impactWeight(k);
     const rv = (rtContrib[k] ?? 0) * lr;
-    const bv = (Math.min((baseRates[k] ?? 0) / RATE_CAP, 1) * (w[k] ?? 0)) * br;
+    const bv = normalize(k, baseRates[k] ?? 0) * iw * br;
     const combined = (rv + bv) * sitMul;
-    riskSum += combined;
+    weightedRisk += combined;
+    weightTotal += iw;
     const cat = CRIME_CATEGORIES[k];
     breakdown[k] = {
       label: cat?.label ?? k,
@@ -186,7 +195,8 @@ export function computeSafetyScore(params: {
     };
   }
 
-  const score = Math.max(0, Math.round(100 - Math.min(riskSum * 100, 100)));
+  const normalizedRisk = weightTotal > 0 ? weightedRisk / weightTotal : 0;
+  const score = Math.max(0, Math.round(100 - Math.min(normalizedRisk * 150, 100)));
   const riskLevel = score >= 80 ? 'LOW RISK' : score >= 60 ? 'MODERATE' : score >= 40 ? 'ELEVATED' : score >= 20 ? 'HIGH RISK' : 'CRITICAL';
   const riskColor = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
   const confidence = hasLive ? (incidents.length >= 10 ? 'HIGH' : 'MEDIUM') : 'LOW';
