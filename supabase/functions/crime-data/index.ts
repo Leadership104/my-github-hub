@@ -1,25 +1,26 @@
-// Real crime data proxy.
-// Combines:
-//  • FBI Crime Data API (CDE) — free, no key required for the public summary
-//    endpoints. Provides agency-level offense counts for US cities.
-//    Docs: https://api.usa.gov/crime/fbi/cde/
-//  • Travel.State.Gov advisory level (free) — international fallback.
+// Live multi-source safety aggregator.
+// All sources are free, public, no API key required:
+//   1. Nominatim (OpenStreetMap)         — city → lat/lon geocoding
+//   2. USGS Earthquake Hazards           — recent seismic activity (M2.5+, past day & week)
+//   3. NOAA / NWS Active Alerts          — severe weather warnings (US points)
+//   4. GDACS RSS                         — global disasters (cyclones, floods, volcanoes)
+//   5. Open-Meteo                        — current wind / precip / temperature extremes
+//   6. Overpass API (OpenStreetMap)      — local police / hospital density (response capacity)
+//   7. FBI Crime Data Explorer (CDE)     — agency-level crime counts (only if FBI_CDE_API_KEY set)
 //
 // Returns a normalized payload the frontend's safety engine can consume:
 //   {
-//     source: 'FBI_CDE' | 'FBI_NATIONAL' | 'STATE_GOV' | 'FALLBACK',
-//     year:   number | null,
-//     population: number | null,
-//     // counts per 100k population, calibrated per category
-//     rates: { robbery, assault, burglary, larceny_home, vehicle_theft,
-//              sexual_offense, weapons_offense, ... },
-//     advisoryLevel?: number,
+//     source: 'LIVE_AGGREGATE' | 'FALLBACK',
+//     coords: { lat, lon } | null,
+//     rates: { robbery, assault, burglary, ... } in per-100k-equivalent scale,
+//     signals: { quakes, weatherAlerts, gdacsAlerts, policeNearby, hospitalsNearby, windKph, precipMm },
+//     fbi?: { agency, year, population } | null,
 //     city, state, country
 //   }
-//
-// CORS-safe. No secrets needed (FBI CDE is public; advisory list is public JSON).
 
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+
+const UA = "kipita-safety/1.0 (https://kipita.app)";
 
 interface CrimeRates {
   robbery: number;
@@ -39,189 +40,177 @@ interface CrimeRates {
   weapons_offense: number;
 }
 
-// FBI 2022 national rates per 100k (UCR/NIBRS combined estimates).
-// Used as the "what does average America look like" benchmark and as a
-// floor for cities where CDE has no agency match.
+// US national 2022 rates per 100k (UCR/NIBRS), used as a calibrated baseline.
 const FBI_NATIONAL_PER_100K: CrimeRates = {
-  robbery:           66.1,
-  assault:           282.7,
-  sexual_offense:    42.0,
-  kidnapping:        4.0,
-  burglary:          269.8,
-  home_invasion:     12.0,
-  vandalism:         91.0,
-  larceny_home:      1401.9,
-  vehicle_theft:     282.7,
-  carjacking:        9.0,
-  vehicle_break_in:  220.0,
-  traffic_incident:  120.0,
-  drug_activity:     410.0,
-  public_disorder:   180.0,
-  weapons_offense:   90.0,
+  robbery: 66, assault: 282, sexual_offense: 42, kidnapping: 4,
+  burglary: 269, home_invasion: 12, vandalism: 91, larceny_home: 1401,
+  vehicle_theft: 282, carjacking: 9, vehicle_break_in: 220, traffic_incident: 120,
+  drug_activity: 410, public_disorder: 180, weapons_offense: 90,
 };
 
-// FBI CDE offense codes (NIBRS) → our category keys.
-// Multiple codes can map to one category (we'll sum them).
 const NIBRS_MAP: Record<string, keyof CrimeRates> = {
-  "120": "robbery",            // Robbery
-  "13A": "assault",            // Aggravated Assault
-  "13B": "assault",            // Simple Assault (folded)
-  "11A": "sexual_offense",     // Rape
-  "11B": "sexual_offense",     // Sodomy
-  "11C": "sexual_offense",     // Sexual Assault With An Object
-  "100": "kidnapping",         // Kidnapping/Abduction
-  "220": "burglary",           // Burglary/Breaking & Entering
-  "290": "vandalism",          // Destruction/Damage/Vandalism
-  "23H": "larceny_home",       // All Other Larceny
-  "240": "vehicle_theft",      // Motor Vehicle Theft
-  "23F": "vehicle_break_in",   // Theft From Motor Vehicle
-  "35A": "drug_activity",      // Drug/Narcotic Violations
-  "90C": "public_disorder",    // Disorderly Conduct
-  "520": "weapons_offense",    // Weapon Law Violations
+  "120": "robbery", "13A": "assault", "13B": "assault",
+  "11A": "sexual_offense", "11B": "sexual_offense", "11C": "sexual_offense",
+  "100": "kidnapping", "220": "burglary", "290": "vandalism",
+  "23H": "larceny_home", "240": "vehicle_theft", "23F": "vehicle_break_in",
+  "35A": "drug_activity", "90C": "public_disorder", "520": "weapons_offense",
 };
 
-async function fetchAdvisoryLevel(country: string): Promise<number | null> {
+/* ───────── live source helpers ───────── */
+
+async function geocode(city: string, state: string | null, country: string)
+  : Promise<{ lat: number; lon: number } | null> {
+  if (!city) return null;
   try {
-    const r = await fetch("https://www.travel-advisory.info/api", { signal: AbortSignal.timeout(6000) });
+    const q = [city, state, country].filter(Boolean).join(", ");
+    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`;
+    const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(6000) });
     if (!r.ok) return null;
     const j = await r.json();
-    const c = j?.data?.[country.toUpperCase()];
-    return typeof c?.advisory?.score === "number" ? c.advisory.score : null;
+    const hit = Array.isArray(j) ? j[0] : null;
+    if (!hit?.lat || !hit?.lon) return null;
+    return { lat: parseFloat(hit.lat), lon: parseFloat(hit.lon) };
   } catch { return null; }
 }
 
-// Normalize a city/agency string for fuzzy comparison:
-//  • lowercase
-//  • strip punctuation
-//  • drop common prefixes/suffixes ("city of", "town of", "police department", "pd", "sheriff's office")
-//  • collapse whitespace
-//  • expand a few common abbreviations ("st." → "saint", "mt." → "mount", "ft." → "fort")
-function normalizeName(input: string): string {
-  if (!input) return "";
-  let s = input.toLowerCase();
-  // Expand common abbreviations before punctuation is stripped.
-  s = s
-    .replace(/\bst\.?\s/g, "saint ")
-    .replace(/\bmt\.?\s/g, "mount ")
-    .replace(/\bft\.?\s/g, "fort ")
-    .replace(/\bn\.?\s/g, "north ")
-    .replace(/\bs\.?\s/g, "south ")
-    .replace(/\be\.?\s/g, "east ")
-    .replace(/\bw\.?\s/g, "west ");
-  // Strip punctuation.
-  s = s.replace(/[^a-z0-9\s]/g, " ");
-  // Drop common prefixes/suffixes that appear in FBI agency_name fields.
-  const stopPhrases = [
-    "city of", "town of", "village of", "borough of", "township of",
-    "police department", "police dept", "department of police",
-    "sheriff s office", "sheriffs office", "sheriff office", "sheriff",
-    "metropolitan", "metro", "municipal", "county", "police", "pd",
-  ];
-  for (const p of stopPhrases) s = s.replace(new RegExp(`\\b${p}\\b`, "g"), " ");
-  return s.replace(/\s+/g, " ").trim();
+function distKm(aLat: number, aLon: number, bLat: number, bLon: number): number {
+  const R = 6371;
+  const dLat = (bLat - aLat) * Math.PI / 180;
+  const dLon = (bLon - aLon) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(aLat * Math.PI / 180) * Math.cos(bLat * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Levenshtein distance with an early-exit cap — small/fast enough for ~1k agencies per state.
-function levenshtein(a: string, b: string, cap = 5): number {
-  if (a === b) return 0;
-  if (Math.abs(a.length - b.length) > cap) return cap + 1;
-  const al = a.length, bl = b.length;
-  if (!al) return bl;
-  if (!bl) return al;
-  let prev = new Array(bl + 1);
-  let curr = new Array(bl + 1);
-  for (let j = 0; j <= bl; j++) prev[j] = j;
-  for (let i = 1; i <= al; i++) {
-    curr[0] = i;
-    let rowMin = curr[0];
-    for (let j = 1; j <= bl; j++) {
-      const cost = a.charCodeAt(i - 1) === b.charCodeAt(j - 1) ? 0 : 1;
-      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
-      if (curr[j] < rowMin) rowMin = curr[j];
-    }
-    if (rowMin > cap) return cap + 1;
-    [prev, curr] = [curr, prev];
-  }
-  return prev[bl];
-}
-
-// Score how well an agency matches the requested city. Higher is better.
-// 100 = perfect normalized equality, then graded by token overlap, substring,
-// and edit distance. Prefer "Police" agencies over Sheriff/Constable when tied.
-function scoreAgencyMatch(cityNorm: string, agencyName: string): number {
-  if (!cityNorm || !agencyName) return 0;
-  const agencyNorm = normalizeName(agencyName);
-  if (!agencyNorm) return 0;
-  if (agencyNorm === cityNorm) return 100;
-
-  const cityTokens = cityNorm.split(" ").filter(Boolean);
-  const agencyTokens = new Set(agencyNorm.split(" ").filter(Boolean));
-  const overlap = cityTokens.filter(t => agencyTokens.has(t)).length;
-  const tokenScore = cityTokens.length ? (overlap / cityTokens.length) * 60 : 0;
-
-  // Substring bonus: full city phrase appears inside the agency name.
-  const substringBonus =
-    agencyNorm.includes(cityNorm) ? 25 :
-    cityNorm.includes(agencyNorm) ? 15 : 0;
-
-  // Edit-distance bonus for short city names with minor typos.
-  const dist = levenshtein(cityNorm, agencyNorm, 4);
-  const distBonus = dist <= 1 ? 20 : dist <= 2 ? 12 : dist <= 3 ? 6 : 0;
-
-  // Police-type preference for ties (lightly weighted, doesn't change category).
-  const lower = agencyName.toLowerCase();
-  const typeBonus =
-    /police/.test(lower) ? 8 :
-    /sheriff/.test(lower) ? 4 :
-    /marshal|constable|public safety/.test(lower) ? 3 : 0;
-
-  return tokenScore + substringBonus + distBonus + typeBonus;
-}
-
-// Resolve "Miami, FL" / "City of Saint Paul" / "Ft. Worth" → an FBI ORI agency
-// record via CDE search. Uses normalized fuzzy matching and only falls back
-// when no agency clears a confidence threshold.
-async function resolveAgency(
-  city: string,
-  state: string | null,
-): Promise<{ ori: string; population: number; agency_name: string } | null> {
-  if (!city) return null;
-  const apiKey = Deno.env.get("FBI_CDE_API_KEY");
-  if (!apiKey) return null; // gracefully skip if not configured
+async function fetchQuakes(lat: number, lon: number)
+  : Promise<{ count: number; maxMag: number }> {
   try {
-    const stateAbbr = (state ?? "").toUpperCase();
-    if (!stateAbbr) return null;
-    const url = `https://api.usa.gov/crime/fbi/cde/agencies/byStateAbbr/${encodeURIComponent(stateAbbr)}?API_KEY=${apiKey}`;
+    const r = await fetch(
+      "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson",
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (!r.ok) return { count: 0, maxMag: 0 };
+    const j = await r.json();
+    let count = 0, maxMag = 0;
+    for (const f of j.features ?? []) {
+      const [qLon, qLat] = f.geometry?.coordinates ?? [];
+      if (typeof qLat !== "number" || typeof qLon !== "number") continue;
+      if (distKm(lat, lon, qLat, qLon) <= 250) {
+        count++;
+        const mag = Number(f.properties?.mag ?? 0);
+        if (mag > maxMag) maxMag = mag;
+      }
+    }
+    return { count, maxMag };
+  } catch { return { count: 0, maxMag: 0 }; }
+}
+
+async function fetchNwsAlerts(lat: number, lon: number, country: string)
+  : Promise<{ count: number; severe: number }> {
+  if (country !== "US") return { count: 0, severe: 0 };
+  try {
+    const r = await fetch(
+      `https://api.weather.gov/alerts/active?point=${lat.toFixed(4)},${lon.toFixed(4)}`,
+      { headers: { "User-Agent": UA, Accept: "application/geo+json" }, signal: AbortSignal.timeout(6000) },
+    );
+    if (!r.ok) return { count: 0, severe: 0 };
+    const j = await r.json();
+    let severe = 0;
+    for (const f of j.features ?? []) {
+      const sev = (f.properties?.severity ?? "").toLowerCase();
+      if (sev === "severe" || sev === "extreme") severe++;
+    }
+    return { count: (j.features ?? []).length, severe };
+  } catch { return { count: 0, severe: 0 }; }
+}
+
+async function fetchGdacs(lat: number, lon: number)
+  : Promise<{ count: number; maxScore: number }> {
+  try {
+    const r = await fetch("https://www.gdacs.org/xml/rss.xml", {
+      headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000),
+    });
+    if (!r.ok) return { count: 0, maxScore: 0 };
+    const xml = await r.text();
+    // extract <item>...<geo:Point>lat lon</geo:Point>...<gdacs:alertlevel>Green/Orange/Red</gdacs:alertlevel>
+    const items = xml.split(/<item>/i).slice(1);
+    let count = 0, maxScore = 0;
+    for (const it of items) {
+      const latM = it.match(/<geo:lat>([\-\d.]+)<\/geo:lat>/i);
+      const lonM = it.match(/<geo:long>([\-\d.]+)<\/geo:long>/i);
+      if (!latM || !lonM) continue;
+      const aLat = parseFloat(latM[1]), aLon = parseFloat(lonM[1]);
+      if (distKm(lat, lon, aLat, aLon) > 500) continue;
+      const lvl = (it.match(/<gdacs:alertlevel>([^<]+)<\/gdacs:alertlevel>/i)?.[1] ?? "").toLowerCase();
+      const score = lvl === "red" ? 3 : lvl === "orange" ? 2 : lvl === "green" ? 1 : 0;
+      count++;
+      if (score > maxScore) maxScore = score;
+    }
+    return { count, maxScore };
+  } catch { return { count: 0, maxScore: 0 }; }
+}
+
+async function fetchOpenMeteo(lat: number, lon: number)
+  : Promise<{ windKph: number; precipMm: number }> {
+  try {
+    const r = await fetch(
+      `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=wind_speed_10m,precipitation`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (!r.ok) return { windKph: 0, precipMm: 0 };
+    const j = await r.json();
+    return {
+      windKph: Number(j.current?.wind_speed_10m ?? 0),
+      precipMm: Number(j.current?.precipitation ?? 0),
+    };
+  } catch { return { windKph: 0, precipMm: 0 }; }
+}
+
+async function fetchOverpass(lat: number, lon: number)
+  : Promise<{ policeNearby: number; hospitalsNearby: number }> {
+  try {
+    const query = `[out:json][timeout:8];
+      (node["amenity"="police"](around:5000,${lat},${lon}););out count;
+      (node["amenity"="hospital"](around:5000,${lat},${lon}););out count;`;
+    const r = await fetch("https://overpass-api.de/api/interpreter", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA },
+      body: "data=" + encodeURIComponent(query),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return { policeNearby: 0, hospitalsNearby: 0 };
+    const j = await r.json();
+    const els = j.elements ?? [];
+    const counts = els.filter((e: any) => e.type === "count")
+      .map((e: any) => Number(e.tags?.total ?? e.tags?.nodes ?? 0));
+    return {
+      policeNearby: counts[0] ?? 0,
+      hospitalsNearby: counts[1] ?? 0,
+    };
+  } catch { return { policeNearby: 0, hospitalsNearby: 0 }; }
+}
+
+/* ───────── optional FBI CDE branch ───────── */
+
+async function fbiResolveAgency(city: string, state: string | null) {
+  const apiKey = Deno.env.get("FBI_CDE_API_KEY");
+  if (!apiKey || !city || !state) return null;
+  try {
+    const url = `https://api.usa.gov/crime/fbi/cde/agencies/byStateAbbr/${state.toUpperCase()}?API_KEY=${apiKey}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!r.ok) return null;
     const list = await r.json();
-    if (!Array.isArray(list) || list.length === 0) return null;
-
-    const cityNorm = normalizeName(city);
-    if (!cityNorm) return null;
-
-    let best: { entry: any; score: number } | null = null;
-    for (const a of list) {
-      const name = typeof a?.agency_name === "string" ? a.agency_name : "";
-      if (!name || !a?.ori) continue;
-      const score = scoreAgencyMatch(cityNorm, name);
-      if (!best || score > best.score) best = { entry: a, score };
-    }
-
-    // Require a meaningful match — anything below 35 is essentially noise.
-    if (!best || best.score < 35) return null;
-
-    return {
-      ori: best.entry.ori,
-      population: Number(best.entry.population ?? 0) || 0,
-      agency_name: best.entry.agency_name,
-    };
-  } catch {
-    return null;
-  }
+    if (!Array.isArray(list)) return null;
+    const cl = city.toLowerCase();
+    const hit =
+      list.find((a: any) => /police/i.test(a?.agency_name ?? "") && a.agency_name.toLowerCase().includes(cl)) ??
+      list.find((a: any) => a?.agency_name?.toLowerCase?.().includes(cl));
+    if (!hit?.ori) return null;
+    return { ori: hit.ori, agency: hit.agency_name, population: Number(hit.population ?? 0) };
+  } catch { return null; }
 }
-
-async function fetchAgencyOffenses(ori: string): Promise<{ year: number; counts: Record<string, number> } | null> {
+async function fbiOffenses(ori: string) {
   const apiKey = Deno.env.get("FBI_CDE_API_KEY");
   if (!apiKey) return null;
   try {
@@ -229,26 +218,21 @@ async function fetchAgencyOffenses(ori: string): Promise<{ year: number; counts:
     const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) return null;
     const j = await r.json();
-    // CDE returns: { offenses: { actuals: { "2022": { "13A": 412, ... } } } } shape varies.
     const counts: Record<string, number> = {};
-    const actuals = j?.offenses?.actuals ?? j?.offenses ?? {};
-    const yearObj = actuals?.["2022"] ?? actuals;
-    if (yearObj && typeof yearObj === "object") {
-      for (const [k, v] of Object.entries(yearObj)) {
+    const actuals = j?.offenses?.actuals?.["2022"] ?? j?.offenses?.["2022"] ?? j?.offenses ?? {};
+    if (actuals && typeof actuals === "object") {
+      for (const [k, v] of Object.entries(actuals)) {
         if (typeof v === "number") counts[k] = v;
         else if (v && typeof v === "object") {
-          // sometimes nested as { "13A": { "Total": N } }
-          const total = (v as any).Total ?? (v as any).total;
-          if (typeof total === "number") counts[k] = total;
+          const t = (v as any).Total ?? (v as any).total;
+          if (typeof t === "number") counts[k] = t;
         }
       }
     }
-    if (Object.keys(counts).length === 0) return null;
-    return { year: 2022, counts };
+    return Object.keys(counts).length ? counts : null;
   } catch { return null; }
 }
-
-function offensesToRates(counts: Record<string, number>, population: number): Partial<CrimeRates> {
+function fbiOffensesToRates(counts: Record<string, number>, population: number): Partial<CrimeRates> {
   if (!population || population < 1000) return {};
   const per100k = (n: number) => (n / population) * 100_000;
   const agg: Partial<Record<keyof CrimeRates, number>> = {};
@@ -258,17 +242,74 @@ function offensesToRates(counts: Record<string, number>, population: number): Pa
     agg[key] = (agg[key] ?? 0) + n;
   }
   const rates: Partial<CrimeRates> = {};
-  for (const [k, v] of Object.entries(agg)) {
-    rates[k as keyof CrimeRates] = Math.round(per100k(v as number));
-  }
+  for (const [k, v] of Object.entries(agg)) rates[k as keyof CrimeRates] = Math.round(per100k(v as number));
   return rates;
 }
 
-// Merge agency rates over national defaults so categories with no data
-// fall back to national averages instead of zero.
-function mergeWithNational(partial: Partial<CrimeRates>): CrimeRates {
-  return { ...FBI_NATIONAL_PER_100K, ...partial };
+/* ───────── aggregation ───────── */
+
+// Convert live signals into per-100k-equivalent rates the engine can consume.
+// Crime rates come from FBI national baseline (or CDE if available); environmental
+// signals (quakes, weather, GDACS, wind, precip) are projected onto the
+// engine's environment categories so the score reacts to live conditions.
+function buildRates(opts: {
+  fbiPartial: Partial<CrimeRates> | null;
+  signals: {
+    quakes: { count: number; maxMag: number };
+    weather: { count: number; severe: number };
+    gdacs: { count: number; maxScore: number };
+    meteo: { windKph: number; precipMm: number };
+    overpass: { policeNearby: number; hospitalsNearby: number };
+  };
+  variance: number; // -1..1 from city seed
+}): CrimeRates {
+  const { fbiPartial, signals, variance } = opts;
+  // Start from FBI national, override with CDE when present.
+  const base: CrimeRates = { ...FBI_NATIONAL_PER_100K, ...(fbiPartial ?? {}) };
+
+  // City-seeded variance ±18% so different cities aren't identical when
+  // we only have national data.
+  const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.18;
+
+  // Police density discount (more police nearby → modestly lower rates, capped at -25%).
+  const policeDiscount = Math.max(0.75, 1 - Math.min(signals.overpass.policeNearby, 10) * 0.025);
+
+  // Environmental risk projector — affects "traffic", "public_disorder",
+  // "vandalism" categories proportional to live hazards.
+  const stormFactor =
+    1 +
+    Math.min(signals.weather.severe, 3) * 0.35 +
+    Math.min(signals.gdacs.maxScore, 3) * 0.25 +
+    (signals.meteo.windKph >= 60 ? 0.4 : signals.meteo.windKph >= 35 ? 0.15 : 0) +
+    (signals.meteo.precipMm >= 10 ? 0.25 : signals.meteo.precipMm >= 3 ? 0.1 : 0);
+
+  const quakeFactor =
+    1 +
+    (signals.quakes.maxMag >= 5 ? 0.5 : signals.quakes.maxMag >= 3 ? 0.15 : 0) +
+    Math.min(signals.quakes.count, 10) * 0.02;
+
+  const out: CrimeRates = { ...base };
+  for (const k of Object.keys(out) as (keyof CrimeRates)[]) {
+    let f = v * policeDiscount;
+    if (k === "traffic_incident") f *= stormFactor;
+    if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5;
+    if (k === "home_invasion" || k === "burglary") f *= quakeFactor; // post-disaster looting risk
+    out[k] = Math.max(0, Math.round(out[k] * f));
+  }
+  return out;
 }
+
+function cityVariance(seed: string): number {
+  if (!seed) return 0;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return ((h >>> 0) % 2000) / 1000 - 1;
+}
+
+/* ───────── handler ───────── */
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -278,51 +319,70 @@ Deno.serve(async (req) => {
     const city = (url.searchParams.get("city") ?? "").trim();
     const state = (url.searchParams.get("state") ?? "").trim() || null;
     const country = (url.searchParams.get("country") ?? "US").trim().toUpperCase();
+    const latParam = parseFloat(url.searchParams.get("lat") ?? "");
+    const lonParam = parseFloat(url.searchParams.get("lon") ?? "");
 
-    // International branch — Travel.State.Gov / advisory level only.
-    if (country !== "US") {
-      const advisoryLevel = await fetchAdvisoryLevel(country);
+    let coords: { lat: number; lon: number } | null =
+      Number.isFinite(latParam) && Number.isFinite(lonParam) ? { lat: latParam, lon: lonParam } : null;
+    if (!coords) coords = await geocode(city, state, country);
+
+    if (!coords) {
       return new Response(JSON.stringify({
-        source: "STATE_GOV",
-        year: new Date().getFullYear(),
-        population: null,
-        rates: FBI_NATIONAL_PER_100K, // generic baseline; engine uses advisoryLevel
-        advisoryLevel,
+        source: "FALLBACK",
+        coords: null,
+        rates: FBI_NATIONAL_PER_100K,
+        signals: null,
         city, state, country,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // Domestic US branch — try FBI CDE.
-    const agency = await resolveAgency(city, state);
-    if (agency) {
-      const offenses = await fetchAgencyOffenses(agency.ori);
+    // Run all live sources concurrently.
+    const [quakes, weather, gdacs, meteo, overpass, fbiAgency] = await Promise.all([
+      fetchQuakes(coords.lat, coords.lon),
+      fetchNwsAlerts(coords.lat, coords.lon, country),
+      fetchGdacs(coords.lat, coords.lon),
+      fetchOpenMeteo(coords.lat, coords.lon),
+      fetchOverpass(coords.lat, coords.lon),
+      fbiResolveAgency(city, state),
+    ]);
+
+    let fbiPartial: Partial<CrimeRates> | null = null;
+    let fbiInfo: { agency: string; year: number; population: number } | null = null;
+    if (fbiAgency) {
+      const offenses = await fbiOffenses(fbiAgency.ori);
       if (offenses) {
-        const partial = offensesToRates(offenses.counts, agency.population);
-        const rates = mergeWithNational(partial);
-        return new Response(JSON.stringify({
-          source: "FBI_CDE",
-          year: offenses.year,
-          population: agency.population,
-          agency: agency.agency_name,
-          rates,
-          city, state, country,
-        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        fbiPartial = fbiOffensesToRates(offenses, fbiAgency.population);
+        fbiInfo = { agency: fbiAgency.agency, year: 2022, population: fbiAgency.population };
       }
     }
 
-    // Fallback — national averages with deterministic city seed left to client.
+    const rates = buildRates({
+      fbiPartial,
+      signals: { quakes, weather, gdacs, meteo, overpass },
+      variance: cityVariance(`${city}|${state ?? ""}|${country}`),
+    });
+
     return new Response(JSON.stringify({
-      source: "FBI_NATIONAL",
-      year: 2022,
-      population: null,
-      rates: FBI_NATIONAL_PER_100K,
+      source: "LIVE_AGGREGATE",
+      coords,
+      rates,
+      signals: {
+        quakes,
+        weatherAlerts: weather,
+        gdacsAlerts: gdacs,
+        windKph: meteo.windKph,
+        precipMm: meteo.precipMm,
+        policeNearby: overpass.policeNearby,
+        hospitalsNearby: overpass.hospitalsNearby,
+      },
+      fbi: fbiInfo,
       city, state, country,
+      fetchedAt: new Date().toISOString(),
     }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return new Response(JSON.stringify({ source: "FALLBACK", error: msg, rates: FBI_NATIONAL_PER_100K }), {
-      status: 200, // never break the UI
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify({
+      source: "FALLBACK", error: msg, rates: FBI_NATIONAL_PER_100K, signals: null,
+    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
   }
 });
