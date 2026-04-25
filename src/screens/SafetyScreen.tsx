@@ -189,7 +189,13 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
           <p className="text-white/50 text-[10px]">
-            {isDomestic ? 'Domestic · ZIP-level risk index' : 'International · Travel.State.Gov'}
+            {crime?.source === 'FBI_CDE'
+              ? `FBI CDE · ${crime.agency ?? 'agency'} · ${crime.year}`
+              : crime?.source === 'STATE_GOV'
+                ? 'International · Travel.State.Gov'
+                : isDomestic
+                  ? 'Domestic · FBI national benchmark'
+                  : 'International · advisory baseline'}
           </p>
         </div>
       </div>
