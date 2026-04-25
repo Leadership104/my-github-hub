@@ -162,7 +162,11 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   }, [locationName]);
 
   useEffect(() => {
-    if (!liveSafety) return;
+    if (!liveSafety) {
+      // Country changed or no advisory available — clear the badge so it reflects the new location
+      setSafetyResult(null);
+      return;
+    }
     const rawScore = liveSafety.rawScore ?? 2.5;
     const baseRates = advisoryToBaseRates(rawScore);
     const timeOfDay = detectTimeOfDay();
@@ -173,7 +177,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     });
     const sl = safetyLevel(result.score);
     setSafetyResult({ score: result.score, ...sl });
-  }, [liveSafety]);
+  }, [liveSafety, countryCode]);
 
   const level = safetyResult?.level ?? -1;
   const DOTS = [
