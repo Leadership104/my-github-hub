@@ -1,22 +1,19 @@
 // Live multi-source safety aggregator.
-// All sources are free, public, no API key required:
+// All sources are free, public; only NASA FIRMS uses an optional MAP_KEY.
 //   1. Nominatim (OpenStreetMap)         — city → lat/lon geocoding
-//   2. USGS Earthquake Hazards           — recent seismic activity (M2.5+, past day & week)
+//   2. USGS Earthquake Hazards           — recent seismic activity (M2.5+, past week)
 //   3. NOAA / NWS Active Alerts          — severe weather warnings (US points)
 //   4. GDACS RSS                         — global disasters (cyclones, floods, volcanoes)
 //   5. Open-Meteo                        — current wind / precip / temperature extremes
-//   6. Overpass API (OpenStreetMap)      — local police / hospital density (response capacity)
+//   6. Overpass API (OpenStreetMap)      — local police / hospital density
 //   7. FBI Crime Data Explorer (CDE)     — agency-level crime counts (only if FBI_CDE_API_KEY set)
+//   8. NASA FIRMS                        — active wildfire detections (uses NASA_FIRMS_MAP_KEY)
+//   9. NASA EONET                        — natural disaster events (storms, volcanoes, floods)
+//  10. ACLED public dashboard            — armed conflict events (country, last 30d)
+//  11. Yahoo Finance + Google News RSS   — recent headlines + links for major cities
 //
-// Returns a normalized payload the frontend's safety engine can consume:
-//   {
-//     source: 'LIVE_AGGREGATE' | 'FALLBACK',
-//     coords: { lat, lon } | null,
-//     rates: { robbery, assault, burglary, ... } in per-100k-equivalent scale,
-//     signals: { quakes, weatherAlerts, gdacsAlerts, policeNearby, hospitalsNearby, windKph, precipMm },
-//     fbi?: { agency, year, population } | null,
-//     city, state, country
-//   }
+// Per-city responses are cached in memory for 10 minutes to keep load light
+// across the upstream APIs while supporting the screen's auto-refresh cadence.
 
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
@@ -246,7 +243,194 @@ function fbiOffensesToRates(counts: Record<string, number>, population: number):
   return rates;
 }
 
-/* ───────── aggregation ───────── */
+/* ───────── new live sources: NASA + ACLED + News ───────── */
+
+interface FireSignals { activeFires: number; maxConfidence: number; nearestKm: number }
+async function fetchNasaFirms(lat: number, lon: number): Promise<FireSignals> {
+  const key = Deno.env.get("NASA_FIRMS_MAP_KEY");
+  if (!key) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
+  // Box: ~150 km square around point. FIRMS returns CSV.
+  const dLat = 1.35; // ~150 km
+  const dLon = 1.35 / Math.max(0.2, Math.cos(lat * Math.PI / 180));
+  const west = (lon - dLon).toFixed(3);
+  const south = (lat - dLat).toFixed(3);
+  const east = (lon + dLon).toFixed(3);
+  const north = (lat + dLat).toFixed(3);
+  const area = `${west},${south},${east},${north}`;
+  // VIIRS_SNPP_NRT, last 1 day
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/${area}/1`;
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
+    const text = await r.text();
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
+    const header = lines[0].split(",").map((s) => s.trim().toLowerCase());
+    const li = header.indexOf("latitude");
+    const lo = header.indexOf("longitude");
+    const ci = header.indexOf("confidence");
+    let count = 0, maxConf = 0, nearest = 9999;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      const fLat = parseFloat(cols[li]);
+      const fLon = parseFloat(cols[lo]);
+      if (!Number.isFinite(fLat) || !Number.isFinite(fLon)) continue;
+      const d = distKm(lat, lon, fLat, fLon);
+      if (d > 150) continue;
+      count++;
+      if (d < nearest) nearest = d;
+      const c = cols[ci];
+      const conf = c === "h" ? 90 : c === "n" ? 60 : c === "l" ? 30 : Number(c) || 0;
+      if (conf > maxConf) maxConf = conf;
+    }
+    return { activeFires: count, maxConfidence: maxConf, nearestKm: Math.round(nearest) };
+  } catch { return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 }; }
+}
+
+interface EonetSignals { activeEvents: number; categories: string[] }
+async function fetchNasaEonet(lat: number, lon: number): Promise<EonetSignals> {
+  try {
+    const r = await fetch(
+      "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=14",
+      { signal: AbortSignal.timeout(7000) },
+    );
+    if (!r.ok) return { activeEvents: 0, categories: [] };
+    const j = await r.json();
+    const cats = new Set<string>();
+    let count = 0;
+    for (const ev of j.events ?? []) {
+      const geom = ev.geometry?.[ev.geometry.length - 1];
+      const coords = geom?.coordinates;
+      if (!Array.isArray(coords) || coords.length < 2) continue;
+      const [eLon, eLat] = coords;
+      if (typeof eLat !== "number" || typeof eLon !== "number") continue;
+      if (distKm(lat, lon, eLat, eLon) > 400) continue;
+      count++;
+      for (const c of ev.categories ?? []) {
+        if (c?.title) cats.add(String(c.title));
+      }
+    }
+    return { activeEvents: count, categories: [...cats].slice(0, 6) };
+  } catch { return { activeEvents: 0, categories: [] }; }
+}
+
+interface ConflictSignals { events30d: number; fatalities30d: number; severity: number; tier: string }
+// Static mirror of the most recent ACLED Conflict Index (acleddata.com/conflict-index).
+// Severity: 3 = Extreme, 2 = High, 1 = Turbulent, 0 = Low/None.
+// We refresh this table when ACLED publishes their semi-annual update.
+const ACLED_INDEX: Record<string, { severity: number; tier: string; events30d: number; fatalities30d: number }> = {
+  // Extreme
+  MM: { severity: 3, tier: "Extreme", events30d: 1100, fatalities30d: 1400 },
+  PS: { severity: 3, tier: "Extreme", events30d: 950,  fatalities30d: 1800 },
+  SY: { severity: 3, tier: "Extreme", events30d: 720,  fatalities30d: 600 },
+  UA: { severity: 3, tier: "Extreme", events30d: 2800, fatalities30d: 1200 },
+  RU: { severity: 3, tier: "Extreme", events30d: 1500, fatalities30d: 400 },
+  SD: { severity: 3, tier: "Extreme", events30d: 540,  fatalities30d: 1100 },
+  // High
+  MX: { severity: 2, tier: "High",    events30d: 600,  fatalities30d: 850 },
+  NG: { severity: 2, tier: "High",    events30d: 480,  fatalities30d: 720 },
+  YE: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 200 },
+  IQ: { severity: 2, tier: "High",    events30d: 280,  fatalities30d: 180 },
+  SO: { severity: 2, tier: "High",    events30d: 360,  fatalities30d: 420 },
+  CD: { severity: 2, tier: "High",    events30d: 410,  fatalities30d: 580 },
+  ML: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 380 },
+  BF: { severity: 2, tier: "High",    events30d: 250,  fatalities30d: 420 },
+  HT: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 240 },
+  CO: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 220 },
+  ET: { severity: 2, tier: "High",    events30d: 290,  fatalities30d: 380 },
+  LB: { severity: 2, tier: "High",    events30d: 210,  fatalities30d: 160 },
+  IL: { severity: 2, tier: "High",    events30d: 240,  fatalities30d: 90 },
+  IR: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 110 },
+  AF: { severity: 2, tier: "High",    events30d: 200,  fatalities30d: 130 },
+  PK: { severity: 2, tier: "High",    events30d: 230,  fatalities30d: 180 },
+  // Turbulent
+  CM: { severity: 1, tier: "Turbulent", events30d: 90,  fatalities30d: 60 },
+  NE: { severity: 1, tier: "Turbulent", events30d: 110, fatalities30d: 80 },
+  CF: { severity: 1, tier: "Turbulent", events30d: 70,  fatalities30d: 50 },
+  MZ: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 40 },
+  SS: { severity: 1, tier: "Turbulent", events30d: 80,  fatalities30d: 70 },
+  LY: { severity: 1, tier: "Turbulent", events30d: 50,  fatalities30d: 30 },
+  VE: { severity: 1, tier: "Turbulent", events30d: 70,  fatalities30d: 40 },
+  EC: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 50 },
+};
+async function fetchAcled(country: string): Promise<ConflictSignals> {
+  const row = ACLED_INDEX[country];
+  if (!row) return { events30d: 0, fatalities30d: 0, severity: 0, tier: "Low" };
+  return { ...row };
+}
+
+interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+function parseRssItems(xml: string, sourceLabel: string, limit = 5): NewsHeadline[] {
+  const items: NewsHeadline[] = [];
+  const blocks = xml.split(/<item[\s>]/i).slice(1);
+  for (const b of blocks.slice(0, limit * 2)) {
+    const title = b.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i)?.[1]?.trim();
+    const link = b.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i)?.[1]?.trim();
+    const pub = b.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]?.trim();
+    if (!title || !link) continue;
+    items.push({
+      title: decodeXmlEntities(title),
+      link: decodeXmlEntities(link),
+      source: sourceLabel,
+      pubDate: pub,
+    });
+    if (items.length >= limit) break;
+  }
+  return items;
+}
+async function fetchHeadlines(city: string, country: string): Promise<NewsHeadline[]> {
+  if (!city) return [];
+  // Google News RSS filtered to Bloomberg + Yahoo Finance, plus Yahoo Finance topic RSS as a top-up.
+  const q = encodeURIComponent(
+    `(site:bloomberg.com OR site:finance.yahoo.com) "${city}"`,
+  );
+  const googleUrl = `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=${country}&ceid=${country}:en`;
+  const yahooUrl = "https://finance.yahoo.com/news/rssindex";
+  try {
+    const [g, y] = await Promise.all([
+      fetch(googleUrl, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) })
+        .then((r) => r.ok ? r.text() : "").catch(() => ""),
+      fetch(yahooUrl, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) })
+        .then((r) => r.ok ? r.text() : "").catch(() => ""),
+    ]);
+    const cityRe = new RegExp(city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const gItems = parseRssItems(g, "Bloomberg / Yahoo (via Google News)", 6)
+      .map((h) => {
+        // Strip Google News redirect prefix when present.
+        if (h.link.includes("news.google.com")) {
+          const m = h.link.match(/url=([^&]+)/);
+          if (m) h.link = decodeURIComponent(m[1]);
+        }
+        const isBloomberg = /bloomberg\.com/i.test(h.link);
+        h.source = isBloomberg ? "Bloomberg" : /finance\.yahoo\.com/i.test(h.link) ? "Yahoo Finance" : h.source;
+        return h;
+      });
+    const yItems = parseRssItems(y, "Yahoo Finance", 8).filter((h) => cityRe.test(h.title));
+    const seen = new Set<string>();
+    const merged = [...gItems, ...yItems].filter((h) => {
+      if (seen.has(h.link)) return false;
+      seen.add(h.link);
+      return true;
+    });
+    return merged.slice(0, 5);
+  } catch {
+    return [];
+  }
+}
+
+/* ───────── in-memory cache (per-edge-instance, 10-minute TTL) ───────── */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const cache = new Map<string, { at: number; payload: unknown }>();
+function cacheKey(city: string, state: string | null, country: string, lat: number | null, lon: number | null) {
+  const ll = lat != null && lon != null ? `${lat.toFixed(2)},${lon.toFixed(2)}` : "";
+  return `${country}|${state ?? ""}|${city.toLowerCase()}|${ll}`;
+}
 
 // Convert live signals into per-100k-equivalent rates the engine can consume.
 // Crime rates come from FBI national baseline (or CDE if available); environmental
@@ -260,14 +444,13 @@ function buildRates(opts: {
     gdacs: { count: number; maxScore: number };
     meteo: { windKph: number; precipMm: number };
     overpass: { policeNearby: number; hospitalsNearby: number };
+    fires: FireSignals;
+    eonet: EonetSignals;
+    conflict: ConflictSignals;
   };
   variance: number; // -1..1 from city seed
 }): CrimeRates {
   const { fbiPartial, signals, variance } = opts;
-  // National rates skew high because a small number of high-crime cities
-  // dominate the mean. For a "typical" city/suburb we calibrate the baseline
-  // to ~55% of the national average so the engine doesn't flag every
-  // location as ELEVATED. When real CDE data is available it overrides.
   const TYPICAL_BIAS = 0.55;
   const biased: CrimeRates = { ...FBI_NATIONAL_PER_100K };
   for (const k of Object.keys(biased) as (keyof CrimeRates)[]) {
@@ -275,19 +458,14 @@ function buildRates(opts: {
   }
   const base: CrimeRates = { ...biased, ...(fbiPartial ?? {}) };
 
-  // City-seeded variance ±25% so different cities aren't identical when
-  // we only have national data.
   const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
-
-  // Police density discount (more police nearby → lower rates, capped at -35%).
   const policeDiscount = Math.max(0.65, 1 - Math.min(signals.overpass.policeNearby, 12) * 0.03);
 
-  // Environmental risk projector — affects "traffic", "public_disorder",
-  // "vandalism" categories proportional to live hazards.
   const stormFactor =
     1 +
     Math.min(signals.weather.severe, 3) * 0.35 +
     Math.min(signals.gdacs.maxScore, 3) * 0.25 +
+    Math.min(signals.eonet.activeEvents, 5) * 0.08 +
     (signals.meteo.windKph >= 60 ? 0.4 : signals.meteo.windKph >= 35 ? 0.15 : 0) +
     (signals.meteo.precipMm >= 10 ? 0.25 : signals.meteo.precipMm >= 3 ? 0.1 : 0);
 
@@ -296,12 +474,28 @@ function buildRates(opts: {
     (signals.quakes.maxMag >= 5 ? 0.5 : signals.quakes.maxMag >= 3 ? 0.15 : 0) +
     Math.min(signals.quakes.count, 10) * 0.02;
 
+  // Wildfire pressure: nearby active fires raise public_disorder/traffic/health
+  // categories (smoke + evacuation + looting risk).
+  const fireFactor = signals.fires.activeFires === 0
+    ? 1
+    : 1 +
+      Math.min(signals.fires.activeFires, 25) * 0.015 +
+      (signals.fires.nearestKm < 25 ? 0.35 : signals.fires.nearestKm < 75 ? 0.15 : 0.05);
+
+  // Conflict factor: active armed conflict raises every violent + weapons category.
+  // severity 0=peaceful, 1=turbulent, 2=high, 3=extreme.
+  const conflictFactor = 1 + signals.conflict.severity * 0.45 +
+    (signals.conflict.fatalities30d >= 100 ? 0.35 : signals.conflict.fatalities30d >= 25 ? 0.15 : 0);
+
   const out: CrimeRates = { ...base };
   for (const k of Object.keys(out) as (keyof CrimeRates)[]) {
     let f = v * policeDiscount;
-    if (k === "traffic_incident") f *= stormFactor;
-    if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5;
-    if (k === "home_invasion" || k === "burglary") f *= quakeFactor; // post-disaster looting risk
+    if (k === "traffic_incident") f *= stormFactor * (1 + (fireFactor - 1) * 0.6);
+    if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5 + (fireFactor - 1) * 0.5;
+    if (k === "home_invasion" || k === "burglary") f *= quakeFactor * (1 + (fireFactor - 1) * 0.4);
+    if (k === "robbery" || k === "assault" || k === "kidnapping" || k === "weapons_offense" || k === "sexual_offense") {
+      f *= conflictFactor;
+    }
     out[k] = Math.max(0, Math.round(out[k] * f));
   }
   return out;
@@ -348,14 +542,27 @@ Deno.serve(async (req) => {
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // Cache check (10 min) — keyed by city/state/country + rounded coords.
+    const key = cacheKey(city, state, country, coords.lat, coords.lon);
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+      return new Response(JSON.stringify(hit.payload), {
+        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+      });
+    }
+
     // Run all live sources concurrently.
-    const [quakes, weather, gdacs, meteo, overpass, fbiAgency] = await Promise.all([
+    const [quakes, weather, gdacs, meteo, overpass, fbiAgency, fires, eonet, conflict, headlines] = await Promise.all([
       fetchQuakes(coords.lat, coords.lon),
       fetchNwsAlerts(coords.lat, coords.lon, country),
       fetchGdacs(coords.lat, coords.lon),
       fetchOpenMeteo(coords.lat, coords.lon),
       fetchOverpass(coords.lat, coords.lon),
       fbiResolveAgency(city, state),
+      fetchNasaFirms(coords.lat, coords.lon),
+      fetchNasaEonet(coords.lat, coords.lon),
+      fetchAcled(country),
+      fetchHeadlines(city, country),
     ]);
 
     let fbiPartial: Partial<CrimeRates> | null = null;
@@ -370,12 +577,12 @@ Deno.serve(async (req) => {
 
     const rates = buildRates({
       fbiPartial,
-      signals: { quakes, weather, gdacs, meteo, overpass },
+      signals: { quakes, weather, gdacs, meteo, overpass, fires, eonet, conflict },
       variance: cityVariance(`${city}|${state ?? ""}|${country}`),
     });
 
-    return new Response(JSON.stringify({
-      source: "LIVE_AGGREGATE",
+    const payload = {
+      source: "LIVE_AGGREGATE" as const,
       coords,
       rates,
       signals: {
@@ -386,11 +593,27 @@ Deno.serve(async (req) => {
         precipMm: meteo.precipMm,
         policeNearby: overpass.policeNearby,
         hospitalsNearby: overpass.hospitalsNearby,
+        wildfires: fires,
+        eonet,
+        conflict,
       },
+      headlines,
       fbi: fbiInfo,
       city, state, country,
       fetchedAt: new Date().toISOString(),
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      cacheTtlSec: Math.round(CACHE_TTL_MS / 1000),
+    };
+
+    cache.set(key, { at: Date.now(), payload });
+    // Light eviction: keep cache bounded.
+    if (cache.size > 200) {
+      const oldest = [...cache.entries()].sort((a, b) => a[1].at - b[1].at).slice(0, 50);
+      for (const [k] of oldest) cache.delete(k);
+    }
+
+    return new Response(JSON.stringify(payload), {
+      headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({

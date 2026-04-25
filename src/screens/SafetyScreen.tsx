@@ -17,6 +17,7 @@ function ratesFromFbi(per100k: Record<string, number>): Record<string, number> {
   return out;
 }
 
+interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
 interface CrimeDataResponse {
   source: 'LIVE_AGGREGATE' | 'FALLBACK';
   coords: { lat: number; lon: number } | null;
@@ -29,8 +30,12 @@ interface CrimeDataResponse {
     precipMm: number;
     policeNearby: number;
     hospitalsNearby: number;
+    wildfires?: { activeFires: number; maxConfidence: number; nearestKm: number };
+    eonet?: { activeEvents: number; categories: string[] };
+    conflict?: { events30d: number; fatalities30d: number; severity: number; tier: string };
   } | null;
   fbi?: { agency: string; year: number; population: number } | null;
+  headlines?: NewsHeadline[];
   fetchedAt?: string;
 }
 
@@ -122,15 +127,16 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
   const hasLive = !!crime && crime.source === 'LIVE_AGGREGATE' && Object.keys(crime.rates ?? {}).length > 0;
 
-  // Pull live multi-source aggregate (USGS, NWS, GDACS, Open-Meteo, Overpass, optional FBI CDE)
-  // for every location — domestic and international — so the score reflects current conditions.
+  // Pull live multi-source aggregate. Refreshes on screen open and every 10
+  // minutes while the screen is visible so the score stays current.
   useEffect(() => {
     let cancelled = false;
     setCrime(null);
     const { city, state } = parseCityState(locationName);
     const country = (countryCode || 'US').toUpperCase();
     if (!city) return;
-    (async () => {
+
+    const load = async () => {
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
         const qs = new URLSearchParams({ city, state: state ?? '', country });
@@ -143,10 +149,13 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         const j = await r.json();
         if (!cancelled) setCrime(j as CrimeDataResponse);
       } catch {
-        if (!cancelled) setCrime({ source: 'FALLBACK', coords: null, rates: {} });
+        if (!cancelled) setCrime((prev) => prev ?? { source: 'FALLBACK', coords: null, rates: {} });
       }
-    })();
-    return () => { cancelled = true; };
+    };
+
+    load();
+    const id = window.setInterval(load, 10 * 60 * 1000);
+    return () => { cancelled = true; window.clearInterval(id); };
   }, [locationName, countryCode, lat, lng]);
 
   const compute = useCallback(() => {
@@ -311,6 +320,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
         {/* Live Data Feeds */}
         <LiveFeedsPanel crime={crime} hasLive={hasLive} />
+
+        {/* News Headlines */}
+        <HeadlinesPanel crime={crime} />
       </div>
     </div>
   );
@@ -371,6 +383,36 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
       detail: s ? `${s.policeNearby} police · ${s.hospitalsNearby} hospitals nearby` : 'No data',
     },
     {
+      name: 'NASA FIRMS Wildfires',
+      icon: '🔥',
+      status: !hasLive ? 'offline' : (s?.wildfires && s.wildfires.activeFires > 0 ? 'active' : 'quiet'),
+      detail: s?.wildfires
+        ? (s.wildfires.activeFires > 0
+            ? `${s.wildfires.activeFires} active · nearest ${s.wildfires.nearestKm}km`
+            : 'No active fires within 150km')
+        : 'No data',
+    },
+    {
+      name: 'NASA EONET Disasters',
+      icon: '🛰️',
+      status: !hasLive ? 'offline' : (s?.eonet && s.eonet.activeEvents > 0 ? 'active' : 'quiet'),
+      detail: s?.eonet
+        ? (s.eonet.activeEvents > 0
+            ? `${s.eonet.activeEvents} events · ${s.eonet.categories.slice(0, 2).join(', ') || 'mixed'}`
+            : 'No tracked events nearby')
+        : 'No data',
+    },
+    {
+      name: 'ACLED Conflict Index',
+      icon: '⚔️',
+      status: !hasLive ? 'offline' : (s?.conflict && s.conflict.severity > 0 ? 'active' : 'quiet'),
+      detail: s?.conflict
+        ? (s.conflict.severity > 0
+            ? `${s.conflict.tier} · ${s.conflict.events30d} events · ${s.conflict.fatalities30d} fatalities (30d)`
+            : 'No active conflict reported')
+        : 'No data',
+    },
+    {
       name: 'FBI Crime Data',
       icon: '🛡️',
       status: crime?.fbi ? 'active' : 'offline',
@@ -426,9 +468,44 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
 
       <p className="text-[9px] text-muted-foreground/60 text-center mt-3 pt-3 border-t border-border/50">
         {hasLive
-          ? 'All feeds aggregated server-side · no API keys required'
+          ? 'Server-side aggregation · cached 10 min · auto-refreshing'
           : 'Live aggregator unavailable · showing calibrated baseline'}
       </p>
+    </div>
+  );
+}
+
+/* ── Headlines Panel (Bloomberg + Yahoo Finance via Google News RSS) ───── */
+function HeadlinesPanel({ crime }: { crime: CrimeDataResponse | null }) {
+  const headlines = crime?.headlines ?? [];
+  if (headlines.length === 0) return null;
+  return (
+    <div className="bg-card border border-border rounded-kipita p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">
+          LOCAL HEADLINES
+        </p>
+        <span className="text-[9px] text-muted-foreground">Bloomberg · Yahoo Finance</span>
+      </div>
+      <div className="space-y-2.5">
+        {headlines.map((h, i) => (
+          <a
+            key={i}
+            href={h.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block group"
+          >
+            <p className="text-xs text-foreground leading-snug group-hover:text-kipita-red transition-colors line-clamp-2">
+              {h.title}
+            </p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">
+              {h.source}
+              {h.pubDate ? ` · ${relativeTime(h.pubDate)}` : ''}
+            </p>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
