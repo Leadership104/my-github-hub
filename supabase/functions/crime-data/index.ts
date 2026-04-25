@@ -442,14 +442,13 @@ function buildRates(opts: {
     gdacs: { count: number; maxScore: number };
     meteo: { windKph: number; precipMm: number };
     overpass: { policeNearby: number; hospitalsNearby: number };
+    fires: FireSignals;
+    eonet: EonetSignals;
+    conflict: ConflictSignals;
   };
   variance: number; // -1..1 from city seed
 }): CrimeRates {
   const { fbiPartial, signals, variance } = opts;
-  // National rates skew high because a small number of high-crime cities
-  // dominate the mean. For a "typical" city/suburb we calibrate the baseline
-  // to ~55% of the national average so the engine doesn't flag every
-  // location as ELEVATED. When real CDE data is available it overrides.
   const TYPICAL_BIAS = 0.55;
   const biased: CrimeRates = { ...FBI_NATIONAL_PER_100K };
   for (const k of Object.keys(biased) as (keyof CrimeRates)[]) {
@@ -457,19 +456,14 @@ function buildRates(opts: {
   }
   const base: CrimeRates = { ...biased, ...(fbiPartial ?? {}) };
 
-  // City-seeded variance ±25% so different cities aren't identical when
-  // we only have national data.
   const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
-
-  // Police density discount (more police nearby → lower rates, capped at -35%).
   const policeDiscount = Math.max(0.65, 1 - Math.min(signals.overpass.policeNearby, 12) * 0.03);
 
-  // Environmental risk projector — affects "traffic", "public_disorder",
-  // "vandalism" categories proportional to live hazards.
   const stormFactor =
     1 +
     Math.min(signals.weather.severe, 3) * 0.35 +
     Math.min(signals.gdacs.maxScore, 3) * 0.25 +
+    Math.min(signals.eonet.activeEvents, 5) * 0.08 +
     (signals.meteo.windKph >= 60 ? 0.4 : signals.meteo.windKph >= 35 ? 0.15 : 0) +
     (signals.meteo.precipMm >= 10 ? 0.25 : signals.meteo.precipMm >= 3 ? 0.1 : 0);
 
@@ -478,12 +472,28 @@ function buildRates(opts: {
     (signals.quakes.maxMag >= 5 ? 0.5 : signals.quakes.maxMag >= 3 ? 0.15 : 0) +
     Math.min(signals.quakes.count, 10) * 0.02;
 
+  // Wildfire pressure: nearby active fires raise public_disorder/traffic/health
+  // categories (smoke + evacuation + looting risk).
+  const fireFactor = signals.fires.activeFires === 0
+    ? 1
+    : 1 +
+      Math.min(signals.fires.activeFires, 25) * 0.015 +
+      (signals.fires.nearestKm < 25 ? 0.35 : signals.fires.nearestKm < 75 ? 0.15 : 0.05);
+
+  // Conflict factor: active armed conflict raises every violent + weapons category.
+  // severity 0=peaceful, 1=turbulent, 2=high, 3=extreme.
+  const conflictFactor = 1 + signals.conflict.severity * 0.45 +
+    (signals.conflict.fatalities30d >= 100 ? 0.35 : signals.conflict.fatalities30d >= 25 ? 0.15 : 0);
+
   const out: CrimeRates = { ...base };
   for (const k of Object.keys(out) as (keyof CrimeRates)[]) {
     let f = v * policeDiscount;
-    if (k === "traffic_incident") f *= stormFactor;
-    if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5;
-    if (k === "home_invasion" || k === "burglary") f *= quakeFactor; // post-disaster looting risk
+    if (k === "traffic_incident") f *= stormFactor * (1 + (fireFactor - 1) * 0.6);
+    if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5 + (fireFactor - 1) * 0.5;
+    if (k === "home_invasion" || k === "burglary") f *= quakeFactor * (1 + (fireFactor - 1) * 0.4);
+    if (k === "robbery" || k === "assault" || k === "kidnapping" || k === "weapons_offense" || k === "sexual_offense") {
+      f *= conflictFactor;
+    }
     out[k] = Math.max(0, Math.round(out[k] * f));
   }
   return out;
