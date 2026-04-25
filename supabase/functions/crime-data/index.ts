@@ -264,12 +264,20 @@ function buildRates(opts: {
   variance: number; // -1..1 from city seed
 }): CrimeRates {
   const { fbiPartial, signals, variance } = opts;
-  // Start from FBI national, override with CDE when present.
-  const base: CrimeRates = { ...FBI_NATIONAL_PER_100K, ...(fbiPartial ?? {}) };
+  // National rates skew high because a small number of high-crime cities
+  // dominate the mean. For a "typical" city/suburb we calibrate the baseline
+  // to ~55% of the national average so the engine doesn't flag every
+  // location as ELEVATED. When real CDE data is available it overrides.
+  const TYPICAL_BIAS = 0.55;
+  const biased: CrimeRates = { ...FBI_NATIONAL_PER_100K };
+  for (const k of Object.keys(biased) as (keyof CrimeRates)[]) {
+    biased[k] = Math.round(biased[k] * TYPICAL_BIAS);
+  }
+  const base: CrimeRates = { ...biased, ...(fbiPartial ?? {}) };
 
-  // City-seeded variance ±18% so different cities aren't identical when
+  // City-seeded variance ±25% so different cities aren't identical when
   // we only have national data.
-  const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.18;
+  const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
 
   // Police density discount (more police nearby → modestly lower rates, capped at -25%).
   const policeDiscount = Math.max(0.75, 1 - Math.min(signals.overpass.policeNearby, 10) * 0.025);
