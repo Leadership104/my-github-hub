@@ -13,6 +13,8 @@ interface Props {
   locationName: string;
   fullAddress?: string;
   countryCode?: string;
+  lat?: number;
+  lng?: number;
   onSwitchTab: (tab: TabId, hint?: string) => void;
 }
 
