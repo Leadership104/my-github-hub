@@ -348,35 +348,54 @@ async function fetchNasaEonet(lat: number, lon: number): Promise<EonetSignals> {
   } catch { return empty; }
 }
 
-interface ConflictSignals { events30d: number; fatalities30d: number; severity: number; tier: string }
-// Static mirror of the most recent ACLED Conflict Index (acleddata.com/conflict-index).
+interface ConflictSignals {
+  events30d: number;
+  fatalities30d: number;
+  severity: number;          // 0=Low, 1=Turbulent, 2=High, 3=Extreme
+  tier: string;
+  sanctioned: boolean;       // OFAC/EU comprehensive sanctions
+  sanctionsTier: number;     // 0=none, 1=targeted, 2=comprehensive
+  travelAdvisory: number;    // 0=none, 1=increased caution, 2=reconsider, 3=do not travel
+  notes: string[];
+}
+// Static mirror of the most recent ACLED Conflict Index (acleddata.com/conflict-index)
+// + US State Dept travel advisories + OFAC/EU comprehensive sanctions.
 // Severity: 3 = Extreme, 2 = High, 1 = Turbulent, 0 = Low/None.
-// We refresh this table when ACLED publishes their semi-annual update.
-const ACLED_INDEX: Record<string, { severity: number; tier: string; events30d: number; fatalities30d: number }> = {
-  // Extreme
-  MM: { severity: 3, tier: "Extreme", events30d: 1100, fatalities30d: 1400 },
-  PS: { severity: 3, tier: "Extreme", events30d: 950,  fatalities30d: 1800 },
-  SY: { severity: 3, tier: "Extreme", events30d: 720,  fatalities30d: 600 },
-  UA: { severity: 3, tier: "Extreme", events30d: 2800, fatalities30d: 1200 },
-  RU: { severity: 3, tier: "Extreme", events30d: 1500, fatalities30d: 400 },
-  SD: { severity: 3, tier: "Extreme", events30d: 540,  fatalities30d: 1100 },
-  // High
-  MX: { severity: 2, tier: "High",    events30d: 600,  fatalities30d: 850 },
-  NG: { severity: 2, tier: "High",    events30d: 480,  fatalities30d: 720 },
-  YE: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 200 },
-  IQ: { severity: 2, tier: "High",    events30d: 280,  fatalities30d: 180 },
-  SO: { severity: 2, tier: "High",    events30d: 360,  fatalities30d: 420 },
-  CD: { severity: 2, tier: "High",    events30d: 410,  fatalities30d: 580 },
-  ML: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 380 },
-  BF: { severity: 2, tier: "High",    events30d: 250,  fatalities30d: 420 },
-  HT: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 240 },
-  CO: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 220 },
-  ET: { severity: 2, tier: "High",    events30d: 290,  fatalities30d: 380 },
-  LB: { severity: 2, tier: "High",    events30d: 210,  fatalities30d: 160 },
-  IL: { severity: 2, tier: "High",    events30d: 240,  fatalities30d: 90 },
-  IR: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 110 },
-  AF: { severity: 2, tier: "High",    events30d: 200,  fatalities30d: 130 },
-  PK: { severity: 2, tier: "High",    events30d: 230,  fatalities30d: 180 },
+// SanctionsTier: 2 = comprehensive (RU, IR, KP, SY, CU, BY-partial),
+//                1 = targeted/sectoral (VE, MM-junta, AF-Taliban, etc.)
+// Refresh this table when ACLED publishes their semi-annual update.
+const ACLED_INDEX: Record<string, {
+  severity: number; tier: string; events30d: number; fatalities30d: number;
+  sanctioned?: boolean; sanctionsTier?: number; travelAdvisory?: number; notes?: string[];
+}> = {
+  // Extreme — active war / large-scale violence
+  UA: { severity: 3, tier: "Extreme", events30d: 2800, fatalities30d: 1200, travelAdvisory: 3, notes: ["Active war zone — Russian invasion ongoing"] },
+  RU: { severity: 3, tier: "Extreme", events30d: 1500, fatalities30d: 400,  sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions (OFAC/EU)", "Wartime restrictions, arbitrary detention risk"] },
+  PS: { severity: 3, tier: "Extreme", events30d: 1100, fatalities30d: 1900, travelAdvisory: 3, notes: ["Active conflict — Gaza/West Bank"] },
+  SY: { severity: 3, tier: "Extreme", events30d: 760,  fatalities30d: 620,  sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Civil war legacy + ISIS remnants"] },
+  MM: { severity: 3, tier: "Extreme", events30d: 1100, fatalities30d: 1400, sanctioned: true, sanctionsTier: 1, travelAdvisory: 3, notes: ["Junta-targeted sanctions", "Civil war"] },
+  SD: { severity: 3, tier: "Extreme", events30d: 540,  fatalities30d: 1100, travelAdvisory: 3, notes: ["RSF/SAF civil war"] },
+  YE: { severity: 3, tier: "Extreme", events30d: 380,  fatalities30d: 260,  travelAdvisory: 3, notes: ["Houthi conflict, missile/drone strikes"] },
+  KP: { severity: 3, tier: "Extreme", events30d: 0,    fatalities30d: 0,    sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Detention of foreigners, no consular access"] },
+  // High — sustained violence or severe state risk
+  IR: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 130,  sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Hostage diplomacy, IRGC threat"] },
+  IL: { severity: 2, tier: "High",    events30d: 280,  fatalities30d: 110,  travelAdvisory: 2, notes: ["Active conflict spillover, rocket fire"] },
+  LB: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 240,  travelAdvisory: 3, notes: ["Israel-Hezbollah conflict zone"] },
+  IQ: { severity: 2, tier: "High",    events30d: 280,  fatalities30d: 180,  travelAdvisory: 3, notes: ["Militia activity, ISIS remnants"] },
+  AF: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 150,  sanctioned: true, sanctionsTier: 1, travelAdvisory: 3, notes: ["Taliban-targeted sanctions", "Kidnapping risk"] },
+  PK: { severity: 2, tier: "High",    events30d: 230,  fatalities30d: 180,  travelAdvisory: 2, notes: ["TTP attacks, Balochistan unrest"] },
+  CU: { severity: 1, tier: "Turbulent", events30d: 30, fatalities30d: 5,    sanctioned: true, sanctionsTier: 2, travelAdvisory: 2, notes: ["Comprehensive sanctions"] },
+  BY: { severity: 1, tier: "Turbulent", events30d: 60, fatalities30d: 10,   sanctioned: true, sanctionsTier: 2, travelAdvisory: 3, notes: ["Comprehensive sanctions", "Wrongful detention risk"] },
+  VE: { severity: 1, tier: "Turbulent", events30d: 70, fatalities30d: 40,   sanctioned: true, sanctionsTier: 1, travelAdvisory: 3, notes: ["Sectoral sanctions", "Wrongful detention"] },
+  MX: { severity: 2, tier: "High",    events30d: 600,  fatalities30d: 850, travelAdvisory: 2, notes: ["Cartel violence in border/coastal regions"] },
+  NG: { severity: 2, tier: "High",    events30d: 480,  fatalities30d: 720, travelAdvisory: 2 },
+  SO: { severity: 2, tier: "High",    events30d: 360,  fatalities30d: 420, travelAdvisory: 3, notes: ["Al-Shabaab, kidnapping for ransom"] },
+  CD: { severity: 2, tier: "High",    events30d: 410,  fatalities30d: 580, travelAdvisory: 3 },
+  ML: { severity: 2, tier: "High",    events30d: 220,  fatalities30d: 380, travelAdvisory: 3 },
+  BF: { severity: 2, tier: "High",    events30d: 250,  fatalities30d: 420, travelAdvisory: 3 },
+  HT: { severity: 2, tier: "High",    events30d: 180,  fatalities30d: 240, travelAdvisory: 3, notes: ["Gang control of Port-au-Prince"] },
+  CO: { severity: 2, tier: "High",    events30d: 320,  fatalities30d: 220, travelAdvisory: 2 },
+  ET: { severity: 2, tier: "High",    events30d: 290,  fatalities30d: 380, travelAdvisory: 3 },
   // Turbulent
   CM: { severity: 1, tier: "Turbulent", events30d: 90,  fatalities30d: 60 },
   NE: { severity: 1, tier: "Turbulent", events30d: 110, fatalities30d: 80 },
@@ -384,13 +403,29 @@ const ACLED_INDEX: Record<string, { severity: number; tier: string; events30d: n
   MZ: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 40 },
   SS: { severity: 1, tier: "Turbulent", events30d: 80,  fatalities30d: 70 },
   LY: { severity: 1, tier: "Turbulent", events30d: 50,  fatalities30d: 30 },
-  VE: { severity: 1, tier: "Turbulent", events30d: 70,  fatalities30d: 40 },
-  EC: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 50 },
+  EC: { severity: 1, tier: "Turbulent", events30d: 60,  fatalities30d: 50, notes: ["Cartel-driven homicide spike"] },
+  EG: { severity: 1, tier: "Turbulent", events30d: 40,  fatalities30d: 25, travelAdvisory: 2, notes: ["Sinai conflict, terror risk"] },
+  JO: { severity: 0, tier: "Low",       events30d: 10,  fatalities30d: 2,  travelAdvisory: 1, notes: ["Border tension with conflict zones"] },
+  TR: { severity: 1, tier: "Turbulent", events30d: 70,  fatalities30d: 30, travelAdvisory: 2 },
+  SA: { severity: 0, tier: "Low",       events30d: 5,   fatalities30d: 1,  travelAdvisory: 1, notes: ["Houthi missile/drone risk in south"] },
 };
 async function fetchAcled(country: string): Promise<ConflictSignals> {
   const row = ACLED_INDEX[country];
-  if (!row) return { events30d: 0, fatalities30d: 0, severity: 0, tier: "Low" };
-  return { ...row };
+  const base: ConflictSignals = {
+    events30d: 0, fatalities30d: 0, severity: 0, tier: "Low",
+    sanctioned: false, sanctionsTier: 0, travelAdvisory: 0, notes: [],
+  };
+  if (!row) return base;
+  return {
+    events30d: row.events30d,
+    fatalities30d: row.fatalities30d,
+    severity: row.severity,
+    tier: row.tier,
+    sanctioned: !!row.sanctioned,
+    sanctionsTier: row.sanctionsTier ?? 0,
+    travelAdvisory: row.travelAdvisory ?? 0,
+    notes: row.notes ?? [],
+  };
 }
 
 interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
