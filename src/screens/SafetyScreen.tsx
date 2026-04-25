@@ -18,12 +18,20 @@ function ratesFromFbi(per100k: Record<string, number>): Record<string, number> {
 }
 
 interface CrimeDataResponse {
-  source: 'FBI_CDE' | 'FBI_NATIONAL' | 'STATE_GOV' | 'FALLBACK';
-  year: number | null;
-  population: number | null;
-  agency?: string;
+  source: 'LIVE_AGGREGATE' | 'FALLBACK';
+  coords: { lat: number; lon: number } | null;
   rates: Record<string, number>;
-  advisoryLevel?: number | null;
+  signals?: {
+    quakes: { count: number; maxMag: number };
+    weatherAlerts: { count: number; severe: number };
+    gdacsAlerts: { count: number; maxScore: number };
+    windKph: number;
+    precipMm: number;
+    policeNearby: number;
+    hospitalsNearby: number;
+  } | null;
+  fbi?: { agency: string; year: number; population: number } | null;
+  fetchedAt?: string;
 }
 
 const CONTEXTS: { id: SafetyContext; label: string; icon: string }[] = [
@@ -110,17 +118,16 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [context, setContext] = useState<SafetyContext>('AWAY');
   const [result, setResult] = useState<SafetyResult | null>(null);
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
-  const isDomestic = !countryCode || countryCode.toUpperCase() === 'US';
-  const usingDomesticHeuristic = isDomestic && (!crime || crime.source === 'FALLBACK' || crime.source === 'FBI_NATIONAL');
+  const hasLive = !!crime && crime.source === 'LIVE_AGGREGATE' && Object.keys(crime.rates ?? {}).length > 0;
 
-  // Until a verified city-level domestic feed is connected, keep US scoring on the calibrated
-  // in-app baseline so the UI does not overstate national averages as local conditions.
+  // Pull live multi-source aggregate (USGS, NWS, GDACS, Open-Meteo, Overpass, optional FBI CDE)
+  // for every location — domestic and international — so the score reflects current conditions.
   useEffect(() => {
     let cancelled = false;
     setCrime(null);
     const { city, state } = parseCityState(locationName);
     const country = (countryCode || 'US').toUpperCase();
-    if (country === 'US') return;
+    if (!city) return;
     (async () => {
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
@@ -132,7 +139,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         const j = await r.json();
         if (!cancelled) setCrime(j as CrimeDataResponse);
       } catch {
-        if (!cancelled) setCrime({ source: 'FALLBACK', year: null, population: null, rates: {} });
+        if (!cancelled) setCrime({ source: 'FALLBACK', coords: null, rates: {} });
       }
     })();
     return () => { cancelled = true; };
@@ -140,19 +147,11 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
   const compute = useCallback(() => {
     let baseRates: Record<string, number>;
-
-    if (crime && crime.source === 'FBI_CDE' && Object.keys(crime.rates).length) {
-      const variance = 0; // real agency data needs no synthetic variance
-      const v = 1 + variance * 0.2;
-      baseRates = {};
-      for (const [k, val] of Object.entries(ratesFromFbi(crime.rates))) {
-        baseRates[k] = Math.round(val * v);
-      }
-    } else if (crime && crime.source === 'STATE_GOV' && typeof crime.advisoryLevel === 'number') {
-      const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
-      baseRates = advisoryToBaseRates(crime.advisoryLevel, variance);
+    if (hasLive) {
+      baseRates = ratesFromFbi(crime!.rates);
     } else {
       const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
+      const isDomestic = !countryCode || countryCode.toUpperCase() === 'US';
       const effectiveRaw = isDomestic ? 1.0 : (advisoryScore ?? 2.0);
       baseRates = advisoryToBaseRates(effectiveRaw, variance);
     }
@@ -165,7 +164,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       baseRates,
     });
     setResult(r);
-  }, [context, advisoryScore, locationName, countryCode, crime]);
+  }, [context, advisoryScore, locationName, countryCode, crime, hasLive]);
 
   useEffect(() => { compute(); }, [compute]);
 
@@ -188,13 +187,11 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
           <p className="text-white/50 text-[10px]">
-            {crime?.source === 'FBI_CDE'
-              ? `FBI CDE · ${crime.agency ?? 'agency'} · ${crime.year}`
-              : crime?.source === 'STATE_GOV'
-                ? 'International · Travel.State.Gov'
-                : isDomestic
-                  ? 'Domestic · calibrated city baseline'
-                  : 'International · advisory baseline'}
+            {hasLive
+              ? `Live · USGS · NWS · GDACS · OSM${crime?.fbi ? ` · FBI ${crime.fbi.year}` : ''}`
+              : crime
+                ? 'Loading live sources…'
+                : 'Calibrated baseline'}
           </p>
         </div>
       </div>
@@ -282,7 +279,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
             <span className="font-bold" style={{ color: sl.color }}>
               {CONTEXTS.find(c => c.id === context)?.label}
             </span>
-            {' '}· {usingDomesticHeuristic ? 'calibrated to a local city baseline' : 'benchmarked against reported source data'}
+            {' '}· {hasLive ? 'live aggregated from multiple public sources' : 'calibrated baseline (live data loading)'}
           </p>
 
           <div className="space-y-2.5">
@@ -310,13 +307,19 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
         {/* Data Source */}
         <div className="text-center text-[9px] text-muted-foreground/50 pb-4">
-          {crime?.source === 'FBI_CDE'
-            ? `Source: FBI Crime Data Explorer · ${crime.agency ?? ''} · pop. ${crime.population?.toLocaleString() ?? '—'} · ${crime.year}`
-              : crime?.source === 'STATE_GOV'
-                ? 'Source: U.S. Dept. of State travel advisory'
-              : isDomestic
-                ? 'Source: calibrated domestic city baseline · location-aware heuristic'
-                : 'Source: international advisory baseline'}
+          {hasLive ? (
+            <>
+              Sources: USGS Earthquakes · NOAA NWS Alerts · GDACS · Open-Meteo · OpenStreetMap
+              {crime?.fbi ? ` · FBI CDE (${crime.fbi.agency}, ${crime.fbi.year})` : ''}
+              {crime?.signals ? (
+                <div className="mt-1 opacity-70">
+                  Quakes nearby: {crime.signals.quakes.count} (max M{crime.signals.quakes.maxMag.toFixed(1)})
+                  {' · '}Weather alerts: {crime.signals.weatherAlerts.count}
+                  {' · '}Police nearby: {crime.signals.policeNearby}
+                </div>
+              ) : null}
+            </>
+          ) : 'Calibrated baseline · live sources loading'}
         </div>
       </div>
     </div>
