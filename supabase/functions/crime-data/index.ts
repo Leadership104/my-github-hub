@@ -1,22 +1,19 @@
 // Live multi-source safety aggregator.
-// All sources are free, public, no API key required:
+// All sources are free, public; only NASA FIRMS uses an optional MAP_KEY.
 //   1. Nominatim (OpenStreetMap)         — city → lat/lon geocoding
-//   2. USGS Earthquake Hazards           — recent seismic activity (M2.5+, past day & week)
+//   2. USGS Earthquake Hazards           — recent seismic activity (M2.5+, past week)
 //   3. NOAA / NWS Active Alerts          — severe weather warnings (US points)
 //   4. GDACS RSS                         — global disasters (cyclones, floods, volcanoes)
 //   5. Open-Meteo                        — current wind / precip / temperature extremes
-//   6. Overpass API (OpenStreetMap)      — local police / hospital density (response capacity)
+//   6. Overpass API (OpenStreetMap)      — local police / hospital density
 //   7. FBI Crime Data Explorer (CDE)     — agency-level crime counts (only if FBI_CDE_API_KEY set)
+//   8. NASA FIRMS                        — active wildfire detections (uses NASA_FIRMS_MAP_KEY)
+//   9. NASA EONET                        — natural disaster events (storms, volcanoes, floods)
+//  10. ACLED public dashboard            — armed conflict events (country, last 30d)
+//  11. Yahoo Finance + Google News RSS   — recent headlines + links for major cities
 //
-// Returns a normalized payload the frontend's safety engine can consume:
-//   {
-//     source: 'LIVE_AGGREGATE' | 'FALLBACK',
-//     coords: { lat, lon } | null,
-//     rates: { robbery, assault, burglary, ... } in per-100k-equivalent scale,
-//     signals: { quakes, weatherAlerts, gdacsAlerts, policeNearby, hospitalsNearby, windKph, precipMm },
-//     fbi?: { agency, year, population } | null,
-//     city, state, country
-//   }
+// Per-city responses are cached in memory for 10 minutes to keep load light
+// across the upstream APIs while supporting the screen's auto-refresh cadence.
 
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
