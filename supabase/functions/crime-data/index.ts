@@ -335,10 +335,14 @@ Deno.serve(async (req) => {
     if (!coords) coords = await geocode(city, state, country);
 
     if (!coords) {
+      const fallback: CrimeRates = { ...FBI_NATIONAL_PER_100K };
+      for (const k of Object.keys(fallback) as (keyof CrimeRates)[]) {
+        fallback[k] = Math.round(fallback[k] * 0.55);
+      }
       return new Response(JSON.stringify({
         source: "FALLBACK",
         coords: null,
-        rates: FBI_NATIONAL_PER_100K,
+        rates: fallback,
         signals: null,
         city, state, country,
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
