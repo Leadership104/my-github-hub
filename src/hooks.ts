@@ -84,14 +84,73 @@ export interface LocationState {
   countryCode?: string;
 }
 
+/**
+ * IP-based geolocation fallback. Tries multiple HTTPS providers in order so the
+ * app still has a usable city/country when the browser geolocation API is
+ * unavailable, denied, or times out. Returns null if every provider fails.
+ */
+async function fetchIpLocation(): Promise<LocationState | null> {
+  const providers: Array<() => Promise<LocationState | null>> = [
+    async () => {
+      const r = await fetch('https://ipapi.co/json/');
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (!d?.latitude || !d?.longitude) return null;
+      const city = d.city || d.region || '';
+      const cc = (d.country_code || d.country || '').toUpperCase();
+      return {
+        lat: d.latitude,
+        lng: d.longitude,
+        name: city ? `${city}${cc ? ', ' + cc : ''}` : 'Approximate Location',
+        fullAddress: [d.city, d.region, d.country_name].filter(Boolean).join(', '),
+        countryCode: cc,
+      };
+    },
+    async () => {
+      const r = await fetch('https://get.geojs.io/v1/ip/geo.json');
+      if (!r.ok) return null;
+      const d = await r.json();
+      if (!d?.latitude || !d?.longitude) return null;
+      const cc = (d.country_code || '').toUpperCase();
+      return {
+        lat: parseFloat(d.latitude),
+        lng: parseFloat(d.longitude),
+        name: d.city ? `${d.city}, ${cc}` : 'Approximate Location',
+        fullAddress: [d.city, d.region, d.country].filter(Boolean).join(', '),
+        countryCode: cc,
+      };
+    },
+  ];
+  for (const p of providers) {
+    try {
+      const result = await p();
+      if (result) return result;
+    } catch { /* try next */ }
+  }
+  return null;
+}
+
 export function useLocation() {
   const [location, setLocation] = useState<LocationState>({ lat: 0, lng: 0, name: 'Detecting…' });
   const [detected, setDetected] = useState(false);
 
   useEffect(() => {
-    if (!navigator.geolocation) { setLocation(DEFAULT_LOCATION); setDetected(true); return; }
+    let cancelled = false;
+    const useIpOrDefault = async () => {
+      const ip = await fetchIpLocation();
+      if (cancelled) return;
+      setLocation(ip ?? DEFAULT_LOCATION);
+      setDetected(true);
+    };
+
+    if (!navigator.geolocation) {
+      useIpOrDefault();
+      return () => { cancelled = true; };
+    }
+
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        if (cancelled) return;
         const { latitude: lat, longitude: lng } = pos.coords;
         try {
           const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`);
@@ -100,26 +159,19 @@ export function useLocation() {
           const country = d.address?.country_code?.toUpperCase() || '';
           const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
           const fullAddress = d.display_name || name;
-          setLocation({ lat, lng, name, fullAddress, countryCode: country });
-        } catch { setLocation({ lat, lng, name: 'GPS Active' }); }
-        setDetected(true);
-      },
-      async () => {
-        try {
-          const r = await fetch('https://ip-api.com/json');
-          const d = await r.json();
-          if (d.status === 'success') {
-            setLocation({ lat: d.lat, lng: d.lon, name: `${d.city}, ${d.countryCode}` });
-          } else {
-            setLocation(DEFAULT_LOCATION);
-          }
+          if (!cancelled) setLocation({ lat, lng, name, fullAddress, countryCode: country });
         } catch {
-          setLocation(DEFAULT_LOCATION);
+          // Reverse geocoding failed — try IP for a richer label, otherwise keep coords
+          const ip = await fetchIpLocation();
+          if (!cancelled) setLocation(ip ?? { lat, lng, name: 'GPS Active' });
         }
-        setDetected(true);
+        if (!cancelled) setDetected(true);
       },
-      { enableHighAccuracy: true, timeout: 8000 }
+      async () => { await useIpOrDefault(); },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 5 * 60 * 1000 }
     );
+
+    return () => { cancelled = true; };
   }, []);
 
   const updateLocation = useCallback((newLoc: LocationState) => {
