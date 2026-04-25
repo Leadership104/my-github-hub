@@ -3,7 +3,7 @@ import HorizontalScroller from '../components/HorizontalScroller';
 import type { TabId } from '../types';
 import type { ForecastDay } from '../hooks';
 import { useTravelSafety } from '../hooks';
-import { computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel } from '../lib/safetyEngine';
+import { computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel, cityVarianceFromSeed } from '../lib/safetyEngine';
 import { getDestinationDetails } from '../lib/destinationSearch';
 import { CATEGORY_SUBS } from '../data';
 
