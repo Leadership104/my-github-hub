@@ -395,28 +395,48 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
       status: !hasLive ? 'offline' : (s?.wildfires && s.wildfires.activeFires > 0 ? 'active' : 'quiet'),
       detail: s?.wildfires
         ? (s.wildfires.activeFires > 0
-            ? `${s.wildfires.activeFires} active · nearest ${s.wildfires.nearestKm}km`
-            : 'No active fires within 150km')
+            ? `${s.wildfires.activeFires} hotspots · nearest ${s.wildfires.nearestKm}km`
+            : 'No satellite hotspots within 150km')
         : 'No data',
     },
     {
       name: 'NASA EONET Disasters',
       icon: '🛰️',
-      status: !hasLive ? 'offline' : (s?.eonet && s.eonet.activeEvents > 0 ? 'active' : 'quiet'),
+      status: !hasLive
+        ? 'offline'
+        : (s?.eonet && ((s.eonet.wildfiresRegional ?? 0) > 0 || s.eonet.stormNearby || s.eonet.volcanoNearby || s.eonet.activeEvents > 0)
+            ? 'active' : 'quiet'),
       detail: s?.eonet
-        ? (s.eonet.activeEvents > 0
-            ? `${s.eonet.activeEvents} events · ${s.eonet.categories.slice(0, 2).join(', ') || 'mixed'}`
-            : 'No tracked events nearby')
+        ? (() => {
+            const bits: string[] = [];
+            if ((s.eonet.wildfiresNearby ?? 0) > 0) bits.push(`${s.eonet.wildfiresNearby} wildfire(s) <150km`);
+            else if ((s.eonet.wildfiresRegional ?? 0) > 0) bits.push(`${s.eonet.wildfiresRegional} regional wildfire(s)`);
+            if (s.eonet.stormNearby) bits.push('storm/cyclone nearby');
+            if (s.eonet.volcanoNearby) bits.push('volcano <200km');
+            if (!bits.length) bits.push(s.eonet.activeEvents > 0
+              ? `${s.eonet.activeEvents} events · ${s.eonet.categories.slice(0, 2).join(', ') || 'mixed'}`
+              : 'No tracked events nearby');
+            return bits.join(' · ');
+          })()
         : 'No data',
     },
     {
-      name: 'ACLED Conflict Index',
+      name: 'ACLED Conflict + Sanctions',
       icon: '⚔️',
-      status: !hasLive ? 'offline' : (s?.conflict && s.conflict.severity > 0 ? 'active' : 'quiet'),
+      status: !hasLive
+        ? 'offline'
+        : (s?.conflict && (s.conflict.severity > 0 || s.conflict.sanctioned || (s.conflict.travelAdvisory ?? 0) >= 2)
+            ? 'active' : 'quiet'),
       detail: s?.conflict
-        ? (s.conflict.severity > 0
-            ? `${s.conflict.tier} · ${s.conflict.events30d} events · ${s.conflict.fatalities30d} fatalities (30d)`
-            : 'No active conflict reported')
+        ? (() => {
+            const parts: string[] = [];
+            if (s.conflict.severity > 0) parts.push(`${s.conflict.tier} · ${s.conflict.events30d} events / ${s.conflict.fatalities30d} fatalities (30d)`);
+            if (s.conflict.sanctioned) parts.push(s.conflict.sanctionsTier === 2 ? 'Comprehensive sanctions' : 'Targeted sanctions');
+            if ((s.conflict.travelAdvisory ?? 0) >= 3) parts.push('US Advisory: Do Not Travel');
+            else if ((s.conflict.travelAdvisory ?? 0) === 2) parts.push('US Advisory: Reconsider');
+            if (!parts.length) parts.push('No active conflict / sanctions');
+            return parts.join(' · ');
+          })()
         : 'No data',
     },
     {
