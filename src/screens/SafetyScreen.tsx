@@ -98,6 +98,8 @@ interface Props {
   locationName: string;
   countryCode?: string;
   advisoryScore?: number;
+  lat?: number;
+  lng?: number;
   onBack: () => void;
 }
 
