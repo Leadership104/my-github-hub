@@ -311,9 +311,13 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
         {/* Data Source */}
         <div className="text-center text-[9px] text-muted-foreground/50 pb-4">
-          {isDomestic
-            ? 'Domestic: ZIP-level crime index · FBI national benchmark'
-            : 'International: Travel.State.Gov advisory · contextual weighting'}
+          {crime?.source === 'FBI_CDE'
+            ? `Source: FBI Crime Data Explorer · ${crime.agency ?? ''} · pop. ${crime.population?.toLocaleString() ?? '—'} · ${crime.year}`
+            : crime?.source === 'FBI_NATIONAL'
+              ? 'Source: FBI national averages (2022) · agency-level data unavailable'
+              : crime?.source === 'STATE_GOV'
+                ? 'Source: U.S. Dept. of State travel advisory'
+                : 'Source: heuristic baseline (loading real data…)'}
         </div>
       </div>
     </div>
