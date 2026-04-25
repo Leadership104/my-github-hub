@@ -149,6 +149,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
   const [expandedTile, setExpandedTile] = useState<string | null>(null);
   const [bgPhoto, setBgPhoto] = useState<string | undefined>();
+  const isDomestic = !countryCode || countryCode.toUpperCase() === 'US';
 
   // Pull a real photo of the current city for the background
   useEffect(() => {
@@ -162,12 +163,16 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   }, [locationName]);
 
   useEffect(() => {
-    if (!liveSafety) {
-      // Country changed or no advisory available — clear the badge so it reflects the new location
+    if (!locationName) {
       setSafetyResult(null);
       return;
     }
-    const rawScore = liveSafety.rawScore ?? 2.0;
+    if (!isDomestic && !liveSafety) {
+      // International advisory still loading or unavailable — don't show stale state.
+      setSafetyResult(null);
+      return;
+    }
+    const rawScore = isDomestic ? 1.0 : (liveSafety?.rawScore ?? 2.0);
     const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
     const baseRates = advisoryToBaseRates(rawScore, variance);
     const timeOfDay = detectTimeOfDay();
@@ -178,7 +183,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     });
     const sl = safetyLevel(result.score);
     setSafetyResult({ score: result.score, ...sl });
-  }, [liveSafety, countryCode, locationName]);
+  }, [liveSafety, countryCode, locationName, isDomestic]);
 
   const level = safetyResult?.level ?? -1;
   const DOTS = [
