@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel,
-  categoryRating,
+  categoryRating, cityVarianceFromSeed,
   type SafetyContext, type SafetyResult,
 } from '../lib/safetyEngine';
 
