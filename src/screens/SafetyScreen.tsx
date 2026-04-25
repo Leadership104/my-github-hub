@@ -1,9 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../integrations/supabase/client';
 import {
   computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel,
   categoryRating, cityVarianceFromSeed,
   type SafetyContext, type SafetyResult,
 } from '../lib/safetyEngine';
+
+// Convert FBI rates (per-100k) into the engine's 0..RATE_CAP scale.
+// FBI's "high crime" cities run ~1500/100k for property crime — engine cap is 1500.
+function ratesFromFbi(per100k: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(per100k)) {
+    if (typeof v !== 'number') continue;
+    out[k] = Math.max(0, Math.round(v));
+  }
+  return out;
+}
+
+interface CrimeDataResponse {
+  source: 'FBI_CDE' | 'FBI_NATIONAL' | 'STATE_GOV' | 'FALLBACK';
+  year: number | null;
+  population: number | null;
+  agency?: string;
+  rates: Record<string, number>;
+  advisoryLevel?: number | null;
+}
 
 const CONTEXTS: { id: SafetyContext; label: string; icon: string }[] = [
   { id: 'HOME',    label: 'At Home',    icon: '🏠' },
