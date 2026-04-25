@@ -110,14 +110,17 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [context, setContext] = useState<SafetyContext>('AWAY');
   const [result, setResult] = useState<SafetyResult | null>(null);
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
+  const isDomestic = !countryCode || countryCode.toUpperCase() === 'US';
+  const usingDomesticHeuristic = isDomestic && (!crime || crime.source === 'FALLBACK' || crime.source === 'FBI_NATIONAL');
 
-  // Fetch real FBI/State.Gov crime data whenever the location changes.
+  // Until a verified city-level domestic feed is connected, keep US scoring on the calibrated
+  // in-app baseline so the UI does not overstate national averages as local conditions.
   useEffect(() => {
     let cancelled = false;
     setCrime(null);
     const { city, state } = parseCityState(locationName);
     const country = (countryCode || 'US').toUpperCase();
-    if (!city && country === 'US') return;
+    if (country === 'US') return;
     (async () => {
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
@@ -136,13 +139,10 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   }, [locationName, countryCode]);
 
   const compute = useCallback(() => {
-    const isDomesticUS = !countryCode || countryCode.toUpperCase() === 'US';
     let baseRates: Record<string, number>;
 
-    if (crime && (crime.source === 'FBI_CDE' || crime.source === 'FBI_NATIONAL') && Object.keys(crime.rates).length) {
-      const variance = crime.source === 'FBI_NATIONAL'
-        ? cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`) * 0.5
-        : 0; // real agency data needs no synthetic variance
+    if (crime && crime.source === 'FBI_CDE' && Object.keys(crime.rates).length) {
+      const variance = 0; // real agency data needs no synthetic variance
       const v = 1 + variance * 0.2;
       baseRates = {};
       for (const [k, val] of Object.entries(ratesFromFbi(crime.rates))) {
@@ -152,8 +152,8 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
       baseRates = advisoryToBaseRates(crime.advisoryLevel, variance);
     } else {
-      const effectiveRaw = advisoryScore ?? (isDomesticUS ? 1.0 : 2.0);
       const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
+      const effectiveRaw = isDomestic ? 1.0 : (advisoryScore ?? 2.0);
       baseRates = advisoryToBaseRates(effectiveRaw, variance);
     }
 
@@ -177,7 +177,6 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const tipIcon = result.score >= 80 ? '✅' : result.score >= 60 ? '⚠️' : result.score >= 40 ? '🟠' : '🔴';
   const needleX = (GCX + (GR - 8) * Math.cos(scoreAngle(result.score))).toFixed(1);
   const needleY = (GCY + (GR - 8) * Math.sin(scoreAngle(result.score))).toFixed(1);
-  const isDomestic = !countryCode || countryCode === 'US';
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -194,7 +193,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
               : crime?.source === 'STATE_GOV'
                 ? 'International · Travel.State.Gov'
                 : isDomestic
-                  ? 'Domestic · FBI national benchmark'
+                  ? 'Domestic · calibrated city baseline'
                   : 'International · advisory baseline'}
           </p>
         </div>
@@ -283,7 +282,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
             <span className="font-bold" style={{ color: sl.color }}>
               {CONTEXTS.find(c => c.id === context)?.label}
             </span>
-            {' '}· benchmarked against national averages
+            {' '}· {usingDomesticHeuristic ? 'calibrated to a local city baseline' : 'benchmarked against reported source data'}
           </p>
 
           <div className="space-y-2.5">
@@ -313,11 +312,11 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         <div className="text-center text-[9px] text-muted-foreground/50 pb-4">
           {crime?.source === 'FBI_CDE'
             ? `Source: FBI Crime Data Explorer · ${crime.agency ?? ''} · pop. ${crime.population?.toLocaleString() ?? '—'} · ${crime.year}`
-            : crime?.source === 'FBI_NATIONAL'
-              ? 'Source: FBI national averages (2022) · agency-level data unavailable'
               : crime?.source === 'STATE_GOV'
                 ? 'Source: U.S. Dept. of State travel advisory'
-                : 'Source: heuristic baseline (loading real data…)'}
+              : isDomestic
+                ? 'Source: calibrated domestic city baseline · location-aware heuristic'
+                : 'Source: international advisory baseline'}
         </div>
       </div>
     </div>
