@@ -296,32 +296,15 @@ export default function AIScreen({
   const textareaRef                     = useRef<HTMLTextAreaElement>(null);
   const prevMsgCountRef                 = useRef<number>(0);
 
-  // Smart scroll:
-  // - When a NEW AI message arrives, anchor to the TOP of that message so the user
-  //   reads from the beginning (long safety/briefing replies were being cut off at the bottom).
-  // - When the user sends a message (or suggestions/places update), keep them pinned to the bottom.
+  // Reverse-chronological view: newest message renders at the TOP of the list.
+  // Whenever a new message arrives (user or AI), snap the scroll container to the
+  // top so the latest exchange is immediately visible without scrolling.
   useEffect(() => {
-    const prevCount = prevMsgCountRef.current;
     prevMsgCountRef.current = messages.length;
-    const last = messages[messages.length - 1];
-    const grew = messages.length > prevCount;
-
-    if (grew && last?.role === 'ai') {
-      // Defer to next frame so the bubble has laid out
-      requestAnimationFrame(() => {
-        const el = lastAiMsgRef.current;
-        const container = scrollContainerRef.current;
-        if (el && container) {
-          // Position the top of the AI bubble near the top of the viewport with a little breathing room
-          const top = el.offsetTop - 12;
-          container.scrollTo({ top, behavior: 'smooth' });
-        } else {
-          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   }, [messages, suggestions]);
 
   // Auto-resize textarea
@@ -525,16 +508,9 @@ export default function AIScreen({
         ))}
       </div>
 
-      {/* Messages */}
+      {/* Messages — reverse chronological: newest at the top */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map((msg, idx) => {
-          const isLastAi = msg.role === 'ai' && idx === messages.length - 1;
-          return (
-            <div key={msg.id} ref={isLastAi ? lastAiMsgRef : undefined}>
-              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
-            </div>
-          );
-        })}
+        {(loading || briefingLoading) && <TypingIndicator />}
 
         {/* Nearby place chips (shown after briefing) */}
         {!loading && !briefingLoading && nearbyPlaces.length > 0 && (
@@ -546,9 +522,7 @@ export default function AIScreen({
           <SuggestionChips suggestions={suggestions} onTap={sendMessage} />
         )}
 
-        {(loading || briefingLoading) && <TypingIndicator />}
-
-        {/* Open in Planner CTA — preferred path: rich preview + dates + duration */}
+        {/* Open in Planner CTA */}
         {lastTrip && !loading && (
           <div className="flex flex-col items-center gap-2 my-2">
             <button
@@ -576,6 +550,15 @@ export default function AIScreen({
             </button>
           </div>
         )}
+
+        {[...messages].reverse().map((msg, idx) => {
+          const isNewest = idx === 0 && msg.role === 'ai';
+          return (
+            <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
+              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
+            </div>
+          );
+        })}
 
         <div ref={bottomRef} />
       </div>
