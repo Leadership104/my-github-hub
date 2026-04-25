@@ -508,16 +508,9 @@ export default function AIScreen({
         ))}
       </div>
 
-      {/* Messages */}
+      {/* Messages — reverse chronological: newest at the top */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {messages.map((msg, idx) => {
-          const isLastAi = msg.role === 'ai' && idx === messages.length - 1;
-          return (
-            <div key={msg.id} ref={isLastAi ? lastAiMsgRef : undefined}>
-              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
-            </div>
-          );
-        })}
+        {(loading || briefingLoading) && <TypingIndicator />}
 
         {/* Nearby place chips (shown after briefing) */}
         {!loading && !briefingLoading && nearbyPlaces.length > 0 && (
@@ -529,9 +522,7 @@ export default function AIScreen({
           <SuggestionChips suggestions={suggestions} onTap={sendMessage} />
         )}
 
-        {(loading || briefingLoading) && <TypingIndicator />}
-
-        {/* Open in Planner CTA — preferred path: rich preview + dates + duration */}
+        {/* Open in Planner CTA */}
         {lastTrip && !loading && (
           <div className="flex flex-col items-center gap-2 my-2">
             <button
@@ -559,6 +550,15 @@ export default function AIScreen({
             </button>
           </div>
         )}
+
+        {[...messages].reverse().map((msg, idx) => {
+          const isNewest = idx === 0 && msg.role === 'ai';
+          return (
+            <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
+              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
+            </div>
+          );
+        })}
 
         <div ref={bottomRef} />
       </div>
