@@ -175,6 +175,7 @@ async function fetchOverpass(lat: number, lon: number)
       (node["amenity"="hospital"](around:5000,${lat},${lon}););out count;`;
     const r = await fetch("https://overpass-api.de/api/interpreter", {
       method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded", "User-Agent": UA },
       body: "data=" + encodeURIComponent(query),
       signal: AbortSignal.timeout(10000),
     });
@@ -182,7 +183,7 @@ async function fetchOverpass(lat: number, lon: number)
     const j = await r.json();
     const els = j.elements ?? [];
     const counts = els.filter((e: any) => e.type === "count")
-      .map((e: any) => Number(e.tags?.nodes ?? e.tags?.total ?? 0));
+      .map((e: any) => Number(e.tags?.total ?? e.tags?.nodes ?? 0));
     return {
       policeNearby: counts[0] ?? 0,
       hospitalsNearby: counts[1] ?? 0,
