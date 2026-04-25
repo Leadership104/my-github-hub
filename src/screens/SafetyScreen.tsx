@@ -17,6 +17,7 @@ function ratesFromFbi(per100k: Record<string, number>): Record<string, number> {
   return out;
 }
 
+interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
 interface CrimeDataResponse {
   source: 'LIVE_AGGREGATE' | 'FALLBACK';
   coords: { lat: number; lon: number } | null;
@@ -29,8 +30,12 @@ interface CrimeDataResponse {
     precipMm: number;
     policeNearby: number;
     hospitalsNearby: number;
+    wildfires?: { activeFires: number; maxConfidence: number; nearestKm: number };
+    eonet?: { activeEvents: number; categories: string[] };
+    conflict?: { events30d: number; fatalities30d: number; severity: number; tier: string };
   } | null;
   fbi?: { agency: string; year: number; population: number } | null;
+  headlines?: NewsHeadline[];
   fetchedAt?: string;
 }
 
