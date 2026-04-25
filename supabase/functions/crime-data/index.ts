@@ -94,14 +94,15 @@ async function fetchAdvisoryLevel(country: string): Promise<number | null> {
 // Falls back to state-level if city match is poor.
 async function resolveAgency(city: string, state: string | null): Promise<{ ori: string; population: number; agency_name: string } | null> {
   if (!city) return null;
+  const apiKey = Deno.env.get("FBI_CDE_API_KEY");
+  if (!apiKey) return null; // gracefully skip if not configured
   try {
-    const url = `https://api.usa.gov/crime/fbi/cde/agencies/byStateAbbr/${encodeURIComponent((state ?? "").toUpperCase())}`;
+    const url = `https://api.usa.gov/crime/fbi/cde/agencies/byStateAbbr/${encodeURIComponent((state ?? "").toUpperCase())}?API_KEY=${apiKey}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!r.ok) return null;
     const list = await r.json();
     if (!Array.isArray(list)) return null;
     const cityLower = city.toLowerCase();
-    // Prefer "City of X Police Department" matches
     const exact = list.find((a: any) =>
       typeof a?.agency_name === "string" &&
       a.agency_name.toLowerCase().includes(cityLower) &&
@@ -118,8 +119,10 @@ async function resolveAgency(city: string, state: string | null): Promise<{ ori:
 }
 
 async function fetchAgencyOffenses(ori: string): Promise<{ year: number; counts: Record<string, number> } | null> {
+  const apiKey = Deno.env.get("FBI_CDE_API_KEY");
+  if (!apiKey) return null;
   try {
-    const url = `https://api.usa.gov/crime/fbi/cde/summarized/agency/${ori}/offenses?from=2022&to=2022`;
+    const url = `https://api.usa.gov/crime/fbi/cde/summarized/agency/${ori}/offenses?from=2022&to=2022&API_KEY=${apiKey}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) return null;
     const j = await r.json();
