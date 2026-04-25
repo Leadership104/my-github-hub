@@ -249,7 +249,6 @@ interface FireSignals { activeFires: number; maxConfidence: number; nearestKm: n
 async function fetchNasaFirms(lat: number, lon: number): Promise<FireSignals> {
   const key = Deno.env.get("NASA_FIRMS_MAP_KEY");
   if (!key) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
-  // Box: ~150 km square around point. FIRMS returns CSV.
   const dLat = 1.35; // ~150 km
   const dLon = 1.35 / Math.max(0.2, Math.cos(lat * Math.PI / 180));
   const west = (lon - dLon).toFixed(3);
@@ -257,34 +256,41 @@ async function fetchNasaFirms(lat: number, lon: number): Promise<FireSignals> {
   const east = (lon + dLon).toFixed(3);
   const north = (lat + dLat).toFixed(3);
   const area = `${west},${south},${east},${north}`;
-  // VIIRS_SNPP_NRT, last 1 day
-  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/${area}/1`;
-  try {
-    const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
-    if (!r.ok) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
-    const text = await r.text();
-    const lines = text.trim().split(/\r?\n/);
-    if (lines.length < 2) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
-    const header = lines[0].split(",").map((s) => s.trim().toLowerCase());
-    const li = header.indexOf("latitude");
-    const lo = header.indexOf("longitude");
-    const ci = header.indexOf("confidence");
-    let count = 0, maxConf = 0, nearest = 9999;
-    for (let i = 1; i < lines.length; i++) {
-      const cols = lines[i].split(",");
-      const fLat = parseFloat(cols[li]);
-      const fLon = parseFloat(cols[lo]);
-      if (!Number.isFinite(fLat) || !Number.isFinite(fLon)) continue;
-      const d = distKm(lat, lon, fLat, fLon);
-      if (d > 150) continue;
-      count++;
-      if (d < nearest) nearest = d;
-      const c = cols[ci];
-      const conf = c === "h" ? 90 : c === "n" ? 60 : c === "l" ? 30 : Number(c) || 0;
-      if (conf > maxConf) maxConf = conf;
-    }
-    return { activeFires: count, maxConfidence: maxConf, nearestKm: Math.round(nearest) };
-  } catch { return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 }; }
+  // Try VIIRS first (best resolution), then MODIS as a fallback.
+  const datasets = ["VIIRS_SNPP_NRT", "MODIS_NRT"];
+  for (const ds of datasets) {
+    try {
+      const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/${ds}/${area}/2`;
+      const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
+      if (!r.ok) continue;
+      const text = await r.text();
+      // Invalid-key body looks like "Invalid MAP_KEY..." — skip without throwing.
+      if (/Invalid|exceeded|MAP_KEY/i.test(text.slice(0, 200)) && !text.includes(",")) continue;
+      const lines = text.trim().split(/\r?\n/);
+      if (lines.length < 2) continue;
+      const header = lines[0].split(",").map((s) => s.trim().toLowerCase());
+      const li = header.indexOf("latitude");
+      const lo = header.indexOf("longitude");
+      const ci = header.indexOf("confidence");
+      if (li < 0 || lo < 0) continue;
+      let count = 0, maxConf = 0, nearest = 9999;
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        const fLat = parseFloat(cols[li]);
+        const fLon = parseFloat(cols[lo]);
+        if (!Number.isFinite(fLat) || !Number.isFinite(fLon)) continue;
+        const d = distKm(lat, lon, fLat, fLon);
+        if (d > 150) continue;
+        count++;
+        if (d < nearest) nearest = d;
+        const c = (cols[ci] ?? "").trim();
+        const conf = c === "h" ? 90 : c === "n" ? 60 : c === "l" ? 30 : Number(c) || 0;
+        if (conf > maxConf) maxConf = conf;
+      }
+      if (count > 0) return { activeFires: count, maxConfidence: maxConf, nearestKm: Math.round(nearest) };
+    } catch { /* try next dataset */ }
+  }
+  return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
 }
 
 interface EonetSignals {
