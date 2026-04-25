@@ -279,8 +279,8 @@ function buildRates(opts: {
   // we only have national data.
   const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
 
-  // Police density discount (more police nearby → modestly lower rates, capped at -25%).
-  const policeDiscount = Math.max(0.75, 1 - Math.min(signals.overpass.policeNearby, 10) * 0.025);
+  // Police density discount (more police nearby → lower rates, capped at -35%).
+  const policeDiscount = Math.max(0.65, 1 - Math.min(signals.overpass.policeNearby, 12) * 0.03);
 
   // Environmental risk projector — affects "traffic", "public_disorder",
   // "vandalism" categories proportional to live hazards.
