@@ -469,6 +469,19 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
         </div>
       </div>
 
+      {(crime?.signals?.conflict?.notes?.length ?? 0) > 0 && (
+        <div className="mb-3 p-2.5 rounded-kipita border border-destructive/40 bg-destructive/10">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">
+            ⚠ Active Risk Alerts
+          </p>
+          <ul className="space-y-0.5">
+            {crime!.signals!.conflict!.notes!.slice(0, 4).map((n, i) => (
+              <li key={i} className="text-[11px] text-foreground leading-snug">• {n}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="space-y-2">
         {feeds.map(f => (
           <div key={f.name} className="flex items-center gap-2.5">
