@@ -58,9 +58,45 @@ export const SITUATIONAL_MULTIPLIERS = {
   WEATHER: { extreme: 1.20, normal: 1.00, clear: 0.95 } as Record<string, number>,
 };
 
-const RATE_CAP = 1500;
+const DEFAULT_RATE_CAP = 1500;
 const SIT_MUL_CAP = 1.80;
 const DECAY_LAMBDA = 0.05;
+
+const CATEGORY_RATE_CAPS: Record<string, number> = {
+  robbery: 450,
+  assault: 900,
+  sexual_offense: 180,
+  kidnapping: 60,
+  burglary: 1200,
+  home_invasion: 250,
+  vandalism: 1500,
+  larceny_home: 3500,
+  vehicle_theft: 900,
+  carjacking: 120,
+  vehicle_break_in: 1800,
+  traffic_incident: 1500,
+  drug_activity: 1200,
+  public_disorder: 1200,
+  weapons_offense: 450,
+};
+
+const CATEGORY_SEVERITY: Record<string, number> = {
+  robbery: 1.25,
+  assault: 1.25,
+  sexual_offense: 1.35,
+  kidnapping: 1.45,
+  burglary: 0.85,
+  home_invasion: 1.10,
+  vandalism: 0.35,
+  larceny_home: 0.35,
+  vehicle_theft: 0.65,
+  carjacking: 1.25,
+  vehicle_break_in: 0.45,
+  traffic_incident: 0.55,
+  drug_activity: 0.45,
+  public_disorder: 0.40,
+  weapons_offense: 1.15,
+};
 
 function recencyDecay(ts: string): number {
   const hrs = (Date.now() - new Date(ts).getTime()) / 3_600_000;
