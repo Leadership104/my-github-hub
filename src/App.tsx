@@ -20,7 +20,7 @@ import FuelScreen from './screens/FuelScreen';
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'ai', label: 'AI', icon: 'auto_awesome' },
+  { id: 'ai', label: 'Know Before You Go', icon: 'auto_awesome' },
   { id: 'trips', label: 'Travel', icon: 'flight_takeoff' },
   { id: 'places', label: 'Places', icon: 'explore' },
 ];

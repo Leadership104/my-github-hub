@@ -467,23 +467,23 @@ export default function AIScreen({
       )}
 
       {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b border-border bg-card flex-shrink-0">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-kipita-navy via-kipita-red to-kipita-teal flex items-center justify-center flex-shrink-0">
-          <span className="text-lg">✦</span>
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-card flex-shrink-0">
+        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-kipita-navy via-kipita-red to-kipita-teal flex items-center justify-center flex-shrink-0">
+          <span className="text-xs">✦</span>
         </div>
-        <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-foreground">Kipita AI</h3>
-          <p className="text-xs text-muted-foreground truncate">
+        <div className="flex-1 min-w-0 leading-tight">
+          <h3 className="font-extrabold text-foreground text-base leading-tight">Kipita</h3>
+          <p className="text-[10px] text-muted-foreground leading-tight truncate">
             {briefingLoading
               ? `🔍 Scouting ${locationName}…`
               : loading
               ? '💭 Thinking…'
-              : `Know Before You Go · ${locationName || 'Locating…'}`}
+              : 'Intelligence Powered Insights'}
           </p>
         </div>
         <button
           onClick={handleRefresh}
-          className="ms text-muted-foreground text-xl hover:text-foreground transition-colors p-1"
+          className="ms text-muted-foreground text-base hover:text-foreground transition-colors p-1"
           title="Fresh start"
         >
           refresh
