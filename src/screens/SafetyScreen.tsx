@@ -127,15 +127,16 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
   const hasLive = !!crime && crime.source === 'LIVE_AGGREGATE' && Object.keys(crime.rates ?? {}).length > 0;
 
-  // Pull live multi-source aggregate (USGS, NWS, GDACS, Open-Meteo, Overpass, optional FBI CDE)
-  // for every location — domestic and international — so the score reflects current conditions.
+  // Pull live multi-source aggregate. Refreshes on screen open and every 10
+  // minutes while the screen is visible so the score stays current.
   useEffect(() => {
     let cancelled = false;
     setCrime(null);
     const { city, state } = parseCityState(locationName);
     const country = (countryCode || 'US').toUpperCase();
     if (!city) return;
-    (async () => {
+
+    const load = async () => {
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
         const qs = new URLSearchParams({ city, state: state ?? '', country });
@@ -148,10 +149,13 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         const j = await r.json();
         if (!cancelled) setCrime(j as CrimeDataResponse);
       } catch {
-        if (!cancelled) setCrime({ source: 'FALLBACK', coords: null, rates: {} });
+        if (!cancelled) setCrime((prev) => prev ?? { source: 'FALLBACK', coords: null, rates: {} });
       }
-    })();
-    return () => { cancelled = true; };
+    };
+
+    load();
+    const id = window.setInterval(load, 10 * 60 * 1000);
+    return () => { cancelled = true; window.clearInterval(id); };
   }, [locationName, countryCode, lat, lng]);
 
   const compute = useCallback(() => {
