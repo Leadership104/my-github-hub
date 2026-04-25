@@ -13,6 +13,8 @@ interface Props {
   locationName: string;
   fullAddress?: string;
   countryCode?: string;
+  lat?: number;
+  lng?: number;
   onSwitchTab: (tab: TabId, hint?: string) => void;
 }
 
@@ -144,7 +146,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
   ];
 }
 
-export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
+export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, lat, lng, onSwitchTab }: Props) {
   const liveSafety = useTravelSafety(countryCode);
   const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
   const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
@@ -180,6 +182,8 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
         const qs = new URLSearchParams({ city, state: state ?? '', country });
+        if (Number.isFinite(lat)) qs.set('lat', String(lat));
+        if (Number.isFinite(lng)) qs.set('lon', String(lng));
         const r = await fetch(`${base}/functions/v1/crime-data?${qs}`, {
           headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
         });
@@ -189,7 +193,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       } catch { /* keep heuristic fallback */ }
     })();
     return () => { cancelled = true; };
-  }, [locationName, countryCode]);
+  }, [locationName, countryCode, lat, lng]);
 
   useEffect(() => {
     if (!locationName) {

@@ -98,6 +98,8 @@ interface Props {
   locationName: string;
   countryCode?: string;
   advisoryScore?: number;
+  lat?: number;
+  lng?: number;
   onBack: () => void;
 }
 
@@ -114,7 +116,7 @@ function parseCityState(name: string): { city: string; state: string | null } {
   return { city, state };
 }
 
-export default function SafetyScreen({ locationName, countryCode, advisoryScore, onBack }: Props) {
+export default function SafetyScreen({ locationName, countryCode, advisoryScore, lat, lng, onBack }: Props) {
   const [context, setContext] = useState<SafetyContext>('AWAY');
   const [result, setResult] = useState<SafetyResult | null>(null);
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
@@ -132,6 +134,8 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
         const qs = new URLSearchParams({ city, state: state ?? '', country });
+        if (Number.isFinite(lat)) qs.set('lat', String(lat));
+        if (Number.isFinite(lng)) qs.set('lon', String(lng));
         const r = await fetch(`${base}/functions/v1/crime-data?${qs}`, {
           headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
         });
@@ -143,7 +147,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       }
     })();
     return () => { cancelled = true; };
-  }, [locationName, countryCode]);
+  }, [locationName, countryCode, lat, lng]);
 
   const compute = useCallback(() => {
     let baseRates: Record<string, number>;
