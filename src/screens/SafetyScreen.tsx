@@ -383,6 +383,36 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
       detail: s ? `${s.policeNearby} police · ${s.hospitalsNearby} hospitals nearby` : 'No data',
     },
     {
+      name: 'NASA FIRMS Wildfires',
+      icon: '🔥',
+      status: !hasLive ? 'offline' : (s?.wildfires && s.wildfires.activeFires > 0 ? 'active' : 'quiet'),
+      detail: s?.wildfires
+        ? (s.wildfires.activeFires > 0
+            ? `${s.wildfires.activeFires} active · nearest ${s.wildfires.nearestKm}km`
+            : 'No active fires within 150km')
+        : 'No data',
+    },
+    {
+      name: 'NASA EONET Disasters',
+      icon: '🛰️',
+      status: !hasLive ? 'offline' : (s?.eonet && s.eonet.activeEvents > 0 ? 'active' : 'quiet'),
+      detail: s?.eonet
+        ? (s.eonet.activeEvents > 0
+            ? `${s.eonet.activeEvents} events · ${s.eonet.categories.slice(0, 2).join(', ') || 'mixed'}`
+            : 'No tracked events nearby')
+        : 'No data',
+    },
+    {
+      name: 'ACLED Conflict Index',
+      icon: '⚔️',
+      status: !hasLive ? 'offline' : (s?.conflict && s.conflict.severity > 0 ? 'active' : 'quiet'),
+      detail: s?.conflict
+        ? (s.conflict.severity > 0
+            ? `${s.conflict.tier} · ${s.conflict.events30d} events · ${s.conflict.fatalities30d} fatalities (30d)`
+            : 'No active conflict reported')
+        : 'No data',
+    },
+    {
       name: 'FBI Crime Data',
       icon: '🛡️',
       status: crime?.fbi ? 'active' : 'offline',
@@ -438,9 +468,44 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
 
       <p className="text-[9px] text-muted-foreground/60 text-center mt-3 pt-3 border-t border-border/50">
         {hasLive
-          ? 'All feeds aggregated server-side · no API keys required'
+          ? 'Server-side aggregation · cached 10 min · auto-refreshing'
           : 'Live aggregator unavailable · showing calibrated baseline'}
       </p>
+    </div>
+  );
+}
+
+/* ── Headlines Panel (Bloomberg + Yahoo Finance via Google News RSS) ───── */
+function HeadlinesPanel({ crime }: { crime: CrimeDataResponse | null }) {
+  const headlines = crime?.headlines ?? [];
+  if (headlines.length === 0) return null;
+  return (
+    <div className="bg-card border border-border rounded-kipita p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">
+          LOCAL HEADLINES
+        </p>
+        <span className="text-[9px] text-muted-foreground">Bloomberg · Yahoo Finance</span>
+      </div>
+      <div className="space-y-2.5">
+        {headlines.map((h, i) => (
+          <a
+            key={i}
+            href={h.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block group"
+          >
+            <p className="text-xs text-foreground leading-snug group-hover:text-kipita-red transition-colors line-clamp-2">
+              {h.title}
+            </p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">
+              {h.source}
+              {h.pubDate ? ` · ${relativeTime(h.pubDate)}` : ''}
+            </p>
+          </a>
+        ))}
+      </div>
     </div>
   );
 }
