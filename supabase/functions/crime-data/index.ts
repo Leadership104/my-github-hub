@@ -287,31 +287,65 @@ async function fetchNasaFirms(lat: number, lon: number): Promise<FireSignals> {
   } catch { return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 }; }
 }
 
-interface EonetSignals { activeEvents: number; categories: string[] }
+interface EonetSignals {
+  activeEvents: number;
+  categories: string[];
+  wildfiresNearby: number;     // EONET wildfires within 150 km
+  wildfiresRegional: number;   // EONET wildfires within 400 km
+  nearestWildfireKm: number;
+  volcanoNearby: boolean;
+  stormNearby: boolean;
+}
 async function fetchNasaEonet(lat: number, lon: number): Promise<EonetSignals> {
+  const empty: EonetSignals = {
+    activeEvents: 0, categories: [], wildfiresNearby: 0, wildfiresRegional: 0,
+    nearestWildfireKm: 9999, volcanoNearby: false, stormNearby: false,
+  };
   try {
+    // 30-day window, large limit. Wildfires dominate this feed (~95% of events).
     const r = await fetch(
-      "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=14",
-      { signal: AbortSignal.timeout(7000) },
+      "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=30&limit=500",
+      { signal: AbortSignal.timeout(8000) },
     );
-    if (!r.ok) return { activeEvents: 0, categories: [] };
+    if (!r.ok) return empty;
     const j = await r.json();
     const cats = new Set<string>();
-    let count = 0;
+    let count = 0, wfNear = 0, wfReg = 0, nearest = 9999;
+    let volcano = false, storm = false;
     for (const ev of j.events ?? []) {
       const geom = ev.geometry?.[ev.geometry.length - 1];
       const coords = geom?.coordinates;
       if (!Array.isArray(coords) || coords.length < 2) continue;
       const [eLon, eLat] = coords;
       if (typeof eLat !== "number" || typeof eLon !== "number") continue;
-      if (distKm(lat, lon, eLat, eLon) > 400) continue;
-      count++;
-      for (const c of ev.categories ?? []) {
-        if (c?.title) cats.add(String(c.title));
+      const d = distKm(lat, lon, eLat, eLon);
+      if (d > 600) continue;
+      const evCats = (ev.categories ?? []).map((c: any) => String(c?.title ?? ""));
+      const isFire = evCats.some((c: string) => /Wildfire/i.test(c));
+      const isVolc = evCats.some((c: string) => /Volcano/i.test(c));
+      const isStorm = evCats.some((c: string) => /Storm|Cyclone|Hurricane|Typhoon/i.test(c));
+      if (d <= 400) {
+        count++;
+        for (const c of evCats) if (c) cats.add(c);
       }
+      if (isFire) {
+        if (d <= 150) wfNear++;
+        if (d <= 400) wfReg++;
+        if (d < nearest) nearest = d;
+      }
+      if (isVolc && d <= 200) volcano = true;
+      if (isStorm && d <= 500) storm = true;
     }
-    return { activeEvents: count, categories: [...cats].slice(0, 6) };
-  } catch { return { activeEvents: 0, categories: [] }; }
+    return {
+      activeEvents: count,
+      categories: [...cats].slice(0, 6),
+      wildfiresNearby: wfNear,
+      wildfiresRegional: wfReg,
+      nearestWildfireKm: Math.round(nearest),
+      volcanoNearby: volcano,
+      stormNearby: storm,
+    };
+  } catch { return empty; }
 }
 
 interface ConflictSignals { events30d: number; fatalities30d: number; severity: number; tier: string }
