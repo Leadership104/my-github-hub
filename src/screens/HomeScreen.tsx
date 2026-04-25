@@ -147,6 +147,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
 export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, onSwitchTab }: Props) {
   const liveSafety = useTravelSafety(countryCode);
   const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
+  const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
   const [expandedTile, setExpandedTile] = useState<string | null>(null);
   const [bgPhoto, setBgPhoto] = useState<string | undefined>();
   const isDomestic = !countryCode || countryCode.toUpperCase() === 'US';
@@ -162,19 +163,47 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     return () => { cancelled = true; };
   }, [locationName]);
 
+  // Pull live multi-source safety rates from the crime-data edge function.
+  useEffect(() => {
+    if (!locationName) { setLiveRates(null); return; }
+    let cancelled = false;
+    setLiveRates(null);
+    const parts = locationName.split(',').map(s => s.trim()).filter(Boolean);
+    const city = parts[0] ?? '';
+    let state: string | null = null;
+    for (const p of parts.slice(1)) {
+      const m = p.match(/^([A-Z]{2})(?:\s+\d{5})?$/);
+      if (m) { state = m[1]; break; }
+    }
+    const country = (countryCode || 'US').toUpperCase();
+    (async () => {
+      try {
+        const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
+        const qs = new URLSearchParams({ city, state: state ?? '', country });
+        const r = await fetch(`${base}/functions/v1/crime-data?${qs}`, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
+        });
+        if (!r.ok) return;
+        const j = await r.json();
+        if (!cancelled && j?.rates) setLiveRates(j.rates);
+      } catch { /* keep heuristic fallback */ }
+    })();
+    return () => { cancelled = true; };
+  }, [locationName, countryCode]);
+
   useEffect(() => {
     if (!locationName) {
       setSafetyResult(null);
       return;
     }
-    if (!isDomestic && !liveSafety) {
-      // International advisory still loading or unavailable — don't show stale state.
-      setSafetyResult(null);
-      return;
+    let baseRates: Record<string, number>;
+    if (liveRates && Object.keys(liveRates).length) {
+      baseRates = liveRates;
+    } else {
+      const rawScore = isDomestic ? 1.0 : (liveSafety?.rawScore ?? 2.0);
+      const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
+      baseRates = advisoryToBaseRates(rawScore, variance);
     }
-    const rawScore = isDomestic ? 1.0 : (liveSafety?.rawScore ?? 2.0);
-    const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
-    const baseRates = advisoryToBaseRates(rawScore, variance);
     const timeOfDay = detectTimeOfDay();
     const result = computeSafetyScore({
       context: 'AWAY',
@@ -183,7 +212,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     });
     const sl = safetyLevel(result.score);
     setSafetyResult({ score: result.score, ...sl });
-  }, [liveSafety, countryCode, locationName, isDomestic]);
+  }, [liveSafety, countryCode, locationName, isDomestic, liveRates]);
 
   const level = safetyResult?.level ?? -1;
   const DOTS = [
