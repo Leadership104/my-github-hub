@@ -296,32 +296,15 @@ export default function AIScreen({
   const textareaRef                     = useRef<HTMLTextAreaElement>(null);
   const prevMsgCountRef                 = useRef<number>(0);
 
-  // Smart scroll:
-  // - When a NEW AI message arrives, anchor to the TOP of that message so the user
-  //   reads from the beginning (long safety/briefing replies were being cut off at the bottom).
-  // - When the user sends a message (or suggestions/places update), keep them pinned to the bottom.
+  // Reverse-chronological view: newest message renders at the TOP of the list.
+  // Whenever a new message arrives (user or AI), snap the scroll container to the
+  // top so the latest exchange is immediately visible without scrolling.
   useEffect(() => {
-    const prevCount = prevMsgCountRef.current;
     prevMsgCountRef.current = messages.length;
-    const last = messages[messages.length - 1];
-    const grew = messages.length > prevCount;
-
-    if (grew && last?.role === 'ai') {
-      // Defer to next frame so the bubble has laid out
-      requestAnimationFrame(() => {
-        const el = lastAiMsgRef.current;
-        const container = scrollContainerRef.current;
-        if (el && container) {
-          // Position the top of the AI bubble near the top of the viewport with a little breathing room
-          const top = el.offsetTop - 12;
-          container.scrollTo({ top, behavior: 'smooth' });
-        } else {
-          el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-      });
-    } else {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
+    requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   }, [messages, suggestions]);
 
   // Auto-resize textarea
