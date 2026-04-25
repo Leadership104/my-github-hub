@@ -309,23 +309,126 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           </div>
         </div>
 
-        {/* Data Source */}
-        <div className="text-center text-[9px] text-muted-foreground/50 pb-4">
-          {hasLive ? (
-            <>
-              Sources: USGS Earthquakes · NOAA NWS Alerts · GDACS · Open-Meteo · OpenStreetMap
-              {crime?.fbi ? ` · FBI CDE (${crime.fbi.agency}, ${crime.fbi.year})` : ''}
-              {crime?.signals ? (
-                <div className="mt-1 opacity-70">
-                  Quakes nearby: {crime.signals.quakes.count} (max M{crime.signals.quakes.maxMag.toFixed(1)})
-                  {' · '}Weather alerts: {crime.signals.weatherAlerts.count}
-                  {' · '}Police nearby: {crime.signals.policeNearby}
-                </div>
-              ) : null}
-            </>
-          ) : 'Calibrated baseline · live sources loading'}
+        {/* Live Data Feeds */}
+        <LiveFeedsPanel crime={crime} hasLive={hasLive} />
+      </div>
+    </div>
+  );
+}
+
+/* ── Live Data Feeds Panel ────────────────────────────────────────────────── */
+function relativeTime(iso?: string): string {
+  if (!iso) return '—';
+  const diffMs = Date.now() - new Date(iso).getTime();
+  if (Number.isNaN(diffMs)) return '—';
+  const sec = Math.max(0, Math.round(diffMs / 1000));
+  if (sec < 60) return `${sec}s ago`;
+  const min = Math.round(sec / 60);
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.round(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  return `${Math.round(hr / 24)}d ago`;
+}
+
+interface FeedRow {
+  name: string;
+  icon: string;
+  status: 'active' | 'quiet' | 'offline';
+  detail: string;
+}
+
+function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; hasLive: boolean }) {
+  const s = crime?.signals;
+  const feeds: FeedRow[] = [
+    {
+      name: 'USGS Earthquakes',
+      icon: '🌐',
+      status: !hasLive ? 'offline' : (s && s.quakes.count > 0 ? 'active' : 'quiet'),
+      detail: s ? `${s.quakes.count} nearby · max M${s.quakes.maxMag.toFixed(1)}` : 'No data',
+    },
+    {
+      name: 'NOAA NWS Alerts',
+      icon: '⛈️',
+      status: !hasLive ? 'offline' : (s && s.weatherAlerts.count > 0 ? 'active' : 'quiet'),
+      detail: s ? `${s.weatherAlerts.count} active · ${s.weatherAlerts.severe} severe` : 'No data',
+    },
+    {
+      name: 'GDACS Disasters',
+      icon: '🌋',
+      status: !hasLive ? 'offline' : (s && s.gdacsAlerts.count > 0 ? 'active' : 'quiet'),
+      detail: s ? `${s.gdacsAlerts.count} alerts · max score ${s.gdacsAlerts.maxScore.toFixed(1)}` : 'No data',
+    },
+    {
+      name: 'Open-Meteo',
+      icon: '🌬️',
+      status: !hasLive ? 'offline' : (s && (s.windKph >= 35 || s.precipMm >= 3) ? 'active' : 'quiet'),
+      detail: s ? `${Math.round(s.windKph)} km/h wind · ${s.precipMm.toFixed(1)} mm precip` : 'No data',
+    },
+    {
+      name: 'OpenStreetMap (OSM)',
+      icon: '🗺️',
+      status: !hasLive ? 'offline' : 'active',
+      detail: s ? `${s.policeNearby} police · ${s.hospitalsNearby} hospitals nearby` : 'No data',
+    },
+    {
+      name: 'FBI Crime Data',
+      icon: '🛡️',
+      status: crime?.fbi ? 'active' : 'offline',
+      detail: crime?.fbi
+        ? `${crime.fbi.agency} · ${crime.fbi.year} · pop ${crime.fbi.population.toLocaleString()}`
+        : 'Using calibrated baseline',
+    },
+  ];
+
+  const statusColor = (st: FeedRow['status']) =>
+    st === 'active' ? '#22c55e' : st === 'quiet' ? '#94a3b8' : '#ef4444';
+
+  return (
+    <div className="bg-card border border-border rounded-kipita p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">
+          LIVE DATA FEEDS
+        </p>
+        <div className="flex items-center gap-1.5">
+          <span
+            className="w-1.5 h-1.5 rounded-full animate-pulse"
+            style={{ backgroundColor: hasLive ? '#22c55e' : '#94a3b8' }}
+          />
+          <span className="text-[10px] text-muted-foreground">
+            Updated {relativeTime(crime?.fetchedAt)}
+          </span>
         </div>
       </div>
+
+      <div className="space-y-2">
+        {feeds.map(f => (
+          <div key={f.name} className="flex items-center gap-2.5">
+            <span className="text-sm w-5 flex-shrink-0">{f.icon}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">{f.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{f.detail}</p>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span
+                className="w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: statusColor(f.status) }}
+              />
+              <span
+                className="text-[9px] font-bold uppercase tracking-wider"
+                style={{ color: statusColor(f.status) }}
+              >
+                {f.status}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-[9px] text-muted-foreground/60 text-center mt-3 pt-3 border-t border-border/50">
+        {hasLive
+          ? 'All feeds aggregated server-side · no API keys required'
+          : 'Live aggregator unavailable · showing calibrated baseline'}
+      </p>
     </div>
   );
 }
