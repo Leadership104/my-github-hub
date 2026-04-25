@@ -174,29 +174,50 @@ export function computeSafetyScore(params: {
   const br = hasLive ? 0.30 : 1.00;
 
   const allKeys = new Set([...Object.keys(rtContrib), ...Object.keys(baseRates)]);
-  let weightedRisk = 0;
-  let weightTotal = 0;
   const breakdown: Record<string, RiskBreakdown> = {};
+
+  // Per-category pts on a 0-10 scale (matches categoryRating bands).
+  // pts = normalized severity-weighted risk, modulated by situational factor.
+  const categoryPts: { key: string; pts: number; iw: number; cw: number }[] = [];
 
   for (const k of allKeys) {
     const iw = impactWeight(k);
-    const rv = (rtContrib[k] ?? 0) * lr;
+    const cw = w[k] ?? 0;
+    const rv = (rtContrib[k] ?? 0) * lr;            // already iw-weighted
     const bv = normalize(k, baseRates[k] ?? 0) * iw * br;
-    const combined = (rv + bv) * sitMul;
-    weightedRisk += combined;
-    weightTotal += iw;
+    // Raw 0..~iw value -> normalize to 0..1 by dividing by iw, then scale to 0..10
+    const rawNorm = iw > 0 ? (rv + bv) / iw : 0;
+    const pts = Math.max(0, Math.min(10, rawNorm * sitMul * 10));
+    categoryPts.push({ key: k, pts, iw, cw });
     const cat = CRIME_CATEGORIES[k];
     breakdown[k] = {
       label: cat?.label ?? k,
       tier: cat?.tier ?? 'unknown',
       icon: cat?.icon ?? '•',
-      contextWeight: w[k] ?? 0,
-      pts: +(combined * 100).toFixed(1),
+      contextWeight: cw,
+      pts: +pts.toFixed(1),
     };
   }
 
-  const normalizedRisk = weightTotal > 0 ? weightedRisk / weightTotal : 0;
-  const score = Math.max(0, Math.round(100 - Math.min(normalizedRisk * 150, 100)));
+  // Blend a context-weighted mean with a worst-case penalty so a couple of
+  // "Very High" categories can't be masked by many "Very Low" ones.
+  let weightedSum = 0;
+  let weightTotal = 0;
+  let worst = 0;
+  let secondWorst = 0;
+  for (const c of categoryPts) {
+    const cwSafe = Math.max(c.cw, 0.05); // floor so every relevant cat counts a bit
+    weightedSum += c.pts * cwSafe;
+    weightTotal += cwSafe;
+    if (c.pts > worst) { secondWorst = worst; worst = c.pts; }
+    else if (c.pts > secondWorst) { secondWorst = c.pts; }
+  }
+  const meanPts = weightTotal > 0 ? weightedSum / weightTotal : 0;
+  // 60% mean + 40% worst-pair: honest reflection of bad categories without panic.
+  const worstPair = (worst + secondWorst) / 2;
+  const blendedPts = meanPts * 0.6 + worstPair * 0.4;
+  // pts is 0..10 -> score is 100 - pts*10
+  const score = Math.max(0, Math.min(100, Math.round(100 - blendedPts * 10)));
   const riskLevel = score >= 80 ? 'LOW RISK' : score >= 60 ? 'MODERATE' : score >= 40 ? 'ELEVATED' : score >= 20 ? 'HIGH RISK' : 'CRITICAL';
   const riskColor = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
   const confidence = hasLive ? (incidents.length >= 10 ? 'HIGH' : 'MEDIUM') : 'LOW';
