@@ -31,8 +31,15 @@ interface CrimeDataResponse {
     policeNearby: number;
     hospitalsNearby: number;
     wildfires?: { activeFires: number; maxConfidence: number; nearestKm: number };
-    eonet?: { activeEvents: number; categories: string[] };
-    conflict?: { events30d: number; fatalities30d: number; severity: number; tier: string };
+    eonet?: {
+      activeEvents: number; categories: string[];
+      wildfiresNearby?: number; wildfiresRegional?: number;
+      nearestWildfireKm?: number; volcanoNearby?: boolean; stormNearby?: boolean;
+    };
+    conflict?: {
+      events30d: number; fatalities30d: number; severity: number; tier: string;
+      sanctioned?: boolean; sanctionsTier?: number; travelAdvisory?: number; notes?: string[];
+    };
   } | null;
   fbi?: { agency: string; year: number; population: number } | null;
   headlines?: NewsHeadline[];
