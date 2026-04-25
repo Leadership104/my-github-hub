@@ -194,8 +194,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     })();
     return () => { cancelled = true; };
   }, [locationName, countryCode, lat, lng]);
-    return () => { cancelled = true; };
-  }, [locationName, countryCode]);
 
   useEffect(() => {
     if (!locationName) {
