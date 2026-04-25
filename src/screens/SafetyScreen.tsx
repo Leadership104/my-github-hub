@@ -1,9 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '../integrations/supabase/client';
 import {
   computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel,
   categoryRating, cityVarianceFromSeed,
   type SafetyContext, type SafetyResult,
 } from '../lib/safetyEngine';
+
+// Convert FBI rates (per-100k) into the engine's 0..RATE_CAP scale.
+// FBI's "high crime" cities run ~1500/100k for property crime — engine cap is 1500.
+function ratesFromFbi(per100k: Record<string, number>): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(per100k)) {
+    if (typeof v !== 'number') continue;
+    out[k] = Math.max(0, Math.round(v));
+  }
+  return out;
+}
+
+interface CrimeDataResponse {
+  source: 'FBI_CDE' | 'FBI_NATIONAL' | 'STATE_GOV' | 'FALLBACK';
+  year: number | null;
+  population: number | null;
+  agency?: string;
+  rates: Record<string, number>;
+  advisoryLevel?: number | null;
+}
 
 const CONTEXTS: { id: SafetyContext; label: string; icon: string }[] = [
   { id: 'HOME',    label: 'At Home',    icon: '🏠' },
@@ -72,19 +93,70 @@ interface Props {
   onBack: () => void;
 }
 
+// Pull "City, ST" out of an address line like "Miami, FL 33101, USA".
+function parseCityState(name: string): { city: string; state: string | null } {
+  if (!name) return { city: '', state: null };
+  const parts = name.split(',').map(s => s.trim()).filter(Boolean);
+  const city = parts[0] ?? '';
+  let state: string | null = null;
+  for (const p of parts.slice(1)) {
+    const m = p.match(/^([A-Z]{2})(?:\s+\d{5})?$/);
+    if (m) { state = m[1]; break; }
+  }
+  return { city, state };
+}
+
 export default function SafetyScreen({ locationName, countryCode, advisoryScore, onBack }: Props) {
   const [context, setContext] = useState<SafetyContext>('AWAY');
   const [result, setResult] = useState<SafetyResult | null>(null);
+  const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
+
+  // Fetch real FBI/State.Gov crime data whenever the location changes.
+  useEffect(() => {
+    let cancelled = false;
+    setCrime(null);
+    const { city, state } = parseCityState(locationName);
+    const country = (countryCode || 'US').toUpperCase();
+    if (!city && country === 'US') return;
+    (async () => {
+      try {
+        const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
+        const qs = new URLSearchParams({ city, state: state ?? '', country });
+        const r = await fetch(`${base}/functions/v1/crime-data?${qs}`, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
+        });
+        if (!r.ok) throw new Error(String(r.status));
+        const j = await r.json();
+        if (!cancelled) setCrime(j as CrimeDataResponse);
+      } catch {
+        if (!cancelled) setCrime({ source: 'FALLBACK', year: null, population: null, rates: {} });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [locationName, countryCode]);
 
   const compute = useCallback(() => {
-    // Domestic US has no entry in travel-advisory.info (which only rates
-    // *other* countries). Default such cases to a low-risk baseline (~1.0)
-    // instead of the API's neutral midpoint of 2.5 — otherwise every US
-    // city defaults to "war zone" math and pegs the score at 0.
     const isDomesticUS = !countryCode || countryCode.toUpperCase() === 'US';
-    const effectiveRaw = advisoryScore ?? (isDomesticUS ? 1.0 : 2.0);
-    const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
-    const baseRates = advisoryToBaseRates(effectiveRaw, variance);
+    let baseRates: Record<string, number>;
+
+    if (crime && (crime.source === 'FBI_CDE' || crime.source === 'FBI_NATIONAL') && Object.keys(crime.rates).length) {
+      const variance = crime.source === 'FBI_NATIONAL'
+        ? cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`) * 0.5
+        : 0; // real agency data needs no synthetic variance
+      const v = 1 + variance * 0.2;
+      baseRates = {};
+      for (const [k, val] of Object.entries(ratesFromFbi(crime.rates))) {
+        baseRates[k] = Math.round(val * v);
+      }
+    } else if (crime && crime.source === 'STATE_GOV' && typeof crime.advisoryLevel === 'number') {
+      const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
+      baseRates = advisoryToBaseRates(crime.advisoryLevel, variance);
+    } else {
+      const effectiveRaw = advisoryScore ?? (isDomesticUS ? 1.0 : 2.0);
+      const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
+      baseRates = advisoryToBaseRates(effectiveRaw, variance);
+    }
+
     const timeOfDay = detectTimeOfDay();
     const r = computeSafetyScore({
       context,
@@ -93,7 +165,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       baseRates,
     });
     setResult(r);
-  }, [context, advisoryScore, locationName, countryCode]);
+  }, [context, advisoryScore, locationName, countryCode, crime]);
 
   useEffect(() => { compute(); }, [compute]);
 
@@ -117,7 +189,13 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         <div className="flex-1 min-w-0">
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
           <p className="text-white/50 text-[10px]">
-            {isDomestic ? 'Domestic · ZIP-level risk index' : 'International · Travel.State.Gov'}
+            {crime?.source === 'FBI_CDE'
+              ? `FBI CDE · ${crime.agency ?? 'agency'} · ${crime.year}`
+              : crime?.source === 'STATE_GOV'
+                ? 'International · Travel.State.Gov'
+                : isDomestic
+                  ? 'Domestic · FBI national benchmark'
+                  : 'International · advisory baseline'}
           </p>
         </div>
       </div>
@@ -233,9 +311,13 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
         {/* Data Source */}
         <div className="text-center text-[9px] text-muted-foreground/50 pb-4">
-          {isDomestic
-            ? 'Domestic: ZIP-level crime index · FBI national benchmark'
-            : 'International: Travel.State.Gov advisory · contextual weighting'}
+          {crime?.source === 'FBI_CDE'
+            ? `Source: FBI Crime Data Explorer · ${crime.agency ?? ''} · pop. ${crime.population?.toLocaleString() ?? '—'} · ${crime.year}`
+            : crime?.source === 'FBI_NATIONAL'
+              ? 'Source: FBI national averages (2022) · agency-level data unavailable'
+              : crime?.source === 'STATE_GOV'
+                ? 'Source: U.S. Dept. of State travel advisory'
+                : 'Source: heuristic baseline (loading real data…)'}
         </div>
       </div>
     </div>
