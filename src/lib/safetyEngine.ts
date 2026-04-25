@@ -213,11 +213,14 @@ export function computeSafetyScore(params: {
     else if (c.pts > secondWorst) { secondWorst = c.pts; }
   }
   const meanPts = weightTotal > 0 ? weightedSum / weightTotal : 0;
-  // 60% mean + 40% worst-pair: honest reflection of bad categories without panic.
+  // 45% mean + 55% worst-pair: severe categories drive the score, as users expect.
   const worstPair = (worst + secondWorst) / 2;
-  const blendedPts = meanPts * 0.6 + worstPair * 0.4;
-  // pts is 0..10 -> score is 100 - pts*10
-  const score = Math.max(0, Math.min(100, Math.round(100 - blendedPts * 10)));
+  const blendedRaw = meanPts * 0.45 + worstPair * 0.55;
+  // Apply mild upward curve above 4 pts so dangerous areas drop faster (5->55, 7->32, 9->14).
+  const curved = blendedRaw <= 4
+    ? blendedRaw
+    : 4 + (blendedRaw - 4) * 1.55;
+  const score = Math.max(0, Math.min(100, Math.round(100 - curved * 10)));
   const riskLevel = score >= 80 ? 'LOW RISK' : score >= 60 ? 'MODERATE' : score >= 40 ? 'ELEVATED' : score >= 20 ? 'HIGH RISK' : 'CRITICAL';
   const riskColor = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
   const confidence = hasLive ? (incidents.length >= 10 ? 'HIGH' : 'MEDIUM') : 'LOW';
