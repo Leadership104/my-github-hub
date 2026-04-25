@@ -243,7 +243,192 @@ function fbiOffensesToRates(counts: Record<string, number>, population: number):
   return rates;
 }
 
-/* ───────── aggregation ───────── */
+/* ───────── new live sources: NASA + ACLED + News ───────── */
+
+interface FireSignals { activeFires: number; maxConfidence: number; nearestKm: number }
+async function fetchNasaFirms(lat: number, lon: number): Promise<FireSignals> {
+  const key = Deno.env.get("NASA_FIRMS_MAP_KEY");
+  if (!key) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
+  // Box: ~150 km square around point. FIRMS returns CSV.
+  const dLat = 1.35; // ~150 km
+  const dLon = 1.35 / Math.max(0.2, Math.cos(lat * Math.PI / 180));
+  const west = (lon - dLon).toFixed(3);
+  const south = (lat - dLat).toFixed(3);
+  const east = (lon + dLon).toFixed(3);
+  const north = (lat + dLat).toFixed(3);
+  const area = `${west},${south},${east},${north}`;
+  // VIIRS_SNPP_NRT, last 1 day
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${key}/VIIRS_SNPP_NRT/${area}/1`;
+  try {
+    const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
+    const text = await r.text();
+    const lines = text.trim().split(/\r?\n/);
+    if (lines.length < 2) return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 };
+    const header = lines[0].split(",").map((s) => s.trim().toLowerCase());
+    const li = header.indexOf("latitude");
+    const lo = header.indexOf("longitude");
+    const ci = header.indexOf("confidence");
+    let count = 0, maxConf = 0, nearest = 9999;
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(",");
+      const fLat = parseFloat(cols[li]);
+      const fLon = parseFloat(cols[lo]);
+      if (!Number.isFinite(fLat) || !Number.isFinite(fLon)) continue;
+      const d = distKm(lat, lon, fLat, fLon);
+      if (d > 150) continue;
+      count++;
+      if (d < nearest) nearest = d;
+      const c = cols[ci];
+      const conf = c === "h" ? 90 : c === "n" ? 60 : c === "l" ? 30 : Number(c) || 0;
+      if (conf > maxConf) maxConf = conf;
+    }
+    return { activeFires: count, maxConfidence: maxConf, nearestKm: Math.round(nearest) };
+  } catch { return { activeFires: 0, maxConfidence: 0, nearestKm: 9999 }; }
+}
+
+interface EonetSignals { activeEvents: number; categories: string[] }
+async function fetchNasaEonet(lat: number, lon: number): Promise<EonetSignals> {
+  try {
+    const r = await fetch(
+      "https://eonet.gsfc.nasa.gov/api/v3/events?status=open&days=14",
+      { signal: AbortSignal.timeout(7000) },
+    );
+    if (!r.ok) return { activeEvents: 0, categories: [] };
+    const j = await r.json();
+    const cats = new Set<string>();
+    let count = 0;
+    for (const ev of j.events ?? []) {
+      const geom = ev.geometry?.[ev.geometry.length - 1];
+      const coords = geom?.coordinates;
+      if (!Array.isArray(coords) || coords.length < 2) continue;
+      const [eLon, eLat] = coords;
+      if (typeof eLat !== "number" || typeof eLon !== "number") continue;
+      if (distKm(lat, lon, eLat, eLon) > 400) continue;
+      count++;
+      for (const c of ev.categories ?? []) {
+        if (c?.title) cats.add(String(c.title));
+      }
+    }
+    return { activeEvents: count, categories: [...cats].slice(0, 6) };
+  } catch { return { activeEvents: 0, categories: [] }; }
+}
+
+interface ConflictSignals { events30d: number; fatalities30d: number; severity: number }
+async function fetchAcled(country: string): Promise<ConflictSignals> {
+  // ACLED public dashboard JSON (no key, country-level).
+  // Maps ISO2 → ACLED country slug for the most-requested ones; falls back to 0.
+  const ISO2_TO_ACLED: Record<string, string> = {
+    UA: "Ukraine", RU: "Russia", IL: "Israel", PS: "Palestine", LB: "Lebanon",
+    SY: "Syria", IQ: "Iraq", IR: "Iran", YE: "Yemen", AF: "Afghanistan",
+    PK: "Pakistan", MM: "Myanmar", SD: "Sudan", SS: "South Sudan", SO: "Somalia",
+    ET: "Ethiopia", LY: "Libya", ML: "Mali", BF: "Burkina Faso", NE: "Niger",
+    NG: "Nigeria", CD: "Democratic Republic of Congo", CF: "Central African Republic",
+    CM: "Cameroon", MZ: "Mozambique", VE: "Venezuela", CO: "Colombia", MX: "Mexico",
+    HT: "Haiti", EC: "Ecuador",
+  };
+  const name = ISO2_TO_ACLED[country];
+  if (!name) return { events30d: 0, fatalities30d: 0, severity: 0 };
+  try {
+    // ACLED Conflict Index API (public, no key required for basic dashboard data)
+    const url = `https://acleddata.com/api/conflict_index/read/?country=${encodeURIComponent(name)}&limit=1`;
+    const r = await fetch(url, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return { events30d: 0, fatalities30d: 0, severity: 0 };
+    const j = await r.json();
+    const row = Array.isArray(j?.data) ? j.data[0] : null;
+    if (!row) {
+      // Country in conflict map but no recent data: assume baseline severity.
+      return { events30d: 0, fatalities30d: 0, severity: 1 };
+    }
+    const events = Number(row.events ?? row.event_count ?? 0);
+    const fatal = Number(row.fatalities ?? 0);
+    // Severity 0..3 from ACLED's published index (Extreme/High/Turbulent/Low)
+    const cat = String(row.overall_score_category ?? row.category ?? "").toLowerCase();
+    const severity = cat.includes("extreme") ? 3
+      : cat.includes("high") ? 2
+      : cat.includes("turbulent") ? 1
+      : events > 50 || fatal > 20 ? 1
+      : 0;
+    return { events30d: events, fatalities30d: fatal, severity };
+  } catch {
+    // If ACLED is unreachable but the country is in our conflict list,
+    // still flag baseline severity so the score reacts.
+    return { events30d: 0, fatalities30d: 0, severity: 1 };
+  }
+}
+
+interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+}
+function parseRssItems(xml: string, sourceLabel: string, limit = 5): NewsHeadline[] {
+  const items: NewsHeadline[] = [];
+  const blocks = xml.split(/<item[\s>]/i).slice(1);
+  for (const b of blocks.slice(0, limit * 2)) {
+    const title = b.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i)?.[1]?.trim();
+    const link = b.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i)?.[1]?.trim();
+    const pub = b.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]?.trim();
+    if (!title || !link) continue;
+    items.push({
+      title: decodeXmlEntities(title),
+      link: decodeXmlEntities(link),
+      source: sourceLabel,
+      pubDate: pub,
+    });
+    if (items.length >= limit) break;
+  }
+  return items;
+}
+async function fetchHeadlines(city: string, country: string): Promise<NewsHeadline[]> {
+  if (!city) return [];
+  // Google News RSS filtered to Bloomberg + Yahoo Finance, plus Yahoo Finance topic RSS as a top-up.
+  const q = encodeURIComponent(
+    `(site:bloomberg.com OR site:finance.yahoo.com) "${city}"`,
+  );
+  const googleUrl = `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=${country}&ceid=${country}:en`;
+  const yahooUrl = "https://finance.yahoo.com/news/rssindex";
+  try {
+    const [g, y] = await Promise.all([
+      fetch(googleUrl, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) })
+        .then((r) => r.ok ? r.text() : "").catch(() => ""),
+      fetch(yahooUrl, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) })
+        .then((r) => r.ok ? r.text() : "").catch(() => ""),
+    ]);
+    const cityRe = new RegExp(city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const gItems = parseRssItems(g, "Bloomberg / Yahoo (via Google News)", 6)
+      .map((h) => {
+        // Strip Google News redirect prefix when present.
+        if (h.link.includes("news.google.com")) {
+          const m = h.link.match(/url=([^&]+)/);
+          if (m) h.link = decodeURIComponent(m[1]);
+        }
+        const isBloomberg = /bloomberg\.com/i.test(h.link);
+        h.source = isBloomberg ? "Bloomberg" : /finance\.yahoo\.com/i.test(h.link) ? "Yahoo Finance" : h.source;
+        return h;
+      });
+    const yItems = parseRssItems(y, "Yahoo Finance", 8).filter((h) => cityRe.test(h.title));
+    const seen = new Set<string>();
+    const merged = [...gItems, ...yItems].filter((h) => {
+      if (seen.has(h.link)) return false;
+      seen.add(h.link);
+      return true;
+    });
+    return merged.slice(0, 5);
+  } catch {
+    return [];
+  }
+}
+
+/* ───────── in-memory cache (per-edge-instance, 10-minute TTL) ───────── */
+const CACHE_TTL_MS = 10 * 60 * 1000;
+const cache = new Map<string, { at: number; payload: unknown }>();
+function cacheKey(city: string, state: string | null, country: string, lat: number | null, lon: number | null) {
+  const ll = lat != null && lon != null ? `${lat.toFixed(2)},${lon.toFixed(2)}` : "";
+  return `${country}|${state ?? ""}|${city.toLowerCase()}|${ll}`;
+}
 
 // Convert live signals into per-100k-equivalent rates the engine can consume.
 // Crime rates come from FBI national baseline (or CDE if available); environmental
