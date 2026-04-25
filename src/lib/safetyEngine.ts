@@ -166,27 +166,50 @@ export function detectTimeOfDay(): string {
   return 'nighttime';
 }
 
-/** Convert travel-advisory.info score (0-5, 5=danger) to base crime rates */
-export function advisoryToBaseRates(rawScore: number): Record<string, number> {
-  // rawScore 0=safe, 5=war zone. Scale each crime category proportionally.
-  const factor = rawScore / 5; // 0-1
+/** Convert travel-advisory.info score (0-5, 5=danger) to base crime rates.
+ *  Calibrated so a typical low-risk country (~1.0) produces a score in the
+ *  80-95 range and a war-zone (~4.5) produces a score in the 5-20 range.
+ *  Optional `cityVariance` (-1..+1) shifts every category proportionally so
+ *  different cities within the same country don't all show identical numbers. */
+export function advisoryToBaseRates(
+  rawScore: number,
+  cityVariance: number = 0,
+): Record<string, number> {
+  const factor = Math.max(0, Math.min(1, rawScore / 5)); // 0-1
+  const v = 1 + Math.max(-0.6, Math.min(0.6, cityVariance)) * 0.35; // ±21%
+  const scale = (base: number, span: number) =>
+    Math.max(0, Math.round((base + factor * span) * v));
   return {
-    robbery: Math.round(40 + factor * 300),
-    assault: Math.round(50 + factor * 280),
-    sexual_offense: Math.round(15 + factor * 100),
-    kidnapping: Math.round(2 + factor * 60),
-    burglary: Math.round(80 + factor * 350),
-    home_invasion: Math.round(20 + factor * 120),
-    vandalism: Math.round(40 + factor * 200),
-    larceny_home: Math.round(60 + factor * 300),
-    vehicle_theft: Math.round(50 + factor * 250),
-    carjacking: Math.round(5 + factor * 80),
-    vehicle_break_in: Math.round(70 + factor * 300),
-    traffic_incident: Math.round(30 + factor * 200),
-    drug_activity: Math.round(30 + factor * 180),
-    public_disorder: Math.round(20 + factor * 150),
-    weapons_offense: Math.round(15 + factor * 120),
+    robbery:          scale(8,  120),
+    assault:          scale(12, 120),
+    sexual_offense:   scale(4,  50),
+    kidnapping:       scale(0,  35),
+    burglary:         scale(20, 140),
+    home_invasion:    scale(4,  50),
+    vandalism:        scale(12, 80),
+    larceny_home:     scale(18, 130),
+    vehicle_theft:    scale(14, 110),
+    carjacking:       scale(1,  40),
+    vehicle_break_in: scale(20, 130),
+    traffic_incident: scale(10, 90),
+    drug_activity:    scale(10, 80),
+    public_disorder:  scale(6,  70),
+    weapons_offense:  scale(4,  60),
   };
+}
+
+/** Deterministic per-city variance in the range [-1, +1] derived from a
+ *  string seed. Lets the engine show meaningful differences between e.g.
+ *  Miami / Santa Clarita / Valencia without per-city crime data. */
+export function cityVarianceFromSeed(seed: string): number {
+  if (!seed) return 0;
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    h ^= seed.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  // Map to [-1, 1]
+  return ((h >>> 0) % 2000) / 1000 - 1;
 }
 
 /** Convert a category's pts value to a 5-level risk rating label */
