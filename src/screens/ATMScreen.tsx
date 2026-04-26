@@ -89,7 +89,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
               distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
               type: el.tags?.amenity === 'bank' ? 'bank' : 'atm',
             } as ATMResult;
-          }).filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+          }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
           if (results.length) return results;
         } catch { /* try next mirror */ }
       }
