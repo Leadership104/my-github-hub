@@ -496,7 +496,7 @@ export default function AIScreen({
           <span className="text-xs">✦</span>
         </div>
         <div className="flex-1 min-w-0 leading-tight">
-          <h3 className="font-extrabold text-foreground text-base leading-tight">Kipita</h3>
+          <h3 className="font-extrabold text-foreground text-base leading-tight">Know B4 You Go</h3>
           <p className="text-[10px] text-muted-foreground leading-tight truncate">
             {briefingLoading
               ? `🔍 Scouting ${locationName}…`
