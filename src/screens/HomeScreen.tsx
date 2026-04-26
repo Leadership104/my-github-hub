@@ -312,7 +312,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
         {/* Essentials Grid */}
         <h2 className="text-sm font-bold text-foreground mb-2">Essentials</h2>
-        <div className="grid grid-cols-3 gap-2 mb-3">
+        <div data-tour="home-essentials" className="grid grid-cols-3 gap-2 mb-3">
           {ESSENTIALS.map(item => {
             const isExpanded = expandedTile === item.id;
             return (
