@@ -40,6 +40,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [showAiPlanner, setShowAiPlanner] = useState(false);
   const [aiHandoff, setAiHandoff] = useState<{ prompt: string; label: string } | null>(null);
+  const [exportTrip, setExportTrip] = useState<Trip | null>(null);
+  const [shareToast, setShareToast] = useState<string | null>(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
   const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases' | 'groups'>('main');
