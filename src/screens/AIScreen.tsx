@@ -284,6 +284,7 @@ export default function AIScreen({
   btcPrice, locationName, countryCode, lat, lng,
   weather, advisoryScore, trips,
   onCreateTrip, onBack, onSwitchTab,
+  handoffPrompt, handoffLabel,
 }: Props) {
   const [messages, setMessages]         = useState<ChatMessage[]>([]);
   const [suggestions, setSuggestions]   = useState<string[]>([]);
