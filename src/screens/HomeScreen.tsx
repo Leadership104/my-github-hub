@@ -295,24 +295,24 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         </div>
       </div>
 
-      <div className="relative flex-1 overflow-y-auto px-4 pt-4 pb-24">
+      <div className="relative flex-1 overflow-y-auto px-4 pt-3 pb-24">
 
-        {/* AI CTA */}
+        {/* Know Before You Go CTA (compact) */}
         <button onClick={() => onSwitchTab('ai')}
-          className="btn-3d w-full flex items-center gap-3 glass rounded-kipita p-4 mb-5 text-left">
-          <div className="w-11 h-11 rounded-full bg-kipita-red-lt flex items-center justify-center">
-            <span className="ms text-kipita-red text-xl">auto_awesome</span>
+          className="btn-3d w-full flex items-center gap-2.5 glass rounded-kipita px-3 py-2 mb-3 text-left">
+          <div className="w-8 h-8 rounded-full bg-kipita-red-lt flex items-center justify-center flex-shrink-0">
+            <span className="ms text-kipita-red text-base">auto_awesome</span>
           </div>
-          <div className="flex-1">
-            <div className="text-foreground font-extrabold text-sm">Kipita AI</div>
-            <div className="text-muted-foreground text-xs mt-0.5">powered insights</div>
+          <div className="flex-1 min-w-0 leading-tight">
+            <div className="text-foreground font-extrabold text-base leading-tight">Know Before You Go</div>
+            <div className="text-muted-foreground text-[10px] leading-tight">Intelligence Powered Insights</div>
           </div>
-          <span className="ms text-muted-foreground text-xl">chevron_right</span>
+          <span className="ms text-muted-foreground text-lg">chevron_right</span>
         </button>
 
         {/* Essentials Grid */}
-        <h2 className="text-sm font-bold text-foreground mb-3">Essentials</h2>
-        <div className="grid grid-cols-3 gap-3 mb-3">
+        <h2 className="text-sm font-bold text-foreground mb-2">Essentials</h2>
+        <div className="grid grid-cols-3 gap-2 mb-3">
           {ESSENTIALS.map(item => {
             const isExpanded = expandedTile === item.id;
             return (
