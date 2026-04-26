@@ -471,10 +471,17 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   {editMode ? 'Done' : 'Edit'}
                 </button>
                 <button
-                  onClick={() => { setSelectedTrip(null); setShowAiPlanner(true); }}
+                  onClick={() => { setSelectedTrip(null); setAiHandoff(null); setShowAiPlanner(true); }}
                   className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
                 >
                   ✨ Ask AI
+                </button>
+                <button
+                  onClick={() => openSupportHandoff({ trip, topic: `my trip to ${trip.dest}`, label: `🆘 ${trip.dest} trip support` })}
+                  className="text-xs font-bold text-foreground bg-muted px-3 py-1.5 rounded-full flex items-center gap-1"
+                >
+                  <span className="ms text-sm">support_agent</span>
+                  Help
                 </button>
               </div>
             </div>
