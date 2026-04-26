@@ -144,6 +144,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setShowWizard(false);
     setWStep('dest');
     setWDest(''); setWCountry(''); setWStart(''); setWDays(7);
+    setWArrivalAt(''); setWDepartureAt('');
     setWInvites([]); setWInviteInput('');
     setWSearchQuery(''); setWSearchResults([]);
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
@@ -153,9 +154,21 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
   const finishWizard = () => {
     if (!wDest) return;
+    // Derive days/start from explicit arrival/departure when both set
+    let days = wDays;
+    let startDate = wStart || undefined;
+    if (wArrivalAt && wDepartureAt) {
+      const ms = new Date(wDepartureAt).getTime() - new Date(wArrivalAt).getTime();
+      days = Math.max(1, Math.ceil(ms / 86400000));
+      startDate = wArrivalAt.split('T')[0];
+    } else if (wArrivalAt) {
+      startDate = wArrivalAt.split('T')[0];
+    }
     const t = buildTrip({
-      dest: wDest, country: wCountry, days: wDays,
-      startDate: wStart || undefined, invites: wInvites,
+      dest: wDest, country: wCountry, days,
+      startDate, invites: wInvites,
+      arrivalAt: wArrivalAt || undefined,
+      departureAt: wDepartureAt || undefined,
       photo: wPickedPhoto, summary: wPickedSummary,
       gallery: wPickedGallery, history: wPickedHistory, areaOverview: wPickedArea,
     });
