@@ -657,6 +657,16 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                           </div>
                           <button onClick={() => removeBooking(trip.id, b.id)} className="text-[11px] text-muted-foreground hover:text-kipita-red">Remove</button>
                         </div>
+                        <div className="mt-2 pt-2 border-t border-border flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-muted-foreground">Issue with this booking?</span>
+                          <button
+                            onClick={() => openSupportHandoff({ trip, booking: b, topic: `my ${b.type} booking with ${b.provider}`, label: `${meta.emoji} ${meta.label} support` })}
+                            className="text-[11px] font-bold text-kipita-red bg-kipita-red/10 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-kipita-red/20 transition-colors"
+                          >
+                            <span className="ms text-xs">support_agent</span>
+                            Get help
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
