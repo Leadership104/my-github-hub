@@ -429,6 +429,70 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setChipLoading(false);
   }, [lat, lng, locationName, activeChip]);
 
+  /* ── Auto-pick the closest chip for the Fun (explore) section ── */
+  const exploreAutoPickedRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (view !== 'section' || selectedSection !== 'explore') return;
+    if (activeChip || chipLoading) return;
+    // Prevent re-running for the same location
+    const locKey = `${lat.toFixed(3)},${lng.toFixed(3)}`;
+    if (exploreAutoPickedRef.current === locKey) return;
+    exploreAutoPickedRef.current = locKey;
+
+    const section = BIG_SECTIONS.find(s => s.id === 'explore');
+    if (!section) return;
+    const sectionCats = categories.filter(c => section.catIds.includes(c.id));
+    const seen = new Set<string>();
+    const allChips: { label: string; query: string; emoji: string }[] = [];
+    sectionCats.forEach(cat => {
+      const subs = CATEGORY_SUBS[cat.id] || [];
+      if (subs.length > 0) {
+        subs.forEach(sub => {
+          const norm = sub.label.toLowerCase().replace(/[^a-z]/g, '');
+          if (!seen.has(norm)) { seen.add(norm); allChips.push(sub); }
+        });
+      } else {
+        const norm = cat.label.toLowerCase().replace(/[^a-z]/g, '');
+        if (!seen.has(norm)) {
+          seen.add(norm);
+          allChips.push({ label: cat.label, query: cat.query, emoji: cat.emoji });
+        }
+      }
+    });
+    if (allChips.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      // Probe each chip in parallel; pick the one whose nearest result is closest.
+      const probes = await Promise.all(allChips.map(async (chip) => {
+        const term = (chip.query && chip.query.trim()) || chip.label;
+        try {
+          const results = await fetchGooglePlaces('search', { query: `${term} near ${locationName}`, lat, lng, radius: 5000 });
+          let best = Infinity;
+          for (const p of results) {
+            const types = p.types || [];
+            const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
+            if (isLocality) continue;
+            if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+              const d = haversine(lat, lng, p.lat, p.lng);
+              if (d < best) best = d;
+            }
+          }
+          return { chip, dist: best };
+        } catch {
+          return { chip, dist: Infinity };
+        }
+      }));
+      if (cancelled) return;
+      probes.sort((a, b) => a.dist - b.dist);
+      const winner = probes[0];
+      if (winner && winner.dist !== Infinity) {
+        selectChip(winner.chip);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [view, selectedSection, lat, lng, locationName, activeChip, chipLoading, categories, selectChip]);
+
   // Place detail view
   if (view === 'detail' && selectedPlace) {
     const backView = activeChip || foodGuidePlaces.length > 0 || chipResults.length > 0 ? 'section' : 'subcategory';
