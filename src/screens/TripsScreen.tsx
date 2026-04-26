@@ -44,6 +44,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases' | 'groups'>('main');
   const [lang, setLang] = useState('es');
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({ 1: true });
+  const [editMode, setEditMode] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
 
@@ -54,6 +56,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [wCountry, setWCountry] = useState('');
   const [wStart, setWStart] = useState('');
   const [wDays, setWDays] = useState(7);
+  const [wArrivalAt, setWArrivalAt] = useState(''); // YYYY-MM-DDTHH:mm
+  const [wDepartureAt, setWDepartureAt] = useState('');
   const [wInvites, setWInvites] = useState<string[]>([]);
   const [wInviteInput, setWInviteInput] = useState('');
 
@@ -142,6 +146,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setShowWizard(false);
     setWStep('dest');
     setWDest(''); setWCountry(''); setWStart(''); setWDays(7);
+    setWArrivalAt(''); setWDepartureAt('');
     setWInvites([]); setWInviteInput('');
     setWSearchQuery(''); setWSearchResults([]);
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
@@ -151,9 +156,21 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
   const finishWizard = () => {
     if (!wDest) return;
+    // Derive days/start from explicit arrival/departure when both set
+    let days = wDays;
+    let startDate = wStart || undefined;
+    if (wArrivalAt && wDepartureAt) {
+      const ms = new Date(wDepartureAt).getTime() - new Date(wArrivalAt).getTime();
+      days = Math.max(1, Math.ceil(ms / 86400000));
+      startDate = wArrivalAt.split('T')[0];
+    } else if (wArrivalAt) {
+      startDate = wArrivalAt.split('T')[0];
+    }
     const t = buildTrip({
-      dest: wDest, country: wCountry, days: wDays,
-      startDate: wStart || undefined, invites: wInvites,
+      dest: wDest, country: wCountry, days,
+      startDate, invites: wInvites,
+      arrivalAt: wArrivalAt || undefined,
+      departureAt: wDepartureAt || undefined,
       photo: wPickedPhoto, summary: wPickedSummary,
       gallery: wPickedGallery, history: wPickedHistory, areaOverview: wPickedArea,
     });
@@ -208,6 +225,19 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
   const toggleItem = (tripId: string, itemId: string) => {
     save(trips.map(t => t.id === tripId ? { ...t, items: t.items.map(i => i.id === itemId ? { ...i, done: !i.done } : i) } : t));
+  };
+
+  const updateItem = (tripId: string, itemId: string, patch: Partial<import('../types').ItineraryItem>) => {
+    save(trips.map(t => t.id === tripId ? { ...t, items: t.items.map(i => i.id === itemId ? { ...i, ...patch } : i) } : t));
+  };
+
+  const deleteItem = (tripId: string, itemId: string) => {
+    save(trips.map(t => t.id === tripId ? { ...t, items: t.items.filter(i => i.id !== itemId) } : t));
+  };
+
+  const addItem = (tripId: string, day: number) => {
+    const newItem: import('../types').ItineraryItem = { id: `i-${Date.now()}`, day, time: '12:00', title: 'New activity', done: false };
+    save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
   };
 
   const inviteToTrip = (tripId: string, email: string) => {
@@ -397,15 +427,42 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
           {/* Itinerary section */}
           <div className="px-4 pt-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-2">
               <h3 className="text-base font-extrabold text-foreground">Itinerary</h3>
-              <button
-                onClick={() => { setSelectedTrip(null); setShowAiPlanner(true); }}
-                className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
-              >
-                ✨ Ask AI
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditMode(m => !m)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 ${editMode ? 'bg-kipita-green text-white' : 'bg-muted text-foreground'}`}
+                >
+                  <span className="ms text-sm">{editMode ? 'check' : 'edit'}</span>
+                  {editMode ? 'Done' : 'Edit'}
+                </button>
+                <button
+                  onClick={() => { setSelectedTrip(null); setShowAiPlanner(true); }}
+                  className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
+                >
+                  ✨ Ask AI
+                </button>
+              </div>
             </div>
+
+            {/* Arrival / Departure summary */}
+            {(trip.arrivalAt || trip.departureAt) && (
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="bg-muted/40 rounded-kipita-sm p-2.5">
+                  <div className="text-[10px] font-bold text-muted-foreground tracking-wider">✈️ ARRIVAL</div>
+                  <div className="text-xs font-bold text-foreground mt-0.5">
+                    {trip.arrivalAt ? new Date(trip.arrivalAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                  </div>
+                </div>
+                <div className="bg-muted/40 rounded-kipita-sm p-2.5">
+                  <div className="text-[10px] font-bold text-muted-foreground tracking-wider">🛬 DEPARTURE</div>
+                  <div className="text-xs font-bold text-foreground mt-0.5">
+                    {trip.departureAt ? new Date(trip.departureAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {trip.items.length === 0 ? (
               <div className="text-center py-8 bg-muted/40 rounded-kipita">
@@ -421,8 +478,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
             ) : (
               <div className="space-y-2">
                 {Array.from({ length: tripDays }, (_, i) => i + 1).map(day => {
-                  const dayItems = itineraryByDay[day] || [];
-                  if (dayItems.length === 0) return null;
+                  const dayItems = (itineraryByDay[day] || []).slice().sort((a, b) => a.time.localeCompare(b.time));
                   const isOpen = expandedDays[day] ?? false;
                   const dayLabel = day === 1 ? 'Arrival Day' : day === tripDays ? 'Departure Day' : `Day ${day}`;
                   return (
@@ -433,25 +489,79 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                       >
                         <span className="bg-kipita-red text-white text-[11px] font-extrabold px-2.5 py-1 rounded-md">Day {day}</span>
                         <span className="text-sm font-bold text-foreground flex-1 text-left">{dayLabel}</span>
+                        <span className="text-[10px] text-muted-foreground">{dayItems.length} item{dayItems.length !== 1 ? 's' : ''}</span>
                         <span className={`ms text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
                       </button>
                       {isOpen && (
                         <div className="border-t border-border divide-y divide-border">
-                          {dayItems.map(it => (
+                          {dayItems.length === 0 && !editMode && (
+                            <div className="px-4 py-3 text-xs text-muted-foreground italic">No activities yet.</div>
+                          )}
+                          {dayItems.map(it => {
+                            const isEditing = editMode && editingItemId === it.id;
+                            if (isEditing) {
+                              return (
+                                <div key={it.id} className="px-4 py-3 bg-muted/30 flex items-start gap-2">
+                                  <input
+                                    type="time"
+                                    value={it.time}
+                                    onChange={e => updateItem(trip.id, it.id, { time: e.target.value })}
+                                    className="bg-card border border-border rounded px-2 py-1 text-xs w-24 outline-none focus:border-kipita-red"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={it.title}
+                                    onChange={e => updateItem(trip.id, it.id, { title: e.target.value })}
+                                    className="flex-1 bg-card border border-border rounded px-2 py-1 text-xs outline-none focus:border-kipita-red"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => setEditingItemId(null)}
+                                    className="ms text-base text-kipita-green"
+                                    aria-label="Save"
+                                  >check</button>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div key={it.id} className={`flex items-start gap-3 px-4 py-3 ${it.done ? 'opacity-60' : ''}`}>
+                                <button
+                                  onClick={() => toggleItem(trip.id, it.id)}
+                                  className="flex items-start gap-3 flex-1 min-w-0 text-left hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
+                                >
+                                  <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-12 flex-shrink-0 pt-0.5">{it.time}</span>
+                                  <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${it.done ? 'bg-kipita-green border-kipita-green' : 'border-border'}`}>
+                                    {it.done && <span className="text-white text-[8px]">✓</span>}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className={`text-xs font-bold text-foreground leading-snug ${it.done ? 'line-through' : ''}`}>{it.title}</div>
+                                  </div>
+                                </button>
+                                {editMode && (
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <button
+                                      onClick={() => setEditingItemId(it.id)}
+                                      className="ms text-base text-muted-foreground hover:text-foreground p-1"
+                                      aria-label="Edit"
+                                    >edit</button>
+                                    <button
+                                      onClick={() => deleteItem(trip.id, it.id)}
+                                      className="ms text-base text-muted-foreground hover:text-kipita-red p-1"
+                                      aria-label="Delete"
+                                    >delete</button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {editMode && (
                             <button
-                              key={it.id}
-                              onClick={() => toggleItem(trip.id, it.id)}
-                              className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors ${it.done ? 'opacity-60' : ''}`}
+                              onClick={() => addItem(trip.id, day)}
+                              className="w-full text-xs font-bold text-kipita-red px-4 py-2.5 hover:bg-kipita-red/5 transition-colors flex items-center justify-center gap-1"
                             >
-                              <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-12 flex-shrink-0 pt-0.5">{it.time}</span>
-                              <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${it.done ? 'bg-kipita-green border-kipita-green' : 'border-border'}`}>
-                                {it.done && <span className="text-white text-[8px]">✓</span>}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className={`text-xs font-bold text-foreground leading-snug ${it.done ? 'line-through' : ''}`}>{it.title}</div>
-                              </div>
+                              <span className="ms text-sm">add</span> Add activity
                             </button>
-                          ))}
+                          )}
                         </div>
                       )}
                     </div>
@@ -891,29 +1001,75 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 })()}
               </section>
 
-              {/* ── Dates ── */}
-              <section className="space-y-2">
-                <h4 className="text-lg font-extrabold">2. When?</h4>
-                <input type="date" value={wStart} onChange={e => setWStart(e.target.value)}
-                  className="w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                <p className="text-[11px] text-muted-foreground">Leave blank for ~2 weeks out.</p>
-              </section>
-
-              {/* ── Duration ── */}
-              <section className="space-y-2">
-                <h4 className="text-lg font-extrabold">3. How long?</h4>
-                <div className="grid grid-cols-7 gap-1.5">
-                  {[3, 5, 7, 10, 14, 21, 30].map(d => (
-                    <button key={d} onClick={() => setWDays(d)}
-                      className={`py-3 rounded-kipita-sm border-2 font-bold text-xs transition-all ${wDays === d ? 'border-kipita-red bg-kipita-red text-white' : 'border-border bg-card text-foreground'}`}
-                    >
-                      {d}d
-                    </button>
-                  ))}
+              {/* ── Arrival & Departure ── */}
+              <section className="space-y-3">
+                <div>
+                  <h4 className="text-lg font-extrabold">2. Arrival & Departure</h4>
+                  <p className="text-xs text-muted-foreground">Set exact dates & times — we'll seed your itinerary with arrival and departure.</p>
                 </div>
-                <input type="number" min={1} max={90} value={wDays} onChange={e => setWDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  placeholder="Custom days"
-                  className="w-full bg-card border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red" />
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">✈️ ARRIVAL</label>
+                    <input
+                      type="datetime-local"
+                      value={wArrivalAt}
+                      onChange={e => {
+                        setWArrivalAt(e.target.value);
+                        if (e.target.value) setWStart(e.target.value.split('T')[0]);
+                      }}
+                      className="w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">🛬 DEPARTURE</label>
+                    <input
+                      type="datetime-local"
+                      value={wDepartureAt}
+                      min={wArrivalAt || undefined}
+                      onChange={e => setWDepartureAt(e.target.value)}
+                      className="w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red"
+                    />
+                  </div>
+                </div>
+                {/* Quick presets — set departure = arrival + N days */}
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1.5">Quick length (sets departure):</p>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {[3, 5, 7, 10, 14, 21, 30].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => {
+                          setWDays(d);
+                          const base = wArrivalAt ? new Date(wArrivalAt) : (() => { const x = new Date(); x.setDate(x.getDate() + 14); x.setHours(15, 0, 0, 0); return x; })();
+                          if (!wArrivalAt) {
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            setWArrivalAt(`${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`);
+                          }
+                          const dep = new Date(base);
+                          dep.setDate(dep.getDate() + d);
+                          dep.setHours(12, 0, 0, 0);
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          setWDepartureAt(`${dep.getFullYear()}-${pad(dep.getMonth() + 1)}-${pad(dep.getDate())}T${pad(dep.getHours())}:${pad(dep.getMinutes())}`);
+                        }}
+                        className={`py-2.5 rounded-kipita-sm border-2 font-bold text-xs transition-all ${wDays === d ? 'border-kipita-red bg-kipita-red text-white' : 'border-border bg-card text-foreground'}`}
+                      >
+                        {d}d
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {wArrivalAt && wDepartureAt && (
+                  <div className="text-[11px] bg-muted/40 rounded-lg px-3 py-2 text-foreground">
+                    Trip length: <strong>{Math.max(1, Math.ceil((new Date(wDepartureAt).getTime() - new Date(wArrivalAt).getTime()) / 86400000))} days</strong>
+                  </div>
+                )}
+                {/* Stuck? Ask AI */}
+                <button
+                  onClick={() => { resetWizard(); setShowAiPlanner(true); }}
+                  className="w-full text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-2 rounded-full flex items-center justify-center gap-1 mt-1"
+                >
+                  ✨ Stuck? Ask AI to suggest dates & flights
+                </button>
               </section>
 
               {/* ── Invites ── */}
