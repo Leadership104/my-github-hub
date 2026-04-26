@@ -588,7 +588,7 @@ export default function AIScreen({
       </div>
 
       {/* Input */}
-      <div className="flex items-end gap-2 p-3 border-t border-border bg-card flex-shrink-0">
+      <div data-tour="ai-input" className="flex items-end gap-2 p-3 border-t border-border bg-card flex-shrink-0">
         <textarea
           ref={textareaRef}
           value={input}
