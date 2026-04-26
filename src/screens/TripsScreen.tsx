@@ -225,6 +225,19 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     save(trips.map(t => t.id === tripId ? { ...t, items: t.items.map(i => i.id === itemId ? { ...i, done: !i.done } : i) } : t));
   };
 
+  const updateItem = (tripId: string, itemId: string, patch: Partial<import('../types').ItineraryItem>) => {
+    save(trips.map(t => t.id === tripId ? { ...t, items: t.items.map(i => i.id === itemId ? { ...i, ...patch } : i) } : t));
+  };
+
+  const deleteItem = (tripId: string, itemId: string) => {
+    save(trips.map(t => t.id === tripId ? { ...t, items: t.items.filter(i => i.id !== itemId) } : t));
+  };
+
+  const addItem = (tripId: string, day: number) => {
+    const newItem: import('../types').ItineraryItem = { id: `i-${Date.now()}`, day, time: '12:00', title: 'New activity', done: false };
+    save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
+  };
+
   const inviteToTrip = (tripId: string, email: string) => {
     if (!email.trim()) return;
     save(trips.map(t => t.id === tripId
