@@ -35,6 +35,10 @@ interface Props {
   onAddBooking?: (tripId: string, booking: Booking) => void;
   onBack?: () => void;
   onSwitchTab?: (tab: TabId, hint?: string) => void;
+  /** Optional support handoff: when set, AI opens in support mode and auto-sends this prompt. */
+  handoffPrompt?: string;
+  /** Visible mode label shown in the header when in support handoff. */
+  handoffLabel?: string;
 }
 
 function placeTypeToHint(type: string): string {
