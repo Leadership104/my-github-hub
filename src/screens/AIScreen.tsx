@@ -35,6 +35,10 @@ interface Props {
   onAddBooking?: (tripId: string, booking: Booking) => void;
   onBack?: () => void;
   onSwitchTab?: (tab: TabId, hint?: string) => void;
+  /** Optional support handoff: when set, AI opens in support mode and auto-sends this prompt. */
+  handoffPrompt?: string;
+  /** Visible mode label shown in the header when in support handoff. */
+  handoffLabel?: string;
 }
 
 function placeTypeToHint(type: string): string {
@@ -280,6 +284,7 @@ export default function AIScreen({
   btcPrice, locationName, countryCode, lat, lng,
   weather, advisoryScore, trips,
   onCreateTrip, onBack, onSwitchTab,
+  handoffPrompt, handoffLabel,
 }: Props) {
   const [messages, setMessages]         = useState<ChatMessage[]>([]);
   const [suggestions, setSuggestions]   = useState<string[]>([]);
@@ -315,8 +320,9 @@ export default function AIScreen({
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }, [input]);
 
-  // Agentic auto-briefing when location changes
+  // Agentic auto-briefing when location changes (skip in support handoff mode)
   useEffect(() => {
+    if (handoffPrompt) return;
     if (!locationName) return;
     const key = `${locationName}|${countryCode || ''}`;
     if (briefingKeyRef.current === key) return;
@@ -443,6 +449,24 @@ export default function AIScreen({
       setLoading(false);
     }
   }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips, onSwitchTab]);
+
+  // Support handoff: auto-send the prefilled prompt once on mount
+  const handoffSentRef = useRef(false);
+  useEffect(() => {
+    if (!handoffPrompt || handoffSentRef.current) return;
+    handoffSentRef.current = true;
+    // Seed an intro message so the user sees the support context immediately
+    setMessages([{
+      id: 'handoff-intro',
+      role: 'ai',
+      text: `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
+      timestamp: Date.now(),
+    }]);
+    // Defer to ensure sendMessage closure is ready
+    const t = setTimeout(() => sendMessage(handoffPrompt), 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoffPrompt]);
 
   const handleRefresh = () => {
     briefingKeyRef.current = '';

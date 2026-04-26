@@ -39,6 +39,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [showAiPlanner, setShowAiPlanner] = useState(false);
+  const [aiHandoff, setAiHandoff] = useState<{ prompt: string; label: string } | null>(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
   const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases' | 'groups'>('main');
@@ -240,6 +241,38 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
   };
 
+  /** Open the AI assistant in support-handoff mode with full trip/booking context. */
+  const openSupportHandoff = (opts: { trip?: Trip; booking?: Booking; topic?: string; label?: string }) => {
+    const { trip, booking, topic, label } = opts;
+    const lines: string[] = [];
+    lines.push(`I need help${topic ? ` with ${topic}` : ''}. Please troubleshoot and propose clear next steps I can take right now.`);
+    if (trip) {
+      lines.push('');
+      lines.push(`Trip context:`);
+      lines.push(`• Destination: ${trip.dest}, ${trip.country}`);
+      lines.push(`• Dates: ${trip.start} → ${trip.end}`);
+      if (trip.arrivalAt) lines.push(`• Arrival: ${trip.arrivalAt}`);
+      if (trip.departureAt) lines.push(`• Departure: ${trip.departureAt}`);
+      if ((trip.bookings || []).length) {
+        lines.push(`• Bookings: ${(trip.bookings || []).map(b => `${b.type}/${b.provider}${b.confirmationCode ? ` (${b.confirmationCode})` : ''}`).join(', ')}`);
+      }
+    }
+    if (booking) {
+      lines.push('');
+      lines.push(`Booking with issue:`);
+      lines.push(`• Type: ${booking.type}`);
+      lines.push(`• Provider: ${booking.provider}`);
+      lines.push(`• Name: ${booking.name}`);
+      if (booking.confirmationCode) lines.push(`• Confirmation: ${booking.confirmationCode}`);
+      if (booking.flightNumber) lines.push(`• Flight: ${booking.flightNumber}`);
+      if (booking.checkIn || booking.checkOut) lines.push(`• Dates: ${booking.checkIn || '?'} → ${booking.checkOut || '?'}`);
+    }
+    lines.push('');
+    lines.push('Walk me through: 1) likely cause, 2) what to do in the app, 3) what to contact the provider about, 4) what to say.');
+    setAiHandoff({ prompt: lines.join('\n'), label: label || 'Booking & trip support' });
+    setShowAiPlanner(true);
+  };
+
   const inviteToTrip = (tripId: string, email: string) => {
     if (!email.trim()) return;
     save(trips.map(t => t.id === tripId
@@ -438,10 +471,17 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   {editMode ? 'Done' : 'Edit'}
                 </button>
                 <button
-                  onClick={() => { setSelectedTrip(null); setShowAiPlanner(true); }}
+                  onClick={() => { setSelectedTrip(null); setAiHandoff(null); setShowAiPlanner(true); }}
                   className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
                 >
                   ✨ Ask AI
+                </button>
+                <button
+                  onClick={() => openSupportHandoff({ trip, topic: `my trip to ${trip.dest}`, label: `🆘 ${trip.dest} trip support` })}
+                  className="text-xs font-bold text-foreground bg-muted px-3 py-1.5 rounded-full flex items-center gap-1"
+                >
+                  <span className="ms text-sm">support_agent</span>
+                  Help
                 </button>
               </div>
             </div>
@@ -624,6 +664,16 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                           </div>
                           <button onClick={() => removeBooking(trip.id, b.id)} className="text-[11px] text-muted-foreground hover:text-kipita-red">Remove</button>
                         </div>
+                        <div className="mt-2 pt-2 border-t border-border flex items-center justify-between gap-2">
+                          <span className="text-[10px] text-muted-foreground">Issue with this booking?</span>
+                          <button
+                            onClick={() => openSupportHandoff({ trip, booking: b, topic: `my ${b.type} booking with ${b.provider}`, label: `${meta.emoji} ${meta.label} support` })}
+                            className="text-[11px] font-bold text-kipita-red bg-kipita-red/10 px-3 py-1 rounded-full flex items-center gap-1 hover:bg-kipita-red/20 transition-colors"
+                          >
+                            <span className="ms text-xs">support_agent</span>
+                            Get help
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -784,13 +834,25 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         </button>
 
         {/* AI Planner secondary */}
-        <button onClick={() => setShowAiPlanner(true)} className="w-full flex items-center gap-3 bg-card rounded-kipita p-4 mb-4 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
-          <span className="text-2xl">✨</span>
-          <div className="flex-1">
-            <div className="text-foreground font-extrabold text-sm">Plan with AI</div>
-            <div className="text-muted-foreground text-xs">Chat to build a custom itinerary</div>
-          </div>
-        </button>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button onClick={() => { setAiHandoff(null); setShowAiPlanner(true); }} className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
+            <span className="text-xl">✨</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-foreground font-extrabold text-xs leading-tight">Plan with AI</div>
+              <div className="text-muted-foreground text-[10px] leading-tight">Build an itinerary</div>
+            </div>
+          </button>
+          <button
+            onClick={() => openSupportHandoff({ topic: 'a booking or trip-planning issue', label: 'Trip & booking support' })}
+            className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border"
+          >
+            <span className="text-xl">🆘</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-foreground font-extrabold text-xs leading-tight">Get Help</div>
+              <div className="text-muted-foreground text-[10px] leading-tight">AI troubleshoots bookings</div>
+            </div>
+          </button>
+        </div>
 
         {/* Travel utilities */}
         <div className="grid grid-cols-3 gap-2 mb-4">
@@ -824,11 +886,17 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         {showAiPlanner && (
           <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-3 border-b border-border bg-card flex-shrink-0">
-              <button onClick={() => setShowAiPlanner(false)} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
-              <h3 className="font-bold text-sm flex-1">AI Trip Planner</h3>
+              <button onClick={() => { setShowAiPlanner(false); setAiHandoff(null); }} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
+              <h3 className="font-bold text-sm flex-1">{aiHandoff ? `🆘 ${aiHandoff.label}` : 'AI Trip Planner'}</h3>
             </div>
             <div className="flex-1 overflow-hidden">
-              <AIScreen trips={trips} onCreateTrip={createTripFromAi} onAddBooking={addBookingToTrip} />
+              <AIScreen
+                trips={trips}
+                onCreateTrip={createTripFromAi}
+                onAddBooking={addBookingToTrip}
+                handoffPrompt={aiHandoff?.prompt}
+                handoffLabel={aiHandoff?.label}
+              />
             </div>
           </div>
         )}
