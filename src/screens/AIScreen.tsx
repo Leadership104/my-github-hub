@@ -632,6 +632,16 @@ export default function AIScreen({
           rows={1}
           className="flex-1 resize-none bg-background border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red transition-colors min-h-[40px] max-h-[120px]"
         />
+        {speechSupported && (
+          <button
+            onClick={toggleListening}
+            type="button"
+            title={isListening ? 'Stop listening' : 'Voice input'}
+            className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${isListening ? 'bg-kipita-red text-white animate-pulse' : 'bg-muted text-foreground hover:bg-muted/70'}`}
+          >
+            <span className="ms text-lg">{isListening ? 'mic' : 'mic_none'}</span>
+          </button>
+        )}
         <button
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || loading}
