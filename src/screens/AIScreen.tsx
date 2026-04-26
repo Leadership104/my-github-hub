@@ -363,7 +363,7 @@ export default function AIScreen({
       setMessages([{
         id: 'briefing-fallback',
         role: 'ai',
-        text: `Hey! I'm your Kipita travel intelligence AI — your ultimate "Know Before You Go" expert.\n\n📍 **${locationName || 'Wherever you are'}** — I'm ready to help.\n\nAsk me about safety, food, money, transport, or let me give you a full briefing.`,
+        text: `Hey! I'm **Know B4 You Go**, your travel intelligence AI.\n\n📍 **${locationName || 'Wherever you are'}** — I'm ready to help.\n\nAsk me about safety, food, money, transport, or let me give you a full briefing.`,
         timestamp: Date.now(),
       }]);
     }).finally(() => setBriefingLoading(false));
@@ -476,7 +476,7 @@ export default function AIScreen({
     setMessages([{
       id: '0',
       role: 'ai',
-      text: `Fresh start! I'm your Kipita travel intelligence AI — "Know Before You Go" expert.\n\nAsk me anything about ${locationName || 'where you are'}, or tap a quick action to dive in. 🌍`,
+      text: `Fresh start! I'm **Know B4 You Go** — your travel intelligence AI.\n\nAsk me anything about ${locationName || 'where you are'}, or tap a quick action to dive in. 🌍`,
       timestamp: Date.now(),
     }]);
   };
