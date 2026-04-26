@@ -49,6 +49,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({ 1: true });
   const [editMode, setEditMode] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null);
+  const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
 
@@ -241,6 +243,48 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const addItem = (tripId: string, day: number) => {
     const newItem: import('../types').ItineraryItem = { id: `i-${Date.now()}`, day, time: '12:00', title: 'New activity', done: false };
     save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
+  };
+
+  /**
+   * Reorder itinerary items by dropping `draggedId` onto `targetId` (within the same day).
+   * Strategy: rebuild the day's array in the new visual order, then re-stamp each item's
+   * `time` based on a 30-minute cadence starting from the day's earliest time. This keeps
+   * the time-based sort consistent with the user's drag order without breaking the schema.
+   */
+  const reorderItems = (tripId: string, draggedId: string, targetId: string) => {
+    if (draggedId === targetId) return;
+    const trip = trips.find(t => t.id === tripId);
+    if (!trip) return;
+    const dragged = trip.items.find(i => i.id === draggedId);
+    const target = trip.items.find(i => i.id === targetId);
+    if (!dragged || !target || dragged.day !== target.day) return;
+
+    const day = dragged.day;
+    const dayItems = trip.items
+      .filter(i => i.day === day)
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const otherItems = trip.items.filter(i => i.day !== day);
+
+    const fromIdx = dayItems.findIndex(i => i.id === draggedId);
+    const toIdx = dayItems.findIndex(i => i.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [moved] = dayItems.splice(fromIdx, 1);
+    dayItems.splice(toIdx, 0, moved);
+
+    // Re-stamp times: start from the original earliest time, increment by 30 min.
+    const start = dayItems[0]?.time && /^\d{2}:\d{2}$/.test(dayItems[0].time) ? dayItems[0].time : '08:00';
+    const [sh, sm] = start.split(':').map(Number);
+    let totalMin = sh * 60 + sm;
+    const restamped = dayItems.map((it, idx) => {
+      if (idx === 0) return it; // keep first as-is
+      totalMin += 30;
+      const h = Math.floor(totalMin / 60) % 24;
+      const m = totalMin % 60;
+      const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      return { ...it, time };
+    });
+
+    save(trips.map(t => t.id === tripId ? { ...t, items: [...otherItems, ...restamped] } : t));
   };
 
   /** Open the AI assistant in support-handoff mode with full trip/booking context. */
@@ -513,6 +557,12 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               </div>
             )}
 
+            {editMode && trip.items.length > 0 && (
+              <div className="mb-2 text-[11px] text-muted-foreground bg-muted/50 border border-border rounded-kipita px-3 py-2 flex items-center gap-2">
+                <span className="ms text-sm text-kipita-red">drag_indicator</span>
+                <span>Drag the handle to reorder activities within a day. Tap edit to rename, delete to remove.</span>
+              </div>
+            )}
             {trip.items.length === 0 ? (
               <div className="text-center py-8 bg-muted/40 rounded-kipita">
                 <p className="text-3xl mb-2">📋</p>
@@ -573,7 +623,35 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                               );
                             }
                             return (
-                              <div key={it.id} className={`flex items-start gap-3 px-4 py-3 ${it.done ? 'opacity-60' : ''}`}>
+                              <div
+                                key={it.id}
+                                draggable={editMode}
+                                onDragStart={editMode ? (e) => { setDraggingItemId(it.id); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+                                onDragEnd={editMode ? () => { setDraggingItemId(null); setDragOverItemId(null); } : undefined}
+                                onDragOver={editMode ? (e) => {
+                                  if (!draggingItemId || draggingItemId === it.id) return;
+                                  const dragged = trip.items.find(i => i.id === draggingItemId);
+                                  if (!dragged || dragged.day !== it.day) return;
+                                  e.preventDefault();
+                                  e.dataTransfer.dropEffect = 'move';
+                                  if (dragOverItemId !== it.id) setDragOverItemId(it.id);
+                                } : undefined}
+                                onDragLeave={editMode ? () => { if (dragOverItemId === it.id) setDragOverItemId(null); } : undefined}
+                                onDrop={editMode ? (e) => {
+                                  e.preventDefault();
+                                  if (draggingItemId) reorderItems(trip.id, draggingItemId, it.id);
+                                  setDraggingItemId(null);
+                                  setDragOverItemId(null);
+                                } : undefined}
+                                className={`flex items-start gap-3 px-4 py-3 transition-all ${it.done ? 'opacity-60' : ''} ${draggingItemId === it.id ? 'opacity-40' : ''} ${dragOverItemId === it.id ? 'bg-kipita-red/10 border-l-2 border-kipita-red' : ''}`}
+                              >
+                                {editMode && (
+                                  <span
+                                    className="ms text-base text-muted-foreground cursor-grab active:cursor-grabbing pt-0.5 select-none"
+                                    aria-label="Drag to reorder"
+                                    title="Drag to reorder"
+                                  >drag_indicator</span>
+                                )}
                                 <button
                                   onClick={() => toggleItem(trip.id, it.id)}
                                   className="flex items-start gap-3 flex-1 min-w-0 text-left hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
