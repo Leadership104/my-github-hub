@@ -16,6 +16,28 @@ import SafetyScreen from './screens/SafetyScreen';
 import ATMScreen from './screens/ATMScreen';
 import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
+import OnboardingTour, { hasSeenTour, type TourStep } from './components/OnboardingTour';
+
+/** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
+const TOURS: Record<string, TourStep[]> = {
+  home: [
+    { target: 'header-location', title: 'Set your location', tip: 'Tap here to switch cities — everything in the app (places, weather, safety, prices) follows this.' },
+    { target: 'header-sos', title: 'Emergency SOS', tip: 'One-tap dial of local emergency numbers wherever you are.' },
+    { target: 'home-essentials', title: 'Essentials grid', tip: 'Quick jumps to the things travelers need first: food, fuel, ATMs, medical, transit.' },
+    { target: 'nav-ai', title: 'Know B4 You Go', tip: 'Your AI concierge — ask anything about your destination before or during your trip.' },
+  ],
+  ai: [
+    { target: 'ai-quick-actions', title: 'Quick actions', tip: 'Tap a chip for an instant briefing on safety, money, food or transport.' },
+    { target: 'ai-input', title: 'Ask anything', tip: 'Type a question — answers blend live data with your trip context.' },
+  ],
+  trips: [
+    { target: 'trips-plan-cta', title: 'Plan a trip', tip: 'Start a new trip with arrival/departure dates and we\'ll seed your itinerary.' },
+    { target: 'trips-ai-cta', title: 'AI itinerary', tip: 'Let Know B4 You Go build a day-by-day plan you can edit.' },
+  ],
+  places: [
+    { target: 'places-grid', title: 'Browse by need', tip: 'Tap a tile to see live results from Google Places near you.' },
+  ],
+};
 
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
