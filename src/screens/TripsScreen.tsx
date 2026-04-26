@@ -1072,7 +1072,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                                 <span className="font-mono text-[12px] w-14 flex-shrink-0 text-black/60">{it.time || '—'}</span>
                                 <span className="flex-1">
                                   <span className="font-semibold">{it.title}</span>
-                                  {it.loc && <span className="text-black/60"> — {it.loc}</span>}
+                                  
                                 </span>
                               </li>
                             ))}
