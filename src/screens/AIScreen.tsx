@@ -320,8 +320,9 @@ export default function AIScreen({
     el.style.height = Math.min(el.scrollHeight, 120) + 'px';
   }, [input]);
 
-  // Agentic auto-briefing when location changes
+  // Agentic auto-briefing when location changes (skip in support handoff mode)
   useEffect(() => {
+    if (handoffPrompt) return;
     if (!locationName) return;
     const key = `${locationName}|${countryCode || ''}`;
     if (briefingKeyRef.current === key) return;
