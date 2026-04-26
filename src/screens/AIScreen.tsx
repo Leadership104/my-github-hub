@@ -518,7 +518,7 @@ export default function AIScreen({
       <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} />
 
       {/* Quick actions horizontal scroll */}
-      <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
+      <div data-tour="ai-quick-actions" className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
         {QUICK_ACTIONS.map(a => (
           <button
             key={a.label}
