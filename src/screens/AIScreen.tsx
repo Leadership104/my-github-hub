@@ -450,6 +450,24 @@ export default function AIScreen({
     }
   }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips, onSwitchTab]);
 
+  // Support handoff: auto-send the prefilled prompt once on mount
+  const handoffSentRef = useRef(false);
+  useEffect(() => {
+    if (!handoffPrompt || handoffSentRef.current) return;
+    handoffSentRef.current = true;
+    // Seed an intro message so the user sees the support context immediately
+    setMessages([{
+      id: 'handoff-intro',
+      role: 'ai',
+      text: `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
+      timestamp: Date.now(),
+    }]);
+    // Defer to ensure sendMessage closure is ready
+    const t = setTimeout(() => sendMessage(handoffPrompt), 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [handoffPrompt]);
+
   const handleRefresh = () => {
     briefingKeyRef.current = '';
     setNearbyPlaces([]);
