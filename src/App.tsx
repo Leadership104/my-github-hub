@@ -121,6 +121,19 @@ export default function App() {
   const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
 
+  // First-time onboarding tour: runs once per tab, persisted in localStorage.
+  const [activeTour, setActiveTour] = useState<string | null>(null);
+  useEffect(() => {
+    if (splash) return;
+    const steps = TOURS[tab];
+    if (steps && steps.length > 0 && !hasSeenTour(tab)) {
+      // Small delay so the screen has time to mount + measure
+      const t = setTimeout(() => setActiveTour(tab), 350);
+      return () => clearTimeout(t);
+    }
+    setActiveTour(null);
+  }, [tab, splash]);
+
   const switchTab = useCallback((t: TabId, hint?: string) => {
     prevTabRef.current = tab;
     setTab(t);
