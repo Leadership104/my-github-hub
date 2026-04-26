@@ -557,6 +557,12 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               </div>
             )}
 
+            {editMode && trip.items.length > 0 && (
+              <div className="mb-2 text-[11px] text-muted-foreground bg-muted/50 border border-border rounded-kipita px-3 py-2 flex items-center gap-2">
+                <span className="ms text-sm text-kipita-red">drag_indicator</span>
+                <span>Drag the handle to reorder activities within a day. Tap edit to rename, delete to remove.</span>
+              </div>
+            )}
             {trip.items.length === 0 ? (
               <div className="text-center py-8 bg-muted/40 rounded-kipita">
                 <p className="text-3xl mb-2">📋</p>
