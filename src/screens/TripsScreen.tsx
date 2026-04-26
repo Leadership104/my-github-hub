@@ -926,7 +926,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
           const buildPlainText = () => {
             const lines: string[] = [];
-            lines.push(`${t.dest}, ${t.country} ${t.flag || ''}`.trim());
+            lines.push(`${t.emoji || ''} ${t.dest}, ${t.country}`.trim());
             lines.push(`${t.start} → ${t.end}`);
             if (t.arrivalAt) lines.push(`Arrival: ${fmtDate(t.arrivalAt)}`);
             if (t.departureAt) lines.push(`Departure: ${fmtDate(t.departureAt)}`);
@@ -947,7 +947,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 lines.push('');
                 lines.push(`Day ${d}`);
                 (itemsByDay[d] || []).slice().sort((a, b) => (a.time || '').localeCompare(b.time || '')).forEach(it => {
-                  lines.push(`  ${it.time || ''}  ${it.title}${it.loc ? ` — ${it.loc}` : ''}`);
+                  lines.push(`  ${it.time || ''}  ${it.title}`);
                 });
               });
             }
