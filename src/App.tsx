@@ -264,19 +264,19 @@ export default function App() {
   return (
     <div className="flex flex-col h-dvh overflow-hidden bg-background">
       {/* Top Bar */}
-      <header className="h-[72px] bg-kipita-navy border-b border-black/40 shadow-sm flex items-center px-4 gap-3 relative z-[100] flex-shrink-0">
+      <header className="h-[72px] bg-white border-b border-black/40 shadow-sm flex items-center px-4 gap-3 relative z-[100] flex-shrink-0">
         <div className="flex-shrink-0">
           <img src={kipitaLogo} alt="Kipita" className="h-9 w-auto" />
         </div>
         <button onClick={() => setShowLocationPicker(true)}
           data-tour="header-location"
-          className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-white/10 rounded-full px-4 py-2.5 text-sm font-semibold text-white overflow-hidden min-w-0">
+          className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-4 py-2.5 text-sm font-semibold text-kipita-navy overflow-hidden min-w-0">
           <span className="ms text-lg flex-shrink-0">location_on</span>
           <span className="truncate">{locationName}</span>
-          <span className="ms text-xs text-white/70 flex-shrink-0">expand_more</span>
+          <span className="ms text-xs text-kipita-navy/60 flex-shrink-0">expand_more</span>
         </button>
         <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button className="flex items-center gap-1 px-2.5 py-2 rounded-kipita-sm text-xs font-bold text-white hover:bg-white/10 transition-colors">
+          <button className="flex items-center gap-1 px-2.5 py-2 rounded-kipita-sm text-xs font-bold text-kipita-navy hover:bg-black/5 transition-colors">
             <span>{weather.emoji}</span>
             <span>{weather.temp}</span>
           </button>
@@ -288,8 +288,8 @@ export default function App() {
           </button>
         </div>
         <button onClick={() => setShowProfile(!showProfile)}
-          className="ml-auto w-11 h-11 rounded-full bg-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <span className="ms text-2xl text-white">account_circle</span>
+          className="ml-auto w-11 h-11 rounded-full bg-black/5 hover:bg-black/10 transition-colors flex items-center justify-center overflow-hidden flex-shrink-0">
+          <span className="ms text-2xl text-kipita-navy">account_circle</span>
         </button>
       </header>
 
