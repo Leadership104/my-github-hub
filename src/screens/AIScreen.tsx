@@ -294,12 +294,41 @@ export default function AIScreen({
   const [lastTrip, setLastTrip]         = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripCreatedToast, setTripCreatedToast] = useState('');
   const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef                  = useRef<any>(null);
   const bottomRef                       = useRef<HTMLDivElement>(null);
   const scrollContainerRef              = useRef<HTMLDivElement>(null);
   const lastAiMsgRef                    = useRef<HTMLDivElement>(null);
   const briefingKeyRef                  = useRef<string>('');
   const textareaRef                     = useRef<HTMLTextAreaElement>(null);
   const prevMsgCountRef                 = useRef<number>(0);
+
+  const speechSupported = typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+  const toggleListening = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(prev => (prev ? prev + ' ' : '') + transcript.trim());
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    recognitionRef.current = rec;
+    try { rec.start(); setIsListening(true); } catch { setIsListening(false); }
+  }, [isListening]);
 
   // Reverse-chronological view: newest message renders at the TOP of the list.
   // Whenever a new message arrives (user or AI), snap the scroll container to the
