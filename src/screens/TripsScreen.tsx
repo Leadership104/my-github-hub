@@ -44,6 +44,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases' | 'groups'>('main');
   const [lang, setLang] = useState('es');
   const [expandedDays, setExpandedDays] = useState<Record<number, boolean>>({ 1: true });
+  const [editMode, setEditMode] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
 
