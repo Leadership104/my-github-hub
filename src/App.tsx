@@ -508,8 +508,17 @@ export default function App() {
             <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
               <span className="ms text-lg text-muted-foreground">shield</span> Travel Safety
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
-              <span className="ms text-lg text-muted-foreground">settings</span> Settings
+            <button
+              onClick={() => {
+                import('./components/OnboardingTour').then(({ resetAllTours }) => {
+                  resetAllTours();
+                  setShowProfile(false);
+                  setActiveTour(tab);
+                });
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <span className="ms text-lg text-muted-foreground">school</span> Replay app tour
             </button>
             <hr className="border-border" />
             <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-kipita-red hover:bg-muted transition-colors">
