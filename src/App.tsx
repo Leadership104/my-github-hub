@@ -121,7 +121,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const { t, lang, setLang } = useI18n();
-  const NAV_LABELS: Record<TabId, string> = {
+  const NAV_LABELS: Partial<Record<TabId, string>> = {
     home: t('nav.home'), ai: t('nav.ai'), trips: t('nav.travel'), places: t('nav.places'),
   };
   const [showSOS, setShowSOS] = useState(false);
