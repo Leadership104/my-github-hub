@@ -705,7 +705,11 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       </div>
 
       {/* Filter pills */}
-      <div className="absolute top-14 left-3 right-3 z-[500] flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+      <div
+        className="absolute top-14 left-3 right-3 z-[500] flex gap-2 overflow-x-auto overflow-y-hidden scrollbar-hide pb-1"
+        style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain', touchAction: 'pan-x' }}
+        onWheel={(e) => { if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) { e.currentTarget.scrollLeft += e.deltaY; } }}
+      >
         {allFilters.map(p => (
           <button key={p.id} onClick={() => setFilter(p.id)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold shadow-md transition-colors ${filter === p.id ? 'bg-kipita-red text-white' : 'bg-card/95 backdrop-blur-sm text-foreground border border-border'}`}>
@@ -716,7 +720,11 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
 
       {/* Subcategory pills */}
       {subs.length > 0 && (
-        <div className="absolute top-[88px] left-3 right-3 z-[500] flex gap-2 overflow-x-auto scrollbar-hide pb-1">
+        <div
+          className="absolute top-[88px] left-3 right-3 z-[500] flex gap-2 overflow-x-auto overflow-y-hidden scrollbar-hide pb-1"
+          style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain', touchAction: 'pan-x' }}
+          onWheel={(e) => { if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) { e.currentTarget.scrollLeft += e.deltaY; } }}
+        >
           {subs.map(s => (
             <button key={s.label} onClick={() => {
               setSubFilter(s.query);
