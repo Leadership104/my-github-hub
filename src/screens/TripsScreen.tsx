@@ -823,6 +823,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         {/* Plan a trip — primary CTA opens wizard */}
         <button
           onClick={() => setShowWizard(true)}
+          data-tour="trips-plan-cta"
           className="w-full flex items-center gap-3 bg-gradient-to-r from-kipita-red to-rose-500 text-white rounded-kipita p-4 mb-3 text-left hover:shadow-lg transition-shadow shadow-md active:scale-[0.98]"
         >
           <span className="text-2xl">✈️</span>
@@ -835,7 +836,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
         {/* AI Planner secondary */}
         <div className="grid grid-cols-2 gap-2 mb-4">
-          <button onClick={() => { setAiHandoff(null); setShowAiPlanner(true); }} className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
+          <button onClick={() => { setAiHandoff(null); setShowAiPlanner(true); }} data-tour="trips-ai-cta" className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
             <span className="text-xl">✨</span>
             <div className="flex-1 min-w-0">
               <div className="text-foreground font-extrabold text-xs leading-tight">Plan with AI</div>
