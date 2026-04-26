@@ -259,9 +259,9 @@ serve(async (req) => {
     }
 
     const action = params.action;
-    const lat = params.lat !== undefined ? Number(params.lat) : undefined;
-    const lng = params.lng !== undefined ? Number(params.lng) : undefined;
-    const radius = params.radius !== undefined ? Number(params.radius) : undefined;
+    const lat: number = params.lat !== undefined ? Number(params.lat) : NaN;
+    const lng: number = params.lng !== undefined ? Number(params.lng) : NaN;
+    const radius: number = params.radius !== undefined ? Number(params.radius) : 3500;
     const type = params.type;
     const query = params.query;
     const placeId = params.placeId;
