@@ -16,11 +16,33 @@ import SafetyScreen from './screens/SafetyScreen';
 import ATMScreen from './screens/ATMScreen';
 import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
+import OnboardingTour, { hasSeenTour, type TourStep } from './components/OnboardingTour';
+
+/** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
+const TOURS: Record<string, TourStep[]> = {
+  home: [
+    { target: 'header-location', title: 'Set your location', tip: 'Tap here to switch cities — everything in the app (places, weather, safety, prices) follows this.' },
+    { target: 'header-sos', title: 'Emergency SOS', tip: 'One-tap dial of local emergency numbers wherever you are.' },
+    { target: 'home-essentials', title: 'Essentials grid', tip: 'Quick jumps to the things travelers need first: food, fuel, ATMs, medical, transit.' },
+    { target: 'nav-ai', title: 'Know B4 You Go', tip: 'Your AI concierge — ask anything about your destination before or during your trip.' },
+  ],
+  ai: [
+    { target: 'ai-quick-actions', title: 'Quick actions', tip: 'Tap a chip for an instant briefing on safety, money, food or transport.' },
+    { target: 'ai-input', title: 'Ask anything', tip: 'Type a question — answers blend live data with your trip context.' },
+  ],
+  trips: [
+    { target: 'trips-plan-cta', title: 'Plan a trip', tip: 'Start a new trip with arrival/departure dates and we\'ll seed your itinerary.' },
+    { target: 'trips-ai-cta', title: 'AI itinerary', tip: 'Let Know B4 You Go build a day-by-day plan you can edit.' },
+  ],
+  places: [
+    { target: 'places-grid', title: 'Browse by need', tip: 'Tap a tile to see live results from Google Places near you.' },
+  ],
+};
 
 
 const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
   { id: 'home', label: 'Home', icon: 'home' },
-  { id: 'ai', label: 'AI', icon: 'auto_awesome' },
+  { id: 'ai', label: 'Know B4', icon: 'auto_awesome' },
   { id: 'trips', label: 'Travel', icon: 'flight_takeoff' },
   { id: 'places', label: 'Places', icon: 'explore' },
 ];
@@ -98,6 +120,19 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
+
+  // First-time onboarding tour: runs once per tab, persisted in localStorage.
+  const [activeTour, setActiveTour] = useState<string | null>(null);
+  useEffect(() => {
+    if (splash) return;
+    const steps = TOURS[tab];
+    if (steps && steps.length > 0 && !hasSeenTour(tab)) {
+      // Small delay so the screen has time to mount + measure
+      const t = setTimeout(() => setActiveTour(tab), 350);
+      return () => clearTimeout(t);
+    }
+    setActiveTour(null);
+  }, [tab, splash]);
 
   const switchTab = useCallback((t: TabId, hint?: string) => {
     prevTabRef.current = tab;
@@ -234,6 +269,7 @@ export default function App() {
           <img src={kipitaLogo} alt="Kipita" className="h-9 w-auto" />
         </div>
         <button onClick={() => setShowLocationPicker(true)}
+          data-tour="header-location"
           className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-white/10 rounded-full px-4 py-2.5 text-sm font-semibold text-white overflow-hidden min-w-0">
           <span className="ms text-lg flex-shrink-0">location_on</span>
           <span className="truncate">{locationName}</span>
@@ -245,6 +281,7 @@ export default function App() {
             <span>{weather.temp}</span>
           </button>
           <button onClick={() => setShowSOS(true)}
+            data-tour="header-sos"
             className="bg-kipita-red rounded-md w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md"
             title="Emergency SOS">
             <span className="text-white font-extrabold text-[11px] tracking-wide">SOS</span>
@@ -471,8 +508,17 @@ export default function App() {
             <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
               <span className="ms text-lg text-muted-foreground">shield</span> Travel Safety
             </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
-              <span className="ms text-lg text-muted-foreground">settings</span> Settings
+            <button
+              onClick={() => {
+                import('./components/OnboardingTour').then(({ resetAllTours }) => {
+                  resetAllTours();
+                  setShowProfile(false);
+                  setActiveTour(tab);
+                });
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors"
+            >
+              <span className="ms text-lg text-muted-foreground">school</span> Replay app tour
             </button>
             <hr className="border-border" />
             <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-kipita-red hover:bg-muted transition-colors">
@@ -494,6 +540,7 @@ export default function App() {
           const active = tab === item.id;
           return (
             <button key={item.id} onClick={() => switchTab(item.id)}
+              data-tour={`nav-${item.id}`}
               className={`flex-1 min-w-[60px] flex flex-col items-center justify-center gap-1 py-2.5 px-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
                 active ? 'text-kipita-red' : 'text-muted-foreground'
               }`}>
@@ -510,6 +557,15 @@ export default function App() {
           );
         })}
       </nav>
+
+      {/* First-time onboarding tour */}
+      {activeTour && (
+        <OnboardingTour
+          tourId={activeTour}
+          steps={TOURS[activeTour] || []}
+          onClose={() => setActiveTour(null)}
+        />
+      )}
     </div>
   );
 }

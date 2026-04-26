@@ -1194,7 +1194,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
 
         {/* Category Sections */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
+        <div data-tour="places-grid" className="grid grid-cols-3 gap-3 mb-6">
           {BIG_SECTIONS.map(section => (
             <button key={section.id} onClick={() => {
               setSelectedSection(section.id);

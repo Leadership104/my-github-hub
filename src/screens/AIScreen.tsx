@@ -363,7 +363,7 @@ export default function AIScreen({
       setMessages([{
         id: 'briefing-fallback',
         role: 'ai',
-        text: `Hey! I'm your Kipita travel intelligence AI — your ultimate "Know Before You Go" expert.\n\n📍 **${locationName || 'Wherever you are'}** — I'm ready to help.\n\nAsk me about safety, food, money, transport, or let me give you a full briefing.`,
+        text: `Hey! I'm **Know B4 You Go**, your travel intelligence AI.\n\n📍 **${locationName || 'Wherever you are'}** — I'm ready to help.\n\nAsk me about safety, food, money, transport, or let me give you a full briefing.`,
         timestamp: Date.now(),
       }]);
     }).finally(() => setBriefingLoading(false));
@@ -476,7 +476,7 @@ export default function AIScreen({
     setMessages([{
       id: '0',
       role: 'ai',
-      text: `Fresh start! I'm your Kipita travel intelligence AI — "Know Before You Go" expert.\n\nAsk me anything about ${locationName || 'where you are'}, or tap a quick action to dive in. 🌍`,
+      text: `Fresh start! I'm **Know B4 You Go** — your travel intelligence AI.\n\nAsk me anything about ${locationName || 'where you are'}, or tap a quick action to dive in. 🌍`,
       timestamp: Date.now(),
     }]);
   };
@@ -496,7 +496,7 @@ export default function AIScreen({
           <span className="text-xs">✦</span>
         </div>
         <div className="flex-1 min-w-0 leading-tight">
-          <h3 className="font-extrabold text-foreground text-base leading-tight">Kipita</h3>
+          <h3 className="font-extrabold text-foreground text-base leading-tight">Know B4 You Go</h3>
           <p className="text-[10px] text-muted-foreground leading-tight truncate">
             {briefingLoading
               ? `🔍 Scouting ${locationName}…`
@@ -518,7 +518,7 @@ export default function AIScreen({
       <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} />
 
       {/* Quick actions horizontal scroll */}
-      <div className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
+      <div data-tour="ai-quick-actions" className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
         {QUICK_ACTIONS.map(a => (
           <button
             key={a.label}
@@ -588,7 +588,7 @@ export default function AIScreen({
       </div>
 
       {/* Input */}
-      <div className="flex items-end gap-2 p-3 border-t border-border bg-card flex-shrink-0">
+      <div data-tour="ai-input" className="flex items-end gap-2 p-3 border-t border-border bg-card flex-shrink-0">
         <textarea
           ref={textareaRef}
           value={input}
