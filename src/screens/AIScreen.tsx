@@ -310,7 +310,7 @@ export default function AIScreen({
       const container = scrollContainerRef.current;
       if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
     });
-  }, [messages, suggestions]);
+  }, [messages, suggestions, nearbyPlaces, briefingLoading, loading]);
 
   // Auto-resize textarea
   useEffect(() => {
