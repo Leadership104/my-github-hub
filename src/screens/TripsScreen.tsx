@@ -245,6 +245,48 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
   };
 
+  /**
+   * Reorder itinerary items by dropping `draggedId` onto `targetId` (within the same day).
+   * Strategy: rebuild the day's array in the new visual order, then re-stamp each item's
+   * `time` based on a 30-minute cadence starting from the day's earliest time. This keeps
+   * the time-based sort consistent with the user's drag order without breaking the schema.
+   */
+  const reorderItems = (tripId: string, draggedId: string, targetId: string) => {
+    if (draggedId === targetId) return;
+    const trip = trips.find(t => t.id === tripId);
+    if (!trip) return;
+    const dragged = trip.items.find(i => i.id === draggedId);
+    const target = trip.items.find(i => i.id === targetId);
+    if (!dragged || !target || dragged.day !== target.day) return;
+
+    const day = dragged.day;
+    const dayItems = trip.items
+      .filter(i => i.day === day)
+      .sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+    const otherItems = trip.items.filter(i => i.day !== day);
+
+    const fromIdx = dayItems.findIndex(i => i.id === draggedId);
+    const toIdx = dayItems.findIndex(i => i.id === targetId);
+    if (fromIdx < 0 || toIdx < 0) return;
+    const [moved] = dayItems.splice(fromIdx, 1);
+    dayItems.splice(toIdx, 0, moved);
+
+    // Re-stamp times: start from the original earliest time, increment by 30 min.
+    const start = dayItems[0]?.time && /^\d{2}:\d{2}$/.test(dayItems[0].time) ? dayItems[0].time : '08:00';
+    const [sh, sm] = start.split(':').map(Number);
+    let totalMin = sh * 60 + sm;
+    const restamped = dayItems.map((it, idx) => {
+      if (idx === 0) return it; // keep first as-is
+      totalMin += 30;
+      const h = Math.floor(totalMin / 60) % 24;
+      const m = totalMin % 60;
+      const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      return { ...it, time };
+    });
+
+    save(trips.map(t => t.id === tripId ? { ...t, items: [...otherItems, ...restamped] } : t));
+  };
+
   /** Open the AI assistant in support-handoff mode with full trip/booking context. */
   const openSupportHandoff = (opts: { trip?: Trip; booking?: Booking; topic?: string; label?: string }) => {
     const { trip, booking, topic, label } = opts;
