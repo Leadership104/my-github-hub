@@ -288,8 +288,8 @@ export default function App() {
           </button>
         </div>
         <button onClick={() => setShowProfile(!showProfile)}
-          className="ml-auto w-11 h-11 rounded-full bg-white/10 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <span className="ms text-2xl text-white">account_circle</span>
+          className="ml-auto w-11 h-11 rounded-full bg-black/5 hover:bg-black/10 transition-colors flex items-center justify-center overflow-hidden flex-shrink-0">
+          <span className="ms text-2xl text-kipita-navy">account_circle</span>
         </button>
       </header>
 
