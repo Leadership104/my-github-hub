@@ -40,6 +40,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [showAiPlanner, setShowAiPlanner] = useState(false);
   const [aiHandoff, setAiHandoff] = useState<{ prompt: string; label: string } | null>(null);
+  const [exportTrip, setExportTrip] = useState<Trip | null>(null);
+  const [shareToast, setShareToast] = useState<string | null>(null);
   const [showBookingForm, setShowBookingForm] = useState(false);
   const [bookingForm, setBookingForm] = useState({ type: 'hotel' as Booking['type'], name: '', confirmationCode: '', checkIn: '', checkOut: '', departureTime: '', arrivalTime: '', flightNumber: '', address: '', notes: '' });
   const [tripsView, setTripsView] = useState<'main' | 'destinations' | 'phrases' | 'groups'>('main');
@@ -483,6 +485,13 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   <span className="ms text-sm">support_agent</span>
                   Help
                 </button>
+                <button
+                  onClick={() => setExportTrip(trip)}
+                  className="text-xs font-bold text-white bg-kipita-navy px-3 py-1.5 rounded-full flex items-center gap-1"
+                >
+                  <span className="ms text-sm">ios_share</span>
+                  Export
+                </button>
               </div>
             </div>
 
@@ -900,6 +909,200 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
             </div>
           </div>
         )}
+
+        {/* Export / Share Trip Summary */}
+        {exportTrip && (() => {
+          const t = exportTrip;
+          const fmtDate = (iso?: string) => {
+            if (!iso) return '';
+            try { return new Date(iso).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); }
+            catch { return iso; }
+          };
+          const itemsByDay = (t.items || []).reduce<Record<number, typeof t.items>>((acc, it) => {
+            (acc[it.day] = acc[it.day] || []).push(it);
+            return acc;
+          }, {});
+          const dayKeys = Object.keys(itemsByDay).map(Number).sort((a, b) => a - b);
+
+          const buildPlainText = () => {
+            const lines: string[] = [];
+            lines.push(`${t.emoji || ''} ${t.dest}, ${t.country}`.trim());
+            lines.push(`${t.start} → ${t.end}`);
+            if (t.arrivalAt) lines.push(`Arrival: ${fmtDate(t.arrivalAt)}`);
+            if (t.departureAt) lines.push(`Departure: ${fmtDate(t.departureAt)}`);
+            if ((t.bookings || []).length) {
+              lines.push('');
+              lines.push('BOOKINGS');
+              (t.bookings || []).forEach(b => {
+                const m = BOOKING_TYPE_META[b.type] || { emoji: '📦', label: b.type };
+                lines.push(`• ${m.emoji} ${m.label}: ${b.name}${b.provider ? ` (${b.provider})` : ''}${b.confirmationCode ? ` — Conf# ${b.confirmationCode}` : ''}`);
+                if (b.flightNumber) lines.push(`   Flight ${b.flightNumber}`);
+                if (b.checkIn || b.checkOut) lines.push(`   ${b.checkIn || '?'} → ${b.checkOut || '?'}`);
+              });
+            }
+            if (dayKeys.length) {
+              lines.push('');
+              lines.push('ITINERARY');
+              dayKeys.forEach(d => {
+                lines.push('');
+                lines.push(`Day ${d}`);
+                (itemsByDay[d] || []).slice().sort((a, b) => (a.time || '').localeCompare(b.time || '')).forEach(it => {
+                  lines.push(`  ${it.time || ''}  ${it.title}`);
+                });
+              });
+            }
+            lines.push('');
+            lines.push('Planned with Kipita');
+            return lines.join('\n');
+          };
+
+          const handleShare = async () => {
+            const text = buildPlainText();
+            const title = `${t.dest} trip — ${t.start} to ${t.end}`;
+            try {
+              if (typeof navigator !== 'undefined' && (navigator as any).share) {
+                await (navigator as any).share({ title, text });
+                setShareToast('Shared');
+              } else {
+                await navigator.clipboard.writeText(text);
+                setShareToast('Copied to clipboard');
+              }
+            } catch {
+              try { await navigator.clipboard.writeText(text); setShareToast('Copied to clipboard'); }
+              catch { setShareToast('Could not share'); }
+            }
+            setTimeout(() => setShareToast(null), 2200);
+          };
+
+          const handleCopy = async () => {
+            try { await navigator.clipboard.writeText(buildPlainText()); setShareToast('Copied'); }
+            catch { setShareToast('Copy failed'); }
+            setTimeout(() => setShareToast(null), 1800);
+          };
+
+          const handlePrint = () => window.print();
+
+          return (
+            <div className="fixed inset-0 z-[400] flex flex-col bg-background">
+              <div className="flex items-center gap-2 p-3 border-b border-border bg-card flex-shrink-0 print:hidden">
+                <button onClick={() => setExportTrip(null)} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
+                <h3 className="font-bold text-sm flex-1">Share trip summary</h3>
+                <button onClick={handleCopy} className="text-xs font-bold text-foreground bg-muted px-3 py-1.5 rounded-full flex items-center gap-1">
+                  <span className="ms text-sm">content_copy</span>Copy
+                </button>
+                <button onClick={handlePrint} className="text-xs font-bold text-foreground bg-muted px-3 py-1.5 rounded-full flex items-center gap-1">
+                  <span className="ms text-sm">print</span>Print
+                </button>
+                <button onClick={handleShare} className="text-xs font-bold text-white bg-kipita-red px-3 py-1.5 rounded-full flex items-center gap-1">
+                  <span className="ms text-sm">ios_share</span>Share
+                </button>
+              </div>
+
+              <div id="kip-export-sheet" className="flex-1 overflow-y-auto bg-muted/30 print:bg-white print:overflow-visible">
+                <div className="max-w-[760px] mx-auto my-4 bg-white text-black rounded-kipita shadow-md p-6 print:my-0 print:shadow-none print:rounded-none">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-4 border-b-2 border-black/80 pb-3 mb-4">
+                    <div>
+                      <div className="text-[10px] font-bold tracking-widest text-black/60">KIPITA TRIP SUMMARY</div>
+                      <h1 className="text-2xl font-extrabold leading-tight mt-1">{t.emoji} {t.dest}, {t.country}</h1>
+                      <div className="text-xs text-black/70 mt-1">{t.start} → {t.end}</div>
+                    </div>
+                    <div className="text-right text-[10px] text-black/50">
+                      Generated<br />{new Date().toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  {/* Logistics */}
+                  {(t.arrivalAt || t.departureAt) && (
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      {t.arrivalAt && (
+                        <div className="border border-black/15 rounded p-2">
+                          <div className="text-[10px] font-bold tracking-widest text-black/50">ARRIVAL</div>
+                          <div className="text-sm font-bold mt-0.5">{fmtDate(t.arrivalAt)}</div>
+                        </div>
+                      )}
+                      {t.departureAt && (
+                        <div className="border border-black/15 rounded p-2">
+                          <div className="text-[10px] font-bold tracking-widest text-black/50">DEPARTURE</div>
+                          <div className="text-sm font-bold mt-0.5">{fmtDate(t.departureAt)}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Bookings */}
+                  {(t.bookings || []).length > 0 && (
+                    <section className="mb-5">
+                      <h2 className="text-sm font-extrabold tracking-widest text-black/70 mb-2">BOOKINGS</h2>
+                      <div className="space-y-2">
+                        {(t.bookings || []).map(b => {
+                          const m = BOOKING_TYPE_META[b.type] || { emoji: '📦', label: b.type };
+                          return (
+                            <div key={b.id} className="border border-black/15 rounded p-3 flex gap-3">
+                              <div className="text-2xl">{m.emoji}</div>
+                              <div className="flex-1 text-sm">
+                                <div className="font-bold">{b.name}</div>
+                                <div className="text-[11px] text-black/60">
+                                  {m.label}{b.provider ? ` · ${b.provider}` : ''}
+                                  {b.confirmationCode ? ` · Conf# ${b.confirmationCode}` : ''}
+                                </div>
+                                {b.flightNumber && <div className="text-[11px]">✈️ {b.flightNumber}</div>}
+                                {(b.checkIn || b.checkOut) && (
+                                  <div className="text-[11px]">{b.checkIn || '?'} → {b.checkOut || '?'}</div>
+                                )}
+                                {b.notes && <div className="text-[11px] italic text-black/60 mt-0.5">{b.notes}</div>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+
+                  {/* Itinerary */}
+                  {dayKeys.length > 0 && (
+                    <section className="mb-4">
+                      <h2 className="text-sm font-extrabold tracking-widest text-black/70 mb-2">ITINERARY</h2>
+                      {dayKeys.map(d => (
+                        <div key={d} className="mb-3 break-inside-avoid">
+                          <div className="text-xs font-extrabold uppercase border-b border-black/30 pb-1 mb-1.5">Day {d}</div>
+                          <ul className="space-y-1">
+                            {(itemsByDay[d] || []).slice().sort((a, b) => (a.time || '').localeCompare(b.time || '')).map(it => (
+                              <li key={it.id} className="flex gap-3 text-sm">
+                                <span className="font-mono text-[12px] w-14 flex-shrink-0 text-black/60">{it.time || '—'}</span>
+                                <span className="flex-1">
+                                  <span className="font-semibold">{it.title}</span>
+                                  
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ))}
+                    </section>
+                  )}
+
+                  {t.notes && (
+                    <section className="mb-4 break-inside-avoid">
+                      <h2 className="text-sm font-extrabold tracking-widest text-black/70 mb-2">NOTES</h2>
+                      <p className="text-sm whitespace-pre-wrap">{t.notes}</p>
+                    </section>
+                  )}
+
+                  <div className="text-[10px] text-black/40 border-t border-black/15 pt-2 mt-4 text-center">
+                    Planned with Kipita · kipita.app
+                  </div>
+                </div>
+              </div>
+
+              {shareToast && (
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-foreground text-background text-xs font-bold px-4 py-2 rounded-full shadow-lg z-[500] print:hidden">
+                  {shareToast}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Plan a Trip — single-screen form */}
         {showWizard && (

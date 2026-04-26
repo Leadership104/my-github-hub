@@ -148,3 +148,11 @@ body {
 
 /* Leaflet overrides */
 .leaflet-container { font-family: 'Montserrat', sans-serif !important; }
+
+/* Print: only show the export sheet */
+@media print {
+  body * { visibility: hidden !important; }
+  #kip-export-sheet, #kip-export-sheet * { visibility: visible !important; }
+  #kip-export-sheet { position: absolute !important; inset: 0 !important; background: white !important; overflow: visible !important; }
+  @page { margin: 0.5in; }
+}
