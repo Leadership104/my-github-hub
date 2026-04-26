@@ -639,6 +639,13 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                                 } : undefined}
                                 className={`flex items-start gap-3 px-4 py-3 transition-all ${it.done ? 'opacity-60' : ''} ${draggingItemId === it.id ? 'opacity-40' : ''} ${dragOverItemId === it.id ? 'bg-kipita-red/10 border-l-2 border-kipita-red' : ''}`}
                               >
+                                {editMode && (
+                                  <span
+                                    className="ms text-base text-muted-foreground cursor-grab active:cursor-grabbing pt-0.5 select-none"
+                                    aria-label="Drag to reorder"
+                                    title="Drag to reorder"
+                                  >drag_indicator</span>
+                                )}
                                 <button
                                   onClick={() => toggleItem(trip.id, it.id)}
                                   className="flex items-start gap-3 flex-1 min-w-0 text-left hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
