@@ -244,8 +244,28 @@ serve(async (req) => {
   }
 
   try {
-    const { action, lat, lng, type, query, placeId, radius, category } =
-      await req.json();
+    // Support both POST JSON body and GET query params
+    let params: Record<string, any> = {};
+    if (req.method === "GET") {
+      const url = new URL(req.url);
+      url.searchParams.forEach((v, k) => { params[k] = v; });
+      if (params.mode && !params.action) params.action = params.mode;
+    } else {
+      const text = await req.text();
+      params = text ? JSON.parse(text) : {};
+      const url = new URL(req.url);
+      url.searchParams.forEach((v, k) => { if (!(k in params)) params[k] = v; });
+      if (params.mode && !params.action) params.action = params.mode;
+    }
+
+    const action = params.action;
+    const lat: number = params.lat !== undefined ? Number(params.lat) : NaN;
+    const lng: number = params.lng !== undefined ? Number(params.lng) : NaN;
+    const radius: number = params.radius !== undefined ? Number(params.radius) : 3500;
+    const type = params.type;
+    const query = params.query;
+    const placeId = params.placeId;
+    const category = params.category;
 
     let result: any;
 
