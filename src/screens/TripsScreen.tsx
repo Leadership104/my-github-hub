@@ -617,7 +617,28 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                               );
                             }
                             return (
-                              <div key={it.id} className={`flex items-start gap-3 px-4 py-3 ${it.done ? 'opacity-60' : ''}`}>
+                              <div
+                                key={it.id}
+                                draggable={editMode}
+                                onDragStart={editMode ? (e) => { setDraggingItemId(it.id); e.dataTransfer.effectAllowed = 'move'; } : undefined}
+                                onDragEnd={editMode ? () => { setDraggingItemId(null); setDragOverItemId(null); } : undefined}
+                                onDragOver={editMode ? (e) => {
+                                  if (!draggingItemId || draggingItemId === it.id) return;
+                                  const dragged = trip.items.find(i => i.id === draggingItemId);
+                                  if (!dragged || dragged.day !== it.day) return;
+                                  e.preventDefault();
+                                  e.dataTransfer.dropEffect = 'move';
+                                  if (dragOverItemId !== it.id) setDragOverItemId(it.id);
+                                } : undefined}
+                                onDragLeave={editMode ? () => { if (dragOverItemId === it.id) setDragOverItemId(null); } : undefined}
+                                onDrop={editMode ? (e) => {
+                                  e.preventDefault();
+                                  if (draggingItemId) reorderItems(trip.id, draggingItemId, it.id);
+                                  setDraggingItemId(null);
+                                  setDragOverItemId(null);
+                                } : undefined}
+                                className={`flex items-start gap-3 px-4 py-3 transition-all ${it.done ? 'opacity-60' : ''} ${draggingItemId === it.id ? 'opacity-40' : ''} ${dragOverItemId === it.id ? 'bg-kipita-red/10 border-l-2 border-kipita-red' : ''}`}
+                              >
                                 <button
                                   onClick={() => toggleItem(trip.id, it.id)}
                                   className="flex items-start gap-3 flex-1 min-w-0 text-left hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
