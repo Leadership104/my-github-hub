@@ -427,15 +427,42 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
           {/* Itinerary section */}
           <div className="px-4 pt-4">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-3 gap-2">
               <h3 className="text-base font-extrabold text-foreground">Itinerary</h3>
-              <button
-                onClick={() => { setSelectedTrip(null); setShowAiPlanner(true); }}
-                className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
-              >
-                ✨ Ask AI
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setEditMode(m => !m)}
+                  className={`text-xs font-bold px-3 py-1.5 rounded-full flex items-center gap-1 ${editMode ? 'bg-kipita-green text-white' : 'bg-muted text-foreground'}`}
+                >
+                  <span className="ms text-sm">{editMode ? 'check' : 'edit'}</span>
+                  {editMode ? 'Done' : 'Edit'}
+                </button>
+                <button
+                  onClick={() => { setSelectedTrip(null); setShowAiPlanner(true); }}
+                  className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
+                >
+                  ✨ Ask AI
+                </button>
+              </div>
             </div>
+
+            {/* Arrival / Departure summary */}
+            {(trip.arrivalAt || trip.departureAt) && (
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <div className="bg-muted/40 rounded-kipita-sm p-2.5">
+                  <div className="text-[10px] font-bold text-muted-foreground tracking-wider">✈️ ARRIVAL</div>
+                  <div className="text-xs font-bold text-foreground mt-0.5">
+                    {trip.arrivalAt ? new Date(trip.arrivalAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                  </div>
+                </div>
+                <div className="bg-muted/40 rounded-kipita-sm p-2.5">
+                  <div className="text-[10px] font-bold text-muted-foreground tracking-wider">🛬 DEPARTURE</div>
+                  <div className="text-xs font-bold text-foreground mt-0.5">
+                    {trip.departureAt ? new Date(trip.departureAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {trip.items.length === 0 ? (
               <div className="text-center py-8 bg-muted/40 rounded-kipita">
@@ -451,8 +478,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
             ) : (
               <div className="space-y-2">
                 {Array.from({ length: tripDays }, (_, i) => i + 1).map(day => {
-                  const dayItems = itineraryByDay[day] || [];
-                  if (dayItems.length === 0) return null;
+                  const dayItems = (itineraryByDay[day] || []).slice().sort((a, b) => a.time.localeCompare(b.time));
                   const isOpen = expandedDays[day] ?? false;
                   const dayLabel = day === 1 ? 'Arrival Day' : day === tripDays ? 'Departure Day' : `Day ${day}`;
                   return (
@@ -463,25 +489,79 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                       >
                         <span className="bg-kipita-red text-white text-[11px] font-extrabold px-2.5 py-1 rounded-md">Day {day}</span>
                         <span className="text-sm font-bold text-foreground flex-1 text-left">{dayLabel}</span>
+                        <span className="text-[10px] text-muted-foreground">{dayItems.length} item{dayItems.length !== 1 ? 's' : ''}</span>
                         <span className={`ms text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`}>expand_more</span>
                       </button>
                       {isOpen && (
                         <div className="border-t border-border divide-y divide-border">
-                          {dayItems.map(it => (
+                          {dayItems.length === 0 && !editMode && (
+                            <div className="px-4 py-3 text-xs text-muted-foreground italic">No activities yet.</div>
+                          )}
+                          {dayItems.map(it => {
+                            const isEditing = editMode && editingItemId === it.id;
+                            if (isEditing) {
+                              return (
+                                <div key={it.id} className="px-4 py-3 bg-muted/30 flex items-start gap-2">
+                                  <input
+                                    type="time"
+                                    value={it.time}
+                                    onChange={e => updateItem(trip.id, it.id, { time: e.target.value })}
+                                    className="bg-card border border-border rounded px-2 py-1 text-xs w-24 outline-none focus:border-kipita-red"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={it.title}
+                                    onChange={e => updateItem(trip.id, it.id, { title: e.target.value })}
+                                    className="flex-1 bg-card border border-border rounded px-2 py-1 text-xs outline-none focus:border-kipita-red"
+                                    autoFocus
+                                  />
+                                  <button
+                                    onClick={() => setEditingItemId(null)}
+                                    className="ms text-base text-kipita-green"
+                                    aria-label="Save"
+                                  >check</button>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div key={it.id} className={`flex items-start gap-3 px-4 py-3 ${it.done ? 'opacity-60' : ''}`}>
+                                <button
+                                  onClick={() => toggleItem(trip.id, it.id)}
+                                  className="flex items-start gap-3 flex-1 min-w-0 text-left hover:bg-muted/30 -mx-2 px-2 py-1 rounded transition-colors"
+                                >
+                                  <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-12 flex-shrink-0 pt-0.5">{it.time}</span>
+                                  <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${it.done ? 'bg-kipita-green border-kipita-green' : 'border-border'}`}>
+                                    {it.done && <span className="text-white text-[8px]">✓</span>}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className={`text-xs font-bold text-foreground leading-snug ${it.done ? 'line-through' : ''}`}>{it.title}</div>
+                                  </div>
+                                </button>
+                                {editMode && (
+                                  <div className="flex items-center gap-1 flex-shrink-0">
+                                    <button
+                                      onClick={() => setEditingItemId(it.id)}
+                                      className="ms text-base text-muted-foreground hover:text-foreground p-1"
+                                      aria-label="Edit"
+                                    >edit</button>
+                                    <button
+                                      onClick={() => deleteItem(trip.id, it.id)}
+                                      className="ms text-base text-muted-foreground hover:text-kipita-red p-1"
+                                      aria-label="Delete"
+                                    >delete</button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {editMode && (
                             <button
-                              key={it.id}
-                              onClick={() => toggleItem(trip.id, it.id)}
-                              className={`w-full flex items-start gap-3 px-4 py-3 text-left hover:bg-muted/30 transition-colors ${it.done ? 'opacity-60' : ''}`}
+                              onClick={() => addItem(trip.id, day)}
+                              className="w-full text-xs font-bold text-kipita-red px-4 py-2.5 hover:bg-kipita-red/5 transition-colors flex items-center justify-center gap-1"
                             >
-                              <span className="text-[11px] font-bold text-muted-foreground tabular-nums w-12 flex-shrink-0 pt-0.5">{it.time}</span>
-                              <div className={`w-4 h-4 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${it.done ? 'bg-kipita-green border-kipita-green' : 'border-border'}`}>
-                                {it.done && <span className="text-white text-[8px]">✓</span>}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className={`text-xs font-bold text-foreground leading-snug ${it.done ? 'line-through' : ''}`}>{it.title}</div>
-                              </div>
+                              <span className="ms text-sm">add</span> Add activity
                             </button>
-                          ))}
+                          )}
                         </div>
                       )}
                     </div>
