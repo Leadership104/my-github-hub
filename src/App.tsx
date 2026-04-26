@@ -119,6 +119,11 @@ export default function App() {
     saveTrips(trips.map(t => t.id === tripId ? { ...t, bookings: [...(t.bookings || []), booking] } : t));
   }, [trips, saveTrips]);
   const [showProfile, setShowProfile] = useState(false);
+  const [showLangPicker, setShowLangPicker] = useState(false);
+  const { t, lang, setLang } = useI18n();
+  const NAV_LABELS: Record<TabId, string> = {
+    home: t('nav.home'), ai: t('nav.ai'), trips: t('nav.travel'), places: t('nav.places'),
+  };
   const [showSOS, setShowSOS] = useState(false);
   const [splash, setSplash] = useState(true);
 
