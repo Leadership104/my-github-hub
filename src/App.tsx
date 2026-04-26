@@ -498,38 +498,74 @@ export default function App() {
       {/* Profile dropdown */}
       {showProfile && (
         <>
-          <div className="fixed inset-0 z-[150]" onClick={() => setShowProfile(false)} />
-          <div className="absolute top-[76px] right-2 bg-card border border-border rounded-kipita shadow-lg min-w-[240px] z-[200] overflow-hidden">
+          <div className="fixed inset-0 z-[150]" onClick={() => { setShowProfile(false); setShowLangPicker(false); }} />
+          <div className="absolute top-[76px] right-2 bg-card border border-border rounded-kipita shadow-lg min-w-[260px] max-w-[300px] z-[200] overflow-hidden">
             <div className="flex items-center gap-3 p-4">
               <span className="ms text-4xl text-muted-foreground">account_circle</span>
               <div>
-                <div className="text-sm font-bold">Guest User</div>
-                <div className="text-xs text-muted-foreground">Not signed in</div>
+                <div className="text-sm font-bold">{t('profile.guest')}</div>
+                <div className="text-xs text-muted-foreground">{t('profile.notSignedIn')}</div>
               </div>
             </div>
             <hr className="border-border" />
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
-              <span className="ms text-lg text-muted-foreground">edit</span> Edit Profile
-            </button>
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
-              <span className="ms text-lg text-muted-foreground">shield</span> Travel Safety
-            </button>
-            <button
-              onClick={() => {
-                import('./components/OnboardingTour').then(({ resetAllTours }) => {
-                  resetAllTours();
-                  setShowProfile(false);
-                  setActiveTour(tab);
-                });
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors"
-            >
-              <span className="ms text-lg text-muted-foreground">school</span> Replay app tour
-            </button>
-            <hr className="border-border" />
-            <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-kipita-red hover:bg-muted transition-colors">
-              <span className="ms text-lg">logout</span> Sign Out
-            </button>
+            {!showLangPicker ? (
+              <>
+                <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
+                  <span className="ms text-lg text-muted-foreground">edit</span> {t('profile.edit')}
+                </button>
+                <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
+                  <span className="ms text-lg text-muted-foreground">shield</span> {t('profile.safety')}
+                </button>
+                <button
+                  onClick={() => setShowLangPicker(true)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  <span className="flex items-center gap-3">
+                    <span className="ms text-lg text-muted-foreground">language</span> {t('profile.language')}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.flag} {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    import('./components/OnboardingTour').then(({ resetAllTours }) => {
+                      resetAllTours();
+                      setShowProfile(false);
+                      setActiveTour(tab);
+                    });
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors"
+                >
+                  <span className="ms text-lg text-muted-foreground">school</span> {t('profile.replayTour')}
+                </button>
+                <hr className="border-border" />
+                <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-kipita-red hover:bg-muted transition-colors">
+                  <span className="ms text-lg">logout</span> {t('profile.signOut')}
+                </button>
+              </>
+            ) : (
+              <div className="max-h-[320px] overflow-y-auto">
+                <button
+                  onClick={() => setShowLangPicker(false)}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-xs font-semibold text-muted-foreground hover:bg-muted transition-colors border-b border-border"
+                >
+                  <span className="ms text-base">arrow_back</span> {t('common.back')}
+                </button>
+                {SUPPORTED_LANGUAGES.map(l => (
+                  <button
+                    key={l.code}
+                    onClick={() => { setLang(l.code as LangCode); setShowLangPicker(false); }}
+                    className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-sm font-medium hover:bg-muted transition-colors ${lang === l.code ? 'bg-muted' : ''}`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="text-lg">{l.flag}</span> {l.label}
+                    </span>
+                    {lang === l.code && <span className="ms text-base text-kipita-red">check</span>}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
