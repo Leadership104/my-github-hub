@@ -558,7 +558,7 @@ export default function App() {
               >
                 {item.icon}
               </span>
-              {item.label}
+              {NAV_LABELS[item.id] ?? item.label}
             </button>
           );
         })}
