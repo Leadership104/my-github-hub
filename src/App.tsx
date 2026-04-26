@@ -269,6 +269,7 @@ export default function App() {
           <img src={kipitaLogo} alt="Kipita" className="h-9 w-auto" />
         </div>
         <button onClick={() => setShowLocationPicker(true)}
+          data-tour="header-location"
           className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-white/10 rounded-full px-4 py-2.5 text-sm font-semibold text-white overflow-hidden min-w-0">
           <span className="ms text-lg flex-shrink-0">location_on</span>
           <span className="truncate">{locationName}</span>
@@ -280,6 +281,7 @@ export default function App() {
             <span>{weather.temp}</span>
           </button>
           <button onClick={() => setShowSOS(true)}
+            data-tour="header-sos"
             className="bg-kipita-red rounded-md w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md"
             title="Emergency SOS">
             <span className="text-white font-extrabold text-[11px] tracking-wide">SOS</span>
