@@ -857,11 +857,17 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         {showAiPlanner && (
           <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-3 border-b border-border bg-card flex-shrink-0">
-              <button onClick={() => setShowAiPlanner(false)} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
-              <h3 className="font-bold text-sm flex-1">AI Trip Planner</h3>
+              <button onClick={() => { setShowAiPlanner(false); setAiHandoff(null); }} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
+              <h3 className="font-bold text-sm flex-1">{aiHandoff ? `🆘 ${aiHandoff.label}` : 'AI Trip Planner'}</h3>
             </div>
             <div className="flex-1 overflow-hidden">
-              <AIScreen trips={trips} onCreateTrip={createTripFromAi} onAddBooking={addBookingToTrip} />
+              <AIScreen
+                trips={trips}
+                onCreateTrip={createTripFromAi}
+                onAddBooking={addBookingToTrip}
+                handoffPrompt={aiHandoff?.prompt}
+                handoffLabel={aiHandoff?.label}
+              />
             </div>
           </div>
         )}
