@@ -827,13 +827,25 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         </button>
 
         {/* AI Planner secondary */}
-        <button onClick={() => setShowAiPlanner(true)} className="w-full flex items-center gap-3 bg-card rounded-kipita p-4 mb-4 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
-          <span className="text-2xl">✨</span>
-          <div className="flex-1">
-            <div className="text-foreground font-extrabold text-sm">Plan with AI</div>
-            <div className="text-muted-foreground text-xs">Chat to build a custom itinerary</div>
-          </div>
-        </button>
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <button onClick={() => { setAiHandoff(null); setShowAiPlanner(true); }} className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
+            <span className="text-xl">✨</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-foreground font-extrabold text-xs leading-tight">Plan with AI</div>
+              <div className="text-muted-foreground text-[10px] leading-tight">Build an itinerary</div>
+            </div>
+          </button>
+          <button
+            onClick={() => openSupportHandoff({ topic: 'a booking or trip-planning issue', label: 'Trip & booking support' })}
+            className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border"
+          >
+            <span className="text-xl">🆘</span>
+            <div className="flex-1 min-w-0">
+              <div className="text-foreground font-extrabold text-xs leading-tight">Get Help</div>
+              <div className="text-muted-foreground text-[10px] leading-tight">AI troubleshoots bookings</div>
+            </div>
+          </button>
+        </div>
 
         {/* Travel utilities */}
         <div className="grid grid-cols-3 gap-2 mb-4">
