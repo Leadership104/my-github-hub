@@ -250,7 +250,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
   const ESSENTIALS: { id: string; label: string; render: () => JSX.Element }[] = [
     { id: 'food', label: 'Food', render: () => <span className="text-3xl">🍽️</span> },
-    { id: 'fun', label: 'Entertainment', render: () => <span className="text-3xl">🎭</span> },
+    { id: 'fun', label: 'Fun', render: () => <span className="text-3xl">🎭</span> },
     { id: 'shopping', label: 'Shopping', render: () => <span className="text-3xl">🛍️</span> },
     { id: 'fuel', label: 'Gas/EV', render: () => <FuelIcon size={36} /> },
     { id: 'maps', label: 'Maps', render: () => <span className="text-3xl">🗺️</span> },
