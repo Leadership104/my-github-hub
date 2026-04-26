@@ -54,6 +54,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [wCountry, setWCountry] = useState('');
   const [wStart, setWStart] = useState('');
   const [wDays, setWDays] = useState(7);
+  const [wArrivalAt, setWArrivalAt] = useState(''); // YYYY-MM-DDTHH:mm
+  const [wDepartureAt, setWDepartureAt] = useState('');
   const [wInvites, setWInvites] = useState<string[]>([]);
   const [wInviteInput, setWInviteInput] = useState('');
 
