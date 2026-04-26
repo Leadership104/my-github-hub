@@ -531,6 +531,7 @@ export default function App() {
           const active = tab === item.id;
           return (
             <button key={item.id} onClick={() => switchTab(item.id)}
+              data-tour={`nav-${item.id}`}
               className={`flex-1 min-w-[60px] flex flex-col items-center justify-center gap-1 py-2.5 px-1.5 text-xs font-bold whitespace-nowrap transition-colors ${
                 active ? 'text-kipita-red' : 'text-muted-foreground'
               }`}>
@@ -547,6 +548,15 @@ export default function App() {
           );
         })}
       </nav>
+
+      {/* First-time onboarding tour */}
+      {activeTour && (
+        <OnboardingTour
+          tourId={activeTour}
+          steps={TOURS[activeTour] || []}
+          onClose={() => setActiveTour(null)}
+        />
+      )}
     </div>
   );
 }
