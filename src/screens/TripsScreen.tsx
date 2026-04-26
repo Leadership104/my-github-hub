@@ -241,6 +241,38 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
   };
 
+  /** Open the AI assistant in support-handoff mode with full trip/booking context. */
+  const openSupportHandoff = (opts: { trip?: Trip; booking?: Booking; topic?: string; label?: string }) => {
+    const { trip, booking, topic, label } = opts;
+    const lines: string[] = [];
+    lines.push(`I need help${topic ? ` with ${topic}` : ''}. Please troubleshoot and propose clear next steps I can take right now.`);
+    if (trip) {
+      lines.push('');
+      lines.push(`Trip context:`);
+      lines.push(`• Destination: ${trip.dest}, ${trip.country}`);
+      lines.push(`• Dates: ${trip.start} → ${trip.end}`);
+      if (trip.arrivalAt) lines.push(`• Arrival: ${trip.arrivalAt}`);
+      if (trip.departureAt) lines.push(`• Departure: ${trip.departureAt}`);
+      if ((trip.bookings || []).length) {
+        lines.push(`• Bookings: ${(trip.bookings || []).map(b => `${b.type}/${b.provider}${b.confirmationCode ? ` (${b.confirmationCode})` : ''}`).join(', ')}`);
+      }
+    }
+    if (booking) {
+      lines.push('');
+      lines.push(`Booking with issue:`);
+      lines.push(`• Type: ${booking.type}`);
+      lines.push(`• Provider: ${booking.provider}`);
+      lines.push(`• Name: ${booking.name}`);
+      if (booking.confirmationCode) lines.push(`• Confirmation: ${booking.confirmationCode}`);
+      if (booking.flightNumber) lines.push(`• Flight: ${booking.flightNumber}`);
+      if (booking.checkIn || booking.checkOut) lines.push(`• Dates: ${booking.checkIn || '?'} → ${booking.checkOut || '?'}`);
+    }
+    lines.push('');
+    lines.push('Walk me through: 1) likely cause, 2) what to do in the app, 3) what to contact the provider about, 4) what to say.');
+    setAiHandoff({ prompt: lines.join('\n'), label: label || 'Booking & trip support' });
+    setShowAiPlanner(true);
+  };
+
   const inviteToTrip = (tripId: string, email: string) => {
     if (!email.trim()) return;
     save(trips.map(t => t.id === tripId
