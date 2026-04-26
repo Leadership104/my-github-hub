@@ -294,12 +294,41 @@ export default function AIScreen({
   const [lastTrip, setLastTrip]         = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripCreatedToast, setTripCreatedToast] = useState('');
   const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef                  = useRef<any>(null);
   const bottomRef                       = useRef<HTMLDivElement>(null);
   const scrollContainerRef              = useRef<HTMLDivElement>(null);
   const lastAiMsgRef                    = useRef<HTMLDivElement>(null);
   const briefingKeyRef                  = useRef<string>('');
   const textareaRef                     = useRef<HTMLTextAreaElement>(null);
   const prevMsgCountRef                 = useRef<number>(0);
+
+  const speechSupported = typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+  const toggleListening = useCallback(() => {
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+    const rec = new SR();
+    rec.lang = 'en-US';
+    rec.interimResults = true;
+    rec.continuous = false;
+    rec.onresult = (event: any) => {
+      let transcript = '';
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript;
+      }
+      setInput(prev => (prev ? prev + ' ' : '') + transcript.trim());
+    };
+    rec.onend = () => setIsListening(false);
+    rec.onerror = () => setIsListening(false);
+    recognitionRef.current = rec;
+    try { rec.start(); setIsListening(true); } catch { setIsListening(false); }
+  }, [isListening]);
 
   // Reverse-chronological view: newest message renders at the TOP of the list.
   // Whenever a new message arrives (user or AI), snap the scroll container to the
@@ -603,6 +632,16 @@ export default function AIScreen({
           rows={1}
           className="flex-1 resize-none bg-background border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red transition-colors min-h-[40px] max-h-[120px]"
         />
+        {speechSupported && (
+          <button
+            onClick={toggleListening}
+            type="button"
+            title={isListening ? 'Stop listening' : 'Voice input'}
+            className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${isListening ? 'bg-kipita-red text-white animate-pulse' : 'bg-muted text-foreground hover:bg-muted/70'}`}
+          >
+            <span className="ms text-lg">{isListening ? 'mic' : 'mic_none'}</span>
+          </button>
+        )}
         <button
           onClick={() => sendMessage(input)}
           disabled={!input.trim() || loading}

@@ -711,7 +711,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         onWheel={(e) => { if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) { e.currentTarget.scrollLeft += e.deltaY; } }}
       >
         {allFilters.map(p => (
-          <button key={p.id} onClick={() => setFilter(p.id)}
+          <button key={p.id} onClick={(e) => { setFilter(p.id); (e.currentTarget as HTMLElement).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold shadow-md transition-colors ${filter === p.id ? 'bg-kipita-red text-white' : 'bg-card/95 backdrop-blur-sm text-foreground border border-border'}`}>
             {p.label}
           </button>
@@ -726,7 +726,8 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
           onWheel={(e) => { if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) { e.currentTarget.scrollLeft += e.deltaY; } }}
         >
           {subs.map(s => (
-            <button key={s.label} onClick={() => {
+            <button key={s.label} onClick={(e) => {
+              (e.currentTarget as HTMLElement).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
               setSubFilter(s.query);
               const subSearch = async () => {
                 setPlacesLoading(true);

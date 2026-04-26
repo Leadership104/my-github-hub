@@ -853,7 +853,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           <h2 className="text-xl font-extrabold">Travel Phrases</h2>
           <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-hide">
             {Object.entries(PHRASES).map(([key, val]) => (
-              <button key={key} onClick={() => setLang(key)}
+              <button key={key} onClick={(e) => { setLang(key); (e.currentTarget as HTMLElement).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}
                 className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-colors ${lang === key ? 'bg-kipita-red text-white' : 'bg-muted text-muted-foreground'}`}>
                 {val.label}
               </button>
