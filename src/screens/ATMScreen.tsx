@@ -37,25 +37,90 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
 
   useEffect(() => {
     if (activeTab !== 'atm' || !lat || !lng) return;
+    let cancelled = false;
     setLoading(true);
-    const query = `[out:json][timeout:15];(node["amenity"="atm"](around:2500,${lat},${lng});node["amenity"="bank"](around:2500,${lat},${lng}););out body;`;
-    fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`)
-      .then(r => r.json())
-      .then(d => {
-        const results: ATMResult[] = (d.elements || []).slice(0, 30).map((el: any) => ({
-          lat: el.lat,
-          lng: el.lon,
-          name: el.tags?.name || (el.tags?.amenity === 'bank' ? 'Bank' : 'ATM'),
-          address: el.tags?.['addr:street']
-            ? `${el.tags['addr:housenumber'] || ''} ${el.tags['addr:street']}`.trim()
-            : undefined,
-          distance: haversineKm(lat, lng, el.lat, el.lon),
-          type: el.tags?.amenity === 'bank' ? 'bank' : 'atm',
-        })).sort((a: ATMResult, b: ATMResult) => (a.distance ?? 99) - (b.distance ?? 99));
-        setAtms(results);
-      })
-      .catch(() => setAtms([]))
-      .finally(() => setLoading(false));
+    setAtms([]);
+
+    const fromGoogle = async (type: 'atm' | 'bank'): Promise<ATMResult[]> => {
+      try {
+        const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
+        const qs = new URLSearchParams({ mode: 'nearby', lat: String(lat), lng: String(lng), type, radius: '5000' });
+        const r = await fetch(`${base}/functions/v1/places-proxy?${qs}`, {
+          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
+        });
+        if (!r.ok) return [];
+        const j = await r.json();
+        const arr = j?.places || j?.results || [];
+        return arr.map((p: any) => {
+          const la = p?.location?.latitude ?? p?.geometry?.location?.lat;
+          const ln = p?.location?.longitude ?? p?.geometry?.location?.lng;
+          return {
+            lat: la, lng: ln,
+            name: p?.displayName?.text || p?.name || (type === 'bank' ? 'Bank' : 'ATM'),
+            address: p?.formattedAddress || p?.vicinity,
+            distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
+            type,
+          } as ATMResult;
+        }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+      } catch { return []; }
+    };
+
+    const fromOverpass = async (radius: number): Promise<ATMResult[]> => {
+      const query = `[out:json][timeout:20];(node["amenity"="atm"](around:${radius},${lat},${lng});node["amenity"="bank"](around:${radius},${lat},${lng});way["amenity"="bank"](around:${radius},${lat},${lng}););out center 60;`;
+      const endpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+        'https://overpass.openstreetmap.fr/api/interpreter',
+      ];
+      for (const ep of endpoints) {
+        try {
+          const r = await fetch(`${ep}?data=${encodeURIComponent(query)}`);
+          if (!r.ok) continue;
+          const d = await r.json();
+          const results: ATMResult[] = (d.elements || []).map((el: any) => {
+            const la = el.lat ?? el.center?.lat;
+            const ln = el.lon ?? el.center?.lon;
+            return {
+              lat: la, lng: ln,
+              name: el.tags?.name || (el.tags?.amenity === 'bank' ? 'Bank' : 'ATM'),
+              address: el.tags?.['addr:street']
+                ? `${el.tags['addr:housenumber'] || ''} ${el.tags['addr:street']}`.trim()
+                : undefined,
+              distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
+              type: el.tags?.amenity === 'bank' ? 'bank' : 'atm',
+            } as ATMResult;
+          }).filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+          if (results.length) return results;
+        } catch { /* try next mirror */ }
+      }
+      return [];
+    };
+
+    (async () => {
+      // Try Google first (ATMs + banks in parallel)
+      const [gAtm, gBank] = await Promise.all([fromGoogle('atm'), fromGoogle('bank')]);
+      let combined = [...gAtm, ...gBank];
+      // Fallback to Overpass with progressively larger radii
+      if (combined.length === 0) combined = await fromOverpass(2500);
+      if (combined.length === 0) combined = await fromOverpass(8000);
+      if (combined.length === 0) combined = await fromOverpass(20000);
+
+      // De-dupe by rounded coords
+      const seen = new Set<string>();
+      const deduped = combined.filter(r => {
+        const k = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+      deduped.sort((a, b) => (a.distance ?? 99) - (b.distance ?? 99));
+      if (!cancelled) {
+        setAtms(deduped.slice(0, 50));
+        setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [activeTab, lat, lng]);
 
   const btcAtms = merchants
