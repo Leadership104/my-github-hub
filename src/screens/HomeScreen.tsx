@@ -320,10 +320,10 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                 key={item.id}
                 onClick={() => handleEssentialTap(item.id)}
                 aria-expanded={isExpanded}
-                className={`btn-3d flex flex-col items-center justify-center gap-2 py-5 glass rounded-kipita-sm transition-all ${isExpanded ? 'ring-2 ring-kipita-red/60' : ''}`}
+                className={`btn-3d flex flex-col items-center justify-center gap-1.5 py-3 glass rounded-kipita-sm transition-all ${isExpanded ? 'ring-2 ring-kipita-red/60' : ''}`}
               >
                 {item.render()}
-                <span className="text-xs font-bold text-foreground">{item.label}</span>
+                <span className="text-[11px] font-bold text-foreground">{item.label}</span>
               </button>
             );
           })}
@@ -364,8 +364,8 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         )}
 
         {/* Featured Near Me */}
-        <h2 className="text-sm font-bold text-foreground mt-4 mb-1">Featured Near Me</h2>
-        <p className="text-[10px] text-muted-foreground mb-3">Curated for right now · tap to expand</p>
+        <h2 className="text-sm font-bold text-foreground mt-3 mb-0.5">Featured Near Me</h2>
+        <p className="text-[10px] text-muted-foreground mb-2">Curated for right now · tap to expand</p>
         <div className="grid grid-cols-4 gap-2 mb-3">
           {featured.map(cat => {
             const isExpanded = expandedTile === `f:${cat.id}`;
@@ -380,7 +380,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
                   }
                 }}
                 aria-expanded={isExpanded}
-                className={`btn-3d flex flex-col items-center justify-center gap-1.5 py-4 rounded-kipita-sm glass transition-all ${isExpanded ? 'ring-2 ring-kipita-red/60' : ''}`}
+                className={`btn-3d flex flex-col items-center justify-center gap-1 py-2.5 rounded-kipita-sm glass transition-all ${isExpanded ? 'ring-2 ring-kipita-red/60' : ''}`}
               >
                 <span className="text-2xl">{cat.emoji}</span>
                 <span className="text-[10px] font-semibold text-center leading-tight whitespace-pre-line text-foreground">
