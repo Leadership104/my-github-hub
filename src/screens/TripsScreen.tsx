@@ -906,29 +906,75 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 })()}
               </section>
 
-              {/* ── Dates ── */}
-              <section className="space-y-2">
-                <h4 className="text-lg font-extrabold">2. When?</h4>
-                <input type="date" value={wStart} onChange={e => setWStart(e.target.value)}
-                  className="w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red" />
-                <p className="text-[11px] text-muted-foreground">Leave blank for ~2 weeks out.</p>
-              </section>
-
-              {/* ── Duration ── */}
-              <section className="space-y-2">
-                <h4 className="text-lg font-extrabold">3. How long?</h4>
-                <div className="grid grid-cols-7 gap-1.5">
-                  {[3, 5, 7, 10, 14, 21, 30].map(d => (
-                    <button key={d} onClick={() => setWDays(d)}
-                      className={`py-3 rounded-kipita-sm border-2 font-bold text-xs transition-all ${wDays === d ? 'border-kipita-red bg-kipita-red text-white' : 'border-border bg-card text-foreground'}`}
-                    >
-                      {d}d
-                    </button>
-                  ))}
+              {/* ── Arrival & Departure ── */}
+              <section className="space-y-3">
+                <div>
+                  <h4 className="text-lg font-extrabold">2. Arrival & Departure</h4>
+                  <p className="text-xs text-muted-foreground">Set exact dates & times — we'll seed your itinerary with arrival and departure.</p>
                 </div>
-                <input type="number" min={1} max={90} value={wDays} onChange={e => setWDays(Math.max(1, parseInt(e.target.value) || 1))}
-                  placeholder="Custom days"
-                  className="w-full bg-card border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red" />
+                <div className="grid grid-cols-1 gap-3">
+                  <div>
+                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">✈️ ARRIVAL</label>
+                    <input
+                      type="datetime-local"
+                      value={wArrivalAt}
+                      onChange={e => {
+                        setWArrivalAt(e.target.value);
+                        if (e.target.value) setWStart(e.target.value.split('T')[0]);
+                      }}
+                      className="w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">🛬 DEPARTURE</label>
+                    <input
+                      type="datetime-local"
+                      value={wDepartureAt}
+                      min={wArrivalAt || undefined}
+                      onChange={e => setWDepartureAt(e.target.value)}
+                      className="w-full bg-card border border-border rounded-kipita-sm px-3 py-3 text-sm outline-none focus:border-kipita-red"
+                    />
+                  </div>
+                </div>
+                {/* Quick presets — set departure = arrival + N days */}
+                <div>
+                  <p className="text-[11px] text-muted-foreground mb-1.5">Quick length (sets departure):</p>
+                  <div className="grid grid-cols-7 gap-1.5">
+                    {[3, 5, 7, 10, 14, 21, 30].map(d => (
+                      <button
+                        key={d}
+                        onClick={() => {
+                          setWDays(d);
+                          const base = wArrivalAt ? new Date(wArrivalAt) : (() => { const x = new Date(); x.setDate(x.getDate() + 14); x.setHours(15, 0, 0, 0); return x; })();
+                          if (!wArrivalAt) {
+                            const pad = (n: number) => String(n).padStart(2, '0');
+                            setWArrivalAt(`${base.getFullYear()}-${pad(base.getMonth() + 1)}-${pad(base.getDate())}T${pad(base.getHours())}:${pad(base.getMinutes())}`);
+                          }
+                          const dep = new Date(base);
+                          dep.setDate(dep.getDate() + d);
+                          dep.setHours(12, 0, 0, 0);
+                          const pad = (n: number) => String(n).padStart(2, '0');
+                          setWDepartureAt(`${dep.getFullYear()}-${pad(dep.getMonth() + 1)}-${pad(dep.getDate())}T${pad(dep.getHours())}:${pad(dep.getMinutes())}`);
+                        }}
+                        className={`py-2.5 rounded-kipita-sm border-2 font-bold text-xs transition-all ${wDays === d ? 'border-kipita-red bg-kipita-red text-white' : 'border-border bg-card text-foreground'}`}
+                      >
+                        {d}d
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {wArrivalAt && wDepartureAt && (
+                  <div className="text-[11px] bg-muted/40 rounded-lg px-3 py-2 text-foreground">
+                    Trip length: <strong>{Math.max(1, Math.ceil((new Date(wDepartureAt).getTime() - new Date(wArrivalAt).getTime()) / 86400000))} days</strong>
+                  </div>
+                )}
+                {/* Stuck? Ask AI */}
+                <button
+                  onClick={() => { resetWizard(); setShowAiPlanner(true); }}
+                  className="w-full text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-2 rounded-full flex items-center justify-center gap-1 mt-1"
+                >
+                  ✨ Stuck? Ask AI to suggest dates & flights
+                </button>
               </section>
 
               {/* ── Invites ── */}
