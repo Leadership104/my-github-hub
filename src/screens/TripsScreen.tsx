@@ -485,6 +485,13 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   <span className="ms text-sm">support_agent</span>
                   Help
                 </button>
+                <button
+                  onClick={() => setExportTrip(trip)}
+                  className="text-xs font-bold text-white bg-kipita-navy px-3 py-1.5 rounded-full flex items-center gap-1"
+                >
+                  <span className="ms text-sm">ios_share</span>
+                  Export
+                </button>
               </div>
             </div>
 
