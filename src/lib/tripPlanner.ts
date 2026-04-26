@@ -134,6 +134,8 @@ export function buildTrip(opts: {
   country: string;
   days: number;
   startDate?: string; // YYYY-MM-DD
+  arrivalAt?: string;   // YYYY-MM-DDTHH:mm
+  departureAt?: string; // YYYY-MM-DDTHH:mm
   notes?: string;
   invites?: string[];
   photo?: string;
@@ -142,19 +144,46 @@ export function buildTrip(opts: {
   history?: string;
   areaOverview?: string;
 }): Trip {
-  const start = opts.startDate ? new Date(opts.startDate) : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d; })();
-  const end = new Date(start);
-  end.setDate(end.getDate() + opts.days);
+  // Prefer explicit arrival/departure if provided
+  let startDateStr: string;
+  let endDateStr: string;
+  let computedDays = opts.days;
+  if (opts.arrivalAt && opts.departureAt) {
+    startDateStr = opts.arrivalAt.split('T')[0];
+    endDateStr = opts.departureAt.split('T')[0];
+    const ms = new Date(opts.departureAt).getTime() - new Date(opts.arrivalAt).getTime();
+    computedDays = Math.max(1, Math.ceil(ms / 86400000));
+  } else {
+    const start = opts.startDate ? new Date(opts.startDate) : (() => { const d = new Date(); d.setDate(d.getDate() + 14); return d; })();
+    const end = new Date(start);
+    end.setDate(end.getDate() + opts.days);
+    startDateStr = start.toISOString().split('T')[0];
+    endDateStr = end.toISOString().split('T')[0];
+  }
+
+  const items = generateItinerary(opts.dest, computedDays);
+  // Replace the first item on Day 1 with explicit arrival, and append explicit departure on last day
+  if (opts.arrivalAt) {
+    const t = opts.arrivalAt.split('T')[1]?.slice(0, 5) || '15:00';
+    items.unshift({ id: `i-arr-${Date.now()}`, day: 1, time: t, title: `Arrive in ${opts.dest}`, done: false });
+  }
+  if (opts.departureAt) {
+    const t = opts.departureAt.split('T')[1]?.slice(0, 5) || '12:00';
+    items.push({ id: `i-dep-${Date.now()}`, day: computedDays, time: t, title: `Depart from ${opts.dest}`, done: false });
+  }
+
   return {
     id: Date.now().toString(),
     dest: opts.dest,
     country: opts.country,
     emoji: pickEmoji(opts.dest, opts.country),
-    start: start.toISOString().split('T')[0],
-    end: end.toISOString().split('T')[0],
-    notes: opts.notes ?? `${opts.days}-day trip`,
+    start: startDateStr,
+    end: endDateStr,
+    arrivalAt: opts.arrivalAt,
+    departureAt: opts.departureAt,
+    notes: opts.notes ?? `${computedDays}-day trip`,
     status: 'upcoming',
-    items: generateItinerary(opts.dest, opts.days),
+    items,
     bookings: [],
     invites: opts.invites || [],
     photo: opts.photo,
