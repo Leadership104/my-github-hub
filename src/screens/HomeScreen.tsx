@@ -440,7 +440,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         {/* Kipita Perks */}
         <button
           onClick={() => onSwitchTab('perks')}
-          className="btn-3d w-full flex items-center justify-between gap-3 p-4 glass rounded-kipita mt-2"
+          className="btn-3d w-full flex items-center justify-between gap-3 px-4 py-3 glass rounded-kipita mt-1"
         >
           <div className="flex items-center gap-3">
             <span className="text-xl">🎁</span>
