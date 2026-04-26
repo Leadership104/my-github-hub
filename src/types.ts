@@ -42,6 +42,10 @@ export interface Trip {
   emoji: string;
   start: string;
   end: string;
+  /** Optional explicit arrival datetime (ISO local, e.g. 2026-04-10T15:30) */
+  arrivalAt?: string;
+  /** Optional explicit departure datetime (ISO local) */
+  departureAt?: string;
   notes: string;
   status: 'upcoming' | 'active' | 'past' | 'cancelled';
   items: ItineraryItem[];
