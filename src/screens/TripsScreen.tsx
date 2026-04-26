@@ -1004,7 +1004,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   <div className="flex items-start justify-between gap-4 border-b-2 border-black/80 pb-3 mb-4">
                     <div>
                       <div className="text-[10px] font-bold tracking-widest text-black/60">KIPITA TRIP SUMMARY</div>
-                      <h1 className="text-2xl font-extrabold leading-tight mt-1">{t.flag} {t.dest}, {t.country}</h1>
+                      <h1 className="text-2xl font-extrabold leading-tight mt-1">{t.emoji} {t.dest}, {t.country}</h1>
                       <div className="text-xs text-black/70 mt-1">{t.start} → {t.end}</div>
                     </div>
                     <div className="text-right text-[10px] text-black/50">
