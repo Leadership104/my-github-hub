@@ -726,7 +726,8 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
           onWheel={(e) => { if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) { e.currentTarget.scrollLeft += e.deltaY; } }}
         >
           {subs.map(s => (
-            <button key={s.label} onClick={() => {
+            <button key={s.label} onClick={(e) => {
+              (e.currentTarget as HTMLElement).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
               setSubFilter(s.query);
               const subSearch = async () => {
                 setPlacesLoading(true);
