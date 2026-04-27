@@ -725,7 +725,7 @@ Deno.serve(async (req) => {
     }
 
     // Run all live sources concurrently.
-    const [quakes, weather, gdacs, meteo, overpass, fbiAgency, fires, eonet, conflict, headlines] = await Promise.all([
+    const [quakes, weather, gdacs, meteo, overpass, fbiAgency, fires, eonet, conflictBase, headlines, stateDept] = await Promise.all([
       fetchQuakes(coords.lat, coords.lon),
       fetchNwsAlerts(coords.lat, coords.lon, country),
       fetchGdacs(coords.lat, coords.lon),
@@ -736,7 +736,19 @@ Deno.serve(async (req) => {
       fetchNasaEonet(coords.lat, coords.lon),
       fetchAcled(country),
       fetchHeadlines(city, country),
+      fetchStateDept(country),
     ]);
+
+    // If the live State Dept advisory is more current/severe than our static
+    // ACLED row, prefer it for `travelAdvisory` and append a note for transparency.
+    const conflict: ConflictSignals = { ...conflictBase };
+    if (stateDept && stateDept.level > 0) {
+      conflict.travelAdvisory = Math.max(conflict.travelAdvisory, stateDept.level);
+      const note = `US State Dept (Level ${stateDept.level}): ${stateDept.levelLabel}`;
+      if (!conflict.notes.some((n) => n.startsWith("US State Dept"))) {
+        conflict.notes = [...conflict.notes, note];
+      }
+    }
 
     let fbiPartial: Partial<CrimeRates> | null = null;
     let fbiInfo: { agency: string; year: number; population: number } | null = null;
