@@ -17,7 +17,7 @@ import SafetyScreen from './screens/SafetyScreen';
 import ATMScreen from './screens/ATMScreen';
 import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
-import OnboardingTour, { hasSeenTour, type TourStep } from './components/OnboardingTour';
+import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
 
 /** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
 const TOURS: Record<string, TourStep[]> = {
@@ -529,11 +529,9 @@ export default function App() {
                 </button>
                 <button
                   onClick={() => {
-                    import('./components/OnboardingTour').then(({ resetAllTours }) => {
-                      resetAllTours();
-                      setShowProfile(false);
-                      setActiveTour(tab);
-                    });
+                    resetAllTours();
+                    setShowProfile(false);
+                    setActiveTour(tab);
                   }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors"
                 >
