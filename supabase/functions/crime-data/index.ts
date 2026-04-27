@@ -486,24 +486,34 @@ async function loadStateDeptAdvisories(): Promise<Record<string, StateDeptAdviso
     const j = await r.json();
     const list: any[] = Array.isArray(j) ? j : (j?.data ?? j?.value ?? j?.TravelAdvisories ?? []);
     const map: Record<string, StateDeptAdvisory> = {};
+    // State Dept uses 2-letter "FIPS-style" country codes (e.g. HA = Haiti, MX = Mexico).
+    // Map the few that differ from ISO-3166 alpha-2 so common lookups work.
+    const FIPS_TO_ISO2: Record<string, string> = {
+      HA: "HT", GM: "DE", SP: "ES", SW: "SE", SZ: "CH", DA: "DK",
+      UK: "GB", IZ: "IQ", IR: "IR", KS: "KR", KN: "KP", BU: "BG",
+      RP: "PH", VM: "VN", BR: "BR", CH: "CN", JA: "JP", TW: "TW",
+      AS: "AU", MX: "MX", CA: "CA", US: "US",
+    };
     for (const row of list) {
-      // Field names vary across endpoints; defensively pick from common shapes.
-      const name = row.CountryName ?? row.country ?? row.Country ?? row.name ?? "";
-      const iso2 = String(row.ISO2 ?? row.iso2 ?? row.Iso2 ?? row.country_code ?? row.CountryCode ?? "").toUpperCase().slice(0, 2);
-      const level = normLevel(row.AdvisoryLevel ?? row.advisory_level ?? row.Level ?? row.level ?? row.AdvisoryText);
-      const title = String(row.Title ?? row.title ?? row.AdvisoryTitle ?? `${name} Travel Advisory`).trim();
-      const summary = stripHtml(row.Description ?? row.Summary ?? row.summary ?? row.AdvisoryText ?? row.advisory_text ?? "").slice(0, 600);
-      const published = row.PublishedDate ?? row.published ?? row.LastUpdated ?? row.UpdateDate ?? null;
-      const slug = String(row.country_id ?? row.CountryId ?? name).toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      const url = `https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/${slug}-travel-advisory.html`;
-      if (!iso2 && !name) continue;
-      const key = iso2 || String(name).toUpperCase().slice(0, 2);
-      map[key] = {
-        level, levelLabel: levelLabel(level),
-        countryName: name, title, summary,
-        publishedAt: published ? String(published) : null,
-        url,
-      };
+      const title = String(row.Title ?? row.title ?? "").trim();
+      const link = String(row.Link ?? row.link ?? "").trim();
+      const summary = stripHtml(row.Summary ?? row.summary ?? row.Description ?? "").slice(0, 600);
+      const cats: string[] = Array.isArray(row.Category) ? row.Category : (row.Category ? [row.Category] : []);
+      const level = normLevel(title || row.AdvisoryLevel || row.Level);
+      // Country name parsed out of "<Country> - Level N: …".
+      const nameMatch = title.match(/^([^-]+?)\s*[-–]\s*Level/i);
+      const countryName = nameMatch ? nameMatch[1].trim() : title;
+      for (const raw of cats) {
+        const code = String(raw ?? "").toUpperCase().slice(0, 2);
+        if (!code) continue;
+        const iso2 = FIPS_TO_ISO2[code] ?? code;
+        map[iso2] = {
+          level, levelLabel: levelLabel(level),
+          countryName, title, summary,
+          publishedAt: row.PubDate ?? row.PublishedDate ?? row.published ?? null,
+          url: link || `https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html`,
+        };
+      }
     }
     stateDeptCache = { at: Date.now(), map };
     return map;
