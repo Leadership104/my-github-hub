@@ -54,9 +54,13 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
         return arr.map((p: any) => {
           const la = p?.location?.latitude ?? p?.geometry?.location?.lat;
           const ln = p?.location?.longitude ?? p?.geometry?.location?.lng;
+          const rawName = p?.displayName?.text || p?.name || '';
+          const name = rawName && !/^atm$/i.test(rawName.trim())
+            ? rawName
+            : (type === 'bank' ? 'Bank' : 'ATM');
           return {
             lat: la, lng: ln,
-            name: p?.displayName?.text || p?.name || (type === 'bank' ? 'Bank' : 'ATM'),
+            name,
             address: p?.formattedAddress || p?.vicinity,
             distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
             type,
@@ -80,14 +84,29 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
           const results: ATMResult[] = (d.elements || []).map((el: any) => {
             const la = el.lat ?? el.center?.lat;
             const ln = el.lon ?? el.center?.lon;
+            const t = el.tags || {};
+            const isBank = t.amenity === 'bank';
+            // Try a cascade of name fields commonly used on OSM ATM/bank nodes
+            const candidate =
+              t.name ||
+              t['name:en'] ||
+              t.brand ||
+              t.operator ||
+              t.network ||
+              t['atm:operator'] ||
+              t.owner ||
+              '';
+            const name = candidate && !/^atm$/i.test(candidate.trim())
+              ? candidate
+              : (isBank ? 'Bank' : 'ATM');
             return {
               lat: la, lng: ln,
-              name: el.tags?.name || (el.tags?.amenity === 'bank' ? 'Bank' : 'ATM'),
-              address: el.tags?.['addr:street']
-                ? `${el.tags['addr:housenumber'] || ''} ${el.tags['addr:street']}`.trim()
+              name,
+              address: t['addr:street']
+                ? `${t['addr:housenumber'] || ''} ${t['addr:street']}`.trim()
                 : undefined,
               distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
-              type: el.tags?.amenity === 'bank' ? 'bank' : 'atm',
+              type: isBank ? 'bank' : 'atm',
             } as ATMResult;
           }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
           if (results.length) return results;
