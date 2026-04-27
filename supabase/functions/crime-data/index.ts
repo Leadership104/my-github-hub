@@ -783,6 +783,7 @@ Deno.serve(async (req) => {
         conflict,
       },
       headlines,
+      stateDept,
       fbi: fbiInfo,
       city, state, country,
       fetchedAt: new Date().toISOString(),
