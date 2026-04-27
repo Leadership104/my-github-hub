@@ -434,6 +434,89 @@ async function fetchAcled(country: string): Promise<ConflictSignals> {
   };
 }
 
+/* ───────── US State Department travel advisories (live) ─────────
+ * Source: https://cadataapi.state.gov/api/TravelAdvisories
+ * Returns one entry per country with an advisory level (1–4) and summary.
+ * Cached in-process for 6 hours since the dataset only changes a few times/week.
+ */
+interface StateDeptAdvisory {
+  level: number;          // 1=Exercise normal, 2=Increased caution, 3=Reconsider, 4=Do not travel
+  levelLabel: string;
+  countryName: string;
+  title: string;
+  summary: string;
+  publishedAt: string | null;
+  url: string;
+}
+const STATE_DEPT_TTL_MS = 6 * 60 * 60 * 1000;
+let stateDeptCache: { at: number; map: Record<string, StateDeptAdvisory> } | null = null;
+
+// Map ISO-2 → State Dept country codes (their `country_id` is usually a slug/abbrev).
+function normLevel(raw: unknown): number {
+  if (typeof raw === "number") return Math.max(0, Math.min(4, Math.round(raw)));
+  const s = String(raw ?? "").toLowerCase();
+  const m = s.match(/level\s*(\d)/);
+  if (m) return Math.max(0, Math.min(4, Number(m[1])));
+  if (/do not travel/.test(s)) return 4;
+  if (/reconsider/.test(s)) return 3;
+  if (/increased caution/.test(s)) return 2;
+  if (/normal/.test(s)) return 1;
+  return 0;
+}
+function levelLabel(n: number): string {
+  return n === 4 ? "Do Not Travel"
+    : n === 3 ? "Reconsider Travel"
+    : n === 2 ? "Exercise Increased Caution"
+    : n === 1 ? "Exercise Normal Precautions"
+    : "No Advisory";
+}
+function stripHtml(s: string): string {
+  return String(s ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+async function loadStateDeptAdvisories(): Promise<Record<string, StateDeptAdvisory>> {
+  if (stateDeptCache && Date.now() - stateDeptCache.at < STATE_DEPT_TTL_MS) {
+    return stateDeptCache.map;
+  }
+  try {
+    const r = await fetch("https://cadataapi.state.gov/api/TravelAdvisories", {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return stateDeptCache?.map ?? {};
+    const j = await r.json();
+    const list: any[] = Array.isArray(j) ? j : (j?.data ?? j?.value ?? j?.TravelAdvisories ?? []);
+    const map: Record<string, StateDeptAdvisory> = {};
+    for (const row of list) {
+      // Field names vary across endpoints; defensively pick from common shapes.
+      const name = row.CountryName ?? row.country ?? row.Country ?? row.name ?? "";
+      const iso2 = String(row.ISO2 ?? row.iso2 ?? row.Iso2 ?? row.country_code ?? row.CountryCode ?? "").toUpperCase().slice(0, 2);
+      const level = normLevel(row.AdvisoryLevel ?? row.advisory_level ?? row.Level ?? row.level ?? row.AdvisoryText);
+      const title = String(row.Title ?? row.title ?? row.AdvisoryTitle ?? `${name} Travel Advisory`).trim();
+      const summary = stripHtml(row.Description ?? row.Summary ?? row.summary ?? row.AdvisoryText ?? row.advisory_text ?? "").slice(0, 600);
+      const published = row.PublishedDate ?? row.published ?? row.LastUpdated ?? row.UpdateDate ?? null;
+      const slug = String(row.country_id ?? row.CountryId ?? name).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+      const url = `https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories/${slug}-travel-advisory.html`;
+      if (!iso2 && !name) continue;
+      const key = iso2 || String(name).toUpperCase().slice(0, 2);
+      map[key] = {
+        level, levelLabel: levelLabel(level),
+        countryName: name, title, summary,
+        publishedAt: published ? String(published) : null,
+        url,
+      };
+    }
+    stateDeptCache = { at: Date.now(), map };
+    return map;
+  } catch {
+    return stateDeptCache?.map ?? {};
+  }
+}
+async function fetchStateDept(country: string): Promise<StateDeptAdvisory | null> {
+  if (!country) return null;
+  const map = await loadStateDeptAdvisories();
+  return map[country.toUpperCase()] ?? null;
+}
+
 interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
 function decodeXmlEntities(s: string): string {
   return s
