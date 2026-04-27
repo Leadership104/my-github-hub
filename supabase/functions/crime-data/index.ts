@@ -434,6 +434,99 @@ async function fetchAcled(country: string): Promise<ConflictSignals> {
   };
 }
 
+/* ───────── US State Department travel advisories (live) ─────────
+ * Source: https://cadataapi.state.gov/api/TravelAdvisories
+ * Returns one entry per country with an advisory level (1–4) and summary.
+ * Cached in-process for 6 hours since the dataset only changes a few times/week.
+ */
+interface StateDeptAdvisory {
+  level: number;          // 1=Exercise normal, 2=Increased caution, 3=Reconsider, 4=Do not travel
+  levelLabel: string;
+  countryName: string;
+  title: string;
+  summary: string;
+  publishedAt: string | null;
+  url: string;
+}
+const STATE_DEPT_TTL_MS = 6 * 60 * 60 * 1000;
+let stateDeptCache: { at: number; map: Record<string, StateDeptAdvisory> } | null = null;
+
+// Map ISO-2 → State Dept country codes (their `country_id` is usually a slug/abbrev).
+function normLevel(raw: unknown): number {
+  if (typeof raw === "number") return Math.max(0, Math.min(4, Math.round(raw)));
+  const s = String(raw ?? "").toLowerCase();
+  const m = s.match(/level\s*(\d)/);
+  if (m) return Math.max(0, Math.min(4, Number(m[1])));
+  if (/do not travel/.test(s)) return 4;
+  if (/reconsider/.test(s)) return 3;
+  if (/increased caution/.test(s)) return 2;
+  if (/normal/.test(s)) return 1;
+  return 0;
+}
+function levelLabel(n: number): string {
+  return n === 4 ? "Do Not Travel"
+    : n === 3 ? "Reconsider Travel"
+    : n === 2 ? "Exercise Increased Caution"
+    : n === 1 ? "Exercise Normal Precautions"
+    : "No Advisory";
+}
+function stripHtml(s: string): string {
+  return String(s ?? "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+async function loadStateDeptAdvisories(): Promise<Record<string, StateDeptAdvisory>> {
+  if (stateDeptCache && Date.now() - stateDeptCache.at < STATE_DEPT_TTL_MS) {
+    return stateDeptCache.map;
+  }
+  try {
+    const r = await fetch("https://cadataapi.state.gov/api/TravelAdvisories", {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) return stateDeptCache?.map ?? {};
+    const j = await r.json();
+    const list: any[] = Array.isArray(j) ? j : (j?.data ?? j?.value ?? j?.TravelAdvisories ?? []);
+    const map: Record<string, StateDeptAdvisory> = {};
+    // State Dept uses 2-letter "FIPS-style" country codes (e.g. HA = Haiti, MX = Mexico).
+    // Map the few that differ from ISO-3166 alpha-2 so common lookups work.
+    const FIPS_TO_ISO2: Record<string, string> = {
+      HA: "HT", GM: "DE", SP: "ES", SW: "SE", SZ: "CH", DA: "DK",
+      UK: "GB", IZ: "IQ", IR: "IR", KS: "KR", KN: "KP", BU: "BG",
+      RP: "PH", VM: "VN", BR: "BR", CH: "CN", JA: "JP", TW: "TW",
+      AS: "AU", MX: "MX", CA: "CA", US: "US",
+    };
+    for (const row of list) {
+      const title = String(row.Title ?? row.title ?? "").trim();
+      const link = String(row.Link ?? row.link ?? "").trim();
+      const summary = stripHtml(row.Summary ?? row.summary ?? row.Description ?? "").slice(0, 600);
+      const cats: string[] = Array.isArray(row.Category) ? row.Category : (row.Category ? [row.Category] : []);
+      const level = normLevel(title || row.AdvisoryLevel || row.Level);
+      // Country name parsed out of "<Country> - Level N: …".
+      const nameMatch = title.match(/^([^-]+?)\s*[-–]\s*Level/i);
+      const countryName = nameMatch ? nameMatch[1].trim() : title;
+      for (const raw of cats) {
+        const code = String(raw ?? "").toUpperCase().slice(0, 2);
+        if (!code) continue;
+        const iso2 = FIPS_TO_ISO2[code] ?? code;
+        map[iso2] = {
+          level, levelLabel: levelLabel(level),
+          countryName, title, summary,
+          publishedAt: row.PubDate ?? row.PublishedDate ?? row.published ?? null,
+          url: link || `https://travel.state.gov/content/travel/en/traveladvisories/traveladvisories.html`,
+        };
+      }
+    }
+    stateDeptCache = { at: Date.now(), map };
+    return map;
+  } catch {
+    return stateDeptCache?.map ?? {};
+  }
+}
+async function fetchStateDept(country: string): Promise<StateDeptAdvisory | null> {
+  if (!country) return null;
+  const map = await loadStateDeptAdvisories();
+  return map[country.toUpperCase()] ?? null;
+}
+
 interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
 function decodeXmlEntities(s: string): string {
   return s
@@ -642,7 +735,7 @@ Deno.serve(async (req) => {
     }
 
     // Run all live sources concurrently.
-    const [quakes, weather, gdacs, meteo, overpass, fbiAgency, fires, eonet, conflict, headlines] = await Promise.all([
+    const [quakes, weather, gdacs, meteo, overpass, fbiAgency, fires, eonet, conflictBase, headlines, stateDept] = await Promise.all([
       fetchQuakes(coords.lat, coords.lon),
       fetchNwsAlerts(coords.lat, coords.lon, country),
       fetchGdacs(coords.lat, coords.lon),
@@ -653,7 +746,19 @@ Deno.serve(async (req) => {
       fetchNasaEonet(coords.lat, coords.lon),
       fetchAcled(country),
       fetchHeadlines(city, country),
+      fetchStateDept(country),
     ]);
+
+    // If the live State Dept advisory is more current/severe than our static
+    // ACLED row, prefer it for `travelAdvisory` and append a note for transparency.
+    const conflict: ConflictSignals = { ...conflictBase };
+    if (stateDept && stateDept.level > 0) {
+      conflict.travelAdvisory = Math.max(conflict.travelAdvisory, stateDept.level);
+      const note = `US State Dept (Level ${stateDept.level}): ${stateDept.levelLabel}`;
+      if (!conflict.notes.some((n) => n.startsWith("US State Dept"))) {
+        conflict.notes = [...conflict.notes, note];
+      }
+    }
 
     let fbiPartial: Partial<CrimeRates> | null = null;
     let fbiInfo: { agency: string; year: number; population: number } | null = null;
@@ -688,6 +793,7 @@ Deno.serve(async (req) => {
         conflict,
       },
       headlines,
+      stateDept,
       fbi: fbiInfo,
       city, state, country,
       fetchedAt: new Date().toISOString(),
