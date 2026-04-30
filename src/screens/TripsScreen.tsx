@@ -36,7 +36,8 @@ type WizardStep = 'dest' | 'date' | 'days' | 'invites' | 'confirm';
 export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, initialHint }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
-  const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
+  const [tab, setTab] = useState<'plan' | 'upcoming' | 'completed'>('plan');
+  const [showPlanChooser, setShowPlanChooser] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [showAiPlanner, setShowAiPlanner] = useState(false);
   const [aiHandoff, setAiHandoff] = useState<{ prompt: string; label: string } | null>(null);
@@ -897,106 +898,126 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
         <h2 className="text-xl font-extrabold">My Trips</h2>
         <div className="flex gap-2 mt-3">
-          {(['upcoming', 'completed'] as const).map(t => (
+          {(['plan', 'upcoming', 'completed'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${tab === t ? 'bg-kipita-red text-white' : 'bg-muted text-muted-foreground'}`}>
-              {t === 'upcoming' ? 'Upcoming' : 'Completed'}
+              {t === 'plan' ? 'Plan' : t === 'upcoming' ? 'Upcoming' : 'Completed'}
             </button>
           ))}
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto px-5 pb-24">
-        {/* Plan a trip — primary CTA opens wizard */}
-        <button
-          onClick={() => setShowWizard(true)}
-          data-tour="trips-plan-cta"
-          className="w-full flex items-center gap-3 bg-gradient-to-r from-kipita-red to-rose-500 text-white rounded-kipita p-4 mb-3 text-left hover:shadow-lg transition-shadow shadow-md active:scale-[0.98]"
-        >
-          <span className="text-2xl">✈️</span>
-          <div className="flex-1">
-            <div className="font-extrabold text-sm">Plan a Trip</div>
-            <div className="text-white/85 text-xs">Step-by-step booking · adds to your trips</div>
+        {tab === 'plan' && (
+          <>
+            {/* Plan a trip — primary CTA opens chooser (Manual vs AI) */}
+            <button
+              onClick={() => setShowPlanChooser(true)}
+              data-tour="trips-plan-cta"
+              className="w-full flex items-center gap-3 bg-gradient-to-r from-kipita-red to-rose-500 text-white rounded-kipita p-4 mb-3 text-left hover:shadow-lg transition-shadow shadow-md active:scale-[0.98]"
+            >
+              <span className="text-2xl">✈️</span>
+              <div className="flex-1">
+                <div className="font-extrabold text-sm">Plan a Trip</div>
+                <div className="text-white/85 text-xs">Choose Manual or Plan with AI</div>
+              </div>
+              <span className="ms text-xl">arrow_forward</span>
+            </button>
+
+            {/* Quick book — one-tap shortcuts (no trip required) */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <button
+                onClick={() => openInternal('https://www.hotels.com/affiliate/RrZ7bmg', 'Hotels')}
+                className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
+              >
+                <span className="text-2xl">🏨</span>
+                <div className="text-foreground font-extrabold text-[11px]">Find a Hotel</div>
+                <div className="text-muted-foreground text-[9px]">Hotels.com</div>
+              </button>
+              <button
+                onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Flights')}
+                className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
+              >
+                <span className="text-2xl">✈️</span>
+                <div className="text-foreground font-extrabold text-[11px]">Find a Flight</div>
+                <div className="text-muted-foreground text-[9px]">Expedia</div>
+              </button>
+              <button
+                onClick={() => openInternal('https://www.expedia.com/Cars', 'Car Rental')}
+                className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
+              >
+                <span className="text-2xl">🚗</span>
+                <div className="text-foreground font-extrabold text-[11px]">Rent a Car</div>
+                <div className="text-muted-foreground text-[9px]">Expedia</div>
+              </button>
+            </div>
+
+            {/* Travel utilities */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <button onClick={() => setTripsView('destinations')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+                <span className="text-xl">🌍</span>
+                <div className="text-foreground font-bold text-[11px]">Destinations</div>
+              </button>
+              <button onClick={() => setTripsView('phrases')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+                <span className="text-xl">🌐</span>
+                <div className="text-foreground font-bold text-[11px]">Phrases</div>
+              </button>
+              <button onClick={() => setTripsView('groups')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+                <span className="text-xl">👥</span>
+                <div className="text-foreground font-bold text-[11px]">Groups</div>
+              </button>
+              <button onClick={() => onSwitchTab?.('maps')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+                <span className="text-xl">🗺️</span>
+                <div className="text-foreground font-bold text-[11px]">Maps</div>
+              </button>
+              <button onClick={() => onSwitchTab?.('wallet')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+                <span className="text-xl">💱</span>
+                <div className="text-foreground font-bold text-[11px]">Currency</div>
+              </button>
+              <button onClick={() => onSwitchTab?.('perks')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
+                <span className="text-xl">🎁</span>
+                <div className="text-foreground font-bold text-[11px]">Perks</div>
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Plan a Trip chooser — Manual vs AI */}
+        {showPlanChooser && (
+          <div className="fixed inset-0 z-[360] flex items-end sm:items-center justify-center bg-black/60" onClick={() => setShowPlanChooser(false)}>
+            <div onClick={e => e.stopPropagation()} className="w-full sm:max-w-md bg-card rounded-t-2xl sm:rounded-kipita p-5 shadow-xl">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="font-extrabold text-base">Plan a Trip</h3>
+                <button onClick={() => setShowPlanChooser(false)} className="ms text-lg text-muted-foreground">close</button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-4">How would you like to start?</p>
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  onClick={() => { setShowPlanChooser(false); setShowWizard(true); }}
+                  className="w-full flex items-center gap-3 p-4 rounded-kipita border border-border bg-background hover:border-kipita-red/50 hover:shadow-md transition-all text-left active:scale-[0.99]"
+                >
+                  <span className="text-2xl">📝</span>
+                  <div className="flex-1">
+                    <div className="font-extrabold text-sm">Manual Trip</div>
+                    <div className="text-xs text-muted-foreground">Step-by-step builder · pick dates &amp; bookings</div>
+                  </div>
+                  <span className="ms text-muted-foreground">chevron_right</span>
+                </button>
+                <button
+                  onClick={() => { setShowPlanChooser(false); setAiHandoff(null); setShowAiPlanner(true); }}
+                  className="w-full flex items-center gap-3 p-4 rounded-kipita border border-border bg-background hover:border-kipita-red/50 hover:shadow-md transition-all text-left active:scale-[0.99]"
+                >
+                  <span className="text-2xl">✨</span>
+                  <div className="flex-1">
+                    <div className="font-extrabold text-sm">Plan with AI</div>
+                    <div className="text-xs text-muted-foreground">Describe your trip · AI builds an itinerary</div>
+                  </div>
+                  <span className="ms text-muted-foreground">chevron_right</span>
+                </button>
+              </div>
+            </div>
           </div>
-          <span className="ms text-xl">arrow_forward</span>
-        </button>
-
-        {/* Quick book — one-tap shortcuts (no trip required) */}
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <button
-            onClick={() => openInternal('https://www.hotels.com/affiliate/RrZ7bmg', 'Hotels')}
-            className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
-          >
-            <span className="text-2xl">🏨</span>
-            <div className="text-foreground font-extrabold text-[11px]">Find a Hotel</div>
-            <div className="text-muted-foreground text-[9px]">Hotels.com</div>
-          </button>
-          <button
-            onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Flights')}
-            className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
-          >
-            <span className="text-2xl">✈️</span>
-            <div className="text-foreground font-extrabold text-[11px]">Find a Flight</div>
-            <div className="text-muted-foreground text-[9px]">Expedia</div>
-          </button>
-          <button
-            onClick={() => openInternal('https://www.expedia.com/Cars', 'Car Rental')}
-            className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
-          >
-            <span className="text-2xl">🚗</span>
-            <div className="text-foreground font-extrabold text-[11px]">Rent a Car</div>
-            <div className="text-muted-foreground text-[9px]">Expedia</div>
-          </button>
-        </div>
-
-        {/* AI Planner secondary */}
-        <div className="grid grid-cols-2 gap-2 mb-4">
-          <button onClick={() => { setAiHandoff(null); setShowAiPlanner(true); }} data-tour="trips-ai-cta" className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
-            <span className="text-xl">✨</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-foreground font-extrabold text-xs leading-tight">Plan with AI</div>
-              <div className="text-muted-foreground text-[10px] leading-tight">Build an itinerary</div>
-            </div>
-          </button>
-          <button
-            onClick={() => openSupportHandoff({ topic: 'a booking or trip-planning issue', label: 'Trip & booking support' })}
-            className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border"
-          >
-            <span className="text-xl">🆘</span>
-            <div className="flex-1 min-w-0">
-              <div className="text-foreground font-extrabold text-xs leading-tight">Get Help</div>
-              <div className="text-muted-foreground text-[10px] leading-tight">AI troubleshoots bookings</div>
-            </div>
-          </button>
-        </div>
-
-        {/* Travel utilities */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          <button onClick={() => setTripsView('destinations')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
-            <span className="text-xl">🌍</span>
-            <div className="text-foreground font-bold text-[11px]">Destinations</div>
-          </button>
-          <button onClick={() => setTripsView('phrases')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
-            <span className="text-xl">🌐</span>
-            <div className="text-foreground font-bold text-[11px]">Phrases</div>
-          </button>
-          <button onClick={() => setTripsView('groups')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
-            <span className="text-xl">👥</span>
-            <div className="text-foreground font-bold text-[11px]">Groups</div>
-          </button>
-          <button onClick={() => onSwitchTab?.('maps')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
-            <span className="text-xl">🗺️</span>
-            <div className="text-foreground font-bold text-[11px]">Maps</div>
-          </button>
-          <button onClick={() => onSwitchTab?.('wallet')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
-            <span className="text-xl">💱</span>
-            <div className="text-foreground font-bold text-[11px]">Currency</div>
-          </button>
-          <button onClick={() => onSwitchTab?.('perks')} className="flex flex-col items-center gap-1.5 p-3 bg-card rounded-kipita text-center hover:shadow-md transition-shadow shadow-sm">
-            <span className="text-xl">🎁</span>
-            <div className="text-foreground font-bold text-[11px]">Perks</div>
-          </button>
-        </div>
+        )}
 
         {/* AI Planner Modal */}
         {showAiPlanner && (
@@ -1488,8 +1509,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           </div>
         )}
 
-        {/* Trip list */}
-        {filtered.map(trip => {
+        {/* Trip list — only on Upcoming/Completed tabs */}
+        {tab !== 'plan' && filtered.map(trip => {
           const bookingCount = trip.bookings?.length || 0;
           return (
             <button key={trip.id} onClick={() => { setSelectedTrip(trip); setExpandedDays({ 1: true }); }}
@@ -1512,11 +1533,11 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           );
         })}
 
-        {filtered.length === 0 && (
+        {tab !== 'plan' && filtered.length === 0 && (
           <div className="text-center py-10">
             <p className="text-4xl mb-2">🧳</p>
             <p className="text-sm text-muted-foreground">No {tab} trips yet</p>
-            <button onClick={() => setShowWizard(true)} className="mt-3 px-4 py-2 bg-kipita-red text-white rounded-full text-xs font-bold">
+            <button onClick={() => setShowPlanChooser(true)} className="mt-3 px-4 py-2 bg-kipita-red text-white rounded-full text-xs font-bold">
               ✈️ Plan your first trip
             </button>
           </div>
