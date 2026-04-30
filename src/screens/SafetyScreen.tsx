@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../integrations/supabase/client';
 import {
   computeSafetyScore, advisoryToBaseRates, detectTimeOfDay, safetyLevel,
@@ -133,7 +133,14 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [result, setResult] = useState<SafetyResult | null>(null);
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
   const [showSources, setShowSources] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const hasLive = !!crime && crime.source === 'LIVE_AGGREGATE' && Object.keys(crime.rates ?? {}).length > 0;
+
+  // Scroll back to the top whenever fresh data arrives or the context changes,
+  // so the user immediately sees the new gauge / ratings.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [hasLive, context, crime?.fetchedAt]);
 
   // Pull live multi-source aggregate. Refreshes on screen open and every 10
   // minutes while the screen is visible so the score stays current.
@@ -217,7 +224,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4">
         {/* Context Selector */}
         <div className="flex gap-2">
           {CONTEXTS.map(c => (
