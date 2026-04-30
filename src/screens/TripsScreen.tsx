@@ -36,7 +36,8 @@ type WizardStep = 'dest' | 'date' | 'days' | 'invites' | 'confirm';
 export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, initialHint }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
-  const [tab, setTab] = useState<'upcoming' | 'completed'>('upcoming');
+  const [tab, setTab] = useState<'plan' | 'upcoming' | 'completed'>('plan');
+  const [showPlanChooser, setShowPlanChooser] = useState(false);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [showAiPlanner, setShowAiPlanner] = useState(false);
   const [aiHandoff, setAiHandoff] = useState<{ prompt: string; label: string } | null>(null);
