@@ -921,6 +921,34 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           <span className="ms text-xl">arrow_forward</span>
         </button>
 
+        {/* Quick book — one-tap shortcuts (no trip required) */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <button
+            onClick={() => openInternal('https://www.hotels.com/affiliate/RrZ7bmg', 'Hotels')}
+            className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
+          >
+            <span className="text-2xl">🏨</span>
+            <div className="text-foreground font-extrabold text-[11px]">Find a Hotel</div>
+            <div className="text-muted-foreground text-[9px]">Hotels.com</div>
+          </button>
+          <button
+            onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Flights')}
+            className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
+          >
+            <span className="text-2xl">✈️</span>
+            <div className="text-foreground font-extrabold text-[11px]">Find a Flight</div>
+            <div className="text-muted-foreground text-[9px]">Expedia</div>
+          </button>
+          <button
+            onClick={() => openInternal('https://www.expedia.com/Cars', 'Car Rental')}
+            className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
+          >
+            <span className="text-2xl">🚗</span>
+            <div className="text-foreground font-extrabold text-[11px]">Rent a Car</div>
+            <div className="text-muted-foreground text-[9px]">Expedia</div>
+          </button>
+        </div>
+
         {/* AI Planner secondary */}
         <div className="grid grid-cols-2 gap-2 mb-4">
           <button onClick={() => { setAiHandoff(null); setShowAiPlanner(true); }} data-tour="trips-ai-cta" className="flex items-center gap-2 bg-card rounded-kipita p-3 text-left hover:shadow-md transition-shadow shadow-sm border border-border">
