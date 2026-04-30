@@ -898,10 +898,10 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
         <h2 className="text-xl font-extrabold">My Trips</h2>
         <div className="flex gap-2 mt-3">
-          {(['upcoming', 'completed'] as const).map(t => (
+          {(['plan', 'upcoming', 'completed'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`px-4 py-2 rounded-full text-xs font-bold transition-colors ${tab === t ? 'bg-kipita-red text-white' : 'bg-muted text-muted-foreground'}`}>
-              {t === 'upcoming' ? 'Upcoming' : 'Completed'}
+              {t === 'plan' ? 'Plan' : t === 'upcoming' ? 'Upcoming' : 'Completed'}
             </button>
           ))}
         </div>
