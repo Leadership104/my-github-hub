@@ -133,7 +133,14 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [result, setResult] = useState<SafetyResult | null>(null);
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
   const [showSources, setShowSources] = useState(false);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const hasLive = !!crime && crime.source === 'LIVE_AGGREGATE' && Object.keys(crime.rates ?? {}).length > 0;
+
+  // Scroll back to the top whenever fresh data arrives or the context changes,
+  // so the user immediately sees the new gauge / ratings.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [hasLive, context, crime?.fetchedAt]);
 
   // Pull live multi-source aggregate. Refreshes on screen open and every 10
   // minutes while the screen is visible so the score stays current.
