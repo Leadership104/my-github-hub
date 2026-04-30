@@ -132,6 +132,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [context, setContext] = useState<SafetyContext>('AWAY');
   const [result, setResult] = useState<SafetyResult | null>(null);
   const [crime, setCrime] = useState<CrimeDataResponse | null>(null);
+  const [showSources, setShowSources] = useState(false);
   const hasLive = !!crime && crime.source === 'LIVE_AGGREGATE' && Object.keys(crime.rates ?? {}).length > 0;
 
   // Pull live multi-source aggregate. Refreshes on screen open and every 10
