@@ -224,7 +224,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4">
         {/* Context Selector */}
         <div className="flex gap-2">
           {CONTEXTS.map(c => (
