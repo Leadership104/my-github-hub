@@ -1351,15 +1351,15 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 })()}
               </section>
 
-              {/* ── Arrival & Departure ── */}
+              {/* ── Departure & Return ── */}
               <section className="space-y-3">
                 <div>
-                  <h4 className="text-lg font-extrabold">2. Arrival & Departure</h4>
-                  <p className="text-xs text-muted-foreground">Set exact dates & times — we'll seed your itinerary with arrival and departure.</p>
+                  <h4 className="text-lg font-extrabold">2. Departure & Return</h4>
+                  <p className="text-xs text-muted-foreground">Set when you leave and when you return — same order as Hotels, Expedia and Google Flights.</p>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                   <div>
-                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">✈️ ARRIVAL</label>
+                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">🛫 DEPARTURE (LEAVE HOME)</label>
                     <input
                       type="datetime-local"
                       value={wArrivalAt}
@@ -1371,7 +1371,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                     />
                   </div>
                   <div>
-                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">🛬 DEPARTURE</label>
+                    <label className="text-[11px] font-bold text-muted-foreground tracking-wider mb-1 block">🛬 RETURN (BACK HOME)</label>
                     <input
                       type="datetime-local"
                       value={wDepartureAt}
