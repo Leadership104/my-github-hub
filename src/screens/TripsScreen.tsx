@@ -1509,8 +1509,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           </div>
         )}
 
-        {/* Trip list */}
-        {filtered.map(trip => {
+        {/* Trip list — only on Upcoming/Completed tabs */}
+        {tab !== 'plan' && filtered.map(trip => {
           const bookingCount = trip.bookings?.length || 0;
           return (
             <button key={trip.id} onClick={() => { setSelectedTrip(trip); setExpandedDays({ 1: true }); }}
@@ -1533,11 +1533,11 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           );
         })}
 
-        {filtered.length === 0 && (
+        {tab !== 'plan' && filtered.length === 0 && (
           <div className="text-center py-10">
             <p className="text-4xl mb-2">🧳</p>
             <p className="text-sm text-muted-foreground">No {tab} trips yet</p>
-            <button onClick={() => setShowWizard(true)} className="mt-3 px-4 py-2 bg-kipita-red text-white rounded-full text-xs font-bold">
+            <button onClick={() => setShowPlanChooser(true)} className="mt-3 px-4 py-2 bg-kipita-red text-white rounded-full text-xs font-bold">
               ✈️ Plan your first trip
             </button>
           </div>
