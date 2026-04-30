@@ -325,11 +325,76 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           </div>
         </div>
 
-        {/* Live Data Feeds */}
-        <LiveFeedsPanel crime={crime} hasLive={hasLive} />
+        {/* Active risk alerts (kept inline — these are critical) */}
+        {(crime?.signals?.conflict?.notes?.length ?? 0) > 0 && (
+          <div className="p-2.5 rounded-kipita border border-destructive/40 bg-destructive/10">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-destructive mb-1">
+              ⚠ Active Risk Alerts
+            </p>
+            <ul className="space-y-0.5">
+              {crime!.signals!.conflict!.notes!.slice(0, 4).map((n, i) => (
+                <li key={i} className="text-[11px] text-foreground leading-snug">• {n}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Small link to open data-sources modal */}
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
+          <div className="flex items-center gap-1.5">
+            <span
+              className="w-1.5 h-1.5 rounded-full animate-pulse"
+              style={{ backgroundColor: hasLive ? '#22c55e' : '#94a3b8' }}
+            />
+            <span>{hasLive ? 'Live data' : 'Baseline'} · updated {relativeTime(crime?.fetchedAt)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowSources(true)}
+            className="underline underline-offset-2 hover:text-foreground transition-colors"
+          >
+            ⓘ Data sources
+          </button>
+        </div>
 
         {/* News Headlines */}
         <HeadlinesPanel crime={crime} />
+      </div>
+
+      {showSources && (
+        <SourcesModal crime={crime} hasLive={hasLive} onClose={() => setShowSources(false)} />
+      )}
+    </div>
+  );
+}
+
+function SourcesModal({
+  crime, hasLive, onClose,
+}: { crime: CrimeDataResponse | null; hasLive: boolean; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-50 bg-black/60 flex items-end sm:items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-card border border-border rounded-kipita w-full max-w-md max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between p-4 border-b border-border sticky top-0 bg-card">
+          <p className="text-sm font-bold text-foreground">Where this rating comes from</p>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground text-lg leading-none px-2"
+            aria-label="Close"
+          >×</button>
+        </div>
+        <div className="p-4">
+          <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+            Your safety score is aggregated in real time from the public data feeds below.
+            We refresh every 10 minutes and fall back to a calibrated baseline if a source is offline.
+          </p>
+          <LiveFeedsPanel crime={crime} hasLive={hasLive} />
+        </div>
       </div>
     </div>
   );
