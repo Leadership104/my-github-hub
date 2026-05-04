@@ -340,7 +340,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
       const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
       const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
-      return distA - distB;
+      // Bucket by distance (every 0.5km), then by rating within the bucket so
+      // closer-but-similarly-near results with better reviews float up.
+      const bucketA = Math.floor(distA * 2);
+      const bucketB = Math.floor(distB * 2);
+      if (bucketA !== bucketB) return bucketA - bucketB;
+      return (b.rating ?? 0) - (a.rating ?? 0);
     });
     setLivePlaces(sorted);
     setLoading(false);
