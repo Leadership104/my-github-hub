@@ -1510,28 +1510,18 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         )}
 
         {/* Trip list — only on Upcoming/Completed tabs */}
-        {tab !== 'plan' && filtered.map(trip => {
-          const bookingCount = trip.bookings?.length || 0;
-          return (
-            <button key={trip.id} onClick={() => { setSelectedTrip(trip); setExpandedDays({ 1: true }); }}
-              className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-kipita mb-3 text-left hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl flex-shrink-0">{trip.emoji}</div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm truncate">{trip.dest}, {trip.country}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{trip.start} → {trip.end}</div>
-                <div className="flex gap-3 mt-1">
-                  {trip.items.length > 0 && (
-                    <span className="text-xs text-kipita-green font-semibold">{trip.items.filter(i => i.done).length}/{trip.items.length} tasks</span>
-                  )}
-                  {bookingCount > 0 && (
-                    <span className="text-xs text-kipita-red font-semibold">📦 {bookingCount} booking{bookingCount > 1 ? 's' : ''}</span>
-                  )}
-                </div>
-              </div>
-              <span className="ms text-muted-foreground">chevron_right</span>
-            </button>
-          );
-        })}
+        {tab !== 'plan' && filtered.map(trip => (
+          <SwipeableTripRow
+            key={trip.id}
+            trip={trip}
+            onOpen={() => { setSelectedTrip(trip); setExpandedDays({ 1: true }); }}
+            onDelete={() => {
+              if (confirm(`Delete trip to ${trip.dest}? This cannot be undone.`)) {
+                save(trips.filter(t => t.id !== trip.id));
+              }
+            }}
+          />
+        ))}
 
         {tab !== 'plan' && filtered.length === 0 && (
           <div className="text-center py-10">
