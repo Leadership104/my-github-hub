@@ -189,6 +189,16 @@ export default function App() {
     })();
     return () => { cancelled = true; };
   }, [countryCode, vpnDismissed]);
+
+  // Confirmation toast when GPS auto-detects location
+  useEffect(() => {
+    const onDetected = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.name) showToast(`📍 Location detected: ${detail.name}`);
+    };
+    window.addEventListener('kip-location-detected', onDetected);
+    return () => window.removeEventListener('kip-location-detected', onDetected);
+  }, [showToast]);
   const { forecast, ...weather } = useWeather(lat, lng);
   const prices = useCryptoPrices();
   const metals = useMetalPrices();
