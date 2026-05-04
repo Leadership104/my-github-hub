@@ -642,7 +642,10 @@ export const BOOKING_TILES = [
 ];
 
 export const PERKS = [
-  // Travel partners (Expedia, Hotels.com, Expedia Cruises) intentionally moved to the Travel section.
+  // Travel partners
+  { icon: '🏨', title: 'Hotels.com', url: 'https://www.hotels.com/affiliate/RrZ7bmg', category: 'travel' },
+  { icon: '✈️', title: 'Expedia', url: 'https://expedia.com/affiliate/eA2cKky', category: 'travel' },
+  { icon: '🚢', title: 'Expedia Cruises', url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w', category: 'travel' },
   { icon: '🦢', title: 'Swan Bitcoin', url: 'https://www.swanbitcoin.com/kipita/', category: 'btc' },
   { icon: '💳', title: 'Fold Card', url: 'https://use.foldapp.com/r/MAJL4MYU', category: 'btc' },
   { icon: '🥇', title: 'Kinesis', url: 'https://kms.kinesis.money/signup/KM00083150', category: 'btc' },
