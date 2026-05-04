@@ -286,16 +286,18 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     }
   }, [initialView]);
 
-  // Auto-refresh results when location changes while viewing a subcategory
+  // Auto-refresh results when location changes (any view that shows places)
   const prevLocRef = React.useRef({ lat, lng });
   React.useEffect(() => {
     if (prevLocRef.current.lat === lat && prevLocRef.current.lng === lng) return;
     prevLocRef.current = { lat, lng };
+    // Reset auto-pick guard so explore re-probes for the new location
+    exploreAutoPickedRef.current = null;
     if (view === 'subcategory' && selectedSub) {
       (async () => {
         setLoading(true);
         const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
-        const places = await fetchGooglePlaces('search', { query: `${term} near ${locationName}`, lat, lng, radius: 5000 });
+        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: 5000 });
         setLivePlaces(places);
         setLoading(false);
       })();
@@ -303,7 +305,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     if (view === 'foodguide') {
       loadFoodGuide(selectedCuisine);
     }
-  }, [lat, lng, locationName, view, selectedSub]);
+    if (activeChip) {
+      const chip = activeChip;
+      setActiveChip(null);
+      setTimeout(() => selectChip(chip), 0);
+    }
+  }, [lat, lng]);
 
   const hour = new Date().getHours();
   const greet = hour < 5 ? '🌙 Late Night' : hour < 10 ? '🍳 Good Morning' : hour < 14 ? '☀️ Good Afternoon' : hour < 18 ? '🌤️ Afternoon' : '🌆 Good Evening';
@@ -318,7 +325,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const searchTerm = (query && query.trim()) || label;
     const RADIUS_M = 5000;
     const RADIUS_KM = RADIUS_M / 1000;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm} near ${locationName}`, lat, lng, radius: RADIUS_M });
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: RADIUS_M });
     const places = rawPlaces.filter(p => {
       const types = p.types || [];
       const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
@@ -352,8 +359,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const loadFoodGuide = useCallback(async (cuisine: string) => {
     setFoodGuideLoading(true);
     const query = cuisine === 'all'
-      ? `restaurants near ${locationName}`
-      : `authentic ${cuisine} food restaurant -fusion near ${locationName}`;
+      ? `restaurants`
+      : `authentic ${cuisine} food restaurant -fusion`;
     const places = await fetchGooglePlaces('search', { query, lat, lng, radius: 8000 }); // ~10 min drive radius
 
     const now = new Date();
@@ -408,7 +415,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const searchTerm = (chip.query && chip.query.trim()) || chip.label;
     const RADIUS_M = 5000;
     const RADIUS_KM = RADIUS_M / 1000;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm} near ${locationName}`, lat, lng, radius: RADIUS_M });
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: RADIUS_M });
     // Drop locality / non-business results AND anything outside the selected city's radius.
     const places = rawPlaces.filter(p => {
       const types = p.types || [];
@@ -467,7 +474,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const probes = await Promise.all(allChips.map(async (chip) => {
         const term = (chip.query && chip.query.trim()) || chip.label;
         try {
-          const results = await fetchGooglePlaces('search', { query: `${term} near ${locationName}`, lat, lng, radius: 5000 });
+          const results = await fetchGooglePlaces('search', { query: `${term}`, lat, lng, radius: 5000 });
           let best = Infinity;
           for (const p of results) {
             const types = p.types || [];
