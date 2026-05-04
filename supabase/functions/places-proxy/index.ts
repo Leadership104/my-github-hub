@@ -98,9 +98,7 @@ async function textSearch(query: string, lat?: number, lng?: number, radius = 50
         high: { latitude: lat + dLat, longitude: lng + dLng },
       },
     };
-    body.locationBias = {
-      circle: { center: { latitude: lat, longitude: lng }, radius: r },
-    };
+    // Note: Google Places API rejects locationRestriction + locationBias together.
   }
 
   const res = await fetch(
