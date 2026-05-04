@@ -1,5 +1,44 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { CryptoPrice, BTCMerchant, MetalPrice } from './types';
+import { supabase } from '@/integrations/supabase/client';
+
+/**
+ * Resolve precise street address for lat/lng. Prefers Google Geocoding (via
+ * places-proxy edge function) which returns the postal city (e.g. "Herndon")
+ * and a full street address. Falls back to BigDataCloud + Nominatim if Google
+ * is unavailable.
+ */
+export async function preciseReverseGeocode(lat: number, lng: number): Promise<{
+  name: string;
+  fullAddress: string;
+  countryCode: string;
+}> {
+  // Try Google via edge function first.
+  try {
+    const { data, error } = await supabase.functions.invoke('places-proxy', {
+      body: { action: 'geocode', lat, lng },
+    });
+    if (!error && data && !data.error && data.formattedAddress) {
+      const cc = (data.countryCode || '').toUpperCase();
+      const cityState = [data.city, data.state].filter(Boolean).join(', ');
+      const name = cityState ? `${cityState}${cc ? ', ' + cc : ''}` : (data.formattedAddress || 'Current Location');
+      return { name, fullAddress: data.formattedAddress, countryCode: cc };
+    }
+  } catch { /* fall through */ }
+
+  // Fallback: BigDataCloud (postal city) + Nominatim (street address).
+  const [bdcRes, nomRes] = await Promise.all([
+    fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`),
+    fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`),
+  ]);
+  const bdc = await bdcRes.json().catch(() => ({} as any));
+  const nom = await nomRes.json().catch(() => ({} as any));
+  const city = bdc.city || bdc.locality || bdc.principalSubdivision || nom.address?.city || nom.address?.town || nom.address?.village || '';
+  const country = (bdc.countryCode || nom.address?.country_code || '').toUpperCase();
+  const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
+  const fullAddress = nom.display_name || [bdc.locality, bdc.principalSubdivision, bdc.countryName].filter(Boolean).join(', ') || name;
+  return { name, fullAddress, countryCode: country };
+}
 
 export function useDragScroll<T extends HTMLElement = HTMLDivElement>() {
   const ref = useRef<T>(null);
