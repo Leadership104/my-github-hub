@@ -330,14 +330,14 @@ export default function AIScreen({
     try { rec.start(); setIsListening(true); } catch { setIsListening(false); }
   }, [isListening]);
 
-  // Reverse-chronological view: newest message renders at the TOP of the list.
-  // Whenever a new message arrives (user or AI), snap the scroll container to the
-  // top so the latest exchange is immediately visible without scrolling.
+  // Normal chat view: oldest message at the top, newest at the bottom.
+  // Whenever a new message arrives (user or AI) or auxiliary content updates,
+  // scroll the container to the bottom so the latest exchange is visible.
   useEffect(() => {
     prevMsgCountRef.current = messages.length;
     requestAnimationFrame(() => {
       const container = scrollContainerRef.current;
-      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+      if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     });
   }, [messages, suggestions, nearbyPlaces, briefingLoading, loading]);
 
@@ -561,8 +561,17 @@ export default function AIScreen({
         ))}
       </div>
 
-      {/* Messages — reverse chronological: newest at the top */}
+      {/* Messages — normal chronological order: oldest at top, newest at bottom */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {messages.map((msg, idx) => {
+          const isNewest = idx === messages.length - 1 && msg.role === 'ai';
+          return (
+            <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
+              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
+            </div>
+          );
+        })}
+
         {(loading || briefingLoading) && <TypingIndicator />}
 
         {/* Nearby place chips (shown after briefing) */}
@@ -603,15 +612,6 @@ export default function AIScreen({
             </button>
           </div>
         )}
-
-        {[...messages].reverse().map((msg, idx) => {
-          const isNewest = idx === 0 && msg.role === 'ai';
-          return (
-            <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
-              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
-            </div>
-          );
-        })}
 
         <div ref={bottomRef} />
       </div>
