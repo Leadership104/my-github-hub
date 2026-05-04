@@ -109,7 +109,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
   if (hour >= 23 || hour < 4) {
     return [
       { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
-      { id: 'atm', emoji: '🏧', label: 'ATM', hint: 'atm', chips: ESSENTIAL_CHIPS.atm },
+      { id: 'atm', emoji: '💵', label: '$ Money', hint: 'atm', chips: ESSENTIAL_CHIPS.atm },
       { id: 'late', emoji: '🍔', label: 'Late Eats', hint: 'food', chips: food },
       { id: 'gas', emoji: '⛽', label: 'Gas', hint: 'gas', chips: gas },
     ];
@@ -254,7 +254,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { id: 'shopping', label: 'Shopping', render: () => <span className="text-3xl">🛍️</span> },
     { id: 'fuel', label: 'Gas/EV', render: () => <FuelIcon size={36} /> },
     { id: 'maps', label: 'Maps', render: () => <span className="text-3xl">🗺️</span> },
-    { id: 'atm', label: 'ATM', render: () => <span className="text-3xl">🏧</span> },
+    { id: 'atm', label: '$ Money', render: () => <span className="text-3xl">💵</span> },
   ];
 
   const featured = getFeaturedNearMe();
