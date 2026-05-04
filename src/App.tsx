@@ -408,6 +408,15 @@ export default function App() {
         </div>
       )}
 
+      {/* Daily health-check banner */}
+      {healthIssues.length > 0 && !healthDismissed && (
+        <div className="bg-red-100 border-b border-red-300 text-red-900 text-xs px-4 py-2 flex items-start gap-2 flex-shrink-0">
+          <span className="ms text-base flex-shrink-0">error</span>
+          <span className="flex-1">Service issue detected: {healthIssues.join(', ')} not responding. Some features may be limited.</span>
+          <button onClick={() => setHealthDismissed(true)} className="font-bold flex-shrink-0" aria-label="Dismiss">✕</button>
+        </div>
+      )}
+
       {/* Lightweight toast */}
       {toast && (
         <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[400] bg-kipita-navy text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg max-w-[90%] text-center">
