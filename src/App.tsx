@@ -199,6 +199,56 @@ export default function App() {
     window.addEventListener('kip-location-detected', onDetected);
     return () => window.removeEventListener('kip-location-detected', onDetected);
   }, [showToast]);
+
+  // Daily health check: verify core APIs every 24h, show banner if any fail.
+  const [healthIssues, setHealthIssues] = useState<string[]>([]);
+  const [healthDismissed, setHealthDismissed] = useState(false);
+  useEffect(() => {
+    const KEY = 'kip_health_last';
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const run = async () => {
+      const checks: { name: string; fn: () => Promise<boolean> }[] = [
+        { name: 'Places', fn: async () => {
+          const { supabase } = await import('@/integrations/supabase/client');
+          const { data, error } = await supabase.functions.invoke('places-proxy', { body: { action: 'nearby', lat: 40.7128, lng: -74.006, type: 'restaurant', radius: 1500 } });
+          return !error && Array.isArray(data);
+        }},
+        { name: 'AI Assistant', fn: async () => {
+          const { supabase } = await import('@/integrations/supabase/client');
+          const { data, error } = await supabase.functions.invoke('ai-chat', { body: { message: 'ping' } });
+          return !error && !!data?.reply;
+        }},
+        { name: 'Weather', fn: async () => {
+          const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.71&longitude=-74&current=temperature_2m');
+          return r.ok;
+        }},
+        { name: 'Crypto prices', fn: async () => {
+          const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd');
+          return r.ok;
+        }},
+      ];
+      const results = await Promise.all(checks.map(async c => {
+        try { return { name: c.name, ok: await c.fn() }; }
+        catch { return { name: c.name, ok: false }; }
+      }));
+      const failed = results.filter(r => !r.ok).map(r => r.name);
+      try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now(), failed })); } catch {}
+      setHealthIssues(failed);
+      setHealthDismissed(false);
+    };
+    let last: { ts: number; failed: string[] } | null = null;
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) last = JSON.parse(raw);
+    } catch {}
+    if (!last || Date.now() - last.ts > DAY_MS) {
+      const t = setTimeout(run, 4000);
+      return () => clearTimeout(t);
+    } else {
+      setHealthIssues(last.failed || []);
+    }
+  }, []);
+
   const { forecast, ...weather } = useWeather(lat, lng);
   const prices = useCryptoPrices();
   const metals = useMetalPrices();
