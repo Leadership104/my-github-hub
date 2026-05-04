@@ -286,16 +286,18 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     }
   }, [initialView]);
 
-  // Auto-refresh results when location changes while viewing a subcategory
+  // Auto-refresh results when location changes (any view that shows places)
   const prevLocRef = React.useRef({ lat, lng });
   React.useEffect(() => {
     if (prevLocRef.current.lat === lat && prevLocRef.current.lng === lng) return;
     prevLocRef.current = { lat, lng };
+    // Reset auto-pick guard so explore re-probes for the new location
+    exploreAutoPickedRef.current = null;
     if (view === 'subcategory' && selectedSub) {
       (async () => {
         setLoading(true);
         const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
-        const places = await fetchGooglePlaces('search', { query: `${term}`, lat, lng, radius: 5000 });
+        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: 5000 });
         setLivePlaces(places);
         setLoading(false);
       })();
@@ -303,7 +305,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     if (view === 'foodguide') {
       loadFoodGuide(selectedCuisine);
     }
-  }, [lat, lng, locationName, view, selectedSub]);
+    if (activeChip) {
+      const chip = activeChip;
+      setActiveChip(null);
+      setTimeout(() => selectChip(chip), 0);
+    }
+  }, [lat, lng]);
 
   const hour = new Date().getHours();
   const greet = hour < 5 ? '🌙 Late Night' : hour < 10 ? '🍳 Good Morning' : hour < 14 ? '☀️ Good Afternoon' : hour < 18 ? '🌤️ Afternoon' : '🌆 Good Evening';
