@@ -567,6 +567,8 @@ export default function App() {
                     {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.flag} {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label}
                   </span>
                 </button>
+                <hr className="border-border" />
+                <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Tutorials</div>
                 <button
                   onClick={() => {
                     resetAllTours();
@@ -577,6 +579,20 @@ export default function App() {
                 >
                   <span className="ms text-lg text-muted-foreground">school</span> {t('profile.replayTour')}
                 </button>
+                {(['home','ai','trips','places'] as TabId[]).map(tid => (
+                  <button
+                    key={tid}
+                    onClick={() => {
+                      try { localStorage.removeItem(`kip_tour_${tid}_done`); } catch {}
+                      setShowProfile(false);
+                      switchTab(tid);
+                      setTimeout(() => setActiveTour(tid), 400);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium hover:bg-muted transition-colors text-muted-foreground"
+                  >
+                    <span className="ms text-base">play_circle</span> {NAV_LABELS[tid] || tid} tutorial
+                  </button>
+                ))}
                 <hr className="border-border" />
                 <button
                   onClick={async () => { setShowProfile(false); localStorage.removeItem('kip_guest'); window.dispatchEvent(new Event('kip-guest-changed')); await signOut(); }}
