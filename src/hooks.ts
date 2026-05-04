@@ -198,30 +198,44 @@ export function useLocation() {
       if (!cancelled) setDetected(true);
     };
 
+    // Track last accepted fix; only re-resolve when user actually moves.
+    // This stops the address from "flickering" between neighboring localities
+    // (e.g. Herndon ↔ McNair ↔ Reston) due to normal GPS drift while stationary.
+    let lastLat: number | null = null;
+    let lastLng: number | null = null;
+    const MIN_MOVE_METERS = 150; // ignore drift smaller than this
+    const MAX_ACCURACY_M = 200;  // ignore very fuzzy fixes
+
+    const maybeResolve = (lat: number, lng: number, accuracy: number) => {
+      if (cancelled) return;
+      if (accuracy && accuracy > MAX_ACCURACY_M && lastLat !== null) return;
+      if (lastLat !== null && lastLng !== null) {
+        const movedKm = haversine(lastLat, lastLng, lat, lng);
+        if (movedKm * 1000 < MIN_MOVE_METERS) return; // drift, ignore
+      }
+      lastLat = lat;
+      lastLng = lng;
+      resolve(lat, lng);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      (pos) => { if (!cancelled) resolve(pos.coords.latitude, pos.coords.longitude); },
+      (pos) => maybeResolve(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
       async () => { await useIpOrDefault(); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
 
-    // Re-verify every 30 seconds to keep address current as user moves.
+    // watchPosition only fires when the device reports a new fix; combined
+    // with the movement threshold above, the address stays stable while the
+    // user is stationary and updates promptly when they actually move.
     const watchId = navigator.geolocation.watchPosition(
-      (pos) => { if (!cancelled) resolve(pos.coords.latitude, pos.coords.longitude); },
+      (pos) => maybeResolve(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy),
       () => { /* ignore */ },
-      { enableHighAccuracy: true, maximumAge: 30 * 1000, timeout: 15000 }
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 }
     );
-    const intervalId = window.setInterval(() => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => { if (!cancelled) resolve(pos.coords.latitude, pos.coords.longitude); },
-        () => { /* ignore */ },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    }, 30 * 1000);
 
     return () => {
       cancelled = true;
       navigator.geolocation.clearWatch(watchId);
-      window.clearInterval(intervalId);
     };
   }, []);
 
