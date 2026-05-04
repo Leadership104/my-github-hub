@@ -561,8 +561,17 @@ export default function AIScreen({
         ))}
       </div>
 
-      {/* Messages — reverse chronological: newest at the top */}
+      {/* Messages — normal chronological order: oldest at top, newest at bottom */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {messages.map((msg, idx) => {
+          const isNewest = idx === messages.length - 1 && msg.role === 'ai';
+          return (
+            <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
+              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
+            </div>
+          );
+        })}
+
         {(loading || briefingLoading) && <TypingIndicator />}
 
         {/* Nearby place chips (shown after briefing) */}
@@ -603,15 +612,6 @@ export default function AIScreen({
             </button>
           </div>
         )}
-
-        {[...messages].reverse().map((msg, idx) => {
-          const isNewest = idx === 0 && msg.role === 'ai';
-          return (
-            <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
-              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
-            </div>
-          );
-        })}
 
         <div ref={bottomRef} />
       </div>
