@@ -18,6 +18,7 @@ import ATMScreen from './screens/ATMScreen';
 import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
+import { useAuth } from './auth/useAuth';
 
 /** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
 const TOURS: Record<string, TourStep[]> = {
@@ -121,6 +122,7 @@ export default function App() {
   const [showProfile, setShowProfile] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
   const { t, lang, setLang } = useI18n();
+  const { user, profile, signOut } = useAuth();
   const NAV_LABELS: Partial<Record<TabId, string>> = {
     home: t('nav.home'), ai: t('nav.ai'), trips: t('nav.travel'), places: t('nav.places'),
   };
@@ -497,10 +499,14 @@ export default function App() {
           <div className="fixed inset-0 z-[150]" onClick={() => { setShowProfile(false); setShowLangPicker(false); }} />
           <div className="absolute top-[76px] right-2 bg-card border border-border rounded-kipita shadow-lg min-w-[260px] max-w-[300px] z-[200] overflow-hidden">
             <div className="flex items-center gap-3 p-4">
-              <span className="ms text-4xl text-muted-foreground">account_circle</span>
-              <div>
-                <div className="text-sm font-bold">{t('profile.guest')}</div>
-                <div className="text-xs text-muted-foreground">{t('profile.notSignedIn')}</div>
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt="" className="w-10 h-10 rounded-full object-cover" />
+              ) : (
+                <span className="ms text-4xl text-muted-foreground">account_circle</span>
+              )}
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate">{profile?.display_name || user?.email?.split('@')[0] || t('profile.guest')}</div>
+                <div className="text-xs text-muted-foreground truncate">{user?.email || t('profile.notSignedIn')}</div>
               </div>
             </div>
             <hr className="border-border" />
@@ -534,7 +540,10 @@ export default function App() {
                   <span className="ms text-lg text-muted-foreground">school</span> {t('profile.replayTour')}
                 </button>
                 <hr className="border-border" />
-                <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-kipita-red hover:bg-muted transition-colors">
+                <button
+                  onClick={async () => { setShowProfile(false); await signOut(); }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-kipita-red hover:bg-muted transition-colors"
+                >
                   <span className="ms text-lg">logout</span> {t('profile.signOut')}
                 </button>
               </>
