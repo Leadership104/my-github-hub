@@ -800,9 +800,12 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       {/* Map */}
       <div ref={containerRef} className="flex-1 z-0" />
 
-      {/* Enhanced Place detail card */}
+      {/* Enhanced Place detail card — anchored to bottom, capped so it never crosses the filter pills */}
       {selectedPlace && (
-        <div className="absolute bottom-[210px] left-3 right-3 z-[501] bg-card rounded-2xl shadow-xl border border-border overflow-hidden animate-in slide-in-from-bottom-4 max-h-[55vh] flex flex-col">
+        <div
+          className="absolute left-3 right-3 z-[501] bg-card rounded-2xl shadow-xl border border-border overflow-hidden animate-in slide-in-from-bottom-4 flex flex-col"
+          style={{ bottom: 12, top: subs.length > 0 ? 132 : 96 }}
+        >
           <button onClick={() => setSelectedPlace(null)} className="absolute top-2 right-2 z-10 bg-black/40 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold">✕</button>
 
           {/* Photo gallery */}
@@ -1014,8 +1017,8 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         </div>
       )}
 
-      {/* Bottom sheet (hidden when safety panel is active) */}
-      {!showSafety && <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[60%]' : 'h-[200px]'}`}>
+      {/* Bottom sheet (hidden when safety panel or place card is active) */}
+      {!showSafety && !selectedPlace && <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[70%]' : 'h-[140px]'}`}>
         <button onClick={() => setExpanded(!expanded)} className="w-full flex flex-col items-center py-2">
           <div className="w-10 h-1 bg-border rounded-full" />
           <span className="text-[10px] text-muted-foreground mt-1">{expanded ? '▼ collapse' : '▲ expand'}</span>
@@ -1024,7 +1027,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
           <h3 className="text-sm font-bold">{sheetTitle}</h3>
           <span className="text-xs text-muted-foreground">{nearbyPlaces.length} found · multi-source</span>
         </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ maxHeight: expanded ? 'calc(100% - 80px)' : '120px' }}>
+        <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ maxHeight: expanded ? 'calc(100% - 80px)' : '70px' }}>
           {(loading && filter === 'btc') || placesLoading ? (
             <div className="text-center text-sm text-muted-foreground py-4">
               <div className="animate-pulse">Aggregating real-time data from multiple sources…</div>
