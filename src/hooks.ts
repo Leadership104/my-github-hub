@@ -148,38 +148,54 @@ export function useLocation() {
       return () => { cancelled = true; };
     }
 
+    const resolve = async (lat: number, lng: number) => {
+      try {
+        // BigDataCloud returns postal city (e.g. "Herndon") accurately, not the
+        // census-designated place (e.g. "McNair") that Nominatim defaults to.
+        // Fall back to Nominatim for the full street address.
+        const [bdcRes, nomRes] = await Promise.all([
+          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`),
+          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`),
+        ]);
+        const bdc = await bdcRes.json().catch(() => ({} as any));
+        const nom = await nomRes.json().catch(() => ({} as any));
+        const city = bdc.city || bdc.locality || bdc.principalSubdivision || nom.address?.city || nom.address?.town || nom.address?.village || '';
+        const country = (bdc.countryCode || nom.address?.country_code || '').toUpperCase();
+        const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
+        const fullAddress = nom.display_name || [bdc.locality, bdc.principalSubdivision, bdc.countryName].filter(Boolean).join(', ') || name;
+        if (!cancelled) setLocation({ lat, lng, name, fullAddress, countryCode: country });
+      } catch {
+        const ip = await fetchIpLocation();
+        if (!cancelled) setLocation(ip ?? { lat, lng, name: 'GPS Active' });
+      }
+      if (!cancelled) setDetected(true);
+    };
+
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        if (cancelled) return;
-        const { latitude: lat, longitude: lng } = pos.coords;
-        try {
-          // Use zoom=10 to get the postal city (e.g. "Herndon") rather than
-          // the most granular CDP/neighborhood (e.g. "McNair") that the default
-          // zoom returns. Fetch the full-detail response separately for address.
-          const [cityRes, fullRes] = await Promise.all([
-            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=10`),
-            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`),
-          ]);
-          const d = await cityRes.json();
-          const full = await fullRes.json().catch(() => d);
-          const a = d.address || {};
-          const city = a.city || a.town || a.municipality || a.village || a.hamlet || a.county || '';
-          const country = (a.country_code || full.address?.country_code || '').toUpperCase();
-          const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
-          const fullAddress = full.display_name || d.display_name || name;
-          if (!cancelled) setLocation({ lat, lng, name, fullAddress, countryCode: country });
-        } catch {
-          // Reverse geocoding failed — try IP for a richer label, otherwise keep coords
-          const ip = await fetchIpLocation();
-          if (!cancelled) setLocation(ip ?? { lat, lng, name: 'GPS Active' });
-        }
-        if (!cancelled) setDetected(true);
-      },
+      (pos) => { if (!cancelled) resolve(pos.coords.latitude, pos.coords.longitude); },
       async () => { await useIpOrDefault(); },
-      { enableHighAccuracy: true, timeout: 8000, maximumAge: 5 * 60 * 1000 }
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
     );
 
-    return () => { cancelled = true; };
+    // Re-verify every 30 seconds to keep address current as user moves.
+    const watchId = navigator.geolocation.watchPosition(
+      (pos) => { if (!cancelled) resolve(pos.coords.latitude, pos.coords.longitude); },
+      () => { /* ignore */ },
+      { enableHighAccuracy: true, maximumAge: 30 * 1000, timeout: 15000 }
+    );
+    const intervalId = window.setInterval(() => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => { if (!cancelled) resolve(pos.coords.latitude, pos.coords.longitude); },
+        () => { /* ignore */ },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }, 30 * 1000);
+
+    return () => {
+      cancelled = true;
+      navigator.geolocation.clearWatch(watchId);
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   const updateLocation = useCallback((newLoc: LocationState) => {
