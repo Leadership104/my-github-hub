@@ -159,6 +159,36 @@ export default function App() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { lat, lng, name: locationName, fullAddress, countryCode, updateLocation } = useLocation();
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  // VPN heuristic: compare IP-country vs GPS-country. Mismatch usually means VPN/proxy.
+  const [vpnWarning, setVpnWarning] = useState<string | null>(null);
+  const [vpnDismissed, setVpnDismissed] = useState(() => {
+    try { return sessionStorage.getItem('kip_vpn_dismissed') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    if (!countryCode || vpnDismissed) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('https://ipapi.co/json/');
+        if (!r.ok) return;
+        const d = await r.json();
+        const ipCountry = (d.country_code || d.country || '').toUpperCase();
+        if (cancelled) return;
+        if (ipCountry && ipCountry !== countryCode) {
+          setVpnWarning(`VPN/proxy detected — your network is in ${ipCountry} but your location is set to ${countryCode}. Results may be inaccurate.`);
+        } else {
+          setVpnWarning(null);
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [countryCode, vpnDismissed]);
   const { forecast, ...weather } = useWeather(lat, lng);
   const prices = useCryptoPrices();
   const metals = useMetalPrices();
