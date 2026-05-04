@@ -190,7 +190,10 @@ export function useLocation() {
     const resolve = async (lat: number, lng: number) => {
       try {
         const result = await preciseReverseGeocode(lat, lng);
-        if (!cancelled) setLocation({ lat, lng, ...result });
+        if (!cancelled) {
+          setLocation({ lat, lng, ...result });
+          try { window.dispatchEvent(new CustomEvent('kip-location-detected', { detail: { name: result.name } })); } catch {}
+        }
       } catch {
         const ip = await fetchIpLocation();
         if (!cancelled) setLocation(ip ?? { lat, lng, name: 'GPS Active' });

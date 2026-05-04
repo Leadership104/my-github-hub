@@ -159,6 +159,46 @@ export default function App() {
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { lat, lng, name: locationName, fullAddress, countryCode, updateLocation } = useLocation();
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3500);
+  }, []);
+
+  // VPN heuristic: compare IP-country vs GPS-country. Mismatch usually means VPN/proxy.
+  const [vpnWarning, setVpnWarning] = useState<string | null>(null);
+  const [vpnDismissed, setVpnDismissed] = useState(() => {
+    try { return sessionStorage.getItem('kip_vpn_dismissed') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    if (!countryCode || vpnDismissed) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch('https://ipapi.co/json/');
+        if (!r.ok) return;
+        const d = await r.json();
+        const ipCountry = (d.country_code || d.country || '').toUpperCase();
+        if (cancelled) return;
+        if (ipCountry && ipCountry !== countryCode) {
+          setVpnWarning(`VPN/proxy detected — your network is in ${ipCountry} but your location is set to ${countryCode}. Results may be inaccurate.`);
+        } else {
+          setVpnWarning(null);
+        }
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [countryCode, vpnDismissed]);
+
+  // Confirmation toast when GPS auto-detects location
+  useEffect(() => {
+    const onDetected = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.name) showToast(`📍 Location detected: ${detail.name}`);
+    };
+    window.addEventListener('kip-location-detected', onDetected);
+    return () => window.removeEventListener('kip-location-detected', onDetected);
+  }, [showToast]);
   const { forecast, ...weather } = useWeather(lat, lng);
   const prices = useCryptoPrices();
   const metals = useMetalPrices();
@@ -213,21 +253,29 @@ export default function App() {
   }, [updateLocation]);
 
   const detectCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      showToast('Location not supported on this device');
+      return;
+    }
+    showToast('Detecting your location…');
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lt, longitude: lg } = pos.coords;
         try {
           const { name, fullAddress, countryCode } = await preciseReverseGeocode(lt, lg);
           selectLocation({ lat: lt, lng: lg, name, fullAddress, countryCode });
+          showToast(`📍 Location set: ${name}`);
         } catch {
           selectLocation({ lat: lt, lng: lg, name: 'Current Location' });
+          showToast('📍 Location updated');
         }
       },
-      () => {},
+      (err) => {
+        showToast(err.code === 1 ? 'Permission denied — enable location in settings' : 'Could not detect location');
+      },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  }, [selectLocation]);
+  }, [selectLocation, showToast]);
 
   const advisoryData = useTravelSafety(countryCode);
 
@@ -296,6 +344,26 @@ export default function App() {
           <span className="ms text-2xl text-kipita-navy">account_circle</span>
         </button>
       </header>
+
+      {/* VPN warning banner */}
+      {vpnWarning && (
+        <div className="bg-amber-100 border-b border-amber-300 text-amber-900 text-xs px-4 py-2 flex items-start gap-2 flex-shrink-0">
+          <span className="ms text-base flex-shrink-0">vpn_lock</span>
+          <span className="flex-1">{vpnWarning}</span>
+          <button
+            onClick={() => { try { sessionStorage.setItem('kip_vpn_dismissed', '1'); } catch {} setVpnDismissed(true); setVpnWarning(null); }}
+            className="font-bold flex-shrink-0"
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
+      )}
+
+      {/* Lightweight toast */}
+      {toast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[400] bg-kipita-navy text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg max-w-[90%] text-center">
+          {toast}
+        </div>
+      )}
 
       {/* Location Picker Modal */}
       {showLocationPicker && (
@@ -529,6 +597,8 @@ export default function App() {
                     {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.flag} {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label}
                   </span>
                 </button>
+                <hr className="border-border" />
+                <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Tutorials</div>
                 <button
                   onClick={() => {
                     resetAllTours();
@@ -539,6 +609,20 @@ export default function App() {
                 >
                   <span className="ms text-lg text-muted-foreground">school</span> {t('profile.replayTour')}
                 </button>
+                {(['home','ai','trips','places'] as TabId[]).map(tid => (
+                  <button
+                    key={tid}
+                    onClick={() => {
+                      try { localStorage.removeItem(`kip_tour_${tid}_done`); } catch {}
+                      setShowProfile(false);
+                      switchTab(tid);
+                      setTimeout(() => setActiveTour(tid), 400);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium hover:bg-muted transition-colors text-muted-foreground"
+                  >
+                    <span className="ms text-base">play_circle</span> {NAV_LABELS[tid] || tid} tutorial
+                  </button>
+                ))}
                 <hr className="border-border" />
                 <button
                   onClick={async () => { setShowProfile(false); localStorage.removeItem('kip_guest'); window.dispatchEvent(new Event('kip-guest-changed')); await signOut(); }}
