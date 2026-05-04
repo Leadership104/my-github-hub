@@ -435,7 +435,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
       const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
       const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
-      return distA - distB;
+      // Distance buckets (0.5km) so a clearly-closer place wins, but within the
+      // same bucket prefer higher rating × log(reviews) for relevance.
+      const bucketA = Math.floor(distA * 2);
+      const bucketB = Math.floor(distB * 2);
+      if (bucketA !== bucketB) return bucketA - bucketB;
+      const scoreA = (a.rating ?? 0);
+      const scoreB = (b.rating ?? 0);
+      return scoreB - scoreA;
     });
     setChipResults(sorted);
     setChipLoading(false);
