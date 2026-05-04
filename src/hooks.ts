@@ -150,20 +150,8 @@ export function useLocation() {
 
     const resolve = async (lat: number, lng: number) => {
       try {
-        // BigDataCloud returns postal city (e.g. "Herndon") accurately, not the
-        // census-designated place (e.g. "McNair") that Nominatim defaults to.
-        // Fall back to Nominatim for the full street address.
-        const [bdcRes, nomRes] = await Promise.all([
-          fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=en`),
-          fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=18`),
-        ]);
-        const bdc = await bdcRes.json().catch(() => ({} as any));
-        const nom = await nomRes.json().catch(() => ({} as any));
-        const city = bdc.city || bdc.locality || bdc.principalSubdivision || nom.address?.city || nom.address?.town || nom.address?.village || '';
-        const country = (bdc.countryCode || nom.address?.country_code || '').toUpperCase();
-        const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
-        const fullAddress = nom.display_name || [bdc.locality, bdc.principalSubdivision, bdc.countryName].filter(Boolean).join(', ') || name;
-        if (!cancelled) setLocation({ lat, lng, name, fullAddress, countryCode: country });
+        const result = await preciseReverseGeocode(lat, lng);
+        if (!cancelled) setLocation({ lat, lng, ...result });
       } catch {
         const ip = await fetchIpLocation();
         if (!cancelled) setLocation(ip ?? { lat, lng, name: 'GPS Active' });
