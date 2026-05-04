@@ -334,10 +334,21 @@ export default function AIScreen({
   // Whenever a new message arrives (user or AI) or auxiliary content updates,
   // scroll the container to the bottom so the latest exchange is visible.
   useEffect(() => {
+    const prevCount = prevMsgCountRef.current;
     prevMsgCountRef.current = messages.length;
+    const last = messages[messages.length - 1];
+    const isNewAi = messages.length > prevCount && last?.role === 'ai';
+
     requestAnimationFrame(() => {
       const container = scrollContainerRef.current;
-      if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      if (!container) return;
+      if (isNewAi && lastAiMsgRef.current) {
+        // Align the start of the new AI reply to the top of the scroll area
+        const top = lastAiMsgRef.current.offsetTop - container.offsetTop - 8;
+        container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+      } else {
+        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+      }
     });
   }, [messages, suggestions, nearbyPlaces, briefingLoading, loading]);
 
