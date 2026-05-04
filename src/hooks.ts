@@ -153,12 +153,20 @@ export function useLocation() {
         if (cancelled) return;
         const { latitude: lat, longitude: lng } = pos.coords;
         try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`);
-          const d = await r.json();
-          const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || '';
-          const country = d.address?.country_code?.toUpperCase() || '';
+          // Use zoom=10 to get the postal city (e.g. "Herndon") rather than
+          // the most granular CDP/neighborhood (e.g. "McNair") that the default
+          // zoom returns. Fetch the full-detail response separately for address.
+          const [cityRes, fullRes] = await Promise.all([
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=10`),
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`),
+          ]);
+          const d = await cityRes.json();
+          const full = await fullRes.json().catch(() => d);
+          const a = d.address || {};
+          const city = a.city || a.town || a.municipality || a.village || a.hamlet || a.county || '';
+          const country = (a.country_code || full.address?.country_code || '').toUpperCase();
           const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
-          const fullAddress = d.display_name || name;
+          const fullAddress = full.display_name || d.display_name || name;
           if (!cancelled) setLocation({ lat, lng, name, fullAddress, countryCode: country });
         } catch {
           // Reverse geocoding failed — try IP for a richer label, otherwise keep coords
