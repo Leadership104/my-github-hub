@@ -541,7 +541,7 @@ export default function App() {
                 </button>
                 <hr className="border-border" />
                 <button
-                  onClick={async () => { setShowProfile(false); await signOut(); }}
+                  onClick={async () => { setShowProfile(false); localStorage.removeItem('kip_guest'); window.dispatchEvent(new Event('kip-guest-changed')); await signOut(); }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium text-kipita-red hover:bg-muted transition-colors"
                 >
                   <span className="ms text-lg">logout</span> {t('profile.signOut')}

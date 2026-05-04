@@ -11,8 +11,25 @@ import kipitaSplash from './assets/kipita-splash.jpeg';
 
 function AuthGate() {
   const { session, profile, loading } = useAuth();
+  const [guest, setGuest] = React.useState(() => typeof window !== 'undefined' && localStorage.getItem('kip_guest') === '1');
 
-  // Public route: password reset (must work without an active app session)
+  React.useEffect(() => {
+    const onChange = () => setGuest(localStorage.getItem('kip_guest') === '1');
+    window.addEventListener('kip-guest-changed', onChange);
+    window.addEventListener('storage', onChange);
+    return () => {
+      window.removeEventListener('kip-guest-changed', onChange);
+      window.removeEventListener('storage', onChange);
+    };
+  }, []);
+
+  React.useEffect(() => {
+    if (session && guest) {
+      localStorage.removeItem('kip_guest');
+      setGuest(false);
+    }
+  }, [session, guest]);
+
   if (typeof window !== 'undefined' && window.location.pathname === '/reset-password') {
     return <ResetPasswordScreen />;
   }
@@ -25,8 +42,8 @@ function AuthGate() {
     );
   }
 
-  if (!session) return <AuthScreen />;
-  if (!profile?.onboarded) return <OnboardingScreen />;
+  if (!session && !guest) return <AuthScreen />;
+  if (session && !profile?.onboarded) return <OnboardingScreen />;
   return <App />;
 }
 
