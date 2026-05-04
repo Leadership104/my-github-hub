@@ -382,7 +382,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const sorted = [...filtered].sort((a, b) => {
       const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
       const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
-      return distA - distB;
+      const bucketA = Math.floor(distA * 2);
+      const bucketB = Math.floor(distB * 2);
+      if (bucketA !== bucketB) return bucketA - bucketB;
+      return (b.rating ?? 0) - (a.rating ?? 0);
     });
 
     // Only include within ~10 min drive (~7 km in city)
