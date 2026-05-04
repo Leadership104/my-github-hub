@@ -335,6 +335,26 @@ export default function App() {
         </button>
       </header>
 
+      {/* VPN warning banner */}
+      {vpnWarning && (
+        <div className="bg-amber-100 border-b border-amber-300 text-amber-900 text-xs px-4 py-2 flex items-start gap-2 flex-shrink-0">
+          <span className="ms text-base flex-shrink-0">vpn_lock</span>
+          <span className="flex-1">{vpnWarning}</span>
+          <button
+            onClick={() => { try { sessionStorage.setItem('kip_vpn_dismissed', '1'); } catch {} setVpnDismissed(true); setVpnWarning(null); }}
+            className="font-bold flex-shrink-0"
+            aria-label="Dismiss"
+          >✕</button>
+        </div>
+      )}
+
+      {/* Lightweight toast */}
+      {toast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[400] bg-kipita-navy text-white text-sm font-semibold px-4 py-2.5 rounded-full shadow-lg max-w-[90%] text-center">
+          {toast}
+        </div>
+      )}
+
       {/* Location Picker Modal */}
       {showLocationPicker && (
         <>
