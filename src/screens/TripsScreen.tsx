@@ -1510,28 +1510,18 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         )}
 
         {/* Trip list — only on Upcoming/Completed tabs */}
-        {tab !== 'plan' && filtered.map(trip => {
-          const bookingCount = trip.bookings?.length || 0;
-          return (
-            <button key={trip.id} onClick={() => { setSelectedTrip(trip); setExpandedDays({ 1: true }); }}
-              className="w-full flex items-center gap-3 p-4 bg-card border border-border rounded-kipita mb-3 text-left hover:shadow-md transition-shadow">
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl flex-shrink-0">{trip.emoji}</div>
-              <div className="flex-1 min-w-0">
-                <div className="font-bold text-sm truncate">{trip.dest}, {trip.country}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">{trip.start} → {trip.end}</div>
-                <div className="flex gap-3 mt-1">
-                  {trip.items.length > 0 && (
-                    <span className="text-xs text-kipita-green font-semibold">{trip.items.filter(i => i.done).length}/{trip.items.length} tasks</span>
-                  )}
-                  {bookingCount > 0 && (
-                    <span className="text-xs text-kipita-red font-semibold">📦 {bookingCount} booking{bookingCount > 1 ? 's' : ''}</span>
-                  )}
-                </div>
-              </div>
-              <span className="ms text-muted-foreground">chevron_right</span>
-            </button>
-          );
-        })}
+        {tab !== 'plan' && filtered.map(trip => (
+          <SwipeableTripRow
+            key={trip.id}
+            trip={trip}
+            onOpen={() => { setSelectedTrip(trip); setExpandedDays({ 1: true }); }}
+            onDelete={() => {
+              if (confirm(`Delete trip to ${trip.dest}? This cannot be undone.`)) {
+                save(trips.filter(t => t.id !== trip.id));
+              }
+            }}
+          />
+        ))}
 
         {tab !== 'plan' && filtered.length === 0 && (
           <div className="text-center py-10">
@@ -1544,6 +1534,83 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         )}
       </div>
       {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
+    </div>
+  );
+}
+
+/* ── Swipeable trip row with swipe-left-to-delete + explicit delete button ── */
+function SwipeableTripRow({ trip, onOpen, onDelete }: { trip: Trip; onOpen: () => void; onDelete: () => void }) {
+  const bookingCount = trip.bookings?.length || 0;
+  const [offset, setOffset] = useState(0);
+  const startXRef = useRef<number | null>(null);
+  const movedRef = useRef(false);
+  const MAX = 96; // reveal width
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startXRef.current = e.touches[0].clientX;
+    movedRef.current = false;
+  };
+  const onTouchMove = (e: React.TouchEvent) => {
+    if (startXRef.current == null) return;
+    const dx = e.touches[0].clientX - startXRef.current;
+    if (Math.abs(dx) > 6) movedRef.current = true;
+    // start from current snapped offset
+    const base = offset <= -MAX ? -MAX : 0;
+    const next = Math.max(-MAX, Math.min(0, base + dx));
+    setOffset(next);
+  };
+  const onTouchEnd = () => {
+    setOffset(prev => (prev < -MAX / 2 ? -MAX : 0));
+    startXRef.current = null;
+    setTimeout(() => { movedRef.current = false; }, 50);
+  };
+
+  return (
+    <div className="relative mb-3 overflow-hidden rounded-kipita">
+      {/* Delete reveal */}
+      <button
+        onClick={onDelete}
+        aria-label="Delete trip"
+        className="absolute inset-y-0 right-0 w-24 bg-kipita-red text-white flex flex-col items-center justify-center gap-0.5 active:bg-red-700"
+      >
+        <span className="ms text-xl">delete</span>
+        <span className="text-[10px] font-bold">Delete</span>
+      </button>
+
+      <div
+        style={{ transform: `translateX(${offset}px)`, transition: startXRef.current == null ? 'transform 0.2s ease' : 'none' }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        className="bg-card border border-border rounded-kipita"
+      >
+        <button
+          onClick={() => { if (movedRef.current) return; if (offset !== 0) { setOffset(0); return; } onOpen(); }}
+          className="w-full flex items-center gap-3 p-4 text-left hover:shadow-md transition-shadow"
+        >
+          <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center text-2xl flex-shrink-0">{trip.emoji}</div>
+          <div className="flex-1 min-w-0">
+            <div className="font-bold text-sm truncate">{trip.dest}, {trip.country}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{trip.start} → {trip.end}</div>
+            <div className="flex gap-3 mt-1">
+              {trip.items.length > 0 && (
+                <span className="text-xs text-kipita-green font-semibold">{trip.items.filter(i => i.done).length}/{trip.items.length} tasks</span>
+              )}
+              {bookingCount > 0 && (
+                <span className="text-xs text-kipita-red font-semibold">📦 {bookingCount} booking{bookingCount > 1 ? 's' : ''}</span>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            aria-label="Delete trip"
+            className="p-2 -mr-1 rounded-full hover:bg-muted text-muted-foreground hover:text-kipita-red flex-shrink-0"
+          >
+            <span className="ms text-base">delete_outline</span>
+          </button>
+          <span className="ms text-muted-foreground">chevron_right</span>
+        </button>
+      </div>
     </div>
   );
 }
