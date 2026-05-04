@@ -148,6 +148,17 @@ export default function AuthScreen() {
           </button>
         </form>
 
+        <button
+          type="button"
+          onClick={() => {
+            localStorage.setItem('kip_guest', '1');
+            window.dispatchEvent(new Event('kip-guest-changed'));
+          }}
+          className="w-full mt-3 bg-card border border-border rounded-kipita-sm py-3 text-sm font-bold text-foreground hover:bg-muted transition"
+        >
+          Continue as guest
+        </button>
+
         <div className="mt-5 text-center text-xs text-muted-foreground space-y-1.5">
           {mode === 'signin' && (
             <>
