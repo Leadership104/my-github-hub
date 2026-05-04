@@ -243,21 +243,29 @@ export default function App() {
   }, [updateLocation]);
 
   const detectCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      showToast('Location not supported on this device');
+      return;
+    }
+    showToast('Detecting your location…');
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lt, longitude: lg } = pos.coords;
         try {
           const { name, fullAddress, countryCode } = await preciseReverseGeocode(lt, lg);
           selectLocation({ lat: lt, lng: lg, name, fullAddress, countryCode });
+          showToast(`📍 Location set: ${name}`);
         } catch {
           selectLocation({ lat: lt, lng: lg, name: 'Current Location' });
+          showToast('📍 Location updated');
         }
       },
-      () => {},
+      (err) => {
+        showToast(err.code === 1 ? 'Permission denied — enable location in settings' : 'Could not detect location');
+      },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
-  }, [selectLocation]);
+  }, [selectLocation, showToast]);
 
   const advisoryData = useTravelSafety(countryCode);
 
