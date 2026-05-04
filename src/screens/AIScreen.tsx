@@ -330,14 +330,14 @@ export default function AIScreen({
     try { rec.start(); setIsListening(true); } catch { setIsListening(false); }
   }, [isListening]);
 
-  // Reverse-chronological view: newest message renders at the TOP of the list.
-  // Whenever a new message arrives (user or AI), snap the scroll container to the
-  // top so the latest exchange is immediately visible without scrolling.
+  // Normal chat view: oldest message at the top, newest at the bottom.
+  // Whenever a new message arrives (user or AI) or auxiliary content updates,
+  // scroll the container to the bottom so the latest exchange is visible.
   useEffect(() => {
     prevMsgCountRef.current = messages.length;
     requestAnimationFrame(() => {
       const container = scrollContainerRef.current;
-      if (container) container.scrollTo({ top: 0, behavior: 'smooth' });
+      if (container) container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
     });
   }, [messages, suggestions, nearbyPlaces, briefingLoading, loading]);
 
