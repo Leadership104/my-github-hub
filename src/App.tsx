@@ -216,18 +216,14 @@ export default function App() {
       async (pos) => {
         const { latitude: lt, longitude: lg } = pos.coords;
         try {
-          const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lt}&lon=${lg}&format=json&addressdetails=1`);
-          const d = await r.json();
-          const city = d.address?.city || d.address?.town || d.address?.village || d.address?.county || '';
-          const country = d.address?.country_code?.toUpperCase() || '';
-          const n = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
-          selectLocation({ lat: lt, lng: lg, name: n, fullAddress: d.display_name || n, countryCode: country });
+          const { name, fullAddress, countryCode } = await preciseReverseGeocode(lt, lg);
+          selectLocation({ lat: lt, lng: lg, name, fullAddress, countryCode });
         } catch {
           selectLocation({ lat: lt, lng: lg, name: 'Current Location' });
         }
       },
       () => {},
-      { enableHighAccuracy: true, timeout: 8000 }
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
     );
   }, [selectLocation]);
 
