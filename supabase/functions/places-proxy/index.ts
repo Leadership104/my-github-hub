@@ -301,6 +301,34 @@ serve(async (req) => {
         result = await coinmapVenues(lat, lng);
         break;
       }
+      case "geocode": {
+        // Reverse geocode lat/lng to precise street address via Google Geocoding API.
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_KEY()}`;
+        const r = await fetch(url);
+        if (!r.ok) { result = { error: `geocode ${r.status}` }; break; }
+        const data = await r.json();
+        const first = (data.results || [])[0];
+        if (!first) { result = { error: "no results" }; break; }
+        const comps: any[] = first.address_components || [];
+        const findComp = (t: string) => comps.find((c) => (c.types || []).includes(t));
+        const city =
+          findComp("locality")?.long_name ||
+          findComp("postal_town")?.long_name ||
+          findComp("sublocality")?.long_name ||
+          findComp("administrative_area_level_2")?.long_name ||
+          findComp("administrative_area_level_1")?.long_name || "";
+        const state = findComp("administrative_area_level_1")?.short_name || "";
+        const countryCode = findComp("country")?.short_name?.toUpperCase() || "";
+        result = {
+          formattedAddress: first.formatted_address || "",
+          city,
+          state,
+          countryCode,
+          lat: first.geometry?.location?.lat ?? lat,
+          lng: first.geometry?.location?.lng ?? lng,
+        };
+        break;
+      }
       default:
         return new Response(
           JSON.stringify({ error: "Invalid action. Use: nearby, search, details, coinmap" }),
