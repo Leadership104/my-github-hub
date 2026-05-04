@@ -109,7 +109,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
   if (hour >= 23 || hour < 4) {
     return [
       { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
-      { id: 'atm', emoji: '🏧', label: 'ATM', hint: 'atm', chips: ESSENTIAL_CHIPS.atm },
+      { id: 'atm', emoji: '💵', label: '$ Money', hint: 'atm', chips: ESSENTIAL_CHIPS.atm },
       { id: 'late', emoji: '🍔', label: 'Late Eats', hint: 'food', chips: food },
       { id: 'gas', emoji: '⛽', label: 'Gas', hint: 'gas', chips: gas },
     ];
