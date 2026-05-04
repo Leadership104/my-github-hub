@@ -254,7 +254,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { id: 'shopping', label: 'Shopping', render: () => <span className="text-3xl">🛍️</span> },
     { id: 'fuel', label: 'Gas/EV', render: () => <FuelIcon size={36} /> },
     { id: 'maps', label: 'Maps', render: () => <span className="text-3xl">🗺️</span> },
-    { id: 'atm', label: 'ATM', render: () => <span className="text-3xl">🏧</span> },
+    { id: 'atm', label: '$ Money', render: () => <span className="text-3xl">💵</span> },
   ];
 
   const featured = getFeaturedNearMe();
