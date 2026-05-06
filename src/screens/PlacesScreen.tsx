@@ -128,10 +128,12 @@ const CUISINE_FILTERS = [
   { id: 'chinese', label: 'Chinese', emoji: '🥡' },
   { id: 'thai', label: 'Thai', emoji: '🍜' },
   { id: 'indian', label: 'Indian', emoji: '🍛' },
+  { id: 'caribbean', label: 'Caribbean', emoji: '🍹' },
   { id: 'american', label: 'American', emoji: '🍔' },
   { id: 'mediterranean', label: 'Mediterranean', emoji: '🥙' },
   { id: 'korean', label: 'Korean', emoji: '🥘' },
   { id: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
+  { id: 'ethiopian', label: 'Ethiopian', emoji: '🫓' },
   { id: 'seafood', label: 'Seafood', emoji: '🦞' },
   { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
 ];
@@ -365,7 +367,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setFoodGuideLoading(true);
     const query = cuisine === 'all'
       ? `restaurants`
-      : `authentic ${cuisine} food restaurant -fusion`;
+      : `${cuisine} restaurant`;
     const places = await fetchGooglePlaces('search', { query, lat, lng, radius: 8000 }); // ~10 min drive radius
 
     const now = new Date();
