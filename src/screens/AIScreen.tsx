@@ -342,7 +342,15 @@ export default function AIScreen({
     requestAnimationFrame(() => {
       const container = scrollContainerRef.current;
       if (!container) return;
-      if (isNewAi && lastAiMsgRef.current) {
+      // Briefing / single AI message (Know B4 You Go landing): keep view at the top
+      // so the user reads from the start instead of being dropped at the bottom.
+      const isBriefingOnly =
+        messages.length === 1 &&
+        last?.role === 'ai' &&
+        (last.id === 'briefing-loading' || last.id === 'briefing-result' || last.id === 'briefing-fallback');
+      if (isBriefingOnly) {
+        container.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (isNewAi && lastAiMsgRef.current) {
         // Align the start of the new AI reply to the top of the scroll area
         const top = lastAiMsgRef.current.offsetTop - container.offsetTop - 8;
         container.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
