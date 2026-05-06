@@ -554,9 +554,12 @@ function parseRssItems(xml: string, sourceLabel: string, limit = 5): NewsHeadlin
 }
 async function fetchHeadlines(city: string, country: string): Promise<NewsHeadline[]> {
   if (!city) return [];
-  // Use Google News RSS, restricted to the past 7 days via the `when:` operator,
-  // and sorted by date so the freshest local stories surface first.
-  const q = encodeURIComponent(`"${city}" when:7d`);
+  // Restrict to the past 7 days and bias toward safety/crime relevance for the
+  // current city. Google News' `when:` operator handles the time bound; we add
+  // a topical clause so unrelated lifestyle stories don't crowd out signal.
+  const relevance =
+    "(crime OR shooting OR police OR safety OR protest OR fire OR weather OR emergency OR arrest OR robbery OR assault)";
+  const q = encodeURIComponent(`"${city}" ${relevance} when:7d`);
   const gl = (country || "US").toUpperCase();
   const googleUrl =
     `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=${gl}&ceid=${gl}:en`;
@@ -566,8 +569,13 @@ async function fetchHeadlines(city: string, country: string): Promise<NewsHeadli
       signal: AbortSignal.timeout(7000),
     }).then((r) => (r.ok ? r.text() : "")).catch(() => "");
 
-    const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000; // hard cap: 14 days
-    const items = parseRssItems(xml, "Google News", 25)
+    // Hard time bound: 7 days, matching the search operator.
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const cityLc = city.toLowerCase();
+    const relevanceRe =
+      /\b(crime|shoot|police|safety|protest|fire|emergency|arrest|robbery|assault|stab|attack|storm|flood|evacuat|warning|advisory)\b/i;
+
+    const items = parseRssItems(xml, "Google News", 40)
       .map((h) => {
         if (h.link.includes("news.google.com")) {
           const m = h.link.match(/url=([^&]+)/);
@@ -580,9 +588,15 @@ async function fetchHeadlines(city: string, country: string): Promise<NewsHeadli
         return h;
       })
       .filter((h) => {
+        // Time bound
         if (!h.pubDate) return false;
         const t = Date.parse(h.pubDate);
-        return Number.isFinite(t) && t >= cutoff;
+        if (!Number.isFinite(t) || t < cutoff) return false;
+        // Relevance: must mention the city AND a safety-related keyword
+        const title = h.title.toLowerCase();
+        if (!title.includes(cityLc)) return false;
+        if (!relevanceRe.test(title)) return false;
+        return true;
       })
       .sort((a, b) => Date.parse(b.pubDate!) - Date.parse(a.pubDate!));
 
