@@ -598,7 +598,7 @@ function HeadlinesPanel({ crime }: { crime: CrimeDataResponse | null }) {
         <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">
           LOCAL HEADLINES
         </p>
-        <span className="text-[9px] text-muted-foreground">Bloomberg · Yahoo Finance</span>
+        <span className="text-[9px] text-muted-foreground">Past 7 days · Google News</span>
       </div>
       <div className="space-y-2.5">
         {headlines.map((h, i) => (
