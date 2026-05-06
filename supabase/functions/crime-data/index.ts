@@ -554,34 +554,40 @@ function parseRssItems(xml: string, sourceLabel: string, limit = 5): NewsHeadlin
 }
 async function fetchHeadlines(city: string, country: string): Promise<NewsHeadline[]> {
   if (!city) return [];
-  // Google News RSS filtered to Bloomberg + Yahoo Finance, plus Yahoo Finance topic RSS as a top-up.
-  const q = encodeURIComponent(
-    `(site:bloomberg.com OR site:finance.yahoo.com) "${city}"`,
-  );
-  const googleUrl = `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=${country}&ceid=${country}:en`;
-  const yahooUrl = "https://finance.yahoo.com/news/rssindex";
+  // Use Google News RSS, restricted to the past 7 days via the `when:` operator,
+  // and sorted by date so the freshest local stories surface first.
+  const q = encodeURIComponent(`"${city}" when:7d`);
+  const gl = (country || "US").toUpperCase();
+  const googleUrl =
+    `https://news.google.com/rss/search?q=${q}&hl=en-US&gl=${gl}&ceid=${gl}:en`;
   try {
-    const [g, y] = await Promise.all([
-      fetch(googleUrl, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) })
-        .then((r) => r.ok ? r.text() : "").catch(() => ""),
-      fetch(yahooUrl, { headers: { "User-Agent": UA }, signal: AbortSignal.timeout(7000) })
-        .then((r) => r.ok ? r.text() : "").catch(() => ""),
-    ]);
-    const cityRe = new RegExp(city.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
-    const gItems = parseRssItems(g, "Bloomberg / Yahoo (via Google News)", 6)
+    const xml = await fetch(googleUrl, {
+      headers: { "User-Agent": UA },
+      signal: AbortSignal.timeout(7000),
+    }).then((r) => (r.ok ? r.text() : "")).catch(() => "");
+
+    const cutoff = Date.now() - 14 * 24 * 60 * 60 * 1000; // hard cap: 14 days
+    const items = parseRssItems(xml, "Google News", 25)
       .map((h) => {
-        // Strip Google News redirect prefix when present.
         if (h.link.includes("news.google.com")) {
           const m = h.link.match(/url=([^&]+)/);
           if (m) h.link = decodeURIComponent(m[1]);
         }
-        const isBloomberg = /bloomberg\.com/i.test(h.link);
-        h.source = isBloomberg ? "Bloomberg" : /finance\.yahoo\.com/i.test(h.link) ? "Yahoo Finance" : h.source;
+        try {
+          const host = new URL(h.link).hostname.replace(/^www\./, "");
+          h.source = host;
+        } catch { /* keep default */ }
         return h;
-      });
-    const yItems = parseRssItems(y, "Yahoo Finance", 8).filter((h) => cityRe.test(h.title));
+      })
+      .filter((h) => {
+        if (!h.pubDate) return false;
+        const t = Date.parse(h.pubDate);
+        return Number.isFinite(t) && t >= cutoff;
+      })
+      .sort((a, b) => Date.parse(b.pubDate!) - Date.parse(a.pubDate!));
+
     const seen = new Set<string>();
-    const merged = [...gItems, ...yItems].filter((h) => {
+    const merged = items.filter((h) => {
       if (seen.has(h.link)) return false;
       seen.add(h.link);
       return true;
