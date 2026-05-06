@@ -367,7 +367,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setFoodGuideLoading(true);
     const query = cuisine === 'all'
       ? `restaurants`
-      : `authentic ${cuisine} food restaurant -fusion`;
+      : `${cuisine} restaurant`;
     const places = await fetchGooglePlaces('search', { query, lat, lng, radius: 8000 }); // ~10 min drive radius
 
     const now = new Date();
