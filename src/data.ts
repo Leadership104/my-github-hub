@@ -274,8 +274,10 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Bakery', query: 'bakery bread', emoji: '🥐' },
     { label: 'Bar & Grill', query: 'bar grill', emoji: '🍺' },
     { label: 'Burger', query: 'burger restaurant', emoji: '🍔' },
+    { label: 'Caribbean', query: 'caribbean restaurant', emoji: '🍹' },
     { label: 'Chinese', query: 'chinese restaurant', emoji: '🥡' },
     { label: 'Fast Food', query: 'fast food', emoji: '🍟' },
+    { label: 'Indian', query: 'indian restaurant', emoji: '🍛' },
     { label: 'Italian', query: 'italian restaurant', emoji: '🍝' },
     { label: 'Japanese', query: 'japanese restaurant', emoji: '🍱' },
     { label: 'Mexican', query: 'mexican restaurant', emoji: '🌮' },
@@ -289,7 +291,6 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
   cafe: [
     { label: 'Coffee', query: 'coffee cafe', emoji: '☕' },
     { label: 'Boba / Tea', query: 'boba tea shop', emoji: '🧋' },
-    { label: 'Coworking', query: 'coworking cafe wifi', emoji: '💻' },
     { label: 'Bakery Café', query: 'bakery cafe', emoji: '🥐' },
     { label: 'Juice Bar', query: 'juice bar smoothie', emoji: '🧃' },
     { label: 'All Cafes', query: 'cafes', emoji: '🍵' },
