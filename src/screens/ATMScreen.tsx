@@ -263,22 +263,32 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
               </div>
             ) : (
               <div className="space-y-2">
-                {btcAtms.map((atm, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm">
-                    <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-xl">₿</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-foreground truncate">{atm.name}</div>
-                      <div className="text-xs text-muted-foreground">Bitcoin ATM</div>
-                    </div>
-                    {atm.distance != null && (
-                      <span className="text-xs font-semibold text-muted-foreground flex-shrink-0 bg-muted px-2 py-0.5 rounded-full">
-                        {formatDist(atm.distance)}
-                      </span>
-                    )}
-                  </div>
-                ))}
+                {btcAtms.map((atm, i) => {
+                  const url = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${atm.lat},${atm.lng}&travelmode=walking`;
+                  return (
+                    <a
+                      key={i}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xl">₿</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-bold text-foreground truncate">{atm.name}</div>
+                        <div className="text-xs text-muted-foreground">Bitcoin ATM</div>
+                      </div>
+                      {atm.distance != null && (
+                        <span className="text-xs font-semibold text-muted-foreground flex-shrink-0 bg-muted px-2 py-0.5 rounded-full">
+                          {formatDist(atm.distance)}
+                        </span>
+                      )}
+                      <span className="ms text-kipita-red text-lg flex-shrink-0">directions</span>
+                    </a>
+                  );
+                })}
               </div>
             )}
           </>
