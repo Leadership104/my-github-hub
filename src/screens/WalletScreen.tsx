@@ -215,12 +215,12 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
 
   const labelFor = (cur: string) => {
     const labels: Record<string, string> = {
-      BTC: '₿ Bitcoin', ETH: 'Ξ Ethereum',
-      XAU: '🥇 Gold (oz)', XAG: '🥈 Silver (oz)',
+      BTC: '₿ BTC', ETH: 'Ξ ETH',
+      XAU: '🥇 XAU', XAG: '🥈 XAG',
     };
     if (labels[cur]) return labels[cur];
     const meta = CURRENCY_META[cur];
-    return meta ? `${meta.flag} ${cur} — ${meta.country}` : cur;
+    return meta ? `${meta.flag} ${cur}` : cur;
   };
 
   useEffect(() => {
@@ -293,7 +293,7 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
             <input type="number" value={amount} onChange={e => setAmount(e.target.value)}
               className="flex-1 bg-background border border-border rounded-kipita-sm px-3 py-3 text-xl font-extrabold outline-none focus:border-kipita-red min-w-0" />
             <select value={fromCur} onChange={e => setFromCur(e.target.value)}
-              className="bg-background border border-border rounded-kipita-sm px-2 py-2 font-bold text-sm cursor-pointer min-w-[100px]">
+              className="bg-background border border-border rounded-kipita-sm px-2 py-2 font-bold text-xs cursor-pointer w-[88px] flex-shrink-0">
               {currencyOptions.filter(c => ['BTC','ETH','XAU','XAG'].includes(c) || currencies.includes(c)).map(c => <option key={c} value={c}>{labelFor(c)}</option>)}
             </select>
           </div>
@@ -308,7 +308,7 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
               {result}
             </div>
             <select value={toCur} onChange={e => setToCur(e.target.value)}
-              className="bg-background border border-border rounded-kipita-sm px-2 py-2 font-bold text-sm cursor-pointer min-w-[100px]">
+              className="bg-background border border-border rounded-kipita-sm px-2 py-2 font-bold text-xs cursor-pointer w-[88px] flex-shrink-0">
               {currencyOptions.filter(c => ['BTC','ETH','XAU','XAG'].includes(c) || currencies.includes(c)).map(c => <option key={c} value={c}>{labelFor(c)}</option>)}
             </select>
           </div>
