@@ -167,11 +167,20 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
   const cuisineScrollRef = useDragScroll<HTMLDivElement>();
   const chipsScrollRef = useDragScroll<HTMLDivElement>();
+  const resultsScrollRef = useRef<HTMLDivElement>(null);
 
   // Inline chip selection for eat section
   const [activeChip, setActiveChip] = useState<{ label: string; query: string } | null>(null);
   const [chipResults, setChipResults] = useState<LivePlace[]>([]);
   const [chipLoading, setChipLoading] = useState(false);
+
+  // When a chip is selected (or its results arrive), scroll results to top so
+  // the user clearly sees the new selection's content rather than a silent swap.
+  useEffect(() => {
+    if (resultsScrollRef.current) {
+      resultsScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
     { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
