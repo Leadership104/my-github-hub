@@ -201,23 +201,28 @@ export function useLocation() {
       if (!cancelled) setDetected(true);
     };
 
-    // Track last accepted fix; only re-resolve when user actually moves.
-    // This stops the address from "flickering" between neighboring localities
-    // (e.g. Herndon ↔ McNair ↔ Reston) due to normal GPS drift while stationary.
+    // Track last accepted fix; only re-resolve when the user has clearly moved
+    // a meaningful distance AND enough time has passed. This avoids the address
+    // flipping every few seconds while driving through small neighborhoods.
     let lastLat: number | null = null;
     let lastLng: number | null = null;
-    const MIN_MOVE_METERS = 150; // ignore drift smaller than this
-    const MAX_ACCURACY_M = 200;  // ignore very fuzzy fixes
+    let lastResolveAt = 0;
+    const MIN_MOVE_METERS = 1500;       // ~1.5 km — ignore in-city drift while driving
+    const MIN_INTERVAL_MS = 60_000;     // at most one update per minute
+    const MAX_ACCURACY_M = 200;         // ignore very fuzzy fixes
 
     const maybeResolve = (lat: number, lng: number, accuracy: number) => {
       if (cancelled) return;
       if (accuracy && accuracy > MAX_ACCURACY_M && lastLat !== null) return;
+      const now = Date.now();
       if (lastLat !== null && lastLng !== null) {
-        const movedKm = haversine(lastLat, lastLng, lat, lng);
-        if (movedKm * 1000 < MIN_MOVE_METERS) return; // drift, ignore
+        const movedM = haversine(lastLat, lastLng, lat, lng) * 1000;
+        if (movedM < MIN_MOVE_METERS) return;            // not far enough
+        if (now - lastResolveAt < MIN_INTERVAL_MS) return; // too soon
       }
       lastLat = lat;
       lastLng = lng;
+      lastResolveAt = now;
       resolve(lat, lng);
     };
 
