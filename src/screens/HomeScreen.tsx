@@ -228,6 +228,8 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   ];
 
   const handleEssentialTap = (id: string) => {
+    // Food jumps straight to the Places food section (categories shown there).
+    if (id === 'food') { onSwitchTab('places', 'food'); return; }
     // Toggle chip drawer for tiles that have chips
     if ((ESSENTIAL_CHIPS[id] || []).length > 0) {
       setExpandedTile(prev => prev === id ? null : id);

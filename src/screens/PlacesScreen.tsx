@@ -167,11 +167,20 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
   const cuisineScrollRef = useDragScroll<HTMLDivElement>();
   const chipsScrollRef = useDragScroll<HTMLDivElement>();
+  const resultsScrollRef = useRef<HTMLDivElement>(null);
 
   // Inline chip selection for eat section
   const [activeChip, setActiveChip] = useState<{ label: string; query: string } | null>(null);
   const [chipResults, setChipResults] = useState<LivePlace[]>([]);
   const [chipLoading, setChipLoading] = useState(false);
+
+  // When a chip is selected (or its results arrive), scroll results to top so
+  // the user clearly sees the new selection's content rather than a silent swap.
+  useEffect(() => {
+    if (resultsScrollRef.current) {
+      resultsScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
     { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
@@ -684,7 +693,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+        <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
           {foodGuideLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map(i => (
@@ -789,7 +798,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <span className="ms text-sm">location_on</span> {locationName}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+        <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map(i => (
@@ -951,7 +960,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
             <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
             {isLoading ? (
@@ -1066,7 +1075,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
             <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
             {isLoading ? (
@@ -1195,7 +1204,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+        <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
           <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
           {isLoading ? (
