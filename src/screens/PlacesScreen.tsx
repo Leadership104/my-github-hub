@@ -693,7 +693,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+        <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
           {foodGuideLoading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map(i => (
@@ -798,7 +798,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <span className="ms text-sm">location_on</span> {locationName}
           </div>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+        <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4].map(i => (
@@ -960,7 +960,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
             <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
             {isLoading ? (
@@ -1075,7 +1075,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
             <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
             {isLoading ? (
@@ -1204,7 +1204,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+        <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
           <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
           {isLoading ? (
