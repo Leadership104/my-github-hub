@@ -276,29 +276,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background pointer-events-none" aria-hidden />
 
-      {/* Safety bar */}
-      <div className="relative bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-medium truncate leading-tight">{locationName || 'Detecting…'}</p>
-          </div>
-          <button onClick={() => onSwitchTab('safety')} className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1.5">
-              {DOTS.map((dot, i) => (
-                <span key={i} className="w-[10px] h-[10px] rounded-full transition-all"
-                  style={{
-                    backgroundColor: level >= dot.min ? dot.color : `${dot.color}25`,
-                    boxShadow: level === dot.min ? `0 0 6px ${dot.color}` : 'none',
-                  }} />
-              ))}
-            </div>
-            <span className="text-[11px] font-bold ml-1" style={{ color: safetyResult?.color ?? '#64748b' }}>
-              {safetyResult?.label ?? '…'}
-            </span>
-            <span className="text-white/40 text-xs">▸</span>
-          </button>
-        </div>
-      </div>
+      {/* Safety bar moved to global LocationSafetyBar in App.tsx for cross-screen consistency */}
 
       <div className="relative flex-1 overflow-y-auto px-4 pt-3 pb-24">
 
