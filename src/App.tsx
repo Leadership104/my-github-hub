@@ -121,8 +121,12 @@ export default function App() {
   }, [trips, saveTrips]);
   const [showProfile, setShowProfile] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const { t, lang, setLang } = useI18n();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const NAV_LABELS: Partial<Record<TabId, string>> = {
     home: t('nav.home'), ai: t('nav.ai'), trips: t('nav.travel'), places: t('nav.places'),
   };
@@ -190,15 +194,12 @@ export default function App() {
     return () => { cancelled = true; };
   }, [countryCode, vpnDismissed]);
 
-  // Confirmation toast when GPS auto-detects location
+  // Listen for location detection (no popup shown — location updates silently)
   useEffect(() => {
-    const onDetected = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.name) showToast(`📍 Location detected: ${detail.name}`);
-    };
+    const onDetected = (_e: Event) => { /* silent update */ };
     window.addEventListener('kip-location-detected', onDetected);
     return () => window.removeEventListener('kip-location-detected', onDetected);
-  }, [showToast]);
+  }, []);
 
   // Daily health check: verify core APIs every 24h, show banner if any fail.
   const [healthIssues, setHealthIssues] = useState<string[]>([]);
@@ -639,7 +640,14 @@ export default function App() {
             <hr className="border-border" />
             {!showLangPicker ? (
               <>
-                <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
+                <button
+                  onClick={() => {
+                    setEditName(profile?.display_name || user?.email?.split('@')[0] || '');
+                    setEditCity(profile?.home_city || '');
+                    setShowProfile(false);
+                    setShowEditProfile(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
                   <span className="ms text-lg text-muted-foreground">edit</span> {t('profile.edit')}
                 </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
@@ -712,6 +720,68 @@ export default function App() {
                 ))}
               </div>
             )}
+          </div>
+        </>
+      )}
+
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-[300]" onClick={() => setShowEditProfile(false)} />
+          <div className="fixed inset-x-4 top-[20%] max-w-md mx-auto bg-card rounded-2xl shadow-2xl z-[301] overflow-hidden">
+            <div className="px-5 pt-5 pb-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-extrabold">Edit Profile</h3>
+                <button onClick={() => setShowEditProfile(false)} className="text-muted-foreground text-xl leading-none">&times;</button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Display Name</label>
+                  <input
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full bg-muted rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-kipita-red"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Home City</label>
+                  <input
+                    value={editCity}
+                    onChange={e => setEditCity(e.target.value)}
+                    placeholder="e.g. New York"
+                    className="w-full bg-muted rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-kipita-red"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex gap-2 mt-2">
+              <button onClick={() => setShowEditProfile(false)} className="flex-1 py-2.5 rounded-kipita-sm bg-muted text-sm font-semibold">Cancel</button>
+              <button
+                disabled={editSaving}
+                onClick={async () => {
+                  if (!user) return;
+                  setEditSaving(true);
+                  try {
+                    const { supabase: sb } = await import('@/integrations/supabase/client');
+                    await sb.from('profiles').upsert({
+                      user_id: user.id,
+                      display_name: editName.trim() || null,
+                      home_city: editCity.trim() || null,
+                    }, { onConflict: 'user_id' });
+                    await refreshProfile();
+                    setShowEditProfile(false);
+                    showToast('Profile updated!');
+                  } catch {
+                    showToast('Failed to save — please try again.');
+                  }
+                  setEditSaving(false);
+                }}
+                className="flex-1 py-2.5 rounded-kipita-sm bg-kipita-red text-white text-sm font-bold disabled:opacity-50"
+              >
+                {editSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
           </div>
         </>
       )}

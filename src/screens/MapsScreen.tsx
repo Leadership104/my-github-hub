@@ -845,7 +845,15 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
               )}
             </div>
 
-            {selectedPlace.address && <p className="text-xs text-muted-foreground mt-2">📍 {selectedPlace.address}</p>}
+            {selectedPlace.address && (
+              <a
+                href={selectedPlace.mapsUrl || `https://maps.apple.com/?q=${encodeURIComponent(selectedPlace.address)}&sll=${selectedPlace.lat},${selectedPlace.lng}`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-kipita-red font-medium mt-2"
+              >
+                📍 {selectedPlace.address}
+              </a>
+            )}
             {selectedPlace.summary && <p className="text-xs text-muted-foreground/80 mt-1 italic">{selectedPlace.summary}</p>}
 
             {/* Opening hours */}
@@ -947,15 +955,12 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
 
       {/* Safety Info Panel */}
       {showSafety && (
-        <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[75%]' : 'h-[280px]'}`}>
-          <button onClick={() => setExpanded(!expanded)} className="w-full flex flex-col items-center py-2">
-            <div className="w-10 h-1 bg-border rounded-full" />
-            <span className="text-[10px] text-muted-foreground mt-1">{expanded ? '▼ collapse' : '▲ expand'}</span>
+        <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[75%]' : 'h-[52px]'}`}>
+          <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-3.5 gap-2">
+            <h3 className="text-sm font-extrabold flex items-center gap-2">🛡️ Safety & Health</h3>
+            <span className="ms text-xl text-muted-foreground">{expanded ? 'expand_less' : 'expand_more'}</span>
           </button>
-          <div className="px-4 pb-2">
-            <h3 className="text-sm font-extrabold flex items-center gap-2">🛡️ Safety & Health Information</h3>
-          </div>
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4" style={{ maxHeight: expanded ? 'calc(100% - 60px)' : '200px' }}>
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4" style={{ maxHeight: expanded ? 'calc(100% - 52px)' : '0px', overflow: expanded ? 'auto' : 'hidden' }}>
             {safetyLoading ? (
               <div className="text-center py-8 text-sm text-muted-foreground animate-pulse">Loading safety data…</div>
             ) : safetyData ? (
@@ -1018,16 +1023,15 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       )}
 
       {/* Bottom sheet (hidden when safety panel or place card is active) */}
-      {!showSafety && !selectedPlace && <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[70%]' : 'h-[140px]'}`}>
-        <button onClick={() => setExpanded(!expanded)} className="w-full flex flex-col items-center py-2">
-          <div className="w-10 h-1 bg-border rounded-full" />
-          <span className="text-[10px] text-muted-foreground mt-1">{expanded ? '▼ collapse' : '▲ expand'}</span>
+      {!showSafety && !selectedPlace && <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[70%]' : 'h-[52px]'}`}>
+        <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-3.5 gap-2">
+          <h3 className="text-sm font-bold truncate">{sheetTitle}</h3>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <span className="text-[11px] text-muted-foreground">{nearbyPlaces.length} found</span>
+            <span className="ms text-xl text-muted-foreground">{expanded ? 'expand_less' : 'expand_more'}</span>
+          </div>
         </button>
-        <div className="px-4 pb-2 flex items-center justify-between">
-          <h3 className="text-sm font-bold">{sheetTitle}</h3>
-          <span className="text-xs text-muted-foreground">{nearbyPlaces.length} found · multi-source</span>
-        </div>
-        <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ maxHeight: expanded ? 'calc(100% - 80px)' : '70px' }}>
+        <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ maxHeight: expanded ? 'calc(100% - 52px)' : '0px', overflow: expanded ? 'auto' : 'hidden' }}>
           {(loading && filter === 'btc') || placesLoading ? (
             <div className="text-center text-sm text-muted-foreground py-4">
               <div className="animate-pulse">Aggregating real-time data from multiple sources…</div>
@@ -1062,7 +1066,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
                 {p.summary && <div className="text-[10px] text-muted-foreground/80 mt-0.5 line-clamp-2 italic">{p.summary}</div>}
                 <div className="text-[10px] text-muted-foreground mt-0.5">
                   {p.type}{p.address ? ` · ${p.address}` : ''}
-                  {p.distance !== undefined ? ` · ${p.distance < 1 ? Math.round(p.distance * 1000) + 'm' : p.distance.toFixed(1) + 'km'}` : ''}
+                  {p.distance !== undefined ? ` · ${(p.distance * 0.621371) < 0.1 ? Math.round(p.distance * 0.621371 * 5280) + 'ft' : (p.distance * 0.621371).toFixed(1) + 'mi'}` : ''}
                 </div>
                 {p.openingHours && <div className="text-[10px] text-muted-foreground/70">🕐 {p.openingHours.slice(0, 50)}{p.openingHours.length > 50 ? '…' : ''}</div>}
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap">
