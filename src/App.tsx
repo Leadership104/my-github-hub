@@ -17,6 +17,7 @@ import SafetyScreen from './screens/SafetyScreen';
 import ATMScreen from './screens/ATMScreen';
 import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
+import BusinessScreen from './screens/BusinessScreen';
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
 import { useAuth } from './auth/useAuth';
 
@@ -357,6 +358,7 @@ export default function App() {
       case 'atm': return <ATMScreen lat={lat} lng={lng} merchants={merchants} onBack={goBack} onViewOnMap={(filter) => switchTab('maps', filter)} />;
       case 'perks': return <PerksScreen onBack={goBack} />;
       case 'fuel': return <FuelScreen onBack={goBack} />;
+      case 'business': return <BusinessScreen onBack={goBack} />;
     }
   };
 
@@ -672,6 +674,11 @@ export default function App() {
                   <span className="text-xs text-muted-foreground">
                     {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.flag} {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label}
                   </span>
+                </button>
+                <button
+                  onClick={() => { setShowProfile(false); switchTab('business'); }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
+                  <span className="ms text-lg text-muted-foreground">storefront</span> Business Account
                 </button>
                 <hr className="border-border" />
                 <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Tutorials</div>

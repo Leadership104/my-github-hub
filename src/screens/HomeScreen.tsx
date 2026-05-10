@@ -246,7 +246,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       case 'parks': onSwitchTab('places', 'park'); break;
       case 'parking': onSwitchTab('places', 'parking'); break;
       case 'lodges': onSwitchTab('places', 'lodge'); break;
-      case 'business': onSwitchTab('places', 'coworking'); break;
+      case 'business': onSwitchTab('business'); break;
     }
   };
 
@@ -360,20 +360,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           <span className="ms text-muted-foreground text-xl">chevron_right</span>
         </button>
 
-        {/* Build the Business */}
-        <button
-          onClick={() => onSwitchTab('places', 'coworking')}
-          className="btn-3d w-full flex items-center justify-between gap-3 px-4 py-3 bg-kipita-navy rounded-kipita mt-2"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-xl">💼</span>
-            <div className="text-left">
-              <div className="text-sm font-extrabold text-white">Build the Business</div>
-              <div className="text-[10px] text-white/60">Coworking · Business Centers · Meetings</div>
-            </div>
-          </div>
-          <span className="ms text-white/60 text-xl">chevron_right</span>
-        </button>
 
       </div>
     </div>
