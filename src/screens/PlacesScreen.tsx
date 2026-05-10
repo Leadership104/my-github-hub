@@ -1222,46 +1222,9 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <p className="text-sm font-semibold text-foreground">No places found</p>
               <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
             </div>
-          ) : displayPlaces.map((p, i) => {
-            const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
-            const driveTime = distKm ? estimateDriveTime(distKm) : null;
-
-            return (
-              <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
-                className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
-                <div className="flex gap-3 p-3">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
-                    {p.photoUrl ? (
-                      <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl">📍</div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm truncate">{p.name}</div>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      {p.rating && (
-                        <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
-                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
-                        </span>
-                      )}
-                      {p.openNow !== null && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.openNow ? 'bg-green-50 text-green-600' : 'bg-muted text-muted-foreground'}`}>
-                          {p.openNow ? 'OPEN' : 'CLOSED'}
-                        </span>
-                      )}
-                      {driveTime && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                          <Navigation className="w-2.5 h-2.5" /> {driveTime}
-                        </span>
-                      )}
-                    </div>
-                    {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          ) : displayPlaces.map((p, i) => (
+            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+          ))}
         </div>
       </div>
     );
