@@ -19,6 +19,7 @@ import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
 import BusinessScreen from './screens/BusinessScreen';
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
+import LocationSafetyBar from './components/LocationSafetyBar';
 import { useAuth } from './auth/useAuth';
 
 /** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
