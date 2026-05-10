@@ -373,9 +373,14 @@ export default function App() {
         </div>
         <button onClick={() => setShowLocationPicker(true)}
           data-tour="header-location"
-          className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-4 py-2.5 text-sm font-semibold text-kipita-navy overflow-hidden min-w-0">
-          <span className="ms text-lg flex-shrink-0">location_on</span>
-          <span className="truncate">{locationName}</span>
+          className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-3 py-2 overflow-hidden min-w-0">
+          <span className="ms text-base flex-shrink-0 text-kipita-red">location_on</span>
+          <div className="flex-1 min-w-0 text-left">
+            <div className="text-[12px] font-bold text-kipita-navy truncate leading-tight">{locationName}</div>
+            {fullAddress && fullAddress !== locationName && (
+              <div className="text-[9px] text-muted-foreground truncate leading-tight">{fullAddress.split(',').slice(0, 2).join(',')}</div>
+            )}
+          </div>
           <span className="ms text-xs text-kipita-navy/60 flex-shrink-0">expand_more</span>
         </button>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -392,7 +397,11 @@ export default function App() {
         </div>
         <button onClick={() => setShowProfile(!showProfile)}
           className="ml-auto w-11 h-11 rounded-full bg-black/5 hover:bg-black/10 transition-colors flex items-center justify-center overflow-hidden flex-shrink-0">
-          <span className="ms text-2xl text-kipita-navy">account_circle</span>
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
+          ) : (
+            <span className="ms text-2xl text-kipita-navy">account_circle</span>
+          )}
         </button>
       </header>
 
@@ -790,6 +799,12 @@ export default function App() {
       <main className="flex-1 overflow-hidden relative">
         {renderScreen()}
       </main>
+
+      {/* Location footer strip — always visible on every page */}
+      <div className="flex items-center justify-center gap-1.5 px-4 py-1.5 bg-kipita-navy flex-shrink-0">
+        <span className="ms text-[11px] text-white/60">location_on</span>
+        <span className="text-[10px] text-white/80 font-medium truncate max-w-[260px]">{locationName}</span>
+      </div>
 
       {/* Bottom Nav — bubbly motion */}
       <nav className="h-[84px] glass border-t border-white/40 shadow-[0_-4px_24px_rgba(0,0,0,.06)] flex items-stretch flex-shrink-0 z-[100] overflow-x-auto scrollbar-hide"

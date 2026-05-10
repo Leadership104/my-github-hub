@@ -16,6 +16,7 @@ interface ATMResult {
   address?: string;
   distance?: number;
   type: 'atm' | 'bank';
+  photoUrl?: string | null;
 }
 
 function formatDist(km: number): string {
@@ -66,6 +67,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
             address: p?.formattedAddress || p?.vicinity,
             distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
             type,
+            photoUrl: p?.photoUrl || (Array.isArray(p?.photos) ? p.photos[0] : null) || null,
           } as ATMResult;
         }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
       } catch { return []; }
@@ -232,9 +234,13 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xl">{atm.type === 'bank' ? '🏦' : '🏧'}</span>
-                      </div>
+                      {atm.photoUrl ? (
+                        <img src={atm.photoUrl} alt={atm.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">{atm.type === 'bank' ? '🏦' : '🏧'}</span>
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold text-foreground truncate">{atm.name}</div>
                         <div className="text-xs text-muted-foreground truncate">

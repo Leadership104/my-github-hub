@@ -118,8 +118,17 @@ function getFeaturedNearMe(): FeaturedTile[] {
     return [
       { id: 'dinner', emoji: '🍽️', label: 'Dinner', hint: 'food', chips: food },
       { id: 'drinks', emoji: '🍸', label: 'Drinks', hint: 'drinks', chips: drinks },
-      { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
+      { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
       { id: 'coffee', emoji: '☕', label: 'Coffee', hint: 'cafe', chips: cafes },
+    ];
+  }
+  // Afternoon: preview the evening vibe with nightlife + clubs
+  if (hour >= 14) {
+    return [
+      { id: 'dinner', emoji: '🍽️', label: 'Dinner', hint: 'food', chips: food },
+      { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
+      { id: 'clubs', emoji: '🎶', label: 'Clubs', hint: 'nightlife', chips: nightlife },
+      { id: 'drinks', emoji: '🍸', label: 'Drinks', hint: 'drinks', chips: drinks },
     ];
   }
   if (isWeekend && hour < 12) {
@@ -142,7 +151,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
     { id: 'lunch', emoji: '🍽️', label: 'Lunch', hint: 'food', chips: food },
     { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
     { id: 'shop', emoji: '🛍️', label: 'Shopping', hint: 'shop', chips: shop },
-    { id: 'pharmacy', emoji: '🏥', label: 'Pharmacy', hint: 'pharmacy', chips: [] },
+    { id: 'parks', emoji: '🌳', label: 'Parks', hint: 'park', chips: [] },
   ];
 }
 
@@ -234,6 +243,10 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       case 'fuel': onSwitchTab('fuel'); break;
       case 'maps': onSwitchTab('maps'); break;
       case 'atm': onSwitchTab('atm'); break;
+      case 'parks': onSwitchTab('places', 'park'); break;
+      case 'parking': onSwitchTab('places', 'parking'); break;
+      case 'lodges': onSwitchTab('places', 'lodge'); break;
+      case 'business': onSwitchTab('places', 'coworking'); break;
     }
   };
 
@@ -244,6 +257,9 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { id: 'fuel', label: 'Gas/EV', render: () => <FuelIcon size={36} /> },
     { id: 'maps', label: 'Maps', render: () => <span className="text-3xl">🗺️</span> },
     { id: 'atm', label: '$ Money', render: () => <span className="text-3xl">💵</span> },
+    { id: 'parks', label: 'Parks', render: () => <span className="text-3xl">🌳</span> },
+    { id: 'parking', label: 'Parking', render: () => <span className="text-3xl">🅿️</span> },
+    { id: 'lodges', label: 'Lodges', render: () => <span className="text-3xl">🏕️</span> },
   ];
 
   const featured = getFeaturedNearMe();
@@ -342,6 +358,21 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <span className="text-sm font-extrabold text-foreground">Kipita Perks</span>
           </div>
           <span className="ms text-muted-foreground text-xl">chevron_right</span>
+        </button>
+
+        {/* Build the Business */}
+        <button
+          onClick={() => onSwitchTab('places', 'coworking')}
+          className="btn-3d w-full flex items-center justify-between gap-3 px-4 py-3 bg-kipita-navy rounded-kipita mt-2"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">💼</span>
+            <div className="text-left">
+              <div className="text-sm font-extrabold text-white">Build the Business</div>
+              <div className="text-[10px] text-white/60">Coworking · Business Centers · Meetings</div>
+            </div>
+          </div>
+          <span className="ms text-white/60 text-xl">chevron_right</span>
         </button>
 
       </div>

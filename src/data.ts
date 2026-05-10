@@ -266,6 +266,9 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'spa', label: 'Spa & Beauty', emoji: '💆', query: 'spa beauty salon massage' },
   { id: 'ev', label: 'EV Charging', emoji: '⚡', query: 'electric vehicle charging station' },
   { id: 'library', label: 'Libraries', emoji: '📚', query: 'public library' },
+  { id: 'park', label: 'Parks', emoji: '🌳', query: 'park nature garden' },
+  { id: 'parking', label: 'Parking', emoji: '🅿️', query: 'parking lot garage' },
+  { id: 'lodge', label: 'Lodges', emoji: '🏕️', query: 'lodge cabin resort inn' },
 ];
 
 export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
