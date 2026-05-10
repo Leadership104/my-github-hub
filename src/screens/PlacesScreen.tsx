@@ -138,6 +138,66 @@ const CUISINE_FILTERS = [
   { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
 ];
 
+/* Build a directions URL that opens the OS-default maps app (Google/Apple/etc.). */
+function buildDirectionsUrl(p: { lat?: number; lng?: number; name?: string; address?: string }) {
+  if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+    return `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}&travelmode=driving`;
+  }
+  const q = encodeURIComponent(`${p.name ?? ''} ${p.address ?? ''}`.trim());
+  return `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving`;
+}
+
+/* Reusable place card with a Directions button on every row. */
+function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: number; onOpen: (p: LivePlace) => void }) {
+  const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
+  const driveTime = distKm ? estimateDriveTime(distKm) : null;
+  const dirUrl = buildDirectionsUrl(p);
+  return (
+    <div role="button" tabIndex={0}
+      onClick={() => onOpen(p)}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpen(p); }}
+      className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow cursor-pointer">
+      <div className="flex gap-3 p-3 items-center">
+        <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+          {p.photoUrl ? (
+            <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-xl">📍</div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-bold text-sm truncate">{p.name}</div>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            {p.rating && (
+              <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
+                <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
+              </span>
+            )}
+            {p.openNow !== null && (
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.openNow ? 'bg-green-50 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+                {p.openNow ? 'OPEN' : 'CLOSED'}
+              </span>
+            )}
+            {driveTime && (
+              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                <Navigation className="w-2.5 h-2.5" /> {driveTime}
+              </span>
+            )}
+          </div>
+          {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
+        </div>
+        <a href={dirUrl} target="_blank" rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="self-center flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg bg-kipita-navy text-white hover:opacity-90 flex-shrink-0"
+          aria-label={`Directions to ${p.name}`}>
+          <span className="ms text-base leading-none">directions</span>
+          <span className="text-[9px] font-bold leading-none">GO</span>
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack }: Props) {
   const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide'>(initialView === 'phrases' || initialView === 'destinations' ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
@@ -183,6 +243,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
+    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
+    { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'money', label: '$ Money', emoji: '💵', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'medical', label: 'Medical', emoji: '🏥', icon: Stethoscope, catIds: ['hospital', 'er', 'childrenhospital', 'urgentcare', 'pharmacy', 'pharmacy24', 'dentist'] },
@@ -198,6 +260,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   // Map hint → { sectionId, chipCatId, subLabel? } where subLabel pins to a specific
   // sub-chip (e.g. "Mechanic" within Auto Care, "Market" within Shopping).
   const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string; subLabel?: string }> = {
+    food: { sectionId: 'eat', chipCatId: 'food' },
+    cafe: { sectionId: 'eat', chipCatId: 'cafe' },
+    drinks: { sectionId: 'eat', chipCatId: 'drinks' },
+    shop: { sectionId: 'shop', chipCatId: 'shop' },
+    grocery: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Grocery' },
+    market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Market' },
+    farmers_market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Farmers Market' },
     gas: { sectionId: 'transport', chipCatId: 'gas' },
     transport: { sectionId: 'transport', chipCatId: 'transport' },
     auto: { sectionId: 'transport', chipCatId: 'auto' },
@@ -977,46 +1046,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 <p className="text-sm font-semibold text-foreground">No places found</p>
                 <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
               </div>
-            ) : displayPlaces.map((p, i) => {
-              const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
-              const driveTime = distKm ? estimateDriveTime(distKm) : null;
+            ) : displayPlaces.map((p, i) => (
+              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+            ))}
 
-              return (
-                <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
-                  className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
-                  <div className="flex gap-3 p-3">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
-                      {p.photoUrl ? (
-                        <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl">📍</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm truncate">{p.name}</div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {p.rating && (
-                          <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
-                          </span>
-                        )}
-                        {p.openNow !== null && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.openNow ? 'bg-green-50 text-green-600' : 'bg-muted text-muted-foreground'}`}>
-                            {p.openNow ? 'OPEN' : 'CLOSED'}
-                          </span>
-                        )}
-                        {driveTime && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                            <Navigation className="w-2.5 h-2.5" /> {driveTime}
-                          </span>
-                        )}
-                      </div>
-                      {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
           </div>
         </div>
       );
@@ -1097,46 +1130,9 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 <p className="text-sm font-semibold text-foreground">No places found</p>
                 <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
               </div>
-            ) : displayPlaces.map((p, i) => {
-              const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
-              const driveTime = distKm ? estimateDriveTime(distKm) : null;
-
-              return (
-                <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
-                  className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
-                  <div className="flex gap-3 p-3">
-                    <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
-                      {p.photoUrl ? (
-                        <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl">📍</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="font-bold text-sm truncate">{p.name}</div>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {p.rating && (
-                          <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
-                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
-                          </span>
-                        )}
-                        {p.openNow !== null && (
-                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.openNow ? 'bg-green-50 text-green-600' : 'bg-muted text-muted-foreground'}`}>
-                            {p.openNow ? 'OPEN' : 'CLOSED'}
-                          </span>
-                        )}
-                        {driveTime && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                            <Navigation className="w-2.5 h-2.5" /> {driveTime}
-                          </span>
-                        )}
-                      </div>
-                      {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+            ) : displayPlaces.map((p, i) => (
+              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+            ))}
           </div>
         </div>
       );
@@ -1226,46 +1222,9 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <p className="text-sm font-semibold text-foreground">No places found</p>
               <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
             </div>
-          ) : displayPlaces.map((p, i) => {
-            const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
-            const driveTime = distKm ? estimateDriveTime(distKm) : null;
-
-            return (
-              <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
-                className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
-                <div className="flex gap-3 p-3">
-                  <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
-                    {p.photoUrl ? (
-                      <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xl">📍</div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-bold text-sm truncate">{p.name}</div>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                      {p.rating && (
-                        <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
-                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
-                        </span>
-                      )}
-                      {p.openNow !== null && (
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${p.openNow ? 'bg-green-50 text-green-600' : 'bg-muted text-muted-foreground'}`}>
-                          {p.openNow ? 'OPEN' : 'CLOSED'}
-                        </span>
-                      )}
-                      {driveTime && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                          <Navigation className="w-2.5 h-2.5" /> {driveTime}
-                        </span>
-                      )}
-                    </div>
-                    {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          ) : displayPlaces.map((p, i) => (
+            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+          ))}
         </div>
       </div>
     );

@@ -156,11 +156,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
 }
 
 export default function HomeScreen({ weather, forecast, locationName, fullAddress, countryCode, lat, lng, onSwitchTab }: Props) {
-  const liveSafety = useTravelSafety(countryCode);
-  const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
-  const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
   const [bgPhoto, setBgPhoto] = useState<string | undefined>();
-  const isDomestic = !countryCode || countryCode.toUpperCase() === 'US';
 
   // Pull a real photo of the current city for the background
   useEffect(() => {
@@ -172,68 +168,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     });
     return () => { cancelled = true; };
   }, [locationName]);
-
-  // Pull live multi-source safety rates from the crime-data edge function.
-  useEffect(() => {
-    if (!locationName) { setLiveRates(null); return; }
-    let cancelled = false;
-    setLiveRates(null);
-    const parts = locationName.split(',').map(s => s.trim()).filter(Boolean);
-    const city = parts[0] ?? '';
-    let state: string | null = null;
-    for (const p of parts.slice(1)) {
-      const m = p.match(/^([A-Z]{2})(?:\s+\d{5})?$/);
-      if (m) { state = m[1]; break; }
-    }
-    const country = (countryCode || 'US').toUpperCase();
-    (async () => {
-      try {
-        const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
-        const qs = new URLSearchParams({ city, state: state ?? '', country });
-        if (Number.isFinite(lat)) qs.set('lat', String(lat));
-        if (Number.isFinite(lng)) qs.set('lon', String(lng));
-        const r = await fetch(`${base}/functions/v1/crime-data?${qs}`, {
-          headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
-        });
-        if (!r.ok) return;
-        const j = await r.json();
-        if (!cancelled && j?.rates) setLiveRates(j.rates);
-      } catch { /* keep heuristic fallback */ }
-    })();
-    return () => { cancelled = true; };
-  }, [locationName, countryCode, lat, lng]);
-
-  useEffect(() => {
-    if (!locationName) {
-      setSafetyResult(null);
-      return;
-    }
-    let baseRates: Record<string, number>;
-    if (liveRates && Object.keys(liveRates).length) {
-      baseRates = liveRates;
-    } else {
-      const rawScore = isDomestic ? 1.0 : (liveSafety?.rawScore ?? 2.0);
-      const variance = cityVarianceFromSeed(`${locationName}|${countryCode ?? ''}`);
-      baseRates = advisoryToBaseRates(rawScore, variance);
-    }
-    const timeOfDay = detectTimeOfDay();
-    const result = computeSafetyScore({
-      context: 'AWAY',
-      situational: { timeOfDay, density: 'residential', events: 'none', weather: 'normal' },
-      baseRates,
-    });
-    const sl = safetyLevel(result.score);
-    setSafetyResult({ score: result.score, ...sl });
-  }, [liveSafety, countryCode, locationName, isDomestic, liveRates]);
-
-  const level = safetyResult?.level ?? -1;
-  const DOTS = [
-    { min: 0, color: '#ef4444' },
-    { min: 1, color: '#f97316' },
-    { min: 2, color: '#eab308' },
-    { min: 3, color: '#84cc16' },
-    { min: 4, color: '#22c55e' },
-  ];
 
   const handleEssentialTap = (id: string) => {
     switch (id) {
@@ -276,29 +210,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
       )}
       <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-background/80 to-background pointer-events-none" aria-hidden />
 
-      {/* Safety bar */}
-      <div className="relative bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-medium truncate leading-tight">{locationName || 'Detecting…'}</p>
-          </div>
-          <button onClick={() => onSwitchTab('safety')} className="flex items-center gap-2 flex-shrink-0">
-            <div className="flex items-center gap-1.5">
-              {DOTS.map((dot, i) => (
-                <span key={i} className="w-[10px] h-[10px] rounded-full transition-all"
-                  style={{
-                    backgroundColor: level >= dot.min ? dot.color : `${dot.color}25`,
-                    boxShadow: level === dot.min ? `0 0 6px ${dot.color}` : 'none',
-                  }} />
-              ))}
-            </div>
-            <span className="text-[11px] font-bold ml-1" style={{ color: safetyResult?.color ?? '#64748b' }}>
-              {safetyResult?.label ?? '…'}
-            </span>
-            <span className="text-white/40 text-xs">▸</span>
-          </button>
-        </div>
-      </div>
+      {/* Safety bar moved to global LocationSafetyBar in App.tsx for cross-screen consistency */}
 
       <div className="relative flex-1 overflow-y-auto px-4 pt-3 pb-24">
 

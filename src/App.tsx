@@ -19,6 +19,7 @@ import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
 import BusinessScreen from './screens/BusinessScreen';
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
+import LocationSafetyBar from './components/LocationSafetyBar';
 import { useAuth } from './auth/useAuth';
 
 /** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
@@ -802,16 +803,20 @@ export default function App() {
         </>
       )}
 
+      {/* Persistent location + safety bar — consistent across every screen */}
+      <LocationSafetyBar
+        locationName={locationName}
+        fullAddress={fullAddress}
+        countryCode={countryCode}
+        lat={lat}
+        lng={lng}
+        onTap={() => switchTab('safety')}
+      />
+
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
         {renderScreen()}
       </main>
-
-      {/* Location footer strip — always visible on every page */}
-      <div className="flex items-center justify-center gap-1.5 px-4 py-1.5 bg-kipita-navy flex-shrink-0">
-        <span className="ms text-[11px] text-white/60">location_on</span>
-        <span className="text-[10px] text-white/80 font-medium truncate max-w-[260px]">{locationName}</span>
-      </div>
 
       {/* Bottom Nav — bubbly motion */}
       <nav className="h-[84px] glass border-t border-white/40 shadow-[0_-4px_24px_rgba(0,0,0,.06)] flex items-stretch flex-shrink-0 z-[100] overflow-x-auto scrollbar-hide"
