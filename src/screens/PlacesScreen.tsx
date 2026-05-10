@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine, Stethoscope, Dumbbell } from 'lucide-react';
+import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine, Stethoscope, Dumbbell, Leaf, Tent } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 import { haversine, useDragScroll } from '../hooks';
@@ -183,25 +183,21 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
-    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
-    { id: 'stay', label: 'Places to Stay', emoji: '🏨', icon: BedDouble, catIds: ['hotel'] },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
-    { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'money', label: '$ Money', emoji: '💵', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'medical', label: 'Medical', emoji: '🏥', icon: Stethoscope, catIds: ['hospital', 'er', 'childrenhospital', 'urgentcare', 'pharmacy', 'pharmacy24', 'dentist'] },
     { id: 'wellness', label: 'Recreational', emoji: '🏋️', icon: Dumbbell, catIds: ['gym', 'spa'] },
     { id: 'explore', label: 'Fun', emoji: '🎭', icon: Compass, catIds: ['nightlife', 'beach', 'attractions'] },
     { id: 'library', label: 'Libraries', emoji: '📚', icon: Monitor, catIds: ['library'] },
+    { id: 'parks', label: 'Parks', emoji: '🌳', icon: Leaf, catIds: ['park'] },
+    { id: 'parking', label: 'Parking', emoji: '🅿️', icon: Car, catIds: ['parking'] },
+    { id: 'lodges', label: 'Lodges', emoji: '🏕️', icon: Tent, catIds: ['lodge'] },
   ];
 
   // Map hint strings to section IDs and optional chip catId
   // Map hint → { sectionId, chipCatId, subLabel? } where subLabel pins to a specific
   // sub-chip (e.g. "Mechanic" within Auto Care, "Market" within Shopping).
   const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string; subLabel?: string }> = {
-    food: { sectionId: 'eat', chipCatId: 'food' },
-    cafe: { sectionId: 'eat', chipCatId: 'cafe' },
-    coffee: { sectionId: 'eat', chipCatId: 'cafe' },
-    drinks: { sectionId: 'eat', chipCatId: 'drinks' },
     gas: { sectionId: 'transport', chipCatId: 'gas' },
     transport: { sectionId: 'transport', chipCatId: 'transport' },
     auto: { sectionId: 'transport', chipCatId: 'auto' },
@@ -211,11 +207,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     medical: { sectionId: 'medical' },
     pharmacy: { sectionId: 'medical', chipCatId: 'pharmacy' },
     hospital: { sectionId: 'medical', chipCatId: 'hospital' },
-    hotel: { sectionId: 'stay' },
-    shop: { sectionId: 'shop' },
-    farmers_market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Farmers Market' },
-    market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Market' },
-    grocery: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Grocery' },
     atm: { sectionId: 'money' },
     gym: { sectionId: 'wellness' },
     spa: { sectionId: 'wellness', chipCatId: 'spa' },
@@ -223,6 +214,9 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     attractions: { sectionId: 'explore', chipCatId: 'attractions' },
     museum: { sectionId: 'explore', chipCatId: 'attractions', subLabel: 'Museums' },
     library: { sectionId: 'library' },
+    park: { sectionId: 'parks', chipCatId: 'park' },
+    parking: { sectionId: 'parking', chipCatId: 'parking' },
+    lodge: { sectionId: 'lodges', chipCatId: 'lodge' },
   };
 
   // Inject ad-hoc sub-chip queries (Farmers Market doesn't exist as a stock sub).

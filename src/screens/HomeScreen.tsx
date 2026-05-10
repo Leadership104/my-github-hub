@@ -118,8 +118,17 @@ function getFeaturedNearMe(): FeaturedTile[] {
     return [
       { id: 'dinner', emoji: '🍽️', label: 'Dinner', hint: 'food', chips: food },
       { id: 'drinks', emoji: '🍸', label: 'Drinks', hint: 'drinks', chips: drinks },
-      { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
+      { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
       { id: 'coffee', emoji: '☕', label: 'Coffee', hint: 'cafe', chips: cafes },
+    ];
+  }
+  // Afternoon: preview the evening vibe with nightlife + clubs
+  if (hour >= 14) {
+    return [
+      { id: 'dinner', emoji: '🍽️', label: 'Dinner', hint: 'food', chips: food },
+      { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
+      { id: 'clubs', emoji: '🎶', label: 'Clubs', hint: 'nightlife', chips: nightlife },
+      { id: 'drinks', emoji: '🍸', label: 'Drinks', hint: 'drinks', chips: drinks },
     ];
   }
   if (isWeekend && hour < 12) {
@@ -142,7 +151,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
     { id: 'lunch', emoji: '🍽️', label: 'Lunch', hint: 'food', chips: food },
     { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
     { id: 'shop', emoji: '🛍️', label: 'Shopping', hint: 'shop', chips: shop },
-    { id: 'pharmacy', emoji: '🏥', label: 'Pharmacy', hint: 'pharmacy', chips: [] },
+    { id: 'parks', emoji: '🌳', label: 'Parks', hint: 'park', chips: [] },
   ];
 }
 
@@ -150,7 +159,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   const liveSafety = useTravelSafety(countryCode);
   const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
   const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
-  const [expandedTile, setExpandedTile] = useState<string | null>(null);
   const [bgPhoto, setBgPhoto] = useState<string | undefined>();
   const isDomestic = !countryCode || countryCode.toUpperCase() === 'US';
 
@@ -228,26 +236,18 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   ];
 
   const handleEssentialTap = (id: string) => {
-    // Food jumps straight to the Places food section (categories shown there).
-    if (id === 'food') { onSwitchTab('places', 'food'); return; }
-    // Toggle chip drawer for tiles that have chips
-    if ((ESSENTIAL_CHIPS[id] || []).length > 0) {
-      setExpandedTile(prev => prev === id ? null : id);
-      return;
-    }
-    // Fallback direct nav
     switch (id) {
+      case 'food': onSwitchTab('places', 'food'); break;
+      case 'fun': onSwitchTab('places', 'attractions'); break;
+      case 'shopping': onSwitchTab('places', 'shop'); break;
+      case 'fuel': onSwitchTab('fuel'); break;
       case 'maps': onSwitchTab('maps'); break;
       case 'atm': onSwitchTab('atm'); break;
-      case 'fuel': onSwitchTab('fuel'); break;
+      case 'parks': onSwitchTab('places', 'park'); break;
+      case 'parking': onSwitchTab('places', 'parking'); break;
+      case 'lodges': onSwitchTab('places', 'lodge'); break;
+      case 'business': onSwitchTab('business'); break;
     }
-  };
-
-  const handleChipTap = (chip: SubChip, parentId: string) => {
-    if (parentId === 'fuel') { onSwitchTab('fuel'); return; }
-    if (parentId === 'maps') { onSwitchTab('maps'); return; }
-    if (parentId === 'atm') { onSwitchTab('atm'); return; }
-    if (chip.hint) onSwitchTab('places', chip.hint);
   };
 
   const ESSENTIALS: { id: string; label: string; render: () => JSX.Element }[] = [
@@ -257,6 +257,9 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { id: 'fuel', label: 'Gas/EV', render: () => <FuelIcon size={36} /> },
     { id: 'maps', label: 'Maps', render: () => <span className="text-3xl">🗺️</span> },
     { id: 'atm', label: '$ Money', render: () => <span className="text-3xl">💵</span> },
+    { id: 'parks', label: 'Parks', render: () => <span className="text-3xl">🌳</span> },
+    { id: 'parking', label: 'Parking', render: () => <span className="text-3xl">🅿️</span> },
+    { id: 'lodges', label: 'Lodges', render: () => <span className="text-3xl">🏕️</span> },
   ];
 
   const featured = getFeaturedNearMe();
@@ -315,129 +318,35 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         {/* Essentials Grid */}
         <h2 className="text-sm font-bold text-foreground mb-2">Essentials</h2>
         <div data-tour="home-essentials" className="grid grid-cols-3 gap-2 mb-3">
-          {ESSENTIALS.map(item => {
-            const isExpanded = expandedTile === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleEssentialTap(item.id)}
-                aria-expanded={isExpanded}
-                className={`btn-3d flex flex-col items-center justify-center gap-1.5 py-3 glass rounded-kipita-sm transition-all ${isExpanded ? 'ring-2 ring-kipita-red/60' : ''}`}
-              >
-                {item.render()}
-                <span className="text-[11px] font-bold text-foreground">{item.label}</span>
-              </button>
-            );
-          })}
+          {ESSENTIALS.map(item => (
+            <button
+              key={item.id}
+              onClick={() => handleEssentialTap(item.id)}
+              className="btn-3d flex flex-col items-center justify-center gap-1.5 py-3 glass rounded-kipita-sm transition-all"
+            >
+              {item.render()}
+              <span className="text-[11px] font-bold text-foreground">{item.label}</span>
+            </button>
+          ))}
         </div>
-
-        {/* Expanded chip drawer for any essential */}
-        {expandedTile && (ESSENTIAL_CHIPS[expandedTile] || []).length > 0 && (
-          <div className="glass rounded-kipita-sm p-3 mb-4 animate-float-in">
-            <div className="flex items-center justify-between mb-2 px-1">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                {ESSENTIALS.find(e => e.id === expandedTile)?.label} · tap to explore
-              </p>
-              <button
-                onClick={() => setExpandedTile(null)}
-                className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="@container">
-              <HorizontalScroller className="snap-x snap-mandatory -mx-1 px-1">
-                <div className="flex gap-2 pb-1 w-max">
-                  {ESSENTIAL_CHIPS[expandedTile].map(chip => (
-                    <button
-                      key={chip.label}
-                      onClick={() => { handleChipTap(chip, expandedTile); setExpandedTile(null); }}
-                      className="btn-3d flex items-center gap-2 px-4 py-2.5 bg-card rounded-full text-left snap-start flex-shrink-0"
-                    >
-                      <span className="text-lg flex-shrink-0">{chip.emoji}</span>
-                      <span className="text-xs font-semibold text-foreground whitespace-nowrap">{chip.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </HorizontalScroller>
-            </div>
-          </div>
-        )}
 
         {/* Featured Near Me */}
         <h2 className="text-sm font-bold text-foreground mt-3 mb-0.5">Featured Near Me</h2>
-        <p className="text-[10px] text-muted-foreground mb-2">Curated for right now · tap to expand</p>
+        <p className="text-[10px] text-muted-foreground mb-2">Curated for right now · tap to explore</p>
         <div className="grid grid-cols-4 gap-2 mb-3">
-          {featured.map(cat => {
-            const isExpanded = expandedTile === `f:${cat.id}`;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  if (cat.chips.length > 0) {
-                    setExpandedTile(prev => prev === `f:${cat.id}` ? null : `f:${cat.id}`);
-                  } else {
-                    onSwitchTab('places', cat.hint);
-                  }
-                }}
-                aria-expanded={isExpanded}
-                className={`btn-3d flex flex-col items-center justify-center gap-1 py-2.5 rounded-kipita-sm glass transition-all ${isExpanded ? 'ring-2 ring-kipita-red/60' : ''}`}
-              >
-                <span className="text-2xl">{cat.emoji}</span>
-                <span className="text-[10px] font-semibold text-center leading-tight whitespace-pre-line text-foreground">
-                  {cat.label}
-                </span>
-              </button>
-            );
-          })}
+          {featured.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => onSwitchTab('places', cat.hint)}
+              className="btn-3d flex flex-col items-center justify-center gap-1 py-2.5 rounded-kipita-sm glass transition-all"
+            >
+              <span className="text-2xl">{cat.emoji}</span>
+              <span className="text-[10px] font-semibold text-center leading-tight whitespace-pre-line text-foreground">
+                {cat.label}
+              </span>
+            </button>
+          ))}
         </div>
-
-        {/* Featured chip drawer */}
-        {expandedTile?.startsWith('f:') && (() => {
-          const id = expandedTile.slice(2);
-          const tile = featured.find(f => f.id === id);
-          if (!tile || tile.chips.length === 0) return null;
-          return (
-            <div className="glass rounded-kipita-sm p-3 mb-4 animate-float-in">
-              <div className="flex items-center justify-between mb-2 px-1">
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                  {tile.label.replace(/\n/g, ' ')} · open now near you
-                </p>
-                <button
-                  onClick={() => setExpandedTile(null)}
-                  className="text-[10px] font-semibold text-muted-foreground hover:text-foreground"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-              <button
-                onClick={() => { onSwitchTab('places', tile.hint); setExpandedTile(null); }}
-                className="btn-3d w-full flex items-center justify-center gap-1.5 px-2.5 py-2 mb-2 bg-kipita-red text-white rounded-full"
-              >
-                <span className="text-base">{tile.emoji}</span>
-                <span className="text-[10px] font-bold truncate">View all {tile.label.replace(/\n/g, ' ')}</span>
-              </button>
-              <div className="@container">
-                <HorizontalScroller className="snap-x snap-mandatory -mx-1 px-1">
-                  <div className="flex gap-2 pb-1 w-max">
-                    {tile.chips.map(chip => (
-                      <button
-                        key={chip.label}
-                        onClick={() => { onSwitchTab('places', chip.hint); setExpandedTile(null); }}
-                        className="btn-3d flex items-center gap-2 px-4 py-2.5 bg-card rounded-full text-left snap-start flex-shrink-0"
-                      >
-                        <span className="text-lg flex-shrink-0">{chip.emoji}</span>
-                        <span className="text-xs font-semibold text-foreground whitespace-nowrap">{chip.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </HorizontalScroller>
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Kipita Perks */}
         <button
@@ -450,6 +359,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           </div>
           <span className="ms text-muted-foreground text-xl">chevron_right</span>
         </button>
+
 
       </div>
     </div>

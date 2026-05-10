@@ -17,6 +17,7 @@ import SafetyScreen from './screens/SafetyScreen';
 import ATMScreen from './screens/ATMScreen';
 import PerksScreen from './screens/PerksScreen';
 import FuelScreen from './screens/FuelScreen';
+import BusinessScreen from './screens/BusinessScreen';
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
 import { useAuth } from './auth/useAuth';
 
@@ -121,8 +122,12 @@ export default function App() {
   }, [trips, saveTrips]);
   const [showProfile, setShowProfile] = useState(false);
   const [showLangPicker, setShowLangPicker] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const { t, lang, setLang } = useI18n();
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, refreshProfile } = useAuth();
   const NAV_LABELS: Partial<Record<TabId, string>> = {
     home: t('nav.home'), ai: t('nav.ai'), trips: t('nav.travel'), places: t('nav.places'),
   };
@@ -190,15 +195,12 @@ export default function App() {
     return () => { cancelled = true; };
   }, [countryCode, vpnDismissed]);
 
-  // Confirmation toast when GPS auto-detects location
+  // Listen for location detection (no popup shown — location updates silently)
   useEffect(() => {
-    const onDetected = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.name) showToast(`📍 Location detected: ${detail.name}`);
-    };
+    const onDetected = (_e: Event) => { /* silent update */ };
     window.addEventListener('kip-location-detected', onDetected);
     return () => window.removeEventListener('kip-location-detected', onDetected);
-  }, [showToast]);
+  }, []);
 
   // Daily health check: verify core APIs every 24h, show banner if any fail.
   const [healthIssues, setHealthIssues] = useState<string[]>([]);
@@ -356,6 +358,7 @@ export default function App() {
       case 'atm': return <ATMScreen lat={lat} lng={lng} merchants={merchants} onBack={goBack} onViewOnMap={(filter) => switchTab('maps', filter)} />;
       case 'perks': return <PerksScreen onBack={goBack} />;
       case 'fuel': return <FuelScreen onBack={goBack} />;
+      case 'business': return <BusinessScreen onBack={goBack} />;
     }
   };
 
@@ -372,9 +375,14 @@ export default function App() {
         </div>
         <button onClick={() => setShowLocationPicker(true)}
           data-tour="header-location"
-          className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-4 py-2.5 text-sm font-semibold text-kipita-navy overflow-hidden min-w-0">
-          <span className="ms text-lg flex-shrink-0">location_on</span>
-          <span className="truncate">{locationName}</span>
+          className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-3 py-2 overflow-hidden min-w-0">
+          <span className="ms text-base flex-shrink-0 text-kipita-red">location_on</span>
+          <div className="flex-1 min-w-0 text-left">
+            <div className="text-[12px] font-bold text-kipita-navy truncate leading-tight">{locationName}</div>
+            {fullAddress && fullAddress !== locationName && (
+              <div className="text-[9px] text-muted-foreground truncate leading-tight">{fullAddress.split(',').slice(0, 2).join(',')}</div>
+            )}
+          </div>
           <span className="ms text-xs text-kipita-navy/60 flex-shrink-0">expand_more</span>
         </button>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -391,7 +399,11 @@ export default function App() {
         </div>
         <button onClick={() => setShowProfile(!showProfile)}
           className="ml-auto w-11 h-11 rounded-full bg-black/5 hover:bg-black/10 transition-colors flex items-center justify-center overflow-hidden flex-shrink-0">
-          <span className="ms text-2xl text-kipita-navy">account_circle</span>
+          {profile?.avatar_url ? (
+            <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
+          ) : (
+            <span className="ms text-2xl text-kipita-navy">account_circle</span>
+          )}
         </button>
       </header>
 
@@ -639,7 +651,14 @@ export default function App() {
             <hr className="border-border" />
             {!showLangPicker ? (
               <>
-                <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
+                <button
+                  onClick={() => {
+                    setEditName(profile?.display_name || user?.email?.split('@')[0] || '');
+                    setEditCity(profile?.home_city || '');
+                    setShowProfile(false);
+                    setShowEditProfile(true);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
                   <span className="ms text-lg text-muted-foreground">edit</span> {t('profile.edit')}
                 </button>
                 <button className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
@@ -655,6 +674,11 @@ export default function App() {
                   <span className="text-xs text-muted-foreground">
                     {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.flag} {SUPPORTED_LANGUAGES.find(l => l.code === lang)?.label}
                   </span>
+                </button>
+                <button
+                  onClick={() => { setShowProfile(false); switchTab('business'); }}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
+                  <span className="ms text-lg text-muted-foreground">storefront</span> Business Account
                 </button>
                 <hr className="border-border" />
                 <div className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wide text-muted-foreground">Tutorials</div>
@@ -716,10 +740,78 @@ export default function App() {
         </>
       )}
 
+      {/* Edit Profile Modal */}
+      {showEditProfile && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-[300]" onClick={() => setShowEditProfile(false)} />
+          <div className="fixed inset-x-4 top-[20%] max-w-md mx-auto bg-card rounded-2xl shadow-2xl z-[301] overflow-hidden">
+            <div className="px-5 pt-5 pb-3">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-extrabold">Edit Profile</h3>
+                <button onClick={() => setShowEditProfile(false)} className="text-muted-foreground text-xl leading-none">&times;</button>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Display Name</label>
+                  <input
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    placeholder="Your name"
+                    className="w-full bg-muted rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-kipita-red"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Home City</label>
+                  <input
+                    value={editCity}
+                    onChange={e => setEditCity(e.target.value)}
+                    placeholder="e.g. New York"
+                    className="w-full bg-muted rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-kipita-red"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="px-5 pb-5 flex gap-2 mt-2">
+              <button onClick={() => setShowEditProfile(false)} className="flex-1 py-2.5 rounded-kipita-sm bg-muted text-sm font-semibold">Cancel</button>
+              <button
+                disabled={editSaving}
+                onClick={async () => {
+                  if (!user) return;
+                  setEditSaving(true);
+                  try {
+                    const { supabase: sb } = await import('@/integrations/supabase/client');
+                    await sb.from('profiles').upsert({
+                      user_id: user.id,
+                      display_name: editName.trim() || null,
+                      home_city: editCity.trim() || null,
+                    }, { onConflict: 'user_id' });
+                    await refreshProfile();
+                    setShowEditProfile(false);
+                    showToast('Profile updated!');
+                  } catch {
+                    showToast('Failed to save — please try again.');
+                  }
+                  setEditSaving(false);
+                }}
+                className="flex-1 py-2.5 rounded-kipita-sm bg-kipita-red text-white text-sm font-bold disabled:opacity-50"
+              >
+                {editSaving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
         {renderScreen()}
       </main>
+
+      {/* Location footer strip — always visible on every page */}
+      <div className="flex items-center justify-center gap-1.5 px-4 py-1.5 bg-kipita-navy flex-shrink-0">
+        <span className="ms text-[11px] text-white/60">location_on</span>
+        <span className="text-[10px] text-white/80 font-medium truncate max-w-[260px]">{locationName}</span>
+      </div>
 
       {/* Bottom Nav — bubbly motion */}
       <nav className="h-[84px] glass border-t border-white/40 shadow-[0_-4px_24px_rgba(0,0,0,.06)] flex items-stretch flex-shrink-0 z-[100] overflow-x-auto scrollbar-hide"

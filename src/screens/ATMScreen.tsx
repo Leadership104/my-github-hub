@@ -16,6 +16,13 @@ interface ATMResult {
   address?: string;
   distance?: number;
   type: 'atm' | 'bank';
+  photoUrl?: string | null;
+}
+
+function formatDist(km: number): string {
+  const miles = km * 0.621371;
+  if (miles < 0.1) return `${Math.round(miles * 5280)}ft`;
+  return `${miles.toFixed(1)}mi`;
 }
 
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -26,17 +33,13 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function formatDist(km: number): string {
-  return km < 1 ? `${Math.round(km * 1000)}m` : `${km.toFixed(1)}km`;
-}
-
 export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: Props) {
-  const [activeTab, setActiveTab] = useState<'atm' | 'btc'>('atm');
+  const [activeTab, setActiveTab] = useState<'atm' | 'bank' | 'btc'>('atm');
   const [atms, setAtms] = useState<ATMResult[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (activeTab !== 'atm' || !lat || !lng) return;
+    if ((activeTab !== 'atm' && activeTab !== 'bank') || !lat || !lng) return;
     let cancelled = false;
     setLoading(true);
     setAtms([]);
@@ -64,6 +67,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
             address: p?.formattedAddress || p?.vicinity,
             distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
             type,
+            photoUrl: p?.photoUrl || (Array.isArray(p?.photos) ? p.photos[0] : null) || null,
           } as ATMResult;
         }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
       } catch { return []; }
@@ -162,15 +166,15 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 flex-shrink-0">
-        <button onClick={onBack} className="p-1 -ml-1 rounded-full hover:bg-muted transition-colors">
-          <span className="ms text-xl text-foreground">arrow_back</span>
+        <button onClick={onBack} className="p-2 -ml-1 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
+          <span className="ms text-2xl text-foreground">arrow_back</span>
         </button>
         <div className="flex-1">
-          <h1 className="text-base font-bold text-foreground">ATMs & Bitcoin ATMs</h1>
+          <h1 className="text-base font-bold text-foreground">ATMs & Banks</h1>
           <p className="text-xs text-muted-foreground">Find cash & crypto nearby</p>
         </div>
         <button
-          onClick={() => onViewOnMap(activeTab === 'atm' ? 'atm' : 'btcatm')}
+          onClick={() => onViewOnMap(activeTab === 'btc' ? 'btcatm' : 'atm')}
           className="flex items-center gap-1 text-xs text-kipita-red font-semibold px-2 py-1 rounded-full hover:bg-kipita-red/10 transition-colors"
         >
           <span className="ms text-sm">map</span>
@@ -178,19 +182,27 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
         </button>
       </div>
 
-      {/* Tabs */}
+      {/* Tabs — 3 categories */}
       <div className="flex bg-muted/40 border-b border-border flex-shrink-0">
         <button
           onClick={() => setActiveTab('atm')}
-          className={`flex-1 py-3 text-sm font-bold transition-colors border-b-2 ${
+          className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${
             activeTab === 'atm' ? 'text-kipita-red border-kipita-red bg-card' : 'text-muted-foreground border-transparent'
           }`}
         >
           🏧 ATMs
         </button>
         <button
+          onClick={() => setActiveTab('bank')}
+          className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${
+            activeTab === 'bank' ? 'text-kipita-red border-kipita-red bg-card' : 'text-muted-foreground border-transparent'
+          }`}
+        >
+          🏦 Banks
+        </button>
+        <button
           onClick={() => setActiveTab('btc')}
-          className={`flex-1 py-3 text-sm font-bold transition-colors border-b-2 ${
+          className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${
             activeTab === 'btc' ? 'text-kipita-red border-kipita-red bg-card' : 'text-muted-foreground border-transparent'
           }`}
         >
@@ -200,18 +212,18 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
-        {activeTab === 'atm' && (
+        {(activeTab === 'atm' || activeTab === 'bank') && (
           <>
             {loading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <div className="w-8 h-8 border-2 border-kipita-red border-t-transparent rounded-full animate-spin" />
-                <p className="text-muted-foreground text-sm">Finding ATMs nearby…</p>
+                <p className="text-muted-foreground text-sm">Finding {activeTab === 'atm' ? 'ATMs' : 'banks'} nearby…</p>
               </div>
-            ) : atms.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground text-sm">No ATMs found nearby.</div>
+            ) : atms.filter(a => a.type === activeTab).length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground text-sm">No {activeTab === 'atm' ? 'ATMs' : 'banks'} found nearby.</div>
             ) : (
               <div className="space-y-2">
-                {atms.map((atm, i) => {
+                {atms.filter(a => a.type === activeTab).map((atm, i) => {
                   const dest = `${atm.lat},${atm.lng}`;
                   const url = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${dest}&travelmode=walking`;
                   return (
@@ -222,9 +234,13 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
                       rel="noopener noreferrer"
                       className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors"
                     >
-                      <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xl">{atm.type === 'bank' ? '🏦' : '🏧'}</span>
-                      </div>
+                      {atm.photoUrl ? (
+                        <img src={atm.photoUrl} alt={atm.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xl">{atm.type === 'bank' ? '🏦' : '🏧'}</span>
+                        </div>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold text-foreground truncate">{atm.name}</div>
                         <div className="text-xs text-muted-foreground truncate">

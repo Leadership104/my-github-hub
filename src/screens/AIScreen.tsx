@@ -294,8 +294,11 @@ export default function AIScreen({
   const [lastTrip, setLastTrip]         = useState<{ dest: string; country: string; days: number } | null>(null);
   const [tripCreatedToast, setTripCreatedToast] = useState('');
   const [nearbyPlaces, setNearbyPlaces] = useState<PlaceChip[]>([]);
-  const [isListening, setIsListening] = useState(false);
+  const [isListening, setIsListening]   = useState(false);
+  const [conversationMode, setConversationMode] = useState(false);
   const recognitionRef                  = useRef<any>(null);
+  const transcriptRef                   = useRef('');
+  const sendMessageRef                  = useRef<((text: string) => void) | null>(null);
   const bottomRef                       = useRef<HTMLDivElement>(null);
   const scrollContainerRef              = useRef<HTMLDivElement>(null);
   const lastAiMsgRef                    = useRef<HTMLDivElement>(null);
@@ -304,6 +307,21 @@ export default function AIScreen({
   const prevMsgCountRef                 = useRef<number>(0);
 
   const speechSupported = typeof window !== 'undefined' && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+  const ttsSupported = typeof window !== 'undefined' && 'speechSynthesis' in window;
+
+  const speak = useCallback((text: string) => {
+    if (!ttsSupported) return;
+    window.speechSynthesis.cancel();
+    const clean = text
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/#+\s/g, '')
+      .replace(/[📍🗺️✈️🛡️🌃💵🍽️🏥⚕️₿🎁🌍]/g, '')
+      .trim();
+    const utt = new SpeechSynthesisUtterance(clean.slice(0, 600));
+    utt.rate = 1.05;
+    window.speechSynthesis.speak(utt);
+  }, [ttsSupported]);
 
   const toggleListening = useCallback(() => {
     const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -315,20 +333,32 @@ export default function AIScreen({
     }
     const rec = new SR();
     rec.lang = 'en-US';
-    rec.interimResults = true;
+    rec.interimResults = false;
     rec.continuous = false;
+    transcriptRef.current = '';
+    setInput('');
     rec.onresult = (event: any) => {
       let transcript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        transcript += event.results[i][0].transcript;
+      for (let i = 0; i < event.results.length; i++) {
+        if (event.results[i].isFinal) transcript += event.results[i][0].transcript;
       }
-      setInput(prev => (prev ? prev + ' ' : '') + transcript.trim());
+      if (transcript) {
+        transcriptRef.current = transcript.trim();
+        setInput(transcript.trim());
+      }
     };
-    rec.onend = () => setIsListening(false);
-    rec.onerror = () => setIsListening(false);
+    rec.onend = () => {
+      setIsListening(false);
+      if (conversationMode && transcriptRef.current) {
+        const text = transcriptRef.current;
+        transcriptRef.current = '';
+        setTimeout(() => sendMessageRef.current?.(text), 100);
+      }
+    };
+    rec.onerror = () => { setIsListening(false); };
     recognitionRef.current = rec;
     try { rec.start(); setIsListening(true); } catch { setIsListening(false); }
-  }, [isListening]);
+  }, [isListening, conversationMode]);
 
   // Normal chat view: oldest message at the top, newest at the bottom.
   // Whenever a new message arrives (user or AI) or auxiliary content updates,
@@ -470,6 +500,7 @@ export default function AIScreen({
       const reply = data?.reply || "I'm sorry, I couldn't process that. Please try again.";
       const aiMsg: ChatMessage = { id: (Date.now() + 1).toString(), role: 'ai', text: reply, timestamp: Date.now() };
       setMessages(prev => [...prev.slice(-18), aiMsg]);
+      if (conversationMode) speak(reply);
 
       // Recommended chips are situational — clear them when the new reply has none,
       // so stale chips from a prior question don't linger.
@@ -496,7 +527,10 @@ export default function AIScreen({
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips, onSwitchTab]);
+  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips, onSwitchTab, conversationMode, speak]);
+
+  // Keep ref in sync so toggleListening can call sendMessage without circular dep
+  sendMessageRef.current = sendMessage;
 
   // Support handoff: auto-send the prefilled prompt once on mount
   const handoffSentRef = useRef(false);
@@ -537,30 +571,6 @@ export default function AIScreen({
           ✅ Trip to {tripCreatedToast} created!
         </div>
       )}
-
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-card flex-shrink-0">
-        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-kipita-navy via-kipita-red to-kipita-teal flex items-center justify-center flex-shrink-0">
-          <span className="text-xs">✦</span>
-        </div>
-        <div className="flex-1 min-w-0 leading-tight">
-          <h3 className="font-extrabold text-foreground text-base leading-tight">Know B4 You Go</h3>
-          <p className="text-[10px] text-muted-foreground leading-tight truncate">
-            {briefingLoading
-              ? `🔍 Scouting ${locationName}…`
-              : loading
-              ? '💭 Thinking…'
-              : 'Intelligence Powered Insights'}
-          </p>
-        </div>
-        <button
-          onClick={handleRefresh}
-          className="ms text-muted-foreground text-base hover:text-foreground transition-colors p-1"
-          title="Fresh start"
-        >
-          refresh
-        </button>
-      </div>
 
       {/* Live stats bar */}
       <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} />
@@ -635,8 +645,8 @@ export default function AIScreen({
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div data-tour="ai-input" className="flex items-end gap-2 p-3 border-t border-border bg-card flex-shrink-0">
+      {/* Input — dark footer */}
+      <div data-tour="ai-input" className="flex items-end gap-2 p-3 bg-kipita-navy flex-shrink-0">
         <textarea
           ref={textareaRef}
           value={input}
@@ -649,14 +659,27 @@ export default function AIScreen({
           }}
           placeholder="Ask anything about this destination…"
           rows={1}
-          className="flex-1 resize-none bg-background border border-border rounded-kipita-sm px-3 py-2.5 text-sm outline-none focus:border-kipita-red transition-colors min-h-[40px] max-h-[120px]"
+          className="flex-1 resize-none bg-white/10 border border-white/20 rounded-kipita-sm px-3 py-2.5 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/50 transition-colors min-h-[40px] max-h-[120px]"
         />
+        {ttsSupported && (
+          <button
+            onClick={() => {
+              setConversationMode(prev => !prev);
+              if (conversationMode) window.speechSynthesis?.cancel();
+            }}
+            type="button"
+            title={conversationMode ? 'Exit conversation mode' : 'Conversation mode — speak & listen'}
+            className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${conversationMode ? 'bg-kipita-red text-white animate-pulse' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
+          >
+            <span className="ms text-lg">{conversationMode ? 'record_voice_over' : 'volume_up'}</span>
+          </button>
+        )}
         {speechSupported && (
           <button
             onClick={toggleListening}
             type="button"
             title={isListening ? 'Stop listening' : 'Voice input'}
-            className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${isListening ? 'bg-kipita-red text-white animate-pulse' : 'bg-muted text-foreground hover:bg-muted/70'}`}
+            className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 transition-all active:scale-95 ${isListening ? 'bg-kipita-red text-white animate-pulse' : 'bg-white/10 text-white/70 hover:bg-white/20'}`}
           >
             <span className="ms text-lg">{isListening ? 'mic' : 'mic_none'}</span>
           </button>
