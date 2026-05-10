@@ -183,6 +183,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
+    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
+    { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'money', label: '$ Money', emoji: '💵', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'medical', label: 'Medical', emoji: '🏥', icon: Stethoscope, catIds: ['hospital', 'er', 'childrenhospital', 'urgentcare', 'pharmacy', 'pharmacy24', 'dentist'] },
@@ -198,6 +200,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   // Map hint → { sectionId, chipCatId, subLabel? } where subLabel pins to a specific
   // sub-chip (e.g. "Mechanic" within Auto Care, "Market" within Shopping).
   const HINT_TO_SECTION: Record<string, { sectionId: string; chipCatId?: string; subLabel?: string }> = {
+    food: { sectionId: 'eat', chipCatId: 'food' },
+    cafe: { sectionId: 'eat', chipCatId: 'cafe' },
+    drinks: { sectionId: 'eat', chipCatId: 'drinks' },
+    shop: { sectionId: 'shop', chipCatId: 'shop' },
+    grocery: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Grocery' },
+    market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Market' },
+    farmers_market: { sectionId: 'shop', chipCatId: 'shop', subLabel: 'Farmers Market' },
     gas: { sectionId: 'transport', chipCatId: 'gas' },
     transport: { sectionId: 'transport', chipCatId: 'transport' },
     auto: { sectionId: 'transport', chipCatId: 'auto' },
