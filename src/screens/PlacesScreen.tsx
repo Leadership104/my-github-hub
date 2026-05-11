@@ -243,6 +243,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
+    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
+    { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'money', label: '$ Money', emoji: '💵', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'medical', label: 'Medical', emoji: '🏥', icon: Stethoscope, catIds: ['hospital', 'er', 'childrenhospital', 'urgentcare', 'pharmacy', 'pharmacy24', 'dentist'] },
@@ -466,7 +468,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return haversine(lat, lng, p.lat, p.lng) <= 7;
     });
 
-    setFoodGuidePlaces(nearby.length > 0 ? nearby : sorted.slice(0, 10));
+    setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
     setFoodGuideLoading(false);
   }, [lat, lng, locationName]);
 
