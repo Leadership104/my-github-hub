@@ -401,6 +401,14 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'University Library', query: 'university library', emoji: '🎓' },
     { label: 'Bookstore', query: 'bookstore book shop', emoji: '📖' },
   ],
+  park: [
+    { label: 'Parks', query: 'park nature garden', emoji: '🌳' },
+    { label: 'Hiking', query: 'hiking trail nature path', emoji: '🥾' },
+    { label: 'Dog Park', query: 'dog park off leash', emoji: '🐕' },
+    { label: 'Playground', query: 'playground park children', emoji: '🛝' },
+    { label: 'Botanical Garden', query: 'botanical garden arboretum', emoji: '🌸' },
+    { label: 'National Park', query: 'national park state park', emoji: '🏞️' },
+  ],
 };
 
 export const PHRASES: Record<string, { label: string; phrases: { en: string; local: string; phon: string }[] }> = {
