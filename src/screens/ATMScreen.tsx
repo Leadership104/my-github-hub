@@ -33,6 +33,19 @@ function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function SkeletonCard() {
+  return (
+    <div className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm animate-pulse">
+      <div className="w-10 h-10 rounded-full bg-muted flex-shrink-0" />
+      <div className="flex-1 space-y-2">
+        <div className="h-3.5 bg-muted rounded w-2/3" />
+        <div className="h-3 bg-muted rounded w-1/2" />
+      </div>
+      <div className="h-5 w-10 bg-muted rounded-full flex-shrink-0" />
+    </div>
+  );
+}
+
 export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: Props) {
   const [activeTab, setActiveTab] = useState<'atm' | 'bank' | 'btc'>('atm');
   const [atms, setAtms] = useState<ATMResult[]>([]);
@@ -52,25 +65,25 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
         if (Date.now() - ts < 10 * 60 * 1000 && Array.isArray(data) && data.length) {
           setAtms(data);
           setLoading(false);
-        } else {
-          setAtms([]);
-          setLoading(true);
+          return; // skip re-fetch if cache is fresh
         }
-      } else {
-        setAtms([]);
-        setLoading(true);
       }
-    } catch {
-      setAtms([]);
-      setLoading(true);
-    }
+    } catch { /* ignore */ }
 
-    const fromGoogle = async (t: 'atm' | 'bank'): Promise<ATMResult[]> => {
+    setAtms([]);
+    setLoading(true);
+
+    const fromGoogle = async (): Promise<ATMResult[]> => {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 6000);
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
-        const qs = new URLSearchParams({ mode: 'nearby', lat: String(lat), lng: String(lng), type: t, radius: '5000' });
+        // ATMs dense in cities — 2 km radius gets closest fast; banks slightly wider
+        const radius = type === 'atm' ? 2000 : 3000;
+        const qs = new URLSearchParams({ mode: 'nearby', lat: String(lat), lng: String(lng), type, radius: String(radius) });
         const r = await fetch(`${base}/functions/v1/places-proxy?${qs}`, {
           headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
+          signal: ctl.signal,
         });
         if (!r.ok) return [];
         const j = await r.json();
@@ -79,56 +92,53 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
           const la = p?.location?.latitude ?? p?.geometry?.location?.lat;
           const ln = p?.location?.longitude ?? p?.geometry?.location?.lng;
           const rawName = p?.displayName?.text || p?.name || '';
-          const name = rawName && !/^atm$/i.test(rawName.trim())
-            ? rawName
-            : (t === 'bank' ? 'Bank' : 'ATM');
+          const name = rawName && !/^atm$/i.test(rawName.trim()) ? rawName : (type === 'bank' ? 'Bank' : 'ATM');
           return {
-            lat: la, lng: ln,
-            name,
+            lat: la, lng: ln, name,
             address: p?.formattedAddress || p?.vicinity,
             distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
-            type: t,
+            type,
             photoUrl: p?.photoUrl || (Array.isArray(p?.photos) ? p.photos[0] : null) || null,
           } as ATMResult;
         }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
-      } catch { return []; }
+      } catch { return []; } finally { clearTimeout(timer); }
     };
 
+    // Race both Overpass mirrors simultaneously — take whichever replies first
     const fromOverpass = async (radius: number, signal: AbortSignal): Promise<ATMResult[]> => {
       const tagPart = type === 'bank'
         ? `node["amenity"="bank"](around:${radius},${lat},${lng});way["amenity"="bank"](around:${radius},${lat},${lng});`
         : `node["amenity"="atm"](around:${radius},${lat},${lng});`;
       const query = `[out:json][timeout:8];(${tagPart});out center 60;`;
-      const endpoints = [
-        'https://overpass-api.de/api/interpreter',
-        'https://overpass.kumi.systems/api/interpreter',
-      ];
-      for (const ep of endpoints) {
-        try {
-          const r = await fetch(`${ep}?data=${encodeURIComponent(query)}`, { signal });
-          if (!r.ok) continue;
-          const d = await r.json();
-          const results: ATMResult[] = (d.elements || []).map((el: any) => {
-            const la = el.lat ?? el.center?.lat;
-            const ln = el.lon ?? el.center?.lon;
-            const t = el.tags || {};
-            const isBank = t.amenity === 'bank';
-            const candidate = t.name || t['name:en'] || t.brand || t.operator || t.network || t['atm:operator'] || t.owner || '';
-            const name = candidate && !/^atm$/i.test(candidate.trim())
-              ? candidate
-              : (isBank ? 'Bank' : 'ATM');
-            return {
-              lat: la, lng: ln,
-              name,
-              address: t['addr:street'] ? `${t['addr:housenumber'] || ''} ${t['addr:street']}`.trim() : undefined,
-              distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
-              type: isBank ? 'bank' : 'atm',
-            } as ATMResult;
-          }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
-          if (results.length) return results;
-        } catch { /* try next mirror */ }
-      }
-      return [];
+
+      const tryEndpoint = async (ep: string): Promise<ATMResult[]> => {
+        const r = await fetch(`${ep}?data=${encodeURIComponent(query)}`, { signal });
+        if (!r.ok) throw new Error('bad response');
+        const d = await r.json();
+        const results: ATMResult[] = (d.elements || []).map((el: any) => {
+          const la = el.lat ?? el.center?.lat;
+          const ln = el.lon ?? el.center?.lon;
+          const t = el.tags || {};
+          const isBank = t.amenity === 'bank';
+          const candidate = t.name || t['name:en'] || t.brand || t.operator || t.network || t['atm:operator'] || t.owner || '';
+          const name = candidate && !/^atm$/i.test(candidate.trim()) ? candidate : (isBank ? 'Bank' : 'ATM');
+          return {
+            lat: la, lng: ln, name,
+            address: t['addr:street'] ? `${t['addr:housenumber'] || ''} ${t['addr:street']}`.trim() : undefined,
+            distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
+            type: isBank ? 'bank' : 'atm',
+          } as ATMResult;
+        }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+        if (!results.length) throw new Error('empty');
+        return results;
+      };
+
+      try {
+        return await Promise.any([
+          tryEndpoint('https://overpass-api.de/api/interpreter'),
+          tryEndpoint('https://overpass.kumi.systems/api/interpreter'),
+        ]);
+      } catch { return []; }
     };
 
     const seen = new Set<string>();
@@ -155,28 +165,21 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
 
     const overpassCtl = new AbortController();
 
-    // Primary: Google Places (fast). Clear spinner as soon as it returns.
+    // Fire Google and Overpass at the same time — whichever returns first wins
     (async () => {
-      const g = await fromGoogle(type);
+      const [g, o] = await Promise.allSettled([
+        fromGoogle(),
+        fromOverpass(type === 'atm' ? 3000 : 5000, overpassCtl.signal),
+      ]);
       if (cancelled) return;
-      if (g.length) {
-        ingest(g);
-      } else if (!merged.length) {
-        // Google returned empty — still mark not-loading; Overpass may fill in
-        setLoading(false);
-      }
-    })();
-
-    // Secondary: Overpass in background, augments results
-    (async () => {
-      const o = await fromOverpass(5000, overpassCtl.signal);
-      if (cancelled) return;
-      ingest(o.filter(b => b.type === type));
+      if (g.status === 'fulfilled' && g.value.length) ingest(g.value);
+      if (o.status === 'fulfilled' && o.value.length) ingest(o.value.filter(b => b.type === type));
+      // If still empty, widen Overpass radius and try again
       if (!merged.length) {
         const wider = await fromOverpass(20000, overpassCtl.signal);
         if (!cancelled) ingest(wider.filter(b => b.type === type));
-        if (!cancelled) setLoading(false);
       }
+      if (!cancelled) setLoading(false);
     })();
 
     return () => { cancelled = true; overpassCtl.abort(); };
@@ -190,8 +193,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
       m.tags?.['payment:bitcoin_lightning'] === 'yes'
     )
     .map(m => ({
-      lat: m.lat,
-      lng: m.lng,
+      lat: m.lat, lng: m.lng,
       name: m.name || 'Bitcoin ATM',
       distance: lat && lng ? haversineKm(lat, lng, m.lat, m.lng) : undefined,
     }))
@@ -207,7 +209,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
         </button>
         <div className="flex-1">
           <h1 className="text-base font-bold text-foreground">ATMs & Banks</h1>
-          <p className="text-xs text-muted-foreground">Find cash & crypto nearby</p>
+          <p className="text-xs text-muted-foreground">Closest cash & crypto near you</p>
         </div>
         <button
           onClick={() => onViewOnMap(activeTab === 'btc' ? 'btcatm' : 'atm')}
@@ -218,58 +220,42 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
         </button>
       </div>
 
-      {/* Tabs — 3 categories */}
+      {/* Tabs */}
       <div className="flex bg-muted/40 border-b border-border flex-shrink-0">
-        <button
-          onClick={() => setActiveTab('atm')}
-          className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${
-            activeTab === 'atm' ? 'text-kipita-red border-kipita-red bg-card' : 'text-muted-foreground border-transparent'
-          }`}
-        >
-          🏧 ATMs
-        </button>
-        <button
-          onClick={() => setActiveTab('bank')}
-          className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${
-            activeTab === 'bank' ? 'text-kipita-red border-kipita-red bg-card' : 'text-muted-foreground border-transparent'
-          }`}
-        >
-          🏦 Banks
-        </button>
-        <button
-          onClick={() => setActiveTab('btc')}
-          className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${
-            activeTab === 'btc' ? 'text-kipita-red border-kipita-red bg-card' : 'text-muted-foreground border-transparent'
-          }`}
-        >
-          ₿ Bitcoin ATMs
-        </button>
+        {(['atm', 'bank', 'btc'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`flex-1 py-3 text-xs font-bold transition-colors border-b-2 ${
+              activeTab === tab ? 'text-kipita-red border-kipita-red bg-card' : 'text-muted-foreground border-transparent'
+            }`}
+          >
+            {tab === 'atm' ? '🏧 ATMs' : tab === 'bank' ? '🏦 Banks' : '₿ Bitcoin ATMs'}
+          </button>
+        ))}
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4">
         {(activeTab === 'atm' || activeTab === 'bank') && (
           <>
-            {loading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="w-8 h-8 border-2 border-kipita-red border-t-transparent rounded-full animate-spin" />
-                <p className="text-muted-foreground text-sm">Finding {activeTab === 'atm' ? 'ATMs' : 'banks'} nearby…</p>
+            {loading && atms.filter(a => a.type === activeTab).length === 0 ? (
+              // Skeleton cards — feels instant vs full-screen spinner
+              <div className="space-y-2">
+                {[1, 2, 3, 4, 5].map(i => <SkeletonCard key={i} />)}
               </div>
             ) : atms.filter(a => a.type === activeTab).length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground text-sm">No {activeTab === 'atm' ? 'ATMs' : 'banks'} found nearby.</div>
+              <div className="text-center py-16 text-muted-foreground text-sm">
+                No {activeTab === 'atm' ? 'ATMs' : 'banks'} found nearby.
+              </div>
             ) : (
               <div className="space-y-2">
                 {atms.filter(a => a.type === activeTab).map((atm, i) => {
                   const dest = `${atm.lat},${atm.lng}`;
                   const url = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${dest}&travelmode=walking`;
                   return (
-                    <a
-                      key={i}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors"
-                    >
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors">
                       {atm.photoUrl ? (
                         <img src={atm.photoUrl} alt={atm.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
                       ) : (
@@ -299,7 +285,6 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
 
         {activeTab === 'btc' && (
           <>
-            {/* Info banner */}
             <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-kipita-sm mb-4">
               <span className="text-xl flex-shrink-0">₿</span>
               <p className="text-xs text-amber-800 font-medium">
@@ -318,13 +303,8 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
                 {btcAtms.map((atm, i) => {
                   const url = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${atm.lat},${atm.lng}&travelmode=walking`;
                   return (
-                    <a
-                      key={i}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors"
-                    >
+                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors">
                       <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
                         <span className="text-xl">₿</span>
                       </div>
