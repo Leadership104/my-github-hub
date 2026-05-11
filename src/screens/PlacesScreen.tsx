@@ -531,7 +531,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const probedSectionLocRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    const isTargetSection = selectedSection === 'explore' || selectedSection === 'wellness';
+    const isTargetSection = selectedSection === 'explore' || selectedSection === 'wellness' || selectedSection === 'parks' || selectedSection === 'library' || selectedSection === 'lodges';
     if (view !== 'section' || !isTargetSection) return;
     const locKey = `${lat.toFixed(3)},${lng.toFixed(3)}-${selectedSection}`;
     if (probedSectionLocRef.current === locKey) return;
@@ -1217,8 +1217,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       }
     });
 
-    // For Fun + Recreational sections, sort chips so those with nearby results appear first
-    const shouldSortByProximity = selectedSection === 'explore' || selectedSection === 'wellness';
+    // For Fun, Recreational, Parks, Libraries, and Lodges sections, sort chips so those with nearby results appear first
+    const shouldSortByProximity = selectedSection === 'explore' || selectedSection === 'wellness' || selectedSection === 'parks' || selectedSection === 'library' || selectedSection === 'lodges';
     const sortedChips = shouldSortByProximity && Object.keys(chipProbeDistances).length > 0
       ? [...allChips].sort((a, b) => {
           const da = chipProbeDistances[a.label] ?? Infinity;

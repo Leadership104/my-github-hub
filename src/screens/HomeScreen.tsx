@@ -106,6 +106,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
   const shop: SubChip[] = (CATEGORY_SUBS.shop || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'shop' }));
   const gas: SubChip[] = (CATEGORY_SUBS.gas || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'gas' }));
   const wellness: SubChip[] = (CATEGORY_SUBS.gym || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'gym' }));
+  const parks: SubChip[] = (CATEGORY_SUBS.park || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'park' }));
 
   if (hour >= 23 || hour < 4) {
     // Late night: food → nightlife → essentials
@@ -125,38 +126,38 @@ function getFeaturedNearMe(): FeaturedTile[] {
       { id: 'coffee', emoji: '☕', label: 'Coffee', hint: 'cafe', chips: cafes },
     ];
   }
-  // Afternoon: food first, then evening preview + recreation
+  // Afternoon: parks → food → drinks → nightlife preview
   if (hour >= 14) {
     return [
+      { id: 'parks', emoji: '🌳', label: 'Parks', hint: 'park', chips: parks },
       { id: 'dinner', emoji: '🍽️', label: 'Dinner', hint: 'food', chips: food },
       { id: 'drinks', emoji: '🍸', label: 'Drinks', hint: 'drinks', chips: drinks },
-      { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
       { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
     ];
   }
   if (isWeekend && hour < 12) {
-    // Weekend morning: brunch → fun → recreation → shopping
+    // Weekend morning: brunch → parks → attractions → recreation
     return [
       { id: 'brunch', emoji: '☕', label: 'Brunch', hint: 'cafe', chips: cafes },
+      { id: 'parks', emoji: '🌳', label: 'Parks', hint: 'park', chips: parks },
       { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
       { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
-      { id: 'farmers', emoji: '🌽', label: "Farmers\nMarket", hint: 'farmers_market', chips: shop },
     ];
   }
   if (hour < 11) {
-    // Morning: coffee → breakfast → recreation → gas
+    // Morning: coffee → breakfast → parks → gas
     return [
       { id: 'coffee', emoji: '☕', label: 'Coffee', hint: 'cafe', chips: cafes },
       { id: 'breakfast', emoji: '🥐', label: 'Breakfast', hint: 'food', chips: food },
-      { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
+      { id: 'parks', emoji: '🌳', label: 'Parks', hint: 'park', chips: parks },
       { id: 'gas', emoji: '⛽', label: 'Gas', hint: 'gas', chips: gas },
     ];
   }
-  // Midday: food → fun → recreation → shopping
+  // Midday: food → parks → attractions → shopping
   return [
     { id: 'lunch', emoji: '🍽️', label: 'Lunch', hint: 'food', chips: food },
+    { id: 'parks', emoji: '🌳', label: 'Parks', hint: 'park', chips: parks },
     { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
-    { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
     { id: 'shop', emoji: '🛍️', label: 'Shopping', hint: 'shop', chips: shop },
   ];
 }
