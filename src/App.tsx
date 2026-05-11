@@ -20,6 +20,7 @@ import FuelScreen from './screens/FuelScreen';
 import BusinessScreen from './screens/BusinessScreen';
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
 import LocationSafetyBar from './components/LocationSafetyBar';
+import PasswordGate, { isAppUnlocked } from './components/PasswordGate';
 import { useAuth } from './auth/useAuth';
 
 /** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
@@ -96,6 +97,7 @@ function loadTrips(): Trip[] {
 }
 
 export default function App() {
+  const [unlocked, setUnlocked] = useState<boolean>(() => isAppUnlocked());
   const [tab, setTab] = useState<TabId>('home');
   const [screenHint, setScreenHint] = useState<string | undefined>();
   const prevTabRef = useRef<TabId>('home');
@@ -331,6 +333,11 @@ export default function App() {
   }, [selectLocation, showToast]);
 
   const advisoryData = useTravelSafety(countryCode);
+
+  // Password lock gate
+  if (!unlocked) {
+    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  }
 
   // Splash screen
   if (splash) {

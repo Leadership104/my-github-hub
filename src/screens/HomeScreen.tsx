@@ -193,7 +193,17 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     { id: 'atm', label: '$ Money', render: () => <span className="text-3xl">💵</span> },
   ];
 
-  const featured = getFeaturedNearMe();
+  const [featured, setFeatured] = useState<FeaturedTile[]>(() => getFeaturedNearMe());
+  useEffect(() => {
+    // Recompute on mount, when tab regains focus, and every 5 minutes so the
+    // "Featured Near Me" tiles reflect the current time of day.
+    const recompute = () => setFeatured(getFeaturedNearMe());
+    recompute();
+    const id = window.setInterval(recompute, 5 * 60 * 1000);
+    const onVis = () => { if (!document.hidden) recompute(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { window.clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
+  }, []);
 
   return (
     <div className="relative flex flex-col h-full overflow-hidden">
