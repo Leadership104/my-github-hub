@@ -120,27 +120,37 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
     };
 
     (async () => {
-      // Try Google first (ATMs + banks in parallel)
-      const [gAtm, gBank] = await Promise.all([fromGoogle('atm'), fromGoogle('bank')]);
-      let combined = [...gAtm, ...gBank];
-      // Fallback to Overpass with progressively larger radii
-      if (combined.length === 0) combined = await fromOverpass(2500);
-      if (combined.length === 0) combined = await fromOverpass(8000);
-      if (combined.length === 0) combined = await fromOverpass(20000);
-
-      // De-dupe by rounded coords
+      const type = activeTab as 'atm' | 'bank';
       const seen = new Set<string>();
-      const deduped = combined.filter(r => {
-        const k = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
-      });
-      deduped.sort((a, b) => (a.distance ?? 99) - (b.distance ?? 99));
-      if (!cancelled) {
-        setAtms(deduped.slice(0, 50));
-        setLoading(false);
+      const merged: ATMResult[] = [];
+
+      const ingest = (batch: ATMResult[]) => {
+        for (const r of batch) {
+          const k = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
+          if (seen.has(k)) continue;
+          seen.add(k);
+          merged.push(r);
+        }
+        merged.sort((a, b) => (a.distance ?? 99) - (b.distance ?? 99));
+        if (!cancelled) {
+          setAtms([...merged.slice(0, 50)]);
+          // Show results as soon as we have any — don't keep spinner up
+          if (merged.length > 0) setLoading(false);
+        }
+      };
+
+      // Fire Google + Overpass in parallel; whichever returns first shows results.
+      const googleP = fromGoogle(type).then(ingest);
+      const overpassP = fromOverpass(5000).then(batch => ingest(batch.filter(b => b.type === type)));
+
+      await Promise.all([googleP, overpassP]);
+
+      // Final fallback if still empty
+      if (!cancelled && merged.length === 0) {
+        const wider = await fromOverpass(20000);
+        ingest(wider.filter(b => b.type === type));
       }
+      if (!cancelled) setLoading(false);
     })();
 
     return () => { cancelled = true; };
