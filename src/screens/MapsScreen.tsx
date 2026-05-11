@@ -177,6 +177,8 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   const suggestTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showTripPicker, setShowTripPicker] = useState(false);
   const [tripAddSuccess, setTripAddSuccess] = useState<string | null>(null);
+  const [subsVisible, setSubsVisible] = useState(false);
+  const sheetTouchRef = useRef<{ y: number; t: number } | null>(null);
 
   // Load trips from localStorage
   const getTrips = useCallback((): Trip[] => {
@@ -713,15 +715,15 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         onWheel={(e) => { if (e.deltaY !== 0 && e.currentTarget.scrollWidth > e.currentTarget.clientWidth) { e.currentTarget.scrollLeft += e.deltaY; } }}
       >
         {allFilters.map(p => (
-          <button key={p.id} onClick={(e) => { setFilter(p.id); (e.currentTarget as HTMLElement).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}
+          <button key={p.id} onClick={(e) => { setFilter(p.id); setSubsVisible(true); (e.currentTarget as HTMLElement).scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' }); }}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold shadow-md transition-colors ${filter === p.id ? 'bg-kipita-red text-white' : 'bg-card/95 backdrop-blur-sm text-foreground border border-border'}`}>
             {p.label}
           </button>
         ))}
       </div>
 
-      {/* Subcategory pills */}
-      {subs.length > 0 && (
+      {/* Subcategory pills — only after a chip is explicitly clicked */}
+      {subsVisible && subs.length > 0 && (
         <div
           className="absolute top-[88px] left-3 right-3 z-[500] flex gap-2 overflow-x-auto overflow-y-hidden scrollbar-hide pb-1"
           style={{ WebkitOverflowScrolling: 'touch', overscrollBehaviorX: 'contain', touchAction: 'pan-x' }}
@@ -957,12 +959,27 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
 
       {/* Safety Info Panel */}
       {showSafety && (
-        <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[75%]' : 'h-[52px]'}`}>
-          <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-3.5 gap-2">
+        <div
+          className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[75%]' : 'h-[52px]'}`}
+          onTouchStart={(e) => { sheetTouchRef.current = { y: e.touches[0].clientY, t: Date.now() }; }}
+          onTouchEnd={(e) => {
+            if (!sheetTouchRef.current) return;
+            const dy = sheetTouchRef.current.y - e.changedTouches[0].clientY;
+            const dt = Date.now() - sheetTouchRef.current.t;
+            sheetTouchRef.current = null;
+            if (Math.abs(dy) < 20 && dt > 400) return;
+            if (dy > 20) setExpanded(true);
+            else if (dy < -20) setExpanded(false);
+          }}
+        >
+          {/* Drag indicator */}
+          <div className="pt-2.5 flex justify-center">
+            <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+          </div>
+          <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center px-4 py-2 gap-2">
             <h3 className="text-sm font-extrabold flex items-center gap-2">🛡️ Safety & Health</h3>
-            <span className="ms text-xl text-muted-foreground">{expanded ? 'expand_less' : 'expand_more'}</span>
           </button>
-          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4" style={{ maxHeight: expanded ? 'calc(100% - 52px)' : '0px', overflow: expanded ? 'auto' : 'hidden' }}>
+          <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-4" style={{ maxHeight: expanded ? 'calc(100% - 60px)' : '0px', overflow: expanded ? 'auto' : 'hidden' }}>
             {safetyLoading ? (
               <div className="text-center py-8 text-sm text-muted-foreground animate-pulse">Loading safety data…</div>
             ) : safetyData ? (
@@ -1025,13 +1042,26 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       )}
 
       {/* Bottom sheet (hidden when safety panel or place card is active) */}
-      {!showSafety && !selectedPlace && <div className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[70%]' : 'h-[52px]'}`}>
-        <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-3.5 gap-2">
+      {!showSafety && !selectedPlace && <div
+        className={`absolute bottom-0 left-0 right-0 bg-card rounded-t-3xl shadow-lg border-t border-border z-[500] transition-all duration-300 ${expanded ? 'h-[70%]' : 'h-[52px]'}`}
+        onTouchStart={(e) => { sheetTouchRef.current = { y: e.touches[0].clientY, t: Date.now() }; }}
+        onTouchEnd={(e) => {
+          if (!sheetTouchRef.current) return;
+          const dy = sheetTouchRef.current.y - e.changedTouches[0].clientY;
+          const dt = Date.now() - sheetTouchRef.current.t;
+          sheetTouchRef.current = null;
+          if (Math.abs(dy) < 20 && dt > 400) return;
+          if (dy > 20) setExpanded(true);
+          else if (dy < -20) setExpanded(false);
+        }}
+      >
+        {/* Drag indicator */}
+        <div className="pt-2.5 flex justify-center">
+          <div className="w-10 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+        </div>
+        <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between px-4 py-2 gap-2">
           <h3 className="text-sm font-bold truncate">{sheetTitle}</h3>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <span className="text-[11px] text-muted-foreground">{nearbyPlaces.length} found</span>
-            <span className="ms text-xl text-muted-foreground">{expanded ? 'expand_less' : 'expand_more'}</span>
-          </div>
+          <span className="text-[11px] text-muted-foreground flex-shrink-0">{nearbyPlaces.length} found</span>
         </button>
         <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ maxHeight: expanded ? 'calc(100% - 52px)' : '0px', overflow: expanded ? 'auto' : 'hidden' }}>
           {(loading && filter === 'btc') || placesLoading ? (
@@ -1095,7 +1125,10 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
                 {filter !== 'btc' && <div className="text-[9px] text-muted-foreground/50 mt-0.5">{p.source}</div>}
               </div>
               <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}/@${p.lat},${p.lng},17z`} target="_blank" rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()} className="ms text-muted-foreground text-lg">directions</a>
+                onClick={e => e.stopPropagation()}
+                className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <span className="ms text-[18px] text-black dark:text-white" style={{ fontVariationSettings: "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24" }}>directions</span>
+              </a>
             </button>
           ))}
         </div>
