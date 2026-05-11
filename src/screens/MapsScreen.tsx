@@ -91,6 +91,50 @@ const OVERPASS_CFGS: Record<string, { tag: string; ico: string; bg: string; labe
     { tag: '"amenity"="pharmacy"',         ico: '💊', bg: '#38A169', label: 'Pharmacy' },
     { tag: '"shop"~"optician|herbalist"',  ico: '👓', bg: '#2F855A', label: 'Optician' },
   ],
+  gas: [
+    { tag: '"amenity"="fuel"',             ico: '⛽', bg: '#DD3B49', label: 'Gas Station' },
+  ],
+  ev: [
+    { tag: '"amenity"="charging_station"', ico: '⚡', bg: '#38A169', label: 'EV Charger' },
+  ],
+  drinks: [
+    { tag: '"amenity"~"bar|pub|biergarten"',    ico: '🍸', bg: '#9B2C2C', label: 'Bar' },
+    { tag: '"amenity"="nightclub"',               ico: '🎶', bg: '#744210', label: 'Club' },
+    { tag: '"amenity"~"restaurant";"alcohol"="yes"', ico: '🍷', bg: '#B7791F', label: 'Lounge' },
+  ],
+  attractions: [
+    { tag: '"tourism"~"attraction|museum|gallery|viewpoint|theme_park|zoo|aquarium"', ico: '🎡', bg: '#805AD5', label: 'Attraction' },
+    { tag: '"leisure"~"amusement_arcade|miniature_golf|escape_game"', ico: '🎮', bg: '#553C9A', label: 'Entertainment' },
+    { tag: '"historic"~"monument|memorial|castle|ruins"', ico: '🏛️', bg: '#4A5568', label: 'Historic' },
+  ],
+  auto: [
+    { tag: '"shop"~"car_repair|tyres|car_parts"', ico: '🔧', bg: '#C05621', label: 'Auto Repair' },
+    { tag: '"amenity"="car_wash"',                  ico: '🚗', bg: '#2C7A7B', label: 'Car Wash' },
+  ],
+  laundry: [
+    { tag: '"shop"~"laundry|dry_cleaning"', ico: '🧺', bg: '#3182CE', label: 'Laundry' },
+  ],
+  coworking: [
+    { tag: '"amenity"="coworking_space"',    ico: '💻', bg: '#2B6CB0', label: 'Coworking' },
+    { tag: '"office"="coworking"',            ico: '🖥️', bg: '#1A365D', label: 'Shared Office' },
+  ],
+  spa: [
+    { tag: '"amenity"~"beauty_salon|massage"',      ico: '💆', bg: '#D53F8C', label: 'Spa' },
+    { tag: '"leisure"~"sauna|spa|hot_spring|turkish_bath"', ico: '🛁', bg: '#B83280', label: 'Wellness' },
+  ],
+  library: [
+    { tag: '"amenity"="library"', ico: '📚', bg: '#2B6CB0', label: 'Library' },
+  ],
+  park: [
+    { tag: '"leisure"~"park|garden|nature_reserve"', ico: '🌳', bg: '#38A169', label: 'Park' },
+    { tag: '"natural"~"wood|forest|wetland"',         ico: '🌲', bg: '#276749', label: 'Nature' },
+  ],
+  parking: [
+    { tag: '"amenity"~"parking|parking_garage"', ico: '🅿️', bg: '#4A5568', label: 'Parking' },
+  ],
+  lodge: [
+    { tag: '"tourism"~"hotel|hostel|guest_house|motel|camp_site|alpine_hut"', ico: '🏕️', bg: '#744210', label: 'Lodge' },
+  ],
 };
 
 const SEARCH_RADIUS = 3500;
@@ -285,16 +329,44 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       // Fire Overpass + Google Places proxy in parallel
       const overpassPromise = (async () => {
         const promises = cfgs.map(async (cfg) => {
-          const q = `[out:json][timeout:20];node[${cfg.tag}](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
+          // For gas/ev use a union query hitting node+way+relation so area-mapped stations appear
+          const isAreaType = filterId === 'gas' || filterId === 'ev';
+          const tag = cfg.tag;
+          const q = isAreaType
+            ? `[out:json][timeout:25];(node[${tag}](around:${SEARCH_RADIUS},${lat},${lng});way[${tag}](around:${SEARCH_RADIUS},${lat},${lng}););out center ${MAX_RESULTS_PER_QUERY};`
+            : `[out:json][timeout:20];node[${tag}](around:${SEARCH_RADIUS},${lat},${lng});out ${MAX_RESULTS_PER_QUERY};`;
           const r = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(q)}`);
           const d = await r.json();
-          return { cfg, elements: (d.elements || []).filter((e: any) => e.tags?.name) };
+          const elements = (d.elements || []).map((e: any) => ({
+            ...e,
+            lat: e.lat ?? e.center?.lat,
+            lon: e.lon ?? e.center?.lon,
+          })).filter((e: any) => e.lat && e.lon);
+          return { cfg, elements: elements.filter((e: any) => e.tags?.name || filterId === 'gas' || filterId === 'ev') };
         });
         return Promise.allSettled(promises);
       })();
 
+      const GOOGLE_CATEGORY_MAP: Record<string, string> = {
+        gas: 'gas_station',
+        ev: 'electric_vehicle_charging_station',
+        drinks: 'bar',
+        attractions: 'tourist_attraction',
+        auto: 'car_repair',
+        laundry: 'laundry',
+        coworking: 'coworking_space',
+        spa: 'spa',
+        library: 'library',
+        park: 'park',
+        parking: 'parking',
+        lodge: 'lodging',
+        nightlife: 'night_club',
+        gym: 'gym',
+        beach: 'beach',
+      };
+      const googleCategory = GOOGLE_CATEGORY_MAP[filterId] || filterId;
       const googlePromise = fetchGooglePlaces('nearby', {
-        lat, lng, category: filterId, radius: SEARCH_RADIUS,
+        lat, lng, category: googleCategory, radius: SEARCH_RADIUS,
       });
 
       const [overpassResults, googlePlaces] = await Promise.all([overpassPromise, googlePromise]);
@@ -311,8 +383,10 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
           if (seen.has(key)) continue;
           seen.add(key);
           const details = extractPlaceDetails(e.tags || {});
+          // Use brand/operator as fallback name for gas/EV stations
+          const name = e.tags?.name || e.tags?.brand || e.tags?.operator || cfg.label;
           const place: NearbyPlace = {
-            lat: e.lat, lng: e.lon, name: e.tags.name,
+            lat: e.lat, lng: e.lon, name,
             type: cfg.label, icon: cfg.ico, source: 'OpenStreetMap',
             distance: haversineKm(lat, lng, e.lat, e.lon),
             ...details,
@@ -336,7 +410,8 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
 
       // Nominatim supplementary
       try {
-        const primaryLabel = cfgs[0].label.toLowerCase();
+        const nomSearchTerm = filterId === 'gas' ? 'gas station fuel' : filterId === 'ev' ? 'electric vehicle charging station' : cfgs[0].label.toLowerCase();
+        const primaryLabel = nomSearchTerm;
         const nomQ = `${primaryLabel} near ${lat},${lng}`;
         const nomR = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(nomQ)}&format=json&limit=10&addressdetails=1`);
         const nomD = await nomR.json();
@@ -1073,10 +1148,10 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
           ) : nearbyPlaces.slice(0, 50).map((p, i) => (
             <button key={`${p.lat}-${p.lng}-${i}`} onClick={() => {
               mapRef.current?.setView([p.lat, p.lng], 16, { animate: true });
-              if (p.source === 'Google Places') setSelectedPlace(p);
-              else setSelectedPlace(p);
+              setSelectedPlace(p);
             }}
-              className="w-full flex items-center gap-3 py-3 border-b border-border text-left">
+              className="w-full flex items-center gap-3 py-3 border-b border-border text-left animate-fadeIn"
+              style={{ animationDelay: `${Math.min(i * 30, 300)}ms` }}>
               {p.photoUrl ? (
                 <img src={p.photoUrl} alt={p.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />
               ) : (

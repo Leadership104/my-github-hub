@@ -266,7 +266,7 @@ export default function WalletScreen({ prices, metals, onOpenMaps, onBack }: Pro
   ];
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden screen-enter">
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
         <h2 className="text-xl font-extrabold">💳 Wallet & Markets</h2>
       </div>

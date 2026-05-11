@@ -199,7 +199,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
     .slice(0, 30);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden screen-enter">
       {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button onClick={onBack} className="p-2 -ml-1 rounded-full hover:bg-muted transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
@@ -258,7 +258,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
             ) : atms.filter(a => a.type === activeTab).length === 0 ? (
               <div className="text-center py-16 text-muted-foreground text-sm">No {activeTab === 'atm' ? 'ATMs' : 'banks'} found nearby.</div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 stagger">
                 {atms.filter(a => a.type === activeTab).map((atm, i) => {
                   const dest = `${atm.lat},${atm.lng}`;
                   const url = `https://www.google.com/maps/dir/?api=1&origin=${lat},${lng}&destination=${dest}&travelmode=walking`;
@@ -268,7 +268,8 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
                       href={url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-3 p-3 bg-card border border-border rounded-kipita-sm hover:bg-muted active:bg-muted transition-colors"
+                      className="btn-outline-3d flex items-center gap-3 p-3 rounded-kipita-sm"
+                      style={{ borderColor: activeTab === 'bank' ? '#2C7A7B' : '#38A169' }}
                     >
                       {atm.photoUrl ? (
                         <img src={atm.photoUrl} alt={atm.name} className="w-10 h-10 rounded-full object-cover flex-shrink-0" />

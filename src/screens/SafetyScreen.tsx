@@ -206,7 +206,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const needleY = (GCY + (GR - 8) * Math.sin(scoreAngle(result.score))).toFixed(1);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden screen-enter">
       {/* Header */}
       <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button onClick={onBack} className="text-white/70 hover:text-white">

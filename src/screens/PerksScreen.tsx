@@ -20,7 +20,7 @@ export default function PerksScreen({ onBack }: Props) {
   const filtered = activeCategory === 'all' ? PERKS : PERKS.filter(p => p.category === activeCategory);
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden screen-enter">
       {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button onClick={onBack} className="p-1 -ml-1 rounded-full hover:bg-muted transition-colors">

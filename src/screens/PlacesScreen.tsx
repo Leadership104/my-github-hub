@@ -1244,39 +1244,47 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         <p className="text-sm font-semibold text-muted-foreground mb-4">{greet} — Find places nearby</p>
 
         {/* Category Sections */}
-        <div data-tour="places-grid" className="grid grid-cols-3 gap-3 mb-6">
-          {BIG_SECTIONS.map(section => (
-            <button key={section.id} onClick={() => {
-              setSelectedSection(section.id);
-              setView('section');
-              setActiveChip(null);
-              setChipResults([]);
-              if (section.id === 'eat') {
-                loadFoodGuide('all');
-              } else {
-                // Auto-select the first chip for all non-eat sections
-                const sectionCats = categories.filter(c => section.catIds.includes(c.id));
-                const firstChips: { label: string; query: string; emoji: string }[] = [];
-                for (const cat of sectionCats) {
-                  const subs = CATEGORY_SUBS[cat.id] || [];
-                  if (subs.length > 0) {
-                    firstChips.push(subs[0]);
-                    break;
-                  } else {
-                    firstChips.push({ label: cat.label, query: cat.query, emoji: cat.emoji });
-                    break;
+        <div data-tour="places-grid" className="grid grid-cols-3 gap-3 mb-6 stagger">
+          {BIG_SECTIONS.map((section, idx) => {
+            const sectionColors: Record<string, string> = {
+              eat: '#E53E3E', shop: '#D53F8C', transport: '#3182CE',
+              money: '#2C7A7B', medical: '#E53E3E', wellness: '#DD6B20',
+              explore: '#805AD5', library: '#2B6CB0', parks: '#38A169',
+              parking: '#4A5568', lodges: '#6B4226',
+            };
+            const color = sectionColors[section.id] || '#3182CE';
+            return (
+              <button key={section.id} onClick={() => {
+                setSelectedSection(section.id);
+                setView('section');
+                setActiveChip(null);
+                setChipResults([]);
+                if (section.id === 'eat') {
+                  loadFoodGuide('all');
+                } else {
+                  const sectionCats = categories.filter(c => section.catIds.includes(c.id));
+                  const firstChips: { label: string; query: string; emoji: string }[] = [];
+                  for (const cat of sectionCats) {
+                    const subs = CATEGORY_SUBS[cat.id] || [];
+                    if (subs.length > 0) {
+                      firstChips.push(subs[0]);
+                      break;
+                    } else {
+                      firstChips.push({ label: cat.label, query: cat.query, emoji: cat.emoji });
+                      break;
+                    }
                   }
+                  if (firstChips.length > 0) selectChip(firstChips[0]);
                 }
-                if (firstChips.length > 0) {
-                  selectChip(firstChips[0]);
-                }
-              }
-            }}
-              className="flex flex-col items-center gap-2 p-4 bg-card border border-border rounded-kipita hover:shadow-md transition-all active:scale-[0.98]">
-              <span className="text-2xl">{section.emoji}</span>
-              <span className="text-xs font-semibold text-foreground">{section.label}</span>
-            </button>
-          ))}
+              }}
+                className="btn-outline-3d flex flex-col items-center gap-2 p-4 rounded-kipita"
+                style={{ borderColor: color }}
+              >
+                <span className="text-2xl">{section.emoji}</span>
+                <span className="text-xs font-semibold" style={{ color }}>{section.label}</span>
+              </button>
+            );
+          })}
         </div>
 
       </div>
