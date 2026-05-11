@@ -188,10 +188,9 @@ function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: nu
         </div>
         <a href={dirUrl} target="_blank" rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="self-center flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-lg bg-kipita-navy text-white hover:opacity-90 flex-shrink-0"
+          className="self-center flex items-center justify-center p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors flex-shrink-0"
           aria-label={`Directions to ${p.name}`}>
-          <span className="ms text-base leading-none">directions</span>
-          <span className="text-[9px] font-bold leading-none">GO</span>
+          <Navigation className="w-4 h-4" />
         </a>
       </div>
     </div>
@@ -644,6 +643,19 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     return () => { cancelled = true; };
   }, [view, selectedSection, lat, lng, locationName, activeChip, chipLoading, categories, selectChip]);
 
+  /* ── Parks fallback: if "Parks" chip returns nothing, try Hiking/Trails ── */
+  const parksFallbackDoneRef = React.useRef(false);
+  React.useEffect(() => {
+    if (selectedSection !== 'parks') { parksFallbackDoneRef.current = false; return; }
+    if (chipLoading || !activeChip) return;
+    if (activeChip.label !== 'Parks') return;
+    if (chipResults.length > 0) return;
+    if (parksFallbackDoneRef.current) return;
+    parksFallbackDoneRef.current = true;
+    const hikingChip = (CATEGORY_SUBS['park'] || []).find(s => s.label === 'Hiking');
+    if (hikingChip) selectChip(hikingChip);
+  }, [chipResults, chipLoading, activeChip, selectedSection, selectChip]);
+
   // Place detail view
   if (view === 'detail' && selectedPlace) {
     const backView = activeChip || foodGuidePlaces.length > 0 || chipResults.length > 0 ? 'section' : 'subcategory';
@@ -971,8 +983,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 <div className="flex gap-2 mt-3">
                   <a href={p.mapsUrl || `https://www.google.com/maps/search/${encodeURIComponent(p.name)}`} target="_blank" rel="noopener noreferrer"
                     onClick={e => e.stopPropagation()}
-                    className="flex-1 flex items-center justify-center gap-1 bg-muted text-foreground py-2 rounded-kipita-sm text-xs font-semibold no-underline">
-                    <span className="ms text-sm">directions</span> DIRECTIONS
+                    className="flex-1 flex items-center justify-center gap-1.5 bg-muted text-foreground py-2 rounded-kipita-sm text-xs font-semibold no-underline">
+                    <Navigation className="w-3.5 h-3.5" /> DIRECTIONS
                   </a>
                   <span className="flex-1 flex items-center justify-center gap-1 bg-muted text-foreground py-2 rounded-kipita-sm text-xs font-semibold">
                     <span className="ms text-sm">info</span> MORE INFO
