@@ -216,6 +216,7 @@ const CATEGORY_TYPE_MAP: Record<string, string> = {
   beach: "tourist_attraction",
   nightlife: "bar",
   atm: "atm",
+  bank: "bank",
   hospital: "hospital",
   pharmacy: "pharmacy",
 };

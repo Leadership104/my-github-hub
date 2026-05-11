@@ -79,6 +79,8 @@ const OVERPASS_CFGS: Record<string, { tag: string; ico: string; bg: string; labe
   ],
   atm: [
     { tag: '"amenity"="atm"',             ico: '🏧', bg: '#38A169', label: 'ATM' },
+  ],
+  bank: [
     { tag: '"amenity"~"bank|bureau_de_change"', ico: '🏦', bg: '#2C7A7B', label: 'Bank' },
   ],
   hospital: [
