@@ -41,13 +41,34 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
   useEffect(() => {
     if ((activeTab !== 'atm' && activeTab !== 'bank') || !lat || !lng) return;
     let cancelled = false;
-    setLoading(true);
-    setAtms([]);
+    const type = activeTab as 'atm' | 'bank';
+    const cacheKey = `kip_atm_${type}_${lat.toFixed(3)}_${lng.toFixed(3)}`;
 
-    const fromGoogle = async (type: 'atm' | 'bank'): Promise<ATMResult[]> => {
+    // Serve cached results instantly if available (max 10 min old)
+    try {
+      const raw = sessionStorage.getItem(cacheKey);
+      if (raw) {
+        const { ts, data } = JSON.parse(raw);
+        if (Date.now() - ts < 10 * 60 * 1000 && Array.isArray(data) && data.length) {
+          setAtms(data);
+          setLoading(false);
+        } else {
+          setAtms([]);
+          setLoading(true);
+        }
+      } else {
+        setAtms([]);
+        setLoading(true);
+      }
+    } catch {
+      setAtms([]);
+      setLoading(true);
+    }
+
+    const fromGoogle = async (t: 'atm' | 'bank'): Promise<ATMResult[]> => {
       try {
         const base = (import.meta.env.VITE_SUPABASE_URL as string).replace(/\/$/, '');
-        const qs = new URLSearchParams({ mode: 'nearby', lat: String(lat), lng: String(lng), type, radius: '5000' });
+        const qs = new URLSearchParams({ mode: 'nearby', lat: String(lat), lng: String(lng), type: t, radius: '5000' });
         const r = await fetch(`${base}/functions/v1/places-proxy?${qs}`, {
           headers: { apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string },
         });
@@ -60,29 +81,31 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
           const rawName = p?.displayName?.text || p?.name || '';
           const name = rawName && !/^atm$/i.test(rawName.trim())
             ? rawName
-            : (type === 'bank' ? 'Bank' : 'ATM');
+            : (t === 'bank' ? 'Bank' : 'ATM');
           return {
             lat: la, lng: ln,
             name,
             address: p?.formattedAddress || p?.vicinity,
             distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
-            type,
+            type: t,
             photoUrl: p?.photoUrl || (Array.isArray(p?.photos) ? p.photos[0] : null) || null,
           } as ATMResult;
         }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
       } catch { return []; }
     };
 
-    const fromOverpass = async (radius: number): Promise<ATMResult[]> => {
-      const query = `[out:json][timeout:20];(node["amenity"="atm"](around:${radius},${lat},${lng});node["amenity"="bank"](around:${radius},${lat},${lng});way["amenity"="bank"](around:${radius},${lat},${lng}););out center 60;`;
+    const fromOverpass = async (radius: number, signal: AbortSignal): Promise<ATMResult[]> => {
+      const tagPart = type === 'bank'
+        ? `node["amenity"="bank"](around:${radius},${lat},${lng});way["amenity"="bank"](around:${radius},${lat},${lng});`
+        : `node["amenity"="atm"](around:${radius},${lat},${lng});`;
+      const query = `[out:json][timeout:8];(${tagPart});out center 60;`;
       const endpoints = [
         'https://overpass-api.de/api/interpreter',
         'https://overpass.kumi.systems/api/interpreter',
-        'https://overpass.openstreetmap.fr/api/interpreter',
       ];
       for (const ep of endpoints) {
         try {
-          const r = await fetch(`${ep}?data=${encodeURIComponent(query)}`);
+          const r = await fetch(`${ep}?data=${encodeURIComponent(query)}`, { signal });
           if (!r.ok) continue;
           const d = await r.json();
           const results: ATMResult[] = (d.elements || []).map((el: any) => {
@@ -90,25 +113,14 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
             const ln = el.lon ?? el.center?.lon;
             const t = el.tags || {};
             const isBank = t.amenity === 'bank';
-            // Try a cascade of name fields commonly used on OSM ATM/bank nodes
-            const candidate =
-              t.name ||
-              t['name:en'] ||
-              t.brand ||
-              t.operator ||
-              t.network ||
-              t['atm:operator'] ||
-              t.owner ||
-              '';
+            const candidate = t.name || t['name:en'] || t.brand || t.operator || t.network || t['atm:operator'] || t.owner || '';
             const name = candidate && !/^atm$/i.test(candidate.trim())
               ? candidate
               : (isBank ? 'Bank' : 'ATM');
             return {
               lat: la, lng: ln,
               name,
-              address: t['addr:street']
-                ? `${t['addr:housenumber'] || ''} ${t['addr:street']}`.trim()
-                : undefined,
+              address: t['addr:street'] ? `${t['addr:housenumber'] || ''} ${t['addr:street']}`.trim() : undefined,
               distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
               type: isBank ? 'bank' : 'atm',
             } as ATMResult;
@@ -119,41 +131,55 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
       return [];
     };
 
-    (async () => {
-      const type = activeTab as 'atm' | 'bank';
-      const seen = new Set<string>();
-      const merged: ATMResult[] = [];
+    const seen = new Set<string>();
+    const merged: ATMResult[] = [];
 
-      const ingest = (batch: ATMResult[]) => {
-        for (const r of batch) {
-          const k = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
-          if (seen.has(k)) continue;
-          seen.add(k);
-          merged.push(r);
-        }
-        merged.sort((a, b) => (a.distance ?? 99) - (b.distance ?? 99));
-        if (!cancelled) {
-          setAtms([...merged.slice(0, 50)]);
-          // Show results as soon as we have any — don't keep spinner up
-          if (merged.length > 0) setLoading(false);
-        }
-      };
-
-      // Fire Google + Overpass in parallel; whichever returns first shows results.
-      const googleP = fromGoogle(type).then(ingest);
-      const overpassP = fromOverpass(5000).then(batch => ingest(batch.filter(b => b.type === type)));
-
-      await Promise.all([googleP, overpassP]);
-
-      // Final fallback if still empty
-      if (!cancelled && merged.length === 0) {
-        const wider = await fromOverpass(20000);
-        ingest(wider.filter(b => b.type === type));
+    const ingest = (batch: ATMResult[]) => {
+      let added = false;
+      for (const r of batch) {
+        const k = `${r.lat.toFixed(4)},${r.lng.toFixed(4)}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
+        merged.push(r);
+        added = true;
       }
-      if (!cancelled) setLoading(false);
+      if (!added) return;
+      merged.sort((a, b) => (a.distance ?? 99) - (b.distance ?? 99));
+      if (!cancelled) {
+        const top = merged.slice(0, 50);
+        setAtms([...top]);
+        setLoading(false);
+        try { sessionStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), data: top })); } catch {}
+      }
+    };
+
+    const overpassCtl = new AbortController();
+
+    // Primary: Google Places (fast). Clear spinner as soon as it returns.
+    (async () => {
+      const g = await fromGoogle(type);
+      if (cancelled) return;
+      if (g.length) {
+        ingest(g);
+      } else if (!merged.length) {
+        // Google returned empty — still mark not-loading; Overpass may fill in
+        setLoading(false);
+      }
     })();
 
-    return () => { cancelled = true; };
+    // Secondary: Overpass in background, augments results
+    (async () => {
+      const o = await fromOverpass(5000, overpassCtl.signal);
+      if (cancelled) return;
+      ingest(o.filter(b => b.type === type));
+      if (!merged.length) {
+        const wider = await fromOverpass(20000, overpassCtl.signal);
+        if (!cancelled) ingest(wider.filter(b => b.type === type));
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; overpassCtl.abort(); };
   }, [activeTab, lat, lng]);
 
   const btcAtms = merchants
