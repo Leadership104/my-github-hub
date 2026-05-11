@@ -251,6 +251,7 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'nightlife', label: 'Nightlife', emoji: '🎵', query: 'nightlife bars' },
   { id: 'attractions', label: 'Attractions', emoji: '🎡', query: 'tourist attractions things to do' },
   { id: 'atm', label: 'ATM', emoji: '🏧', query: 'atm cash machine' },
+  { id: 'bank', label: 'Bank', emoji: '🏦', query: 'bank' },
   { id: 'btcatm', label: 'BTC ATM', emoji: '₿', query: 'bitcoin atm cryptocurrency' },
   { id: 'hospital', label: 'Hospital', emoji: '🏥', query: 'hospital' },
   { id: 'er', label: 'Emergency Room', emoji: '🚑', query: 'emergency room ER' },
