@@ -243,8 +243,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
-    { id: 'eat', label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'] },
-    { id: 'shop', label: 'Shopping', emoji: '🛍️', icon: ShoppingCart, catIds: ['shop'] },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'money', label: '$ Money', emoji: '💵', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'medical', label: 'Medical', emoji: '🏥', icon: Stethoscope, catIds: ['hospital', 'er', 'childrenhospital', 'urgentcare', 'pharmacy', 'pharmacy24', 'dentist'] },
@@ -1247,10 +1245,9 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         <div data-tour="places-grid" className="grid grid-cols-3 gap-3 mb-6 stagger">
           {BIG_SECTIONS.map((section, idx) => {
             const sectionColors: Record<string, string> = {
-              eat: '#E53E3E', shop: '#D53F8C', transport: '#3182CE',
-              money: '#2C7A7B', medical: '#E53E3E', wellness: '#DD6B20',
-              explore: '#805AD5', library: '#2B6CB0', parks: '#38A169',
-              parking: '#4A5568', lodges: '#6B4226',
+              transport: '#3182CE', money: '#2C7A7B', medical: '#E53E3E',
+              wellness: '#DD6B20', explore: '#805AD5', library: '#2B6CB0',
+              parks: '#38A169', parking: '#4A5568', lodges: '#6B4226',
             };
             const color = sectionColors[section.id] || '#3182CE';
             return (
@@ -1259,28 +1256,26 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 setView('section');
                 setActiveChip(null);
                 setChipResults([]);
-                if (section.id === 'eat') {
-                  loadFoodGuide('all');
-                } else {
-                  const sectionCats = categories.filter(c => section.catIds.includes(c.id));
-                  const firstChips: { label: string; query: string; emoji: string }[] = [];
-                  for (const cat of sectionCats) {
-                    const subs = CATEGORY_SUBS[cat.id] || [];
-                    if (subs.length > 0) {
-                      firstChips.push(subs[0]);
-                      break;
-                    } else {
-                      firstChips.push({ label: cat.label, query: cat.query, emoji: cat.emoji });
-                      break;
-                    }
+                const sectionCats = categories.filter(c => section.catIds.includes(c.id));
+                const firstChips: { label: string; query: string; emoji: string }[] = [];
+                for (const cat of sectionCats) {
+                  const subs = CATEGORY_SUBS[cat.id] || [];
+                  if (subs.length > 0) {
+                    firstChips.push(subs[0]);
+                    break;
+                  } else {
+                    firstChips.push({ label: cat.label, query: cat.query, emoji: cat.emoji });
+                    break;
                   }
-                  if (firstChips.length > 0) selectChip(firstChips[0]);
                 }
+                if (firstChips.length > 0) selectChip(firstChips[0]);
               }}
                 className="btn-outline-3d flex flex-col items-center gap-2 p-4 rounded-kipita"
                 style={{ borderColor: color }}
               >
-                <span className="text-2xl">{section.emoji}</span>
+                <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: color + '22' }}>
+                  <span className="text-2xl">{section.emoji}</span>
+                </div>
                 <span className="text-xs font-semibold" style={{ color }}>{section.label}</span>
               </button>
             );
