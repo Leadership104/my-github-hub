@@ -105,9 +105,10 @@ function getFeaturedNearMe(): FeaturedTile[] {
   const food: SubChip[] = (CATEGORY_SUBS.food || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'food' }));
   const shop: SubChip[] = (CATEGORY_SUBS.shop || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'shop' }));
   const gas: SubChip[] = (CATEGORY_SUBS.gas || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'gas' }));
+  const wellness: SubChip[] = (CATEGORY_SUBS.gym || []).map(s => ({ emoji: s.emoji, label: s.label, hint: 'gym' }));
 
   if (hour >= 23 || hour < 4) {
-    // Group: food → nightlife → essentials
+    // Late night: food → nightlife → essentials
     return [
       { id: 'late', emoji: '🍔', label: 'Late Eats', hint: 'food', chips: food },
       { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
@@ -116,7 +117,7 @@ function getFeaturedNearMe(): FeaturedTile[] {
     ];
   }
   if (hour >= 18) {
-    // Group: food & drinks together, then nightlife, then coffee
+    // Evening: food & drinks → nightlife → coffee
     return [
       { id: 'dinner', emoji: '🍽️', label: 'Dinner', hint: 'food', chips: food },
       { id: 'drinks', emoji: '🍸', label: 'Drinks', hint: 'drinks', chips: drinks },
@@ -124,38 +125,38 @@ function getFeaturedNearMe(): FeaturedTile[] {
       { id: 'coffee', emoji: '☕', label: 'Coffee', hint: 'cafe', chips: cafes },
     ];
   }
-  // Afternoon: preview the evening vibe — food first, then nightlife cluster
+  // Afternoon: food first, then evening preview + recreation
   if (hour >= 14) {
     return [
       { id: 'dinner', emoji: '🍽️', label: 'Dinner', hint: 'food', chips: food },
       { id: 'drinks', emoji: '🍸', label: 'Drinks', hint: 'drinks', chips: drinks },
+      { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
       { id: 'nightlife', emoji: '🌃', label: 'Nightlife', hint: 'nightlife', chips: nightlife },
-      { id: 'clubs', emoji: '🎶', label: 'Clubs', hint: 'nightlife', chips: nightlife },
     ];
   }
   if (isWeekend && hour < 12) {
-    // Group: food/drink (brunch) → fun → shopping cluster
+    // Weekend morning: brunch → fun → recreation → shopping
     return [
       { id: 'brunch', emoji: '☕', label: 'Brunch', hint: 'cafe', chips: cafes },
       { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
+      { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
       { id: 'farmers', emoji: '🌽', label: "Farmers\nMarket", hint: 'farmers_market', chips: shop },
-      { id: 'shop', emoji: '🛍️', label: 'Shopping', hint: 'shop', chips: shop },
     ];
   }
   if (hour < 11) {
-    // Group: food (coffee+breakfast) → transport (gas+auto)
+    // Morning: coffee → breakfast → recreation → gas
     return [
       { id: 'coffee', emoji: '☕', label: 'Coffee', hint: 'cafe', chips: cafes },
       { id: 'breakfast', emoji: '🥐', label: 'Breakfast', hint: 'food', chips: food },
+      { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
       { id: 'gas', emoji: '⛽', label: 'Gas', hint: 'gas', chips: gas },
-      { id: 'auto', emoji: '🔧', label: 'Auto\nRepair', hint: 'mechanic', chips: [] },
     ];
   }
-  // Midday default: food → fun cluster → shopping
+  // Midday: food → fun → recreation → shopping
   return [
     { id: 'lunch', emoji: '🍽️', label: 'Lunch', hint: 'food', chips: food },
     { id: 'attractions', emoji: '🎭', label: 'Attractions', hint: 'attractions', chips: attractions },
-    { id: 'parks', emoji: '🌳', label: 'Parks', hint: 'park', chips: [] },
+    { id: 'recreation', emoji: '🏋️', label: 'Recreation', hint: 'gym', chips: wellness },
     { id: 'shop', emoji: '🛍️', label: 'Shopping', hint: 'shop', chips: shop },
   ];
 }
@@ -190,10 +191,12 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   };
 
   const ESSENTIALS: { id: string; label: string; color: string; render: () => JSX.Element }[] = [
-    { id: 'fun',      label: 'Fun',      color: '#805AD5', render: () => <span className="text-3xl">🎭</span> },
-    { id: 'fuel',     label: 'Gas/EV',   color: '#38A169', render: () => <FuelIcon size={36} /> },
-    { id: 'maps',     label: 'Maps',     color: '#3182CE', render: () => <span className="text-3xl">🗺️</span> },
-    { id: 'atm',      label: '$ Money',  color: '#2C7A7B', render: () => <span className="text-3xl">💵</span> },
+    { id: 'food',     label: 'Food & Drinks', color: '#DD6B20', render: () => <span className="text-3xl">🍽️</span> },
+    { id: 'shopping', label: 'Shopping',      color: '#D69E2E', render: () => <span className="text-3xl">🛍️</span> },
+    { id: 'fun',      label: 'Fun',           color: '#805AD5', render: () => <span className="text-3xl">🎭</span> },
+    { id: 'fuel',     label: 'Gas/EV',        color: '#38A169', render: () => <FuelIcon size={36} /> },
+    { id: 'maps',     label: 'Maps',          color: '#3182CE', render: () => <span className="text-3xl">🗺️</span> },
+    { id: 'atm',      label: '$ Money',       color: '#2C7A7B', render: () => <span className="text-3xl">💵</span> },
   ];
 
   const [featured, setFeatured] = useState<FeaturedTile[]>(() => getFeaturedNearMe());

@@ -243,6 +243,9 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, [activeChip, chipLoading, chipResults.length, foodGuideLoading, foodGuidePlaces.length]);
 
   const BIG_SECTIONS = [
+    // hidden: true = accessible via deep-link from Home but not shown in Places grid
+    { id: 'eat',      label: 'Food & Drinks', emoji: '🍽️', icon: UtensilsCrossed, catIds: ['food', 'cafe', 'drinks'], hidden: true },
+    { id: 'shop',     label: 'Shopping',      emoji: '🛍️', icon: ShoppingCart,    catIds: ['shop'],                  hidden: true },
     { id: 'transport', label: 'Transport', emoji: '🚗', icon: Car, catIds: ['transport', 'auto', 'gas', 'ev'] },
     { id: 'money', label: '$ Money', emoji: '💵', icon: MapPin, catIds: ['atm', 'btcatm'] },
     { id: 'medical', label: 'Medical', emoji: '🏥', icon: Stethoscope, catIds: ['hospital', 'er', 'childrenhospital', 'urgentcare', 'pharmacy', 'pharmacy24', 'dentist'] },
@@ -522,6 +525,60 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setChipResults(sorted);
     setChipLoading(false);
   }, [lat, lng, locationName, activeChip]);
+
+  /* ── Probe distances for chip ordering (Fun + Recreational sections) ── */
+  const [chipProbeDistances, setChipProbeDistances] = useState<Record<string, number>>({});
+  const probedSectionLocRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    const isTargetSection = selectedSection === 'explore' || selectedSection === 'wellness';
+    if (view !== 'section' || !isTargetSection) return;
+    const locKey = `${lat.toFixed(3)},${lng.toFixed(3)}-${selectedSection}`;
+    if (probedSectionLocRef.current === locKey) return;
+    probedSectionLocRef.current = locKey;
+
+    const section = BIG_SECTIONS.find(s => s.id === selectedSection);
+    if (!section) return;
+    const sectionCats = categories.filter(c => section.catIds.includes(c.id));
+    const chipsToProbe: { label: string; query: string }[] = [];
+    const seen = new Set<string>();
+    sectionCats.forEach(cat => {
+      (CATEGORY_SUBS[cat.id] || []).forEach(sub => {
+        const norm = sub.label.toLowerCase().replace(/[^a-z]/g, '');
+        if (!seen.has(norm)) { seen.add(norm); chipsToProbe.push(sub); }
+      });
+    });
+    if (chipsToProbe.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const probes = await Promise.all(chipsToProbe.map(async chip => {
+        const term = (chip.query && chip.query.trim()) || chip.label;
+        try {
+          const results = await fetchGooglePlaces('search', { query: term, lat, lng, radius: 5000 });
+          let best = Infinity;
+          for (const p of results) {
+            const types = p.types || [];
+            const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
+            if (isLocality) continue;
+            if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+              const d = haversine(lat, lng, p.lat, p.lng);
+              if (d < best) best = d;
+            }
+          }
+          return { label: chip.label, dist: best };
+        } catch {
+          return { label: chip.label, dist: Infinity };
+        }
+      }));
+      if (!cancelled) {
+        const distances: Record<string, number> = {};
+        probes.forEach(({ label, dist }) => { distances[label] = dist; });
+        setChipProbeDistances(prev => ({ ...prev, ...distances }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [view, selectedSection, lat, lng]);
 
   /* ── Auto-pick the closest chip for the Fun (explore) section ── */
   const exploreAutoPickedRef = React.useRef<string | null>(null);
@@ -1160,6 +1217,20 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       }
     });
 
+    // For Fun + Recreational sections, sort chips so those with nearby results appear first
+    const shouldSortByProximity = selectedSection === 'explore' || selectedSection === 'wellness';
+    const sortedChips = shouldSortByProximity && Object.keys(chipProbeDistances).length > 0
+      ? [...allChips].sort((a, b) => {
+          const da = chipProbeDistances[a.label] ?? Infinity;
+          const db = chipProbeDistances[b.label] ?? Infinity;
+          const aHasData = da < Infinity;
+          const bHasData = db < Infinity;
+          if (aHasData !== bHasData) return aHasData ? -1 : 1;
+          if (aHasData && bHasData) return da - db;
+          return 0;
+        })
+      : allChips;
+
     const displayPlaces = activeChip ? chipResults : [];
     const isLoading = activeChip ? chipLoading : false;
     const heading = activeChip ? activeChip.label : `${section?.emoji} Tap a category to explore`;
@@ -1179,12 +1250,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
 
           <div ref={chipsScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
-            {allChips.map(chip => (
+            {sortedChips.map(chip => (
               <button key={chip.key} onClick={() => selectChip(chip)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
                   ${activeChip?.label === chip.label
                     ? 'bg-foreground text-background border-foreground'
-                    : 'bg-card border-border text-foreground hover:shadow-sm'
+                    : (chipProbeDistances[chip.label] ?? Infinity) < Infinity && shouldSortByProximity
+                      ? 'bg-card border-green-500/50 text-foreground hover:shadow-sm'
+                      : 'bg-card border-border text-foreground hover:shadow-sm'
                   }`}>
                 <span>{chip.emoji}</span> {chip.label}
               </button>
@@ -1243,7 +1316,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
         {/* Category Sections */}
         <div data-tour="places-grid" className="grid grid-cols-3 gap-3 mb-6 stagger">
-          {BIG_SECTIONS.map((section, idx) => {
+          {BIG_SECTIONS.filter(s => !s.hidden).map((section, idx) => {
             const sectionColors: Record<string, string> = {
               transport: '#3182CE', money: '#2C7A7B', medical: '#E53E3E',
               wellness: '#DD6B20', explore: '#805AD5', library: '#2B6CB0',

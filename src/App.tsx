@@ -386,9 +386,9 @@ export default function App() {
           className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-3 py-2 overflow-hidden min-w-0">
           <span className="ms text-base flex-shrink-0 text-kipita-red">location_on</span>
           <div className="flex-1 min-w-0 text-left">
-            <div className="text-[12px] font-bold text-kipita-navy truncate leading-tight">{locationName}</div>
+            <div className="text-[12px] font-bold text-kipita-navy leading-tight break-words">{locationName}</div>
             {fullAddress && fullAddress !== locationName && (
-              <div className="text-[9px] text-muted-foreground truncate leading-tight">{fullAddress.split(',').slice(0, 2).join(',')}</div>
+              <div className="text-[9px] text-muted-foreground leading-tight break-words">{fullAddress.split(',').slice(0, 3).join(',')}</div>
             )}
           </div>
           <span className="ms text-xs text-kipita-navy/60 flex-shrink-0">expand_more</span>

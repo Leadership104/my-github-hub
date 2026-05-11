@@ -81,9 +81,9 @@ export default function LocationSafetyBar({ locationName, fullAddress, countryCo
 
   return (
     <div className="bg-gradient-to-br from-kipita-navy to-[#16213e] px-4 py-2 flex-shrink-0">
-      <div className="flex items-center gap-3">
+      <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-white text-[11px] font-medium truncate leading-tight">{display}</p>
+          <p className="text-white text-[11px] font-medium leading-snug break-words">{display}</p>
         </div>
         <button onClick={onTap} className="flex items-center gap-2 flex-shrink-0">
           <div className="flex items-center gap-1.5">
