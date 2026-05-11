@@ -822,7 +822,9 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        {renderScreen()}
+        <div key={tab} className="screen-enter h-full">
+          {renderScreen()}
+        </div>
       </main>
 
       {/* Bottom Nav — bubbly motion */}

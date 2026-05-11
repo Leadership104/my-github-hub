@@ -11,7 +11,7 @@ const UPSIDE_PLAY_STORE = 'https://play.google.com/store/apps/details?id=com.end
 
 export default function FuelScreen({ onBack, onSwitchTab }: Props) {
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden screen-enter">
       {/* Header */}
       <div className="bg-card border-b border-border px-4 py-3 flex items-center gap-3 flex-shrink-0">
         <button onClick={onBack} className="p-1 -ml-1 rounded-full hover:bg-muted transition-colors">
@@ -25,32 +25,40 @@ export default function FuelScreen({ onBack, onSwitchTab }: Props) {
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 py-5">
-        <div className="max-w-md mx-auto space-y-3">
+        <div className="max-w-md mx-auto space-y-3 stagger">
 
           {/* Gas Stations */}
           <button
             onClick={() => onSwitchTab('maps', 'gas')}
-            className="w-full flex items-center gap-4 p-5 rounded-2xl bg-kipita-red text-white shadow-md active:scale-[0.98] transition-transform"
+            className="btn-outline-3d w-full flex items-center gap-4 p-5 rounded-2xl"
+            style={{ borderColor: '#DD3B49' }}
           >
-            <span className="text-4xl leading-none">⛽</span>
-            <div className="text-left flex-1">
-              <div className="font-extrabold text-lg leading-tight">Gas Stations</div>
-              <div className="text-xs opacity-80 mt-0.5">Find nearby gas stations on the map</div>
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'hsl(355 71% 55% / 0.10)' }}>
+              <span className="text-4xl leading-none">⛽</span>
             </div>
-            <span className="ms text-2xl opacity-70">chevron_right</span>
+            <div className="text-left flex-1">
+              <div className="font-extrabold text-lg leading-tight" style={{ color: '#DD3B49' }}>Gas Stations</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Find nearest gas stations on the map</div>
+            </div>
+            <span className="ms text-2xl text-muted-foreground">chevron_right</span>
           </button>
 
           {/* EV Charging */}
           <button
             onClick={() => onSwitchTab('maps', 'ev')}
-            className="w-full flex items-center gap-4 p-5 rounded-2xl bg-emerald-600 text-white shadow-md active:scale-[0.98] transition-transform"
+            className="btn-outline-3d w-full flex items-center gap-4 p-5 rounded-2xl"
+            style={{ borderColor: '#38A169' }}
           >
-            <span className="text-4xl leading-none">⚡</span>
-            <div className="text-left flex-1">
-              <div className="font-extrabold text-lg leading-tight">EV Charging</div>
-              <div className="text-xs opacity-80 mt-0.5">Find nearby EV chargers on the map</div>
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'hsl(142 71% 45% / 0.10)' }}>
+              <span className="text-4xl leading-none">⚡</span>
             </div>
-            <span className="ms text-2xl opacity-70">chevron_right</span>
+            <div className="text-left flex-1">
+              <div className="font-extrabold text-lg leading-tight" style={{ color: '#38A169' }}>EV Charging</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Find nearest EV chargers on the map</div>
+            </div>
+            <span className="ms text-2xl text-muted-foreground">chevron_right</span>
           </button>
 
           {/* Upside */}
@@ -58,14 +66,18 @@ export default function FuelScreen({ onBack, onSwitchTab }: Props) {
             href={UPSIDE_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="w-full flex items-center gap-4 p-5 rounded-2xl bg-amber-500 text-white shadow-md active:scale-[0.98] transition-transform"
+            className="btn-outline-3d w-full flex items-center gap-4 p-5 rounded-2xl"
+            style={{ borderColor: '#D97706' }}
           >
-            <span className="text-4xl leading-none">💰</span>
-            <div className="text-left flex-1">
-              <div className="font-extrabold text-lg leading-tight">Upside</div>
-              <div className="text-xs opacity-80 mt-0.5">Earn up to 25¢/gallon cash back</div>
+            <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: 'hsl(38 92% 50% / 0.10)' }}>
+              <span className="text-4xl leading-none">💰</span>
             </div>
-            <span className="ms text-2xl opacity-70">open_in_new</span>
+            <div className="text-left flex-1">
+              <div className="font-extrabold text-lg leading-tight" style={{ color: '#D97706' }}>Upside</div>
+              <div className="text-xs text-muted-foreground mt-0.5">Earn up to 25¢/gallon cash back</div>
+            </div>
+            <span className="ms text-2xl text-muted-foreground">open_in_new</span>
           </a>
 
           {/* Upside app download */}
@@ -76,7 +88,8 @@ export default function FuelScreen({ onBack, onSwitchTab }: Props) {
                 href={UPSIDE_APP_STORE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-3d flex items-center justify-center gap-2 bg-kipita-navy text-white py-2.5 rounded-full text-xs font-semibold"
+                className="btn-outline-3d flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold"
+                style={{ borderColor: '#1e3a5f', color: '#1e3a5f' }}
               >
                 <span className="text-base"></span>
                 App Store
@@ -85,7 +98,8 @@ export default function FuelScreen({ onBack, onSwitchTab }: Props) {
                 href={UPSIDE_PLAY_STORE}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-3d flex items-center justify-center gap-2 bg-kipita-navy text-white py-2.5 rounded-full text-xs font-semibold"
+                className="btn-outline-3d flex items-center justify-center gap-2 py-2.5 rounded-full text-xs font-semibold"
+                style={{ borderColor: '#1e3a5f', color: '#1e3a5f' }}
               >
                 <span className="ms text-base">android</span>
                 Google Play

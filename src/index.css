@@ -58,6 +58,22 @@ body {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
 }
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.35; }
@@ -84,18 +100,36 @@ body {
   0% { opacity: 0; transform: translateY(4px) scale(0.99); }
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
+@keyframes stagger-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
-.animate-fadeSlideUp { animation: fadeSlideUp 0.4s cubic-bezier(.22,.68,0,1.2) both; }
-.animate-sos { animation: sos-pulse 2s ease-in-out infinite; }
-.animate-pulse-dot { animation: pulse-dot 2s infinite; }
-.animate-bubbly { animation: bubbly-pop 0.45s cubic-bezier(.34,1.56,.64,1) both; }
-.animate-float-in { animation: float-in 0.35s cubic-bezier(.22,.68,0,1.2) both; }
+.animate-fadeSlideUp   { animation: fadeSlideUp 0.4s cubic-bezier(.22,.68,0,1.2) both; }
+.animate-fadeSlideIn   { animation: fadeSlideIn 0.35s cubic-bezier(.22,.68,0,1.2) both; }
+.animate-fadeIn        { animation: fadeIn 0.3s ease both; }
+.animate-scaleIn       { animation: scaleIn 0.3s cubic-bezier(.34,1.56,.64,1) both; }
+.animate-slideUp       { animation: slideUp 0.35s cubic-bezier(.22,.68,0,1.2) both; }
+.animate-sos           { animation: sos-pulse 2s ease-in-out infinite; }
+.animate-pulse-dot     { animation: pulse-dot 2s infinite; }
+.animate-bubbly        { animation: bubbly-pop 0.45s cubic-bezier(.34,1.56,.64,1) both; }
+.animate-float-in      { animation: float-in 0.35s cubic-bezier(.22,.68,0,1.2) both; }
+
+/* Stagger helpers — add to list items */
+.stagger > * { animation: stagger-in 0.3s cubic-bezier(.22,.68,0,1.2) both; }
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 40ms; }
+.stagger > *:nth-child(3) { animation-delay: 80ms; }
+.stagger > *:nth-child(4) { animation-delay: 120ms; }
+.stagger > *:nth-child(5) { animation-delay: 160ms; }
+.stagger > *:nth-child(6) { animation-delay: 200ms; }
+.stagger > *:nth-child(7) { animation-delay: 240ms; }
+.stagger > *:nth-child(8) { animation-delay: 280ms; }
+.stagger > *:nth-child(n+9) { animation-delay: 320ms; }
 
 /* ───────────── Glassmorphism + 3D button system ─────────────
-   Apply `.btn-3d` to any tappable surface. Adds:
-     • subtle layered shadow → "lifted" feel
-     • light glass film over background colour
-     • springy hover lift + press
+   .btn-3d   → colored background, glass sheen, springy press
+   .btn-outline-3d → white background, thin color outline, 3D shadow
 */
 .btn-3d {
   position: relative;
@@ -113,8 +147,47 @@ body {
   background: linear-gradient(180deg, hsl(0 0% 100% / 0.18), hsl(0 0% 100% / 0));
   pointer-events: none;
 }
-.btn-3d:hover { transform: translateY(-1px); box-shadow: var(--shadow-3d-hover); }
-.btn-3d:active { transform: translateY(0) scale(0.99); box-shadow: var(--shadow-3d-press); transition-duration: 90ms; }
+.btn-3d:hover  { transform: translateY(-1px); box-shadow: var(--shadow-3d-hover); }
+.btn-3d:active { transform: translateY(0) scale(0.98); box-shadow: var(--shadow-3d-press); transition-duration: 80ms; }
+
+/* White-bg outlined button with 3D depth — use currentColor border via inline style */
+.btn-outline-3d {
+  position: relative;
+  background: #ffffff;
+  border-width: 1.5px;
+  border-style: solid;
+  transition: transform 220ms cubic-bezier(.34,1.56,.64,1),
+              box-shadow 220ms ease,
+              background 220ms ease;
+  box-shadow:
+    0 1px 0 hsl(220 20% 85%),
+    0 2px 6px hsl(220 30% 12% / 0.06),
+    0 6px 16px -6px hsl(220 30% 12% / 0.10);
+  transform: translateY(0);
+  will-change: transform, box-shadow;
+}
+.btn-outline-3d::before {
+  content: '';
+  position: absolute; inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, hsl(0 0% 100% / 0.60) 0%, hsl(0 0% 100% / 0) 100%);
+  pointer-events: none;
+}
+.btn-outline-3d:hover {
+  transform: translateY(-2px);
+  background: #fafafa;
+  box-shadow:
+    0 1px 0 hsl(220 20% 80%),
+    0 4px 12px hsl(220 30% 12% / 0.10),
+    0 12px 24px -8px hsl(220 30% 12% / 0.14);
+}
+.btn-outline-3d:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow:
+    0 1px 0 hsl(220 20% 88%),
+    0 1px 3px hsl(220 30% 12% / 0.05);
+  transition-duration: 80ms;
+}
 
 /* Glass surface — translucent with subtle border */
 .glass {
@@ -141,6 +214,11 @@ body {
   transition: transform 220ms cubic-bezier(.34,1.56,.64,1), box-shadow 220ms ease;
 }
 .lift:hover { transform: translateY(-1px); box-shadow: var(--shadow-3d-hover); }
+
+/* Screen enter transition */
+.screen-enter {
+  animation: fadeIn 0.22s ease both;
+}
 
 /* Scrollbar styling */
 .scrollbar-hide::-webkit-scrollbar { display: none; }

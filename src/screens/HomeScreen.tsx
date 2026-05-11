@@ -189,13 +189,13 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
     }
   };
 
-  const ESSENTIALS: { id: string; label: string; render: () => JSX.Element }[] = [
-    { id: 'food', label: 'Food', render: () => <span className="text-3xl">🍽️</span> },
-    { id: 'fun', label: 'Fun', render: () => <span className="text-3xl">🎭</span> },
-    { id: 'shopping', label: 'Shopping', render: () => <span className="text-3xl">🛍️</span> },
-    { id: 'fuel', label: 'Gas/EV', render: () => <FuelIcon size={36} /> },
-    { id: 'maps', label: 'Maps', render: () => <span className="text-3xl">🗺️</span> },
-    { id: 'atm', label: '$ Money', render: () => <span className="text-3xl">💵</span> },
+  const ESSENTIALS: { id: string; label: string; color: string; render: () => JSX.Element }[] = [
+    { id: 'food',     label: 'Food',     color: '#E53E3E', render: () => <span className="text-3xl">🍽️</span> },
+    { id: 'fun',      label: 'Fun',      color: '#805AD5', render: () => <span className="text-3xl">🎭</span> },
+    { id: 'shopping', label: 'Shopping', color: '#D53F8C', render: () => <span className="text-3xl">🛍️</span> },
+    { id: 'fuel',     label: 'Gas/EV',   color: '#38A169', render: () => <FuelIcon size={36} /> },
+    { id: 'maps',     label: 'Maps',     color: '#3182CE', render: () => <span className="text-3xl">🗺️</span> },
+    { id: 'atm',      label: '$ Money',  color: '#2C7A7B', render: () => <span className="text-3xl">💵</span> },
   ];
 
   const [featured, setFeatured] = useState<FeaturedTile[]>(() => getFeaturedNearMe());
@@ -228,7 +228,8 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
         {/* Know Before You Go CTA (compact) */}
         <button onClick={() => onSwitchTab('ai')}
-          className="btn-3d w-full flex items-center gap-2.5 glass rounded-kipita px-3 py-2 mb-3 text-left">
+          className="btn-outline-3d w-full flex items-center gap-2.5 rounded-kipita px-3 py-2 mb-3 text-left animate-fadeSlideUp"
+          style={{ borderColor: '#DD3B49' }}>
           <div className="w-8 h-8 rounded-full bg-kipita-red-lt flex items-center justify-center flex-shrink-0">
             <span className="ms text-kipita-red text-base">auto_awesome</span>
           </div>
@@ -241,15 +242,16 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
         {/* Essentials Grid */}
         <h2 className="text-sm font-bold text-foreground mb-2">Essentials</h2>
-        <div data-tour="home-essentials" className="grid grid-cols-3 gap-2 mb-3">
+        <div data-tour="home-essentials" className="grid grid-cols-3 gap-2 mb-3 stagger">
           {ESSENTIALS.map(item => (
             <button
               key={item.id}
               onClick={() => handleEssentialTap(item.id)}
-              className="btn-3d flex flex-col items-center justify-center gap-1.5 py-3 glass rounded-kipita-sm transition-all"
+              className="btn-outline-3d flex flex-col items-center justify-center gap-1.5 py-3 rounded-kipita-sm"
+              style={{ borderColor: item.color }}
             >
               {item.render()}
-              <span className="text-[11px] font-bold text-foreground">{item.label}</span>
+              <span className="text-[11px] font-bold" style={{ color: item.color }}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -257,12 +259,13 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         {/* Featured Near Me */}
         <h2 className="text-sm font-bold text-foreground mt-3 mb-0.5">Featured Near Me</h2>
         <p className="text-[10px] text-muted-foreground mb-2">Curated for right now · tap to explore</p>
-        <div className="grid grid-cols-4 gap-2 mb-3">
+        <div className="grid grid-cols-4 gap-2 mb-3 stagger">
           {featured.map(cat => (
             <button
               key={cat.id}
               onClick={() => onSwitchTab('places', cat.hint)}
-              className="btn-3d flex flex-col items-center justify-center gap-1 py-2.5 rounded-kipita-sm glass transition-all"
+              className="btn-outline-3d flex flex-col items-center justify-center gap-1 py-2.5 rounded-kipita-sm"
+              style={{ borderColor: '#3182CE' }}
             >
               <span className="text-2xl">{cat.emoji}</span>
               <span className="text-[10px] font-semibold text-center leading-tight whitespace-pre-line text-foreground">
@@ -275,7 +278,8 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         {/* Kipita Perks */}
         <button
           onClick={() => onSwitchTab('perks')}
-          className="btn-3d w-full flex items-center justify-between gap-3 px-4 py-3 glass rounded-kipita mt-1"
+          className="btn-outline-3d w-full flex items-center justify-between gap-3 px-4 py-3 rounded-kipita mt-1"
+          style={{ borderColor: '#805AD5' }}
         >
           <div className="flex items-center gap-3">
             <span className="text-xl">🎁</span>
