@@ -39,7 +39,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if ((activeTab !== 'atm' && activeTab !== 'bank') || !lat || !lng) return;
+    if ((activeTab !== 'atm' && activeTab !== 'bank') || !Number.isFinite(lat) || !Number.isFinite(lng)) return;
     let cancelled = false;
     const type = activeTab as 'atm' | 'bank';
     const cacheKey = `kip_atm_${type}_${lat.toFixed(3)}_${lng.toFixed(3)}`;

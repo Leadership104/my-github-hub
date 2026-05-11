@@ -711,7 +711,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <a href={selectedPlace.mapsUrl} target="_blank" rel="noopener noreferrer"
                 className="flex-1 text-center text-sm bg-kipita-red text-white px-4 py-2.5 rounded-kipita-sm font-bold no-underline">📍 Directions</a>
             )}
-            {selectedPlace.website && (
+            {selectedPlace.website && (() => { try { const u = new URL(selectedPlace.website!); return ['http:', 'https:'].includes(u.protocol); } catch { return false; } })() && (
               <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
                 className="flex-1 text-center text-sm bg-muted text-foreground px-4 py-2.5 rounded-kipita-sm font-bold no-underline">🌐 Website</a>
             )}

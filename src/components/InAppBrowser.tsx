@@ -61,7 +61,7 @@ export default function InAppBrowser({ url, title, onClose }: Props) {
             src={url}
             title={title || 'Affiliate'}
             className="w-full h-full border-0 bg-white"
-            sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+            sandbox="allow-forms allow-scripts allow-same-origin allow-popups"
             referrerPolicy="no-referrer-when-downgrade"
             onLoad={(e) => {
               // Heuristic: sites blocking iframe show blank doc

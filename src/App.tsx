@@ -516,7 +516,7 @@ export default function App() {
       {showSOS && (() => {
         const activeOrUpcoming = trips.find(t => t.status === 'active') || trips.find(t => t.status === 'upcoming');
         const tripMembers = activeOrUpcoming?.invites || [];
-        const localEmergency = EMERGENCY_NUMBERS.find(e => e.country.includes(countryCode || 'USA')) || EMERGENCY_NUMBERS[0];
+        const localEmergency = (countryCode && EMERGENCY_NUMBERS.find(e => e.country.includes(countryCode))) || EMERGENCY_NUMBERS[0];
         const sosMessage = `🚨 EMERGENCY: I need help. My current location: https://maps.google.com/?q=${lat},${lng}`;
         const alertTripMembers = () => {
           if (tripMembers.length === 0) return;

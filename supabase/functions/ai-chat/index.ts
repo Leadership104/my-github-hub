@@ -558,8 +558,14 @@ serve(async (req) => {
   try {
     const { message, history, context, agenticBriefing } = await req.json();
 
-    if (!message || typeof message !== "string") {
+    if (!message || typeof message !== "string" || message.trim().length === 0) {
       return new Response(JSON.stringify({ error: "Message is required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (message.length > 5000) {
+      return new Response(JSON.stringify({ error: "Message too long" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });

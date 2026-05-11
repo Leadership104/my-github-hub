@@ -59,12 +59,14 @@ function AuthGate({ onBack }: { onBack: () => void }) {
 }
 
 function VerifyGate({ onBack }: { onBack: () => void }) {
+  const { user } = useAuth();
   const [resent, setResent] = useState(false);
 
   const resendEmail = async () => {
+    if (!user?.email) return;
     try {
       const { supabase } = await import('@/integrations/supabase/client');
-      await supabase.auth.resend({ type: 'signup', email: '' });
+      await supabase.auth.resend({ type: 'signup', email: user.email });
       setResent(true);
     } catch {
       setResent(true);
@@ -178,21 +180,30 @@ export default function BusinessScreen({ onBack }: Props) {
 
   const geocodeAddress = async (address: string): Promise<{ lat: number; lng: number } | null> => {
     setGeocoding(true);
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 8000);
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`;
-      const r = await fetch(url, { headers: { Accept: 'application/json' } });
+      const r = await fetch(url, { headers: { Accept: 'application/json' }, signal: ctl.signal });
       const d = await r.json();
       if (d?.[0]) return { lat: parseFloat(d[0].lat), lng: parseFloat(d[0].lon) };
       return null;
     } catch { return null; } finally {
+      clearTimeout(timer);
       setGeocoding(false);
     }
   };
 
   const handleSave = async () => {
     if (!user) return;
-    if (!formName.trim()) { setFormError('Business name is required.'); return; }
-    if (!formAddress.trim()) { setFormError('Address is required.'); return; }
+    if (!formName.trim() || formName.trim().length > 100) { setFormError('Business name must be 1–100 characters.'); return; }
+    if (!formAddress.trim() || formAddress.trim().length > 255) { setFormError('Address must be 1–255 characters.'); return; }
+    if (formPhone.trim() && !/^[+\d\s\-().]{5,25}$/.test(formPhone.trim())) { setFormError('Phone number format is invalid.'); return; }
+    if (formWebsite.trim()) {
+      try { const u = new URL(formWebsite.trim()); if (!['http:', 'https:'].includes(u.protocol)) throw new Error(); }
+      catch { setFormError('Website must be a valid http:// or https:// URL.'); return; }
+    }
+    if (formDescription.trim().length > 500) { setFormError('Description must be 500 characters or fewer.'); return; }
 
     setFormSaving(true);
     setFormError(null);
