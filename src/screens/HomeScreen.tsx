@@ -229,7 +229,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
         {/* Know Before You Go CTA (compact) */}
         <button onClick={() => onSwitchTab('ai')}
           className="btn-outline-3d w-full flex items-center gap-2.5 rounded-kipita px-3 py-2 mb-3 text-left animate-fadeSlideUp"
-          style={{ borderColor: '#DD3B49' }}>
+          style={{ borderColor: '#DD3B49', borderWidth: '1.5px' }}>
           <div className="w-8 h-8 rounded-full bg-kipita-red-lt flex items-center justify-center flex-shrink-0">
             <span className="ms text-kipita-red text-base">auto_awesome</span>
           </div>

@@ -154,7 +154,7 @@ body {
 .btn-outline-3d {
   position: relative;
   background: #ffffff;
-  border-width: 1.5px;
+  border-width: 0;
   border-style: solid;
   transition: transform 220ms cubic-bezier(.34,1.56,.64,1),
               box-shadow 220ms ease,
