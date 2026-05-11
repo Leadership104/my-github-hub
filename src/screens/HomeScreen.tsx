@@ -190,9 +190,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   };
 
   const ESSENTIALS: { id: string; label: string; color: string; render: () => JSX.Element }[] = [
-    { id: 'food',     label: 'Food',     color: '#E53E3E', render: () => <span className="text-3xl">🍽️</span> },
     { id: 'fun',      label: 'Fun',      color: '#805AD5', render: () => <span className="text-3xl">🎭</span> },
-    { id: 'shopping', label: 'Shopping', color: '#D53F8C', render: () => <span className="text-3xl">🛍️</span> },
     { id: 'fuel',     label: 'Gas/EV',   color: '#38A169', render: () => <FuelIcon size={36} /> },
     { id: 'maps',     label: 'Maps',     color: '#3182CE', render: () => <span className="text-3xl">🗺️</span> },
     { id: 'atm',      label: '$ Money',  color: '#2C7A7B', render: () => <span className="text-3xl">💵</span> },
@@ -242,7 +240,7 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
 
         {/* Essentials Grid */}
         <h2 className="text-sm font-bold text-foreground mb-2">Essentials</h2>
-        <div data-tour="home-essentials" className="grid grid-cols-3 gap-2 mb-3 stagger">
+        <div data-tour="home-essentials" className="grid grid-cols-2 gap-2 mb-3 stagger">
           {ESSENTIALS.map(item => (
             <button
               key={item.id}
@@ -250,7 +248,9 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
               className="btn-outline-3d flex flex-col items-center justify-center gap-1.5 py-3 rounded-kipita-sm"
               style={{ borderColor: item.color }}
             >
-              {item.render()}
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.color + '22' }}>
+                {item.render()}
+              </div>
               <span className="text-[11px] font-bold" style={{ color: item.color }}>{item.label}</span>
             </button>
           ))}
@@ -267,7 +267,9 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
               className="btn-outline-3d flex flex-col items-center justify-center gap-1 py-2.5 rounded-kipita-sm"
               style={{ borderColor: '#3182CE' }}
             >
-              <span className="text-2xl">{cat.emoji}</span>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#3182CE22' }}>
+                <span className="text-2xl">{cat.emoji}</span>
+              </div>
               <span className="text-[10px] font-semibold text-center leading-tight whitespace-pre-line text-foreground">
                 {cat.label}
               </span>
