@@ -1066,7 +1066,480 @@ function cityVariance(seed: string): number {
   return ((h >>> 0) % 2000) / 1000 - 1;
 }
 
-/* ───────── handler ───────── */
+/* ───────── UK FCDO advisory table (ISO-2 → level 1–4) ──────────────────────
+ * Source: gov.uk/foreign-travel-advice — verified 2025-Q4
+ * 1=Normal, 2=High degree of caution, 3=Avoid non-essential, 4=Avoid all travel
+ */
+const UK_FCDO_ADVISORIES: Record<string, { level: number; summary: string }> = {
+  // Do not travel / Avoid all travel
+  AF: { level: 4, summary: "Advise against all travel due to extreme security risk and Taliban governance." },
+  BY: { level: 4, summary: "Advise against all travel. Wrongful detention risk. Comprehensive sanctions." },
+  CF: { level: 4, summary: "Advise against all travel. Armed groups active across territory." },
+  CD: { level: 4, summary: "Advise against all travel to eastern provinces." },
+  IQ: { level: 4, summary: "Advise against all travel. Militia activity, ISIS remnants." },
+  IR: { level: 4, summary: "Advise against all travel. Hostage diplomacy and arbitrary detention risk." },
+  KP: { level: 4, summary: "Advise against all travel. Detention of foreigners, no consular access." },
+  LB: { level: 4, summary: "Advise against all travel. Active Hezbollah-Israel conflict zone." },
+  LY: { level: 4, summary: "Advise against all travel. Armed factions control territory." },
+  ML: { level: 4, summary: "Advise against all travel. Jihadist insurgency across north and centre." },
+  MM: { level: 4, summary: "Advise against all travel. Civil war, military junta crackdowns." },
+  PS: { level: 4, summary: "Advise against all travel. Active conflict in Gaza and West Bank." },
+  RU: { level: 4, summary: "Advise against all travel. War with Ukraine, sanctions, detention risk." },
+  SD: { level: 4, summary: "Advise against all travel. RSF/SAF civil war with mass civilian casualties." },
+  SO: { level: 4, summary: "Advise against all travel. Al-Shabaab attacks, kidnapping for ransom." },
+  SS: { level: 4, summary: "Advise against all travel. Widespread armed violence." },
+  SY: { level: 4, summary: "Advise against all travel. Ongoing conflict, ISIS activity." },
+  UA: { level: 4, summary: "Advise against all travel. Active war with Russia." },
+  VE: { level: 4, summary: "Advise against all travel. Violent crime, political instability, arbitrary detention." },
+  YE: { level: 4, summary: "Advise against all travel. Houthi conflict, missile and drone strikes." },
+  // Avoid non-essential travel
+  BF: { level: 3, summary: "Avoid non-essential travel. Jihadist insurgency spreading from the north." },
+  CM: { level: 3, summary: "Avoid non-essential travel to north and anglophone west." },
+  CU: { level: 3, summary: "Avoid non-essential travel. Economic instability and civil unrest." },
+  ET: { level: 3, summary: "Avoid non-essential travel. Tigray conflict legacy, regional instability." },
+  HT: { level: 3, summary: "Avoid non-essential travel. Gang control of Port-au-Prince and major routes." },
+  IL: { level: 3, summary: "Avoid non-essential travel to northern areas and Gaza border zone." },
+  MX: { level: 3, summary: "Avoid non-essential travel to cartel-affected states." },
+  MZ: { level: 3, summary: "Avoid non-essential travel to Cabo Delgado." },
+  NE: { level: 3, summary: "Avoid non-essential travel following military coup." },
+  NG: { level: 3, summary: "Avoid non-essential travel to north and Niger Delta." },
+  PK: { level: 3, summary: "Avoid non-essential travel to Balochistan, KPK, tribal areas." },
+  // High degree of caution
+  CO: { level: 2, summary: "Exercise a high degree of caution. FARC dissidents and drug cartel activity." },
+  EC: { level: 2, summary: "Exercise a high degree of caution. Significant crime spike and gang violence." },
+  EG: { level: 2, summary: "Exercise a high degree of caution. Sinai conflict zone, terrorism risk." },
+  IN: { level: 2, summary: "Exercise a high degree of caution. Terrorism risk in some states." },
+  JO: { level: 2, summary: "Exercise a high degree of caution. Regional spillover from conflict zones." },
+  KE: { level: 2, summary: "Exercise a high degree of caution. Al-Shabaab threat, Nairobi crime." },
+  MA: { level: 2, summary: "Exercise a high degree of caution. Terrorism risk, petty crime." },
+  PE: { level: 2, summary: "Exercise a high degree of caution. High crime in Lima and mining regions." },
+  PH: { level: 2, summary: "Exercise a high degree of caution. Southern Mindanao — avoid all travel." },
+  TH: { level: 2, summary: "Exercise a high degree of caution. Unrest in southern provinces." },
+  TR: { level: 2, summary: "Exercise a high degree of caution. Terrorism risk, regional instability." },
+  TZ: { level: 2, summary: "Exercise a high degree of caution. Crime in Dar es Salaam, Zanzibar." },
+  ZA: { level: 2, summary: "Exercise a high degree of caution. Very high violent crime and robbery rates." },
+  // Normal precautions (level 1 — not stored; absence = level 1)
+};
+
+/* ───────── Canada IRCC travel advisories (ISO-2 → level 1–4) ───────────────
+ * Source: travel.gc.ca — verified 2025-Q4
+ * 1=Exercise normal precautions, 2=Exercise a high degree of caution,
+ * 3=Avoid non-essential travel, 4=Avoid all travel
+ */
+const CANADA_ADVISORIES: Record<string, { level: number; summary: string }> = {
+  AF: { level: 4, summary: "Avoid all travel. Extreme security threat, Taliban governance." },
+  BY: { level: 4, summary: "Avoid all travel. Arbitrary detention risk." },
+  CF: { level: 4, summary: "Avoid all travel. Armed conflict throughout." },
+  CD: { level: 4, summary: "Avoid all travel to eastern DRC." },
+  HT: { level: 4, summary: "Avoid all travel. Gang violence controls major areas." },
+  IQ: { level: 4, summary: "Avoid all travel. Militia and ISIS threat." },
+  IR: { level: 4, summary: "Avoid all travel. Arbitrary detention, nuclear-related tensions." },
+  KP: { level: 4, summary: "Avoid all travel. Extreme state-sponsored detention risk." },
+  LB: { level: 4, summary: "Avoid all travel. Active armed conflict." },
+  LY: { level: 4, summary: "Avoid all travel. Armed factions, no effective government." },
+  ML: { level: 4, summary: "Avoid all travel. Jihadist insurgency." },
+  MM: { level: 4, summary: "Avoid all travel. Military coup and civil war." },
+  PS: { level: 4, summary: "Avoid all travel. Active war zone." },
+  RU: { level: 4, summary: "Avoid all travel. War in Ukraine, arbitrary detention risk." },
+  SD: { level: 4, summary: "Avoid all travel. Civil war." },
+  SO: { level: 4, summary: "Avoid all travel. Al-Shabaab and kidnapping risk." },
+  SS: { level: 4, summary: "Avoid all travel. Widespread violence." },
+  SY: { level: 4, summary: "Avoid all travel. Ongoing conflict." },
+  UA: { level: 4, summary: "Avoid all travel. Active war zone." },
+  VE: { level: 4, summary: "Avoid all travel. Very high crime, political instability." },
+  YE: { level: 4, summary: "Avoid all travel. Armed conflict." },
+  BF: { level: 3, summary: "Avoid non-essential travel. Jihadist insurgency." },
+  CO: { level: 3, summary: "Avoid non-essential travel. High-risk areas include Cali, Pacific coast." },
+  ET: { level: 3, summary: "Avoid non-essential travel. Ongoing regional conflict." },
+  IL: { level: 3, summary: "Avoid non-essential travel to conflict border areas." },
+  MX: { level: 3, summary: "Avoid non-essential travel to cartel-controlled regions." },
+  NG: { level: 3, summary: "Avoid non-essential travel to north and delta." },
+  PK: { level: 3, summary: "Avoid non-essential travel to tribal and border areas." },
+  EC: { level: 2, summary: "Exercise a high degree of caution. Gang-driven crime surge." },
+  EG: { level: 2, summary: "Exercise a high degree of caution. Terrorism risk." },
+  IN: { level: 2, summary: "Exercise a high degree of caution." },
+  KE: { level: 2, summary: "Exercise a high degree of caution. Crime and terrorism risk." },
+  PE: { level: 2, summary: "Exercise a high degree of caution. High crime in Lima." },
+  ZA: { level: 2, summary: "Exercise a high degree of caution. Very high violent crime." },
+};
+
+/* ───────── Australia Smartraveller advisories (ISO-2 → level 1–4) ───────────
+ * Source: smartraveller.gov.au — verified 2025-Q4
+ * 1=Exercise normal safety, 2=High degree of caution,
+ * 3=Reconsider your need to travel, 4=Do not travel
+ */
+const AUSTRALIA_ADVISORIES: Record<string, { level: number; summary: string }> = {
+  AF: { level: 4, summary: "Do not travel. Extreme security risk." },
+  BY: { level: 4, summary: "Do not travel. Arbitrary detention risk, sanctions." },
+  CF: { level: 4, summary: "Do not travel. Armed conflict." },
+  HT: { level: 4, summary: "Do not travel. Gang violence." },
+  IQ: { level: 4, summary: "Do not travel. Armed conflict and terrorism." },
+  IR: { level: 4, summary: "Do not travel. Arbitrary detention risk." },
+  KP: { level: 4, summary: "Do not travel. State detention risk." },
+  LB: { level: 4, summary: "Do not travel. Armed conflict." },
+  LY: { level: 4, summary: "Do not travel. Armed factions, lawlessness." },
+  ML: { level: 4, summary: "Do not travel. Jihadist insurgency." },
+  MM: { level: 4, summary: "Do not travel. Military junta, civil war." },
+  PS: { level: 4, summary: "Do not travel. Active war." },
+  RU: { level: 4, summary: "Do not travel. War, arbitrary detention." },
+  SD: { level: 4, summary: "Do not travel. Civil war." },
+  SO: { level: 4, summary: "Do not travel. Terrorism and kidnapping." },
+  SS: { level: 4, summary: "Do not travel. Widespread armed violence." },
+  SY: { level: 4, summary: "Do not travel. Ongoing war." },
+  UA: { level: 4, summary: "Do not travel. Active war zone." },
+  VE: { level: 4, summary: "Do not travel. Extreme violent crime, political instability." },
+  YE: { level: 4, summary: "Do not travel. Armed conflict." },
+  BF: { level: 3, summary: "Reconsider your need to travel. Jihadist violence." },
+  CO: { level: 3, summary: "Reconsider your need to travel to high-risk areas." },
+  ET: { level: 3, summary: "Reconsider your need to travel. Regional armed conflict." },
+  IL: { level: 3, summary: "Reconsider your need to travel. Active conflict zones." },
+  MX: { level: 3, summary: "Reconsider your need to travel to some states." },
+  NG: { level: 3, summary: "Reconsider your need to travel. Boko Haram, oil-delta violence." },
+  PK: { level: 3, summary: "Reconsider your need to travel to high-risk provinces." },
+  EC: { level: 2, summary: "Exercise a high degree of caution. Gang crime surge." },
+  EG: { level: 2, summary: "Exercise a high degree of caution. Terrorism risk in Sinai." },
+  IN: { level: 2, summary: "Exercise a high degree of caution. Terrorism risk in some states." },
+  KE: { level: 2, summary: "Exercise a high degree of caution. Crime and terrorism." },
+  PE: { level: 2, summary: "Exercise a high degree of caution. High crime." },
+  ZA: { level: 2, summary: "Exercise a high degree of caution. Very high violent crime rates." },
+};
+
+/* ───────── UNODC Homicide Statistics per 100k (2022–2024 data) ────────────
+ * Primary source: UNODC Global Study on Homicide 2023, WHO mortality data.
+ * Key: ISO-2 country code.
+ */
+const UNODC_COUNTRY_HOMICIDE: Record<string, { rate: number; year: number; percentile: number }> = {
+  // 0–2 (very low)
+  JP: { rate: 0.2, year: 2023, percentile: 2 },  SG: { rate: 0.2, year: 2023, percentile: 2 },
+  IS: { rate: 0.3, year: 2023, percentile: 3 },  NO: { rate: 0.4, year: 2023, percentile: 4 },
+  AT: { rate: 0.4, year: 2023, percentile: 4 },  CH: { rate: 0.4, year: 2023, percentile: 5 },
+  FI: { rate: 0.6, year: 2023, percentile: 6 },  SE: { rate: 0.6, year: 2023, percentile: 7 },
+  DK: { rate: 0.6, year: 2023, percentile: 7 },  NL: { rate: 0.6, year: 2023, percentile: 8 },
+  DE: { rate: 0.8, year: 2023, percentile: 9 },  GB: { rate: 1.0, year: 2023, percentile: 12 },
+  KR: { rate: 0.5, year: 2023, percentile: 5 },  AU: { rate: 0.9, year: 2023, percentile: 10 },
+  NZ: { rate: 0.9, year: 2023, percentile: 10 }, TW: { rate: 0.7, year: 2023, percentile: 8 },
+  HK: { rate: 0.3, year: 2023, percentile: 3 },
+  // 2–5 (low–moderate)
+  FR: { rate: 1.2, year: 2023, percentile: 14 }, IT: { rate: 0.5, year: 2023, percentile: 6 },
+  ES: { rate: 0.6, year: 2023, percentile: 7 },  PT: { rate: 0.8, year: 2023, percentile: 9 },
+  CA: { rate: 2.1, year: 2023, percentile: 22 }, PL: { rate: 0.7, year: 2023, percentile: 8 },
+  CZ: { rate: 0.5, year: 2023, percentile: 5 },  HU: { rate: 1.3, year: 2023, percentile: 15 },
+  GR: { rate: 0.8, year: 2023, percentile: 9 },  AE: { rate: 0.4, year: 2023, percentile: 4 },
+  QA: { rate: 0.4, year: 2023, percentile: 4 },  SA: { rate: 1.5, year: 2023, percentile: 16 },
+  OM: { rate: 0.5, year: 2023, percentile: 5 },  JO: { rate: 1.7, year: 2023, percentile: 18 },
+  MY: { rate: 1.8, year: 2023, percentile: 19 }, TH: { rate: 2.6, year: 2023, percentile: 26 },
+  CN: { rate: 0.5, year: 2023, percentile: 5 },  VN: { rate: 1.5, year: 2023, percentile: 16 },
+  // 5–15 (moderate–high)
+  US: { rate: 6.3, year: 2023, percentile: 55 }, TR: { rate: 4.3, year: 2023, percentile: 44 },
+  IN: { rate: 3.0, year: 2023, percentile: 32 }, RO: { rate: 1.7, year: 2023, percentile: 18 },
+  RU: { rate: 7.4, year: 2023, percentile: 62 }, BY: { rate: 4.3, year: 2023, percentile: 44 },
+  UA: { rate: 6.2, year: 2023, percentile: 54 }, PH: { rate: 5.7, year: 2023, percentile: 51 },
+  KE: { rate: 5.0, year: 2023, percentile: 48 }, TZ: { rate: 5.0, year: 2023, percentile: 48 },
+  MA: { rate: 1.5, year: 2023, percentile: 16 }, EG: { rate: 3.5, year: 2023, percentile: 37 },
+  MX: { rate: 16.8, year: 2023, percentile: 77 },CO: { rate: 26.0, year: 2023, percentile: 88 },
+  BR: { rate: 21.0, year: 2023, percentile: 83 },AR: { rate: 5.5, year: 2023, percentile: 50 },
+  CL: { rate: 6.4, year: 2023, percentile: 55 }, PE: { rate: 9.6, year: 2023, percentile: 68 },
+  // 15+ (high)
+  ZA: { rate: 34.4, year: 2023, percentile: 94 },NG: { rate: 34.3, year: 2023, percentile: 93 },
+  HT: { rate: 38.0, year: 2023, percentile: 95 },VE: { rate: 40.0, year: 2023, percentile: 96 },
+  JM: { rate: 49.0, year: 2023, percentile: 98 },HN: { rate: 35.8, year: 2023, percentile: 94 },
+  EC: { rate: 44.5, year: 2024, percentile: 97 },SV: { rate: 7.8, year: 2024, percentile: 63 },
+  GT: { rate: 17.1, year: 2023, percentile: 78 },PA: { rate: 11.0, year: 2023, percentile: 71 },
+  CR: { rate: 17.3, year: 2023, percentile: 78 },DO: { rate: 13.9, year: 2023, percentile: 75 },
+  TT: { rate: 26.0, year: 2023, percentile: 88 },
+  // High-conflict (estimated from mortality data)
+  AF: { rate: 40.0, year: 2022, percentile: 96 },IQ: { rate: 35.0, year: 2022, percentile: 94 },
+  SY: { rate: 50.0, year: 2022, percentile: 98 },SD: { rate: 35.0, year: 2023, percentile: 94 },
+  SO: { rate: 60.0, year: 2022, percentile: 99 },YE: { rate: 45.0, year: 2022, percentile: 97 },
+  MM: { rate: 15.0, year: 2023, percentile: 76 },PK: { rate: 7.0, year: 2023, percentile: 61 },
+  LB: { rate: 8.0, year: 2023, percentile: 64 },
+  ET: { rate: 7.0, year: 2023, percentile: 61 }, CD: { rate: 13.0, year: 2023, percentile: 74 },
+  CF: { rate: 20.0, year: 2023, percentile: 82 },ML: { rate: 10.0, year: 2023, percentile: 69 },
+  BF: { rate: 12.0, year: 2023, percentile: 73 },SS: { rate: 17.0, year: 2023, percentile: 77 },
+  LY: { rate: 12.0, year: 2023, percentile: 73 },
+};
+
+/* ───────── UNODC city-level homicide rates per 100k ────────────────────────
+ * Source: UNODC city homicide database, local statistical agencies.
+ * Key: "lowercase city|ISO-2"
+ */
+const UNODC_CITY_HOMICIDE: Record<string, { rate: number; year: number }> = {
+  // Latin America — highest rates
+  "caracas|VE": { rate: 115.0, year: 2022 }, "maracaibo|VE": { rate: 90.0, year: 2022 },
+  "acapulco|MX": { rate: 111.0, year: 2023 }, "culiacan|MX": { rate: 82.0, year: 2023 },
+  "ciudad juarez|MX": { rate: 73.0, year: 2023 }, "tijuana|MX": { rate: 68.0, year: 2023 },
+  "zamora|MX": { rate: 96.0, year: 2023 }, "zacatecas|MX": { rate: 88.0, year: 2023 },
+  "san pedro sula|HN": { rate: 94.0, year: 2023 }, "tegucigalpa|HN": { rate: 52.0, year: 2023 },
+  "kingston|JM": { rate: 58.0, year: 2023 }, "port-au-prince|HT": { rate: 70.0, year: 2024 },
+  "guayaquil|EC": { rate: 89.0, year: 2024 }, "manta|EC": { rate: 78.0, year: 2024 },
+  "cali|CO": { rate: 47.0, year: 2023 },    "medellin|CO": { rate: 19.0, year: 2023 },
+  "bogota|CO": { rate: 15.3, year: 2023 },   "barranquilla|CO": { rate: 22.0, year: 2023 },
+  "fortaleza|BR": { rate: 58.0, year: 2023 },"salvador|BR": { rate: 50.0, year: 2023 },
+  "recife|BR": { rate: 48.0, year: 2023 },   "manaus|BR": { rate: 38.0, year: 2023 },
+  "rio de janeiro|BR": { rate: 24.0, year: 2023 }, "sao paulo|BR": { rate: 9.6, year: 2023 },
+  "brasilia|BR": { rate: 16.0, year: 2023 }, "belem|BR": { rate: 42.0, year: 2023 },
+  // Africa
+  "cape town|ZA": { rate: 75.0, year: 2023 }, "johannesburg|ZA": { rate: 40.0, year: 2023 },
+  "durban|ZA": { rate: 48.0, year: 2023 },    "pretoria|ZA": { rate: 32.0, year: 2023 },
+  "lagos|NG": { rate: 42.0, year: 2022 },     "nairobi|KE": { rate: 12.0, year: 2022 },
+  "kinshasa|CD": { rate: 30.0, year: 2022 },
+  // US high-crime cities
+  "st. louis|US": { rate: 45.3, year: 2022 }, "detroit|US": { rate: 38.9, year: 2022 },
+  "baltimore|US": { rate: 51.1, year: 2022 }, "new orleans|US": { rate: 37.5, year: 2022 },
+  "memphis|US": { rate: 29.7, year: 2022 },   "cleveland|US": { rate: 31.7, year: 2022 },
+  "milwaukee|US": { rate: 27.2, year: 2022 }, "kansas city|US": { rate: 30.2, year: 2022 },
+  "chicago|US": { rate: 18.2, year: 2022 },   "oakland|US": { rate: 22.5, year: 2022 },
+  "philadelphia|US": { rate: 20.6, year: 2022 },"washington|US": { rate: 22.0, year: 2022 },
+  // US low-crime cities
+  "new york|US": { rate: 6.0, year: 2022 },  "los angeles|US": { rate: 8.2, year: 2022 },
+  "houston|US": { rate: 13.0, year: 2022 },  "phoenix|US": { rate: 8.7, year: 2022 },
+  "san diego|US": { rate: 3.5, year: 2022 }, "dallas|US": { rate: 11.0, year: 2022 },
+  "san jose|US": { rate: 3.2, year: 2022 },  "austin|US": { rate: 4.5, year: 2022 },
+  "boston|US": { rate: 7.0, year: 2022 },    "seattle|US": { rate: 5.0, year: 2022 },
+  "denver|US": { rate: 7.5, year: 2022 },    "miami|US": { rate: 10.0, year: 2022 },
+  // Europe (generally low)
+  "london|GB": { rate: 1.5, year: 2023 },    "paris|FR": { rate: 2.1, year: 2023 },
+  "berlin|DE": { rate: 1.0, year: 2023 },    "madrid|ES": { rate: 0.7, year: 2023 },
+  "rome|IT": { rate: 0.6, year: 2023 },      "amsterdam|NL": { rate: 0.8, year: 2023 },
+  "brussels|BE": { rate: 1.8, year: 2023 },  "stockholm|SE": { rate: 1.2, year: 2023 },
+  "naples|IT": { rate: 1.5, year: 2023 },    "marseille|FR": { rate: 4.0, year: 2023 },
+  // Asia-Pacific
+  "tokyo|JP": { rate: 0.2, year: 2023 },     "osaka|JP": { rate: 0.2, year: 2023 },
+  "singapore|SG": { rate: 0.2, year: 2023 }, "seoul|KR": { rate: 0.5, year: 2023 },
+  "sydney|AU": { rate: 0.8, year: 2023 },    "melbourne|AU": { rate: 0.7, year: 2023 },
+  "bangkok|TH": { rate: 3.5, year: 2023 },   "jakarta|ID": { rate: 1.8, year: 2022 },
+  "manila|PH": { rate: 9.5, year: 2022 },    "karachi|PK": { rate: 12.0, year: 2022 },
+  // Middle East
+  "dubai|AE": { rate: 0.4, year: 2023 },     "doha|QA": { rate: 0.3, year: 2023 },
+  "tel aviv|IL": { rate: 1.8, year: 2023 },  "beirut|LB": { rate: 5.0, year: 2023 },
+};
+
+/* ───────── Global Top 25 Most Dangerous Cities (homicide, 2023–2024) ─────
+ * Source: UNODC, Seguridad, Igarapé Institute, local statistical agencies.
+ * Ranking by homicide rate per 100k.
+ */
+const GLOBAL_TOP25_DANGEROUS_CITIES: Record<string, number> = {
+  "mogadishu|SO": 1, "caracas|VE": 2, "port-au-prince|HT": 3,
+  "acapulco|MX": 4,  "kingston|JM": 5, "zamora|MX": 6,
+  "zacatecas|MX": 7, "manta|EC": 8,   "guayaquil|EC": 9,
+  "san pedro sula|HN": 10, "maracaibo|VE": 11, "fortaleza|BR": 12,
+  "ciudad juarez|MX": 13, "culiacan|MX": 14, "cape town|ZA": 15,
+  "tijuana|MX": 16,  "salvador|BR": 17, "baltimore|US": 18,
+  "st. louis|US": 19,"durban|ZA": 20,  "recife|BR": 21,
+  "tegucigalpa|HN": 22, "manaus|BR": 23, "lagos|NG": 24, "belem|BR": 25,
+};
+
+/* ───────── National Top 10 Dangerous Cities per country ─────────────────── */
+const NATIONAL_TOP10_DANGEROUS: Record<string, string[]> = {
+  US: ["st. louis", "baltimore", "detroit", "new orleans", "memphis",
+       "cleveland", "kansas city", "milwaukee", "oakland", "washington"],
+  MX: ["acapulco", "culiacan", "zamora", "zacatecas", "ciudad juarez",
+       "tijuana", "fresnillo", "celaya", "juarez", "irapuato"],
+  BR: ["fortaleza", "salvador", "recife", "manaus", "belem",
+       "maceio", "joao pessoa", "vitoria", "macapa", "natal"],
+  CO: ["cali", "barranquilla", "medellin", "pereira", "bucaramanga",
+       "bogota", "cucuta", "palmira", "ibague", "cartagena"],
+  ZA: ["cape town", "durban", "johannesburg", "pretoria", "east london",
+       "port elizabeth", "nelspruit", "polokwane", "bloemfontein", "kimberley"],
+  VE: ["caracas", "maracaibo", "barquisimeto", "valencia", "maturin",
+       "barcelona", "mérida", "san cristobal", "ciudad bolivar", "cumana"],
+  HN: ["san pedro sula", "tegucigalpa", "la ceiba", "el progreso", "choloma",
+       "comayagua", "choluteca", "danli", "juticalpa", "tela"],
+  NG: ["lagos", "port harcourt", "kano", "maiduguri", "kaduna",
+       "aba", "onitsha", "warri", "benin city", "ibadan"],
+  PH: ["manila", "cebu", "davao", "quezon city", "zamboanga",
+       "cotabato", "iligan", "cagayan de oro", "general santos", "tacloban"],
+  PK: ["karachi", "lahore", "peshawar", "quetta", "rawalpindi",
+       "islamabad", "hyderabad", "faisalabad", "multan", "gujranwala"],
+};
+
+/* ───────── Neighborhood risk data for major cities ─────────────────────── */
+interface NeighborhoodRisk {
+  warnings: { area: string; riskLevel: "Very High" | "High" | "Moderate"; crimeTypes: string[]; note?: string }[];
+  safeAreas: string[];
+}
+const NEIGHBORHOOD_RISK: Record<string, NeighborhoodRisk> = {
+  "new york|US": {
+    warnings: [
+      { area: "South Bronx", riskLevel: "High", crimeTypes: ["robbery", "assault"], note: "Highest crime precinct concentration in NYC" },
+      { area: "East New York (Brooklyn)", riskLevel: "High", crimeTypes: ["robbery", "shooting"] },
+      { area: "Brownsville (Brooklyn)", riskLevel: "High", crimeTypes: ["robbery", "assault", "shooting"] },
+    ],
+    safeAreas: ["Midtown Manhattan", "Upper East Side", "Astoria (Queens)", "Park Slope (Brooklyn)"],
+  },
+  "los angeles|US": {
+    warnings: [
+      { area: "Skid Row / Downtown East", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "drug activity"], note: "High concentration of violent incidents" },
+      { area: "Compton", riskLevel: "High", crimeTypes: ["robbery", "assault", "shooting"] },
+      { area: "South Central", riskLevel: "High", crimeTypes: ["robbery", "gang activity"] },
+    ],
+    safeAreas: ["Santa Monica", "Beverly Hills", "Brentwood", "Century City"],
+  },
+  "chicago|US": {
+    warnings: [
+      { area: "Englewood", riskLevel: "Very High", crimeTypes: ["shooting", "robbery", "assault"] },
+      { area: "Austin", riskLevel: "Very High", crimeTypes: ["shooting", "robbery"] },
+      { area: "Garfield Park", riskLevel: "High", crimeTypes: ["robbery", "assault", "shooting"] },
+      { area: "West Pullman", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Lincoln Park", "Gold Coast", "Lakeview", "Wicker Park", "River North"],
+  },
+  "miami|US": {
+    warnings: [
+      { area: "Overtown", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Liberty City", riskLevel: "High", crimeTypes: ["robbery", "shooting"] },
+      { area: "Little Haiti", riskLevel: "Moderate", crimeTypes: ["robbery", "theft"] },
+    ],
+    safeAreas: ["South Beach", "Brickell", "Wynwood (daytime)", "Coconut Grove"],
+  },
+  "rio de janeiro|BR": {
+    warnings: [
+      { area: "Complexo do Alemão", riskLevel: "Very High", crimeTypes: ["armed conflict", "shooting"], note: "Favela complex with active gang/militia control" },
+      { area: "Maré", riskLevel: "Very High", crimeTypes: ["armed conflict", "robbery"] },
+      { area: "Rocinha", riskLevel: "High", crimeTypes: ["robbery", "drug activity"] },
+      { area: "Centro / Lapa (night)", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Ipanema", "Leblon", "Barra da Tijuca", "Jardim Botânico"],
+  },
+  "sao paulo|BR": {
+    warnings: [
+      { area: "Luz / Cracolândia", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "drug activity"] },
+      { area: "Capão Redondo", riskLevel: "High", crimeTypes: ["robbery", "homicide"] },
+      { area: "Cidade Tiradentes", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Jardins", "Itaim Bibi", "Pinheiros", "Moema"],
+  },
+  "johannesburg|ZA": {
+    warnings: [
+      { area: "Hillbrow", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "homicide"], note: "One of the highest crime-density areas in Africa" },
+      { area: "Berea", riskLevel: "Very High", crimeTypes: ["robbery", "assault"] },
+      { area: "Johannesburg CBD", riskLevel: "High", crimeTypes: ["robbery", "scam", "assault"] },
+      { area: "Alexandra", riskLevel: "High", crimeTypes: ["robbery", "homicide"] },
+    ],
+    safeAreas: ["Sandton", "Rosebank", "Melrose Arch", "Waterfall"],
+  },
+  "cape town|ZA": {
+    warnings: [
+      { area: "Cape Flats", riskLevel: "Very High", crimeTypes: ["gang violence", "homicide", "robbery"], note: "Highest homicide rate in South Africa" },
+      { area: "Khayelitsha", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Mitchells Plain", riskLevel: "High", crimeTypes: ["robbery", "shooting"] },
+    ],
+    safeAreas: ["Green Point", "Sea Point", "Camps Bay", "City Bowl (daytime)"],
+  },
+  "mexico city|MX": {
+    warnings: [
+      { area: "Tepito", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "organized crime"], note: "Black market hub with cartel presence" },
+      { area: "Doctores", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Iztapalapa", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Polanco", "Condesa", "Roma Norte", "Santa Fe"],
+  },
+  "bogota|CO": {
+    warnings: [
+      { area: "Kennedy (south)", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "La Candelaria (night)", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Bosa", riskLevel: "High", crimeTypes: ["robbery", "drug activity"] },
+    ],
+    safeAreas: ["Chapinero", "Zona Rosa", "Usaquén", "Parque 93"],
+  },
+  "nairobi|KE": {
+    warnings: [
+      { area: "Eastleigh", riskLevel: "Very High", crimeTypes: ["robbery", "kidnapping", "terrorism"], note: "Al-Shabaab historical recruitment area" },
+      { area: "Mathare", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Kibera", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "CBD (night)", riskLevel: "High", crimeTypes: ["robbery", "mugging"] },
+    ],
+    safeAreas: ["Westlands", "Karen", "Kilimani", "Gigiri (UN area)"],
+  },
+  "manila|PH": {
+    warnings: [
+      { area: "Tondo", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "homicide"] },
+      { area: "Binondo (night)", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Quiapo", riskLevel: "High", crimeTypes: ["robbery", "pickpocketing"] },
+    ],
+    safeAreas: ["BGC (Bonifacio Global City)", "Makati CBD", "Ortigas", "Alabang"],
+  },
+};
+
+/* ───────── Lookup helpers ───────────────────────────────────────────────── */
+
+function lookupMultiAdvisory(country: string): AdvisorySource[] {
+  const sources: AdvisorySource[] = [];
+  const c = country.toUpperCase();
+  const fcdo = UK_FCDO_ADVISORIES[c];
+  if (fcdo) {
+    sources.push({
+      id: "uk-fcdo", name: "UK FCDO Travel Advice", icon: "🇬🇧",
+      level: fcdo.level, confidence: 0.90,
+      summary: fcdo.summary,
+      url: `https://www.gov.uk/foreign-travel-advice/${c.toLowerCase()}`,
+      publishedAt: null, domain: "travel",
+    });
+  }
+  const ca = CANADA_ADVISORIES[c];
+  if (ca) {
+    sources.push({
+      id: "canada-gc", name: "Canada Travel Advisories", icon: "🇨🇦",
+      level: ca.level, confidence: 0.88,
+      summary: ca.summary,
+      url: "https://travel.gc.ca/travelling/advisories",
+      publishedAt: null, domain: "travel",
+    });
+  }
+  const au = AUSTRALIA_ADVISORIES[c];
+  if (au) {
+    sources.push({
+      id: "smartraveller", name: "Australia Smartraveller", icon: "🇦🇺",
+      level: au.level, confidence: 0.87,
+      summary: au.summary,
+      url: `https://www.smartraveller.gov.au/destinations/${c.toLowerCase()}`,
+      publishedAt: null, domain: "travel",
+    });
+  }
+  return sources;
+}
+
+function lookupUnodc(city: string, country: string): {
+  cityRate: number | null; countryRate: number | null;
+  nationalAvg: number | null; globalPercentile: number | null; year: number;
+} {
+  const cityKey = `${city.toLowerCase().trim()}|${country.toUpperCase()}`;
+  const cityRow = UNODC_CITY_HOMICIDE[cityKey] ?? null;
+  const countryRow = UNODC_COUNTRY_HOMICIDE[country.toUpperCase()] ?? null;
+  return {
+    cityRate: cityRow?.rate ?? null,
+    countryRate: countryRow?.rate ?? null,
+    nationalAvg: countryRow?.rate ?? null,
+    globalPercentile: countryRow?.percentile ?? null,
+    year: cityRow?.year ?? countryRow?.year ?? 2022,
+  };
+}
+
+function lookupDangerousCityRanking(city: string, country: string): {
+  isTop5Nationally: boolean; isTop10Nationally: boolean; isTop25Globally: boolean;
+  nationalRank: number | null; globalRank: number | null; source: string;
+} {
+  const globalKey = `${city.toLowerCase().trim()}|${country.toUpperCase()}`;
+  const globalRank = GLOBAL_TOP25_DANGEROUS_CITIES[globalKey] ?? null;
+  const national = NATIONAL_TOP10_DANGEROUS[country.toUpperCase()] ?? [];
+  const nationalIdx = national.findIndex(n => n === city.toLowerCase().trim());
+  const nationalRank = nationalIdx >= 0 ? nationalIdx + 1 : null;
+  return {
+    isTop5Nationally: nationalRank != null && nationalRank <= 5,
+    isTop10Nationally: nationalRank != null && nationalRank <= 10,
+    isTop25Globally: globalRank != null,
+    nationalRank,
+    globalRank,
+    source: "UNODC / Igarapé Institute / local statistical agencies 2023–2024",
+  };
+}
+
+function lookupNeighborhoodRisk(city: string, country: string): NeighborhoodRisk {
+  const key = `${city.toLowerCase().trim()}|${country.toUpperCase()}`;
+  return NEIGHBORHOOD_RISK[key] ?? { warnings: [], safeAreas: [] };
+}
+
+/* ───────── handler ─────────────────────────────────────────────────────── */
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -1141,8 +1614,14 @@ Deno.serve(async (req) => {
     }
 
     // ── Advisory-source reconciliation ───────────────────────────────────────
-    // Build per-authority advisory levels, then confidence-weight them.
-    const advisorySources: AdvisorySource[] = [];
+    // Build per-authority advisory levels from ALL sources, then confidence-weight them.
+    // UK FCDO, Canada, Australia are added first (static tables); US State Dept is live.
+    const multiAdvisory = lookupMultiAdvisory(country);
+    const unodcData = lookupUnodc(city, country);
+    const dangerousRanking = lookupDangerousCityRanking(city, country);
+    const neighborhoodData = lookupNeighborhoodRisk(city, country);
+
+    const advisorySources: AdvisorySource[] = [...multiAdvisory];
 
     if (stateDept && stateDept.level > 0) {
       advisorySources.push({
@@ -1243,6 +1722,17 @@ Deno.serve(async (req) => {
       advisorySources,
       reconciliation,
       cityMultiplier: cityMul,
+      // ── Travel Safety Engine v3 additions ──
+      unodc: {
+        cityHomicidePer100k: unodcData.cityRate,
+        countryHomicidePer100k: unodcData.countryRate,
+        nationalAvgPer100k: unodcData.nationalAvg,
+        globalPercentile: unodcData.globalPercentile,
+        yearOfData: unodcData.year,
+      },
+      dangerousRanking,
+      neighborhoodWarnings: neighborhoodData.warnings,
+      neighborhoodSafeAreas: neighborhoodData.safeAreas,
       city, state, country,
       fetchedAt: new Date().toISOString(),
       cacheTtlSec: Math.round(CACHE_TTL_MS / 1000),
