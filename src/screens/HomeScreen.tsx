@@ -192,12 +192,12 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
   };
 
   const ESSENTIALS: { id: string; label: string; color: string; render: () => JSX.Element }[] = [
-    { id: 'food',     label: 'Food & Drinks', color: '#DD6B20', render: () => <span className="text-3xl">🍽️</span> },
-    { id: 'shopping', label: 'Shopping',      color: '#D69E2E', render: () => <span className="text-3xl">🛍️</span> },
-    { id: 'fun',      label: 'Fun',           color: '#805AD5', render: () => <span className="text-3xl">🎭</span> },
-    { id: 'fuel',     label: 'Gas/EV',        color: '#38A169', render: () => <FuelIcon size={36} /> },
-    { id: 'maps',     label: 'Maps',          color: '#3182CE', render: () => <span className="text-3xl">🗺️</span> },
-    { id: 'atm',      label: '$ Money',       color: '#2C7A7B', render: () => <span className="text-3xl">💵</span> },
+    { id: 'food',     label: 'Food & Drinks', color: '#DD6B20', render: () => <span className="text-2xl">🍽️</span> },
+    { id: 'shopping', label: 'Shopping',      color: '#D69E2E', render: () => <span className="text-2xl">🛍️</span> },
+    { id: 'fun',      label: 'Fun',           color: '#805AD5', render: () => <span className="text-2xl">🎭</span> },
+    { id: 'fuel',     label: 'Gas/EV',        color: '#38A169', render: () => <FuelIcon size={26} /> },
+    { id: 'maps',     label: 'Maps',          color: '#3182CE', render: () => <span className="text-2xl">🗺️</span> },
+    { id: 'atm',      label: '$ Money',       color: '#2C7A7B', render: () => <span className="text-2xl">💵</span> },
   ];
 
   const [featured, setFeatured] = useState<FeaturedTile[]>(() => getFeaturedNearMe());
