@@ -249,13 +249,13 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
             <button
               key={item.id}
               onClick={() => handleEssentialTap(item.id)}
-              className="btn-outline-3d flex flex-col items-center justify-center gap-1.5 py-3 rounded-kipita-sm"
+              className="btn-outline-3d flex flex-col items-center justify-center gap-1 py-2 rounded-kipita-sm"
               style={{ borderColor: item.color }}
             >
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ backgroundColor: item.color + '22' }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: item.color + '22' }}>
                 {item.render()}
               </div>
-              <span className="text-[11px] font-bold" style={{ color: item.color }}>{item.label}</span>
+              <span className="text-[10px] font-bold" style={{ color: item.color }}>{item.label}</span>
             </button>
           ))}
         </div>
