@@ -446,7 +446,7 @@ export default function App() {
       {showLocationPicker && (
         <>
           <div className="fixed inset-0 bg-black/50 z-[300]" onClick={() => setShowLocationPicker(false)} />
-          <div className="fixed inset-x-4 top-[8%] max-w-md mx-auto bg-card rounded-2xl shadow-2xl z-[301] overflow-hidden max-h-[80vh] flex flex-col">
+          <div className="fixed inset-x-3 top-2 max-w-md mx-auto bg-card rounded-2xl shadow-2xl z-[301] overflow-hidden flex flex-col" style={{ maxHeight: 'min(50dvh, 420px)' }}>
             <div className="px-5 pt-5 pb-3 flex-shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-extrabold">Change Location</h3>

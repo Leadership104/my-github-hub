@@ -52,7 +52,7 @@ export const CONTEXT_WEIGHTS: Record<SafetyContext, Record<string, number>> = {
 };
 
 export const SITUATIONAL_MULTIPLIERS = {
-  TIME: { daytime: 1.00, evening: 1.25, nighttime: 1.60 } as Record<string, number>,
+  TIME: { daytime: 1.00, evening: 1.15, nighttime: 1.35 } as Record<string, number>,
   DENSITY: { tourist_heavy: 1.20, residential: 1.00, commercial: 0.90, rural: 0.75 } as Record<string, number>,
   EVENTS: { large_event: 1.30, protest: 1.40, parade: 1.10, none: 1.00 } as Record<string, number>,
   WEATHER: { extreme: 1.20, normal: 1.00, clear: 0.95 } as Record<string, number>,
@@ -213,16 +213,18 @@ export function computeSafetyScore(params: {
     else if (c.pts > secondWorst) { secondWorst = c.pts; }
   }
   const meanPts = weightTotal > 0 ? weightedSum / weightTotal : 0;
-  // 45% mean + 55% worst-pair: severe categories drive the score, as users expect.
+  // 65% mean + 35% worst-pair: keeps cities realistic — a couple of elevated
+  // categories don't tank the score, but real hot-spots still register.
   const worstPair = (worst + secondWorst) / 2;
-  const blendedRaw = meanPts * 0.45 + worstPair * 0.55;
-  // Apply mild upward curve above 4 pts so dangerous areas drop faster (5->55, 7->32, 9->14).
-  const curved = blendedRaw <= 4
+  const blendedRaw = meanPts * 0.65 + worstPair * 0.35;
+  // Mild upward curve above 5 pts so genuinely dangerous areas still drop,
+  // but typical urban centers stay in the realistic 60-85 range.
+  const curved = blendedRaw <= 5
     ? blendedRaw
-    : 4 + (blendedRaw - 4) * 1.55;
+    : 5 + (blendedRaw - 5) * 1.20;
   const score = Math.max(0, Math.min(100, Math.round(100 - curved * 10)));
-  const riskLevel = score >= 80 ? 'LOW RISK' : score >= 60 ? 'MODERATE' : score >= 40 ? 'ELEVATED' : score >= 20 ? 'HIGH RISK' : 'CRITICAL';
-  const riskColor = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
+  const riskLevel = score >= 75 ? 'LOW RISK' : score >= 55 ? 'MODERATE' : score >= 35 ? 'ELEVATED' : score >= 18 ? 'HIGH RISK' : 'CRITICAL';
+  const riskColor = score >= 75 ? '#22c55e' : score >= 55 ? '#eab308' : score >= 35 ? '#f97316' : '#ef4444';
   const confidence = hasLive ? (incidents.length >= 10 ? 'HIGH' : 'MEDIUM') : 'LOW';
 
   return { score, riskLevel, riskColor, context, breakdown, sitMul: +sitMul.toFixed(2), hasLive, confidence };
@@ -293,9 +295,9 @@ export function categoryRating(pts: number): { label: string; level: number; col
 
 /** 5-level safety band from score (0-100) */
 export function safetyLevel(score: number): { level: number; label: string; color: string } {
-  if (score >= 80) return { level: 4, label: 'Safe', color: '#22c55e' };
-  if (score >= 60) return { level: 3, label: 'Safer', color: '#84cc16' };
-  if (score >= 40) return { level: 2, label: 'Moderate', color: '#eab308' };
-  if (score >= 20) return { level: 1, label: 'Risky', color: '#f97316' };
+  if (score >= 75) return { level: 4, label: 'Safe', color: '#22c55e' };
+  if (score >= 55) return { level: 3, label: 'Safer', color: '#84cc16' };
+  if (score >= 35) return { level: 2, label: 'Moderate', color: '#eab308' };
+  if (score >= 18) return { level: 1, label: 'Risky', color: '#f97316' };
   return { level: 0, label: 'Unsafe', color: '#ef4444' };
 }
