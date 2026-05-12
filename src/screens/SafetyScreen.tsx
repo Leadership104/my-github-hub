@@ -18,6 +18,39 @@ function ratesFromFbi(per100k: Record<string, number>): Record<string, number> {
 }
 
 interface NewsHeadline { title: string; link: string; source: string; pubDate?: string }
+
+interface CdcNotice { title: string; level: number; link: string; summary?: string; pubDate?: string }
+
+interface AdvisorySource {
+  id: string;
+  name: string;
+  icon: string;
+  level: number;          // 0–4
+  confidence: number;     // 0.0–1.0
+  summary?: string;
+  url?: string;
+  publishedAt?: string | null;
+  domain: 'travel' | 'health' | 'conflict' | 'disaster';
+}
+
+interface AdvisoryReconciliation {
+  finalLevel: number;
+  weightedLevel: number;
+  agreement: 'HIGH' | 'MEDIUM' | 'LOW';
+  overallConfidence: number;
+  sources: AdvisorySource[];
+}
+
+interface StateDeptAdvisory {
+  level: number;
+  levelLabel: string;
+  countryName: string;
+  title: string;
+  summary: string;
+  publishedAt: string | null;
+  url: string;
+}
+
 interface CrimeDataResponse {
   source: 'LIVE_AGGREGATE' | 'FALLBACK';
   coords: { lat: number; lon: number } | null;
@@ -42,7 +75,15 @@ interface CrimeDataResponse {
     };
   } | null;
   fbi?: { agency: string; year: number; population: number } | null;
+  stateDept?: StateDeptAdvisory | null;
   headlines?: NewsHeadline[];
+  // ── Verified-source additions ──────────────────────────────────────────────
+  cdcNotices?: CdcNotice[];
+  whoOutbreaks?: { title: string; link: string; pubDate?: string }[];
+  reliefwebAlerts?: { name: string; type: string }[];
+  advisorySources?: AdvisorySource[];
+  reconciliation?: AdvisoryReconciliation;
+  cityMultiplier?: number | null;
   fetchedAt?: string;
 }
 
@@ -216,7 +257,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
           <p className="text-white/50 text-[10px]">
             {hasLive
-              ? `Live · USGS · NWS · GDACS · OSM${crime?.fbi ? ` · FBI ${crime.fbi.year}` : ''}`
+              ? `Live · USGS · NWS · GDACS · OSM · CDC · WHO · ReliefWeb${crime?.fbi ? ` · FBI ${crime.fbi.year}` : ''}${crime?.cityMultiplier != null ? ' · City calibrated' : ''}`
               : crime
                 ? 'Loading live sources…'
                 : 'Calibrated baseline'}
@@ -279,6 +320,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
               ['Confidence', result.confidence],
               ['Time of Day', timeLabel],
               ['Context', CONTEXTS.find(c => c.id === result.context)?.label ?? result.context],
+              ...(crime?.reconciliation
+                ? [['Sources', `${crime.reconciliation.sources.length} verified`]]
+                : []),
             ].map(([k, v]) => (
               <div key={k} className="bg-muted rounded-lg px-2.5 py-1 text-center">
                 <div className="text-[8px] text-muted-foreground uppercase tracking-wider">{k}</div>
@@ -347,6 +391,11 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           </div>
         )}
 
+        {/* Advisory Sources — inline preview when reconciliation is available */}
+        {hasLive && (crime?.advisorySources?.length ?? 0) > 0 && (
+          <AdvisorySourcesPanel crime={crime} />
+        )}
+
         {/* Small link to open data-sources modal */}
         <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
           <div className="flex items-center gap-1.5">
@@ -396,11 +445,12 @@ function SourcesModal({
             aria-label="Close"
           >×</button>
         </div>
-        <div className="p-4">
-          <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+        <div className="p-4 space-y-4">
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
             Your safety score is aggregated in real time from the public data feeds below.
             We refresh every 10 minutes and fall back to a calibrated baseline if a source is offline.
           </p>
+          <AdvisorySourcesPanel crime={crime} />
           <LiveFeedsPanel crime={crime} hasLive={hasLive} />
         </div>
       </div>
@@ -520,6 +570,33 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
         ? `${crime.fbi.agency} · ${crime.fbi.year} · pop ${crime.fbi.population.toLocaleString()}`
         : 'Using calibrated baseline',
     },
+    {
+      name: 'CDC Travel Health Notices',
+      icon: '🏥',
+      status: !hasLive ? 'offline'
+        : (crime?.cdcNotices && crime.cdcNotices.length > 0 ? 'active' : 'quiet'),
+      detail: crime?.cdcNotices && crime.cdcNotices.length > 0
+        ? `${crime.cdcNotices.length} notice(s) · max L${Math.max(...crime.cdcNotices.map(n => n.level))}`
+        : 'No active notices for this country',
+    },
+    {
+      name: 'WHO Outbreak News',
+      icon: '🌍',
+      status: !hasLive ? 'offline'
+        : (crime?.whoOutbreaks && crime.whoOutbreaks.length > 0 ? 'active' : 'quiet'),
+      detail: crime?.whoOutbreaks && crime.whoOutbreaks.length > 0
+        ? `${crime.whoOutbreaks.length} outbreak(s) · ${crime.whoOutbreaks[0]?.title?.slice(0, 60) ?? ''}…`
+        : 'No active outbreaks reported',
+    },
+    {
+      name: 'ReliefWeb Disasters (UN)',
+      icon: '🆘',
+      status: !hasLive ? 'offline'
+        : (crime?.reliefwebAlerts && crime.reliefwebAlerts.length > 0 ? 'active' : 'quiet'),
+      detail: crime?.reliefwebAlerts && crime.reliefwebAlerts.length > 0
+        ? crime.reliefwebAlerts.slice(0, 2).map(a => a.name).join(' · ')
+        : 'No active disaster alerts',
+    },
   ];
 
   const statusColor = (st: FeedRow['status']) =>
@@ -581,8 +658,121 @@ function LiveFeedsPanel({ crime, hasLive }: { crime: CrimeDataResponse | null; h
 
       <p className="text-[9px] text-muted-foreground/60 text-center mt-3 pt-3 border-t border-border/50">
         {hasLive
-          ? 'Server-side aggregation · cached 10 min · auto-refreshing'
+          ? `14-source aggregation · cached 10 min · auto-refreshing${crime?.cityMultiplier != null ? ` · city calibrated (×${crime.cityMultiplier.toFixed(2)})` : ''}`
           : 'Live aggregator unavailable · showing calibrated baseline'}
+      </p>
+    </div>
+  );
+}
+
+/* ── Advisory Reconciliation Panel ─────────────────────────────────────────
+ * Shows every verified advisory source, its individual level, and confidence.
+ * The reconciled final level and inter-source agreement are shown at the top.
+ */
+const ADVISORY_LEVEL_LABELS = ['None', 'Caution', 'Increased Caution', 'Reconsider', 'Do Not Travel'];
+const ADVISORY_LEVEL_COLORS = ['#94a3b8', '#22c55e', '#eab308', '#f97316', '#ef4444'];
+const DOMAIN_LABELS: Record<string, string> = {
+  travel: 'Travel Advisory', health: 'Health Alert', conflict: 'Conflict Data', disaster: 'Disaster Alert',
+};
+
+function advisoryLevelDots(level: number, color: string) {
+  return (
+    <div className="flex gap-0.5 items-center">
+      {[1, 2, 3, 4].map(i => (
+        <span key={i} className="w-2 h-2 rounded-full"
+          style={{ backgroundColor: i <= level ? color : `${color}28` }} />
+      ))}
+    </div>
+  );
+}
+
+function AdvisorySourcesPanel({ crime }: { crime: CrimeDataResponse | null }) {
+  const rec = crime?.reconciliation;
+  const sources = rec?.sources ?? crime?.advisorySources ?? [];
+  if (!sources.length) return null;
+
+  const finalColor = ADVISORY_LEVEL_COLORS[Math.min(4, rec?.finalLevel ?? 0)];
+  const agreementColor = rec?.agreement === 'HIGH' ? '#22c55e' : rec?.agreement === 'MEDIUM' ? '#eab308' : '#f97316';
+
+  return (
+    <div className="bg-card border border-border rounded-kipita p-4 mt-2">
+      {/* Reconciled summary */}
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">ADVISORY SOURCES</p>
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: agreementColor }} />
+          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: agreementColor }}>
+            {rec?.agreement ?? 'UNKNOWN'} AGREEMENT
+          </span>
+        </div>
+      </div>
+
+      {rec && (
+        <div className="mb-3 p-2.5 rounded-kipita border border-border/60 bg-muted/40">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Reconciled Level</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                {advisoryLevelDots(rec.finalLevel, finalColor)}
+                <span className="text-xs font-bold" style={{ color: finalColor }}>
+                  {ADVISORY_LEVEL_LABELS[Math.min(4, rec.finalLevel)]}
+                </span>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Weighted avg</p>
+              <p className="text-xs font-bold text-foreground">{rec.weightedLevel.toFixed(1)} / 4</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[9px] text-muted-foreground uppercase tracking-wider">Confidence</p>
+              <p className="text-xs font-bold text-foreground">{Math.round(rec.overallConfidence * 100)}%</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Per-source rows */}
+      <div className="space-y-2.5">
+        {sources.map(src => {
+          const lvl = Math.min(4, src.level);
+          const color = ADVISORY_LEVEL_COLORS[lvl];
+          return (
+            <div key={src.id} className="flex items-start gap-2.5">
+              <span className="text-sm w-5 flex-shrink-0 mt-0.5">{src.icon}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-[11px] font-semibold text-foreground">{src.name}</p>
+                  <span className="text-[8px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">
+                    {DOMAIN_LABELS[src.domain] ?? src.domain}
+                  </span>
+                </div>
+                {src.summary && (
+                  <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">
+                    {src.summary}
+                  </p>
+                )}
+                {src.publishedAt && (
+                  <p className="text-[9px] text-muted-foreground/60 mt-0.5">
+                    {relativeTime(src.publishedAt)}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                {advisoryLevelDots(lvl, color)}
+                <span className="text-[9px] font-semibold" style={{ color }}>
+                  {ADVISORY_LEVEL_LABELS[lvl]}
+                </span>
+                <span className="text-[8px] text-muted-foreground">
+                  {Math.round(src.confidence * 100)}% conf
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="text-[9px] text-muted-foreground/60 text-center mt-3 pt-2 border-t border-border/40">
+        Levels reconciled with confidence-weighted averaging · conservative bias when sources disagree
       </p>
     </div>
   );

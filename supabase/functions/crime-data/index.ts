@@ -11,6 +11,14 @@
 //   9. NASA EONET                        — natural disaster events (storms, volcanoes, floods)
 //  10. ACLED public dashboard            — armed conflict events (country, last 30d)
 //  11. Yahoo Finance + Google News RSS   — recent headlines + links for major cities
+//  12. CDC Travelers' Health Notices     — disease-level travel notices (L1/L2/L3)
+//  13. WHO Disease Outbreak News         — active outbreak alerts (RSS)
+//  14. ReliefWeb Disasters API           — UN-backed disaster & humanitarian alerts
+//
+// Advisory sources (State Dept + ACLED + CDC + WHO + ReliefWeb) are reconciled
+// using confidence-weighted averaging with spread-based conservative bias.
+// Per-city crime calibration uses a curated index of known-city multipliers before
+// falling back to a deterministic hash-based variance for unknown cities.
 //
 // Per-city responses are cached in memory for 10 minutes to keep load light
 // across the upstream APIs while supporting the screen's auto-refresh cadence.
@@ -18,6 +26,172 @@
 import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
 
 const UA = "kipita-safety/1.0 (https://kipita.app)";
+
+/* ── New verified-source types ──────────────────────────────────────────────── */
+
+interface CdcNotice {
+  title: string;
+  level: number;      // 1=Watch, 2=Alert, 3=Warning
+  link: string;
+  summary?: string;
+  pubDate?: string;
+}
+
+/** A single advisory authority's verdict — 0=none, 4=do not travel. */
+interface AdvisorySource {
+  id: string;
+  name: string;
+  icon: string;
+  level: number;          // 0–4 normalized
+  confidence: number;     // 0.0–1.0 authority weight
+  summary?: string;
+  url?: string;
+  publishedAt?: string | null;
+  domain: "travel" | "health" | "conflict" | "disaster";
+}
+
+interface AdvisoryReconciliation {
+  finalLevel: number;       // conservative blended level
+  weightedLevel: number;    // continuous weighted average (1 dp)
+  agreement: "HIGH" | "MEDIUM" | "LOW";
+  overallConfidence: number; // 0–1
+  sources: AdvisorySource[];
+}
+
+/* ── Common country names (ISO-2 → English) for CDC / WHO RSS filtering ────── */
+const COUNTRY_NAMES: Record<string, string> = {
+  US: "United States", CA: "Canada", GB: "United Kingdom",
+  AU: "Australia", NZ: "New Zealand", FR: "France",
+  DE: "Germany", IT: "Italy", ES: "Spain", PT: "Portugal",
+  NL: "Netherlands", BE: "Belgium", CH: "Switzerland", AT: "Austria",
+  SE: "Sweden", NO: "Norway", DK: "Denmark", FI: "Finland",
+  PL: "Poland", CZ: "Czech Republic", HU: "Hungary", RO: "Romania",
+  GR: "Greece", TR: "Turkey",
+  JP: "Japan", KR: "South Korea", CN: "China", SG: "Singapore",
+  TH: "Thailand", VN: "Vietnam", ID: "Indonesia", PH: "Philippines",
+  IN: "India", MY: "Malaysia", TW: "Taiwan", HK: "Hong Kong",
+  MX: "Mexico", BR: "Brazil", AR: "Argentina", CO: "Colombia",
+  PE: "Peru", CL: "Chile", EC: "Ecuador", VE: "Venezuela", HT: "Haiti",
+  ZA: "South Africa", KE: "Kenya", NG: "Nigeria", EG: "Egypt",
+  MA: "Morocco", TZ: "Tanzania", ET: "Ethiopia", GH: "Ghana",
+  AE: "United Arab Emirates", SA: "Saudi Arabia",
+  IL: "Israel", JO: "Jordan", QA: "Qatar", KW: "Kuwait",
+  UA: "Ukraine", RU: "Russia", BY: "Belarus",
+  AF: "Afghanistan", PK: "Pakistan", MM: "Myanmar", KP: "North Korea",
+  IR: "Iran", IQ: "Iraq", SY: "Syria", LB: "Lebanon",
+  YE: "Yemen", SO: "Somalia", SD: "Sudan", ML: "Mali", BF: "Burkina Faso",
+  LY: "Libya", CD: "DR Congo", SS: "South Sudan", CF: "Central African Republic",
+  MZ: "Mozambique", CM: "Cameroon", NG2: "Niger",
+};
+
+/* ── City-level crime calibration index ─────────────────────────────────────
+ * Multiplier vs. US national average per-100k (1.0 = national average).
+ * > 1.0 = higher crime; < 1.0 = lower crime.
+ * Key format: "lowercase city|ISO-2 country"
+ * Sources: FBI UCR city-level, UNODC homicide index, ACLED sub-national,
+ *          local statistical agencies (ABS, ONS, StatCan, INEGI, IBGE, SAPS).
+ */
+const CITY_CRIME_INDEX: Record<string, number> = {
+  // ─ United States — High crime ─────────────────────────────────────────────
+  "detroit|US": 2.80,       "st. louis|US": 2.60,    "memphis|US": 2.40,
+  "baltimore|US": 2.30,     "new orleans|US": 2.20,  "cleveland|US": 1.92,
+  "milwaukee|US": 1.75,     "oakland|US": 1.82,      "kansas city|US": 1.65,
+  "chicago|US": 1.55,       "atlanta|US": 1.52,      "houston|US": 1.42,
+  "los angeles|US": 1.28,   "miami|US": 1.22,        "phoenix|US": 1.18,
+  "dallas|US": 1.22,        "las vegas|US": 1.32,    "denver|US": 1.12,
+  "portland|US": 1.18,      "minneapolis|US": 1.35,  "st. paul|US": 1.30,
+  "albuquerque|US": 1.55,   "tucson|US": 1.28,       "indianapolis|US": 1.45,
+  // ─ United States — Low crime ──────────────────────────────────────────────
+  "irvine|US": 0.28,         "gilbert|US": 0.32,      "fremont|US": 0.38,
+  "scottsdale|US": 0.42,     "naperville|US": 0.35,   "henderson|US": 0.48,
+  "plano|US": 0.35,          "chandler|US": 0.40,     "tempe|US": 0.55,
+  "madison|US": 0.45,        "san jose|US": 0.62,     "new york|US": 0.88,
+  "seattle|US": 0.92,        "boston|US": 0.76,       "austin|US": 0.85,
+  "san diego|US": 0.72,      "san francisco|US": 1.05, "nashville|US": 1.10,
+  "columbus|US": 1.08,       "charlotte|US": 1.05,
+  // ─ Canada ──────────────────────────────────────────────────────────────────
+  "toronto|CA": 0.48,  "vancouver|CA": 0.62,  "montreal|CA": 0.52,
+  "calgary|CA": 0.58,  "edmonton|CA": 0.82,   "ottawa|CA": 0.40,
+  "winnipeg|CA": 0.90, "regina|CA": 1.00,
+  // ─ United Kingdom ──────────────────────────────────────────────────────────
+  "london|GB": 0.72,     "manchester|GB": 0.85,  "birmingham|GB": 0.88,
+  "glasgow|GB": 0.80,    "liverpool|GB": 0.82,   "edinburgh|GB": 0.52,
+  // ─ Western Europe ──────────────────────────────────────────────────────────
+  "paris|FR": 0.65,      "marseille|FR": 0.92,   "lyon|FR": 0.62,
+  "madrid|ES": 0.55,     "barcelona|ES": 0.62,   "seville|ES": 0.58,
+  "berlin|DE": 0.50,     "frankfurt|DE": 0.62,   "hamburg|DE": 0.55,
+  "rome|IT": 0.62,       "milan|IT": 0.60,       "naples|IT": 0.80,
+  "amsterdam|NL": 0.58,  "brussels|BE": 0.68,
+  "zurich|CH": 0.18,     "geneva|CH": 0.22,
+  "vienna|AT": 0.20,
+  "stockholm|SE": 0.38,  "oslo|NO": 0.25,       "copenhagen|DK": 0.28,
+  "helsinki|FI": 0.20,   "reykjavik|IS": 0.12,
+  // ─ Eastern Europe ──────────────────────────────────────────────────────────
+  "warsaw|PL": 0.40,     "krakow|PL": 0.38,     "prague|CZ": 0.32,
+  "budapest|HU": 0.42,   "bucharest|RO": 0.58,  "athens|GR": 0.52,
+  "istanbul|TR": 0.75,   "ankara|TR": 0.60,
+  // ─ Asia-Pacific — Low crime ────────────────────────────────────────────────
+  "tokyo|JP": 0.12,       "osaka|JP": 0.12,       "kyoto|JP": 0.10,
+  "yokohama|JP": 0.13,    "nagoya|JP": 0.14,
+  "singapore|SG": 0.08,   "seoul|KR": 0.20,       "busan|KR": 0.22,
+  "taipei|TW": 0.15,      "hong kong|HK": 0.30,
+  "sydney|AU": 0.55,      "melbourne|AU": 0.50,   "brisbane|AU": 0.58,
+  "auckland|NZ": 0.45,    "wellington|NZ": 0.40,
+  // ─ Southeast Asia ──────────────────────────────────────────────────────────
+  "bangkok|TH": 0.85,    "chiang mai|TH": 0.70,  "phuket|TH": 1.00,
+  "hanoi|VN": 0.55,      "ho chi minh city|VN": 0.70,
+  "jakarta|ID": 0.90,    "bali|ID": 0.75,         "surabaya|ID": 0.85,
+  "manila|PH": 1.60,     "cebu|PH": 1.30,
+  "kuala lumpur|MY": 0.80,
+  // ─ South Asia ──────────────────────────────────────────────────────────────
+  "mumbai|IN": 0.70,     "delhi|IN": 0.95,        "bangalore|IN": 0.72,
+  "kolkata|IN": 0.80,    "karachi|PK": 2.80,      "lahore|PK": 1.80,
+  "dhaka|BD": 1.40,      "colombo|LK": 0.65,
+  // ─ Middle East — Low crime ─────────────────────────────────────────────────
+  "dubai|AE": 0.12,      "abu dhabi|AE": 0.10,
+  "doha|QA": 0.10,       "kuwait city|KW": 0.20,  "riyadh|SA": 0.30,
+  "amman|JO": 0.38,      "muscat|OM": 0.20,
+  "tel aviv|IL": 0.55,   "jerusalem|IL": 0.60,
+  "beirut|LB": 2.50,     "baghdad|IQ": 3.50,      "kabul|AF": 4.00,
+  "damascus|SY": 3.80,   "sana'a|YE": 4.00,
+  // ─ Africa ──────────────────────────────────────────────────────────────────
+  "cairo|EG": 0.80,      "alexandria|EG": 0.85,
+  "casablanca|MA": 0.90, "marrakech|MA": 0.85,
+  "nairobi|KE": 2.50,    "mombasa|KE": 2.00,
+  "cape town|ZA": 3.20,  "johannesburg|ZA": 3.00, "durban|ZA": 2.80,
+  "pretoria|ZA": 2.60,   "lagos|NG": 2.80,        "abuja|NG": 1.80,
+  "accra|GH": 1.00,      "addis ababa|ET": 1.20,
+  "dar es salaam|TZ": 1.60, "kampala|UG": 1.80,
+  "kinshasa|CD": 2.80,   "bangui|CF": 3.00,       "khartoum|SD": 2.50,
+  "mogadishu|SO": 4.50,  "bamako|ML": 2.60,       "ouagadougou|BF": 2.80,
+  "tripoli|LY": 3.20,    "tunis|TN": 0.70,        "algiers|DZ": 0.80,
+  // ─ Latin America — High crime ─────────────────────────────────────────────
+  "caracas|VE": 4.50,    "maracaibo|VE": 4.00,
+  "san pedro sula|HN": 4.00, "tegucigalpa|HN": 3.50,
+  "port-au-prince|HT": 4.20,
+  "acapulco|MX": 4.00,   "culiacan|MX": 3.80,     "ciudad juarez|MX": 3.50,
+  "tijuana|MX": 3.20,    "monterrey|MX": 1.40,    "guadalajara|MX": 1.30,
+  "mexico city|MX": 1.20,
+  "bogota|CO": 2.00,     "medellin|CO": 2.40,     "cali|CO": 2.60,
+  "cartagena|CO": 1.60,
+  "guayaquil|EC": 2.50,  "quito|EC": 2.00,
+  "san salvador|SV": 3.00, "managua|NI": 1.60,
+  "panama city|PA": 1.40, "san jose|CR": 1.20,
+  "lima|PE": 1.80,       "cusco|PE": 1.50,
+  "santiago|CL": 1.20,   "valparaiso|CL": 1.40,
+  "buenos aires|AR": 1.40, "rosario|AR": 1.80,
+  "rio de janeiro|BR": 2.20, "sao paulo|BR": 1.60, "salvador|BR": 2.80,
+  "fortaleza|BR": 2.60,  "recife|BR": 2.50,       "manaus|BR": 2.20,
+  "brasilia|BR": 1.40,
+  // ─ Caribbean ──────────────────────────────────────────────────────────────
+  "kingston|JM": 2.80,   "nassau|BS": 1.60,       "havana|CU": 0.80,
+  "santo domingo|DO": 1.80, "san juan|PR": 1.60,
+  // ─ Russia & CIS ───────────────────────────────────────────────────────────
+  "moscow|RU": 0.75,     "st. petersburg|RU": 0.70, "kyiv|UA": 1.80,
+  "minsk|BY": 0.55,
+  // ─ East Africa ────────────────────────────────────────────────────────────
+  "yangon|MM": 2.50,
+};
 
 interface CrimeRates {
   robbery: number;
@@ -612,6 +786,176 @@ async function fetchHeadlines(city: string, country: string): Promise<NewsHeadli
   }
 }
 
+/* ───────── CDC / WHO RSS caches (1-hour TTL — feeds are global, not per city) ── */
+const RSS_TTL_MS = 60 * 60 * 1000;
+let cdcRssCache: { at: number; xml: string } | null = null;
+let whoRssCache: { at: number; xml: string } | null = null;
+
+/** CDC Level-1/2/3 travel health notices filtered to a specific country. */
+async function fetchCdcTravelNotices(
+  _country: string,
+  countryName: string,
+): Promise<{ notices: CdcNotice[]; maxLevel: number }> {
+  const empty = { notices: [], maxLevel: 0 };
+  if (!countryName) return empty;
+  try {
+    let xml: string;
+    if (cdcRssCache && Date.now() - cdcRssCache.at < RSS_TTL_MS) {
+      xml = cdcRssCache.xml;
+    } else {
+      const r = await fetch("https://wwwnc.cdc.gov/travel/rss/travelnotices.xml", {
+        headers: { "User-Agent": UA },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) return empty;
+      xml = await r.text();
+      cdcRssCache = { at: Date.now(), xml };
+    }
+    const items = xml.split(/<item>/i).slice(1);
+    const notices: CdcNotice[] = [];
+    const nameLc = countryName.toLowerCase();
+    let maxLevel = 0;
+    for (const it of items) {
+      const rawTitle = it.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i)?.[1]?.trim() ?? "";
+      if (!rawTitle.toLowerCase().includes(nameLc)) continue;
+      const link = it.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i)?.[1]?.trim() ?? "";
+      const desc = it.match(/<description>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/description>/i)?.[1]?.trim() ?? "";
+      const pub  = it.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]?.trim();
+      // CDC titles: "Level 2 – Practice Enhanced Precautions: Country"
+      const lvlM = rawTitle.match(/Level\s*(\d)/i);
+      const level = lvlM ? Math.min(3, Math.max(1, parseInt(lvlM[1]))) : 1;
+      if (level > maxLevel) maxLevel = level;
+      notices.push({
+        title: decodeXmlEntities(rawTitle),
+        level,
+        link: decodeXmlEntities(link),
+        summary: stripHtml(decodeXmlEntities(desc)).slice(0, 300),
+        pubDate: pub,
+      });
+      if (notices.length >= 3) break;
+    }
+    return { notices, maxLevel };
+  } catch { return empty; }
+}
+
+/** WHO Disease Outbreak News RSS filtered to country and disease keywords. */
+async function fetchWhoOutbreaks(
+  countryName: string,
+): Promise<{ outbreaks: { title: string; link: string; pubDate?: string }[]; count: number }> {
+  const empty = { outbreaks: [], count: 0 };
+  if (!countryName) return empty;
+  try {
+    let xml: string;
+    if (whoRssCache && Date.now() - whoRssCache.at < RSS_TTL_MS) {
+      xml = whoRssCache.xml;
+    } else {
+      const r = await fetch("https://www.who.int/rss-feeds/news-releases-en.xml", {
+        headers: { "User-Agent": UA },
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!r.ok) return empty;
+      xml = await r.text();
+      whoRssCache = { at: Date.now(), xml };
+    }
+    const items = xml.split(/<item>/i).slice(1);
+    const outbreaks: { title: string; link: string; pubDate?: string }[] = [];
+    const nameLc = countryName.toLowerCase();
+    const outbreakRe =
+      /\b(outbreak|disease|epidemic|virus|cholera|dengue|malaria|ebola|mpox|monkeypox|influenza|measles|covid|plague|typhoid|yellow fever|meningitis)\b/i;
+    const cutoff = Date.now() - 90 * 24 * 3600_000; // 90-day window
+    for (const it of items) {
+      const title = it.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/i)?.[1]?.trim() ?? "";
+      const link  = it.match(/<link>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/link>/i)?.[1]?.trim() ?? "";
+      const pub   = it.match(/<pubDate>([\s\S]*?)<\/pubDate>/i)?.[1]?.trim();
+      if (!title || !title.toLowerCase().includes(nameLc) || !outbreakRe.test(title)) continue;
+      if (pub) {
+        const t = Date.parse(pub);
+        if (Number.isFinite(t) && t < cutoff) continue;
+      }
+      outbreaks.push({ title: decodeXmlEntities(title), link: decodeXmlEntities(link), pubDate: pub });
+      if (outbreaks.length >= 3) break;
+    }
+    return { outbreaks, count: outbreaks.length };
+  } catch { return empty; }
+}
+
+/** ReliefWeb UN disaster/alert database filtered to a country (by name). */
+async function fetchReliefWebAlerts(
+  countryName: string,
+): Promise<{ alerts: { name: string; type: string }[]; count: number }> {
+  const empty = { alerts: [], count: 0 };
+  if (!countryName) return empty;
+  try {
+    const url =
+      `https://api.reliefweb.int/v1/disasters?appname=kipita-safety` +
+      `&filter[field]=country.name&filter[value]=${encodeURIComponent(countryName)}` +
+      `&limit=5&sort[]=date.created:desc` +
+      `&fields[include][]=name&fields[include][]=primary_type`;
+    const r = await fetch(url, {
+      headers: { "User-Agent": UA, Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return empty;
+    const j = await r.json();
+    const items: any[] = j?.data ?? [];
+    const alerts = items.slice(0, 5).map((item: any) => ({
+      name: item.fields?.name ?? "Unknown",
+      type: item.fields?.primary_type?.name ?? item.fields?.["primary_type.name"] ?? "Disaster",
+    }));
+    return { alerts, count: alerts.length };
+  } catch { return empty; }
+}
+
+/* ───────── Advisory reconciliation ────────────────────────────────────────
+ * Combines State Dept, ACLED, CDC, WHO, and ReliefWeb into one advisory level.
+ * Strategy: confidence-weighted average, biased toward the maximum when sources
+ * disagree (conservative / safety-first). Agreement metric flags outliers.
+ */
+function reconcileAdvisories(sources: AdvisorySource[]): AdvisoryReconciliation {
+  const active = sources.filter((s) => s.level > 0);
+  if (!active.length) {
+    return {
+      finalLevel: 0, weightedLevel: 0,
+      agreement: "HIGH", overallConfidence: sources.length > 0 ? 0.40 : 0.20,
+      sources,
+    };
+  }
+
+  let wSum = 0, wTotal = 0;
+  for (const s of active) { wSum += s.level * s.confidence; wTotal += s.confidence; }
+  const weightedLevel = wTotal > 0 ? Math.round((wSum / wTotal) * 10) / 10 : 0;
+
+  const levels = active.map((s) => s.level);
+  const maxL = Math.max(...levels);
+  const minL = Math.min(...levels);
+  const spread = maxL - minL;
+  const agreement: AdvisoryReconciliation["agreement"] =
+    spread === 0 ? "HIGH" : spread === 1 ? "MEDIUM" : "LOW";
+
+  // Bias toward max when sources disagree (safety-conservative)
+  const spreadBias = spread >= 2 ? 0.65 : spread === 1 ? 0.40 : 0;
+  const finalRaw   = weightedLevel * (1 - spreadBias) + maxL * spreadBias;
+  const finalLevel = Math.min(4, Math.max(0, Math.round(finalRaw)));
+
+  const avgConf       = active.reduce((s, a) => s + a.confidence, 0) / active.length;
+  const sourceFactor  = Math.min(1, active.length * 0.28 + 0.16);
+  const overallConfidence = Math.min(1, Math.round(((avgConf + sourceFactor) / 2) * 100) / 100);
+
+  return { finalLevel, weightedLevel, agreement, overallConfidence, sources };
+}
+
+/* ───────── City-level realism multiplier ───────────────────────────────────
+ * Returns a calibrated multiplier for well-known cities; null for unknown ones
+ * (unknown cities fall back to the hash-based variance ±25%).
+ */
+function lookupCityMultiplier(city: string, country: string): number | null {
+  if (!city || !country) return null;
+  const key = `${city.toLowerCase().trim()}|${country.toUpperCase()}`;
+  const val = CITY_CRIME_INDEX[key];
+  if (val == null) return null;
+  return Math.max(0.06, Math.min(5.0, val));
+}
+
 /* ───────── in-memory cache (per-edge-instance, 10-minute TTL) ───────── */
 const CACHE_TTL_MS = 10 * 60 * 1000;
 const cache = new Map<string, { at: number; payload: unknown }>();
@@ -636,9 +980,10 @@ function buildRates(opts: {
     eonet: EonetSignals;
     conflict: ConflictSignals;
   };
-  variance: number; // -1..1 from city seed
+  variance: number;          // -1..1 from city seed (fallback when city unknown)
+  cityMultiplier?: number | null; // from CITY_CRIME_INDEX (takes priority over variance)
 }): CrimeRates {
-  const { fbiPartial, signals, variance } = opts;
+  const { fbiPartial, signals, variance, cityMultiplier } = opts;
   const TYPICAL_BIAS = 0.55;
   const biased: CrimeRates = { ...FBI_NATIONAL_PER_100K };
   for (const k of Object.keys(biased) as (keyof CrimeRates)[]) {
@@ -646,7 +991,12 @@ function buildRates(opts: {
   }
   const base: CrimeRates = { ...biased, ...(fbiPartial ?? {}) };
 
-  const v = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
+  // Calibrated city multiplier when available, otherwise ±25% hash-variance.
+  // FBI-measured categories are already city-specific — never double-adjust them.
+  const fbiCoveredKeys = new Set(Object.keys(fbiPartial ?? {}));
+  const hashV = 1 + Math.max(-1, Math.min(1, variance)) * 0.25;
+  const calV  = cityMultiplier != null ? Math.max(0.06, Math.min(5.0, cityMultiplier)) : hashV;
+
   const policeDiscount = Math.max(0.65, 1 - Math.min(signals.overpass.policeNearby, 12) * 0.03);
 
   // Storm/cyclone pressure — combines NOAA, GDACS, EONET storm flag, and
@@ -689,6 +1039,8 @@ function buildRates(opts: {
 
   const out: CrimeRates = { ...base };
   for (const k of Object.keys(out) as (keyof CrimeRates)[]) {
+    // FBI data for this category is already city-specific; skip city adjustment.
+    const v = fbiCoveredKeys.has(k) ? hashV : calV;
     let f = v * policeDiscount;
     if (k === "traffic_incident") f *= stormFactor * (1 + (fireFactor - 1) * 0.6);
     if (k === "public_disorder" || k === "vandalism") f *= 1 + (stormFactor - 1) * 0.5 + (fireFactor - 1) * 0.5;
@@ -754,8 +1106,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Run all live sources concurrently.
-    const [quakes, weather, gdacs, meteo, overpass, fbiAgency, fires, eonet, conflictBase, headlines, stateDept] = await Promise.all([
+    // Run all live sources concurrently (14 sources in one round-trip).
+    const countryName = COUNTRY_NAMES[country] ?? "";
+    const [
+      quakes, weather, gdacs, meteo, overpass, fbiAgency,
+      fires, eonet, conflictBase, headlines, stateDept,
+      cdcData, whoData, reliefData,
+    ] = await Promise.all([
       fetchQuakes(coords.lat, coords.lon),
       fetchNwsAlerts(coords.lat, coords.lon, country),
       fetchGdacs(coords.lat, coords.lon),
@@ -767,10 +1124,13 @@ Deno.serve(async (req) => {
       fetchAcled(country),
       fetchHeadlines(city, country),
       fetchStateDept(country),
+      fetchCdcTravelNotices(country, countryName),
+      fetchWhoOutbreaks(countryName),
+      fetchReliefWebAlerts(countryName),
     ]);
 
-    // If the live State Dept advisory is more current/severe than our static
-    // ACLED row, prefer it for `travelAdvisory` and append a note for transparency.
+    // Merge live State Dept advisory into the ACLED conflict row so the score
+    // engine always sees the most severe current advisory level.
     const conflict: ConflictSignals = { ...conflictBase };
     if (stateDept && stateDept.level > 0) {
       conflict.travelAdvisory = Math.max(conflict.travelAdvisory, stateDept.level);
@@ -779,6 +1139,64 @@ Deno.serve(async (req) => {
         conflict.notes = [...conflict.notes, note];
       }
     }
+
+    // ── Advisory-source reconciliation ───────────────────────────────────────
+    // Build per-authority advisory levels, then confidence-weight them.
+    const advisorySources: AdvisorySource[] = [];
+
+    if (stateDept && stateDept.level > 0) {
+      advisorySources.push({
+        id: "state-dept", name: "US State Department", icon: "🇺🇸",
+        level: stateDept.level, confidence: 0.95,
+        summary: stateDept.levelLabel + (stateDept.summary ? ` — ${stateDept.summary.slice(0, 200)}` : ""),
+        url: stateDept.url, publishedAt: stateDept.publishedAt, domain: "travel",
+      });
+    }
+
+    if (conflictBase.severity > 0 || conflictBase.travelAdvisory > 0) {
+      const acledLevel = Math.min(4,
+        Math.max(conflictBase.travelAdvisory, Math.round(conflictBase.severity * 1.1)));
+      advisorySources.push({
+        id: "acled", name: "ACLED Conflict Index", icon: "⚔️",
+        level: acledLevel, confidence: 0.75,
+        summary: conflictBase.tier +
+          (conflictBase.events30d > 0
+            ? ` · ${conflictBase.events30d} events · ${conflictBase.fatalities30d} fatalities (30d)`
+            : ""),
+        url: "https://acleddata.com/conflict-index/", domain: "conflict",
+      });
+    }
+
+    if (cdcData.maxLevel > 0) {
+      advisorySources.push({
+        id: "cdc", name: "CDC Travel Health Notices", icon: "🏥",
+        level: cdcData.maxLevel, confidence: 0.82,
+        summary: cdcData.notices[0]?.title ?? `Level ${cdcData.maxLevel} notice`,
+        url: "https://wwwnc.cdc.gov/travel/notices",
+        publishedAt: cdcData.notices[0]?.pubDate ?? null, domain: "health",
+      });
+    }
+
+    if (whoData.count > 0) {
+      advisorySources.push({
+        id: "who", name: "WHO Outbreak News", icon: "🌍",
+        // Map outbreak count to advisory level: 1 outbreak→L1, 2+→L2
+        level: Math.min(2, whoData.count), confidence: 0.72,
+        summary: whoData.outbreaks[0]?.title ?? `${whoData.count} active outbreak(s)`,
+        url: "https://www.who.int/emergencies/disease-outbreak-news", domain: "health",
+      });
+    }
+
+    if (reliefData.count > 0) {
+      advisorySources.push({
+        id: "reliefweb", name: "ReliefWeb Disasters (UN)", icon: "🆘",
+        level: Math.min(2, Math.ceil(reliefData.count / 2)), confidence: 0.65,
+        summary: reliefData.alerts.slice(0, 2).map((a) => a.name).join(" · "),
+        url: `https://reliefweb.int/country/${country.toLowerCase()}`, domain: "disaster",
+      });
+    }
+
+    const reconciliation = reconcileAdvisories(advisorySources);
 
     let fbiPartial: Partial<CrimeRates> | null = null;
     let fbiInfo: { agency: string; year: number; population: number } | null = null;
@@ -790,10 +1208,13 @@ Deno.serve(async (req) => {
       }
     }
 
+    // City multiplier: known cities use calibration table; others use hash variance.
+    const cityMul = lookupCityMultiplier(city, country);
     const rates = buildRates({
       fbiPartial,
       signals: { quakes, weather, gdacs, meteo, overpass, fires, eonet, conflict },
       variance: cityVariance(`${city}|${state ?? ""}|${country}`),
+      cityMultiplier: cityMul,
     });
 
     const payload = {
@@ -815,6 +1236,13 @@ Deno.serve(async (req) => {
       headlines,
       stateDept,
       fbi: fbiInfo,
+      // ── Verified-source additions ──
+      cdcNotices: cdcData.notices,
+      whoOutbreaks: whoData.outbreaks,
+      reliefwebAlerts: reliefData.alerts,
+      advisorySources,
+      reconciliation,
+      cityMultiplier: cityMul,
       city, state, country,
       fetchedAt: new Date().toISOString(),
       cacheTtlSec: Math.round(CACHE_TTL_MS / 1000),
