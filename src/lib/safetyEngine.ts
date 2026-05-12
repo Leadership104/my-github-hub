@@ -213,16 +213,18 @@ export function computeSafetyScore(params: {
     else if (c.pts > secondWorst) { secondWorst = c.pts; }
   }
   const meanPts = weightTotal > 0 ? weightedSum / weightTotal : 0;
-  // 45% mean + 55% worst-pair: severe categories drive the score, as users expect.
+  // 65% mean + 35% worst-pair: keeps cities realistic — a couple of elevated
+  // categories don't tank the score, but real hot-spots still register.
   const worstPair = (worst + secondWorst) / 2;
-  const blendedRaw = meanPts * 0.45 + worstPair * 0.55;
-  // Apply mild upward curve above 4 pts so dangerous areas drop faster (5->55, 7->32, 9->14).
-  const curved = blendedRaw <= 4
+  const blendedRaw = meanPts * 0.65 + worstPair * 0.35;
+  // Mild upward curve above 5 pts so genuinely dangerous areas still drop,
+  // but typical urban centers stay in the realistic 60-85 range.
+  const curved = blendedRaw <= 5
     ? blendedRaw
-    : 4 + (blendedRaw - 4) * 1.55;
+    : 5 + (blendedRaw - 5) * 1.20;
   const score = Math.max(0, Math.min(100, Math.round(100 - curved * 10)));
-  const riskLevel = score >= 80 ? 'LOW RISK' : score >= 60 ? 'MODERATE' : score >= 40 ? 'ELEVATED' : score >= 20 ? 'HIGH RISK' : 'CRITICAL';
-  const riskColor = score >= 80 ? '#22c55e' : score >= 60 ? '#eab308' : score >= 40 ? '#f97316' : '#ef4444';
+  const riskLevel = score >= 75 ? 'LOW RISK' : score >= 55 ? 'MODERATE' : score >= 35 ? 'ELEVATED' : score >= 18 ? 'HIGH RISK' : 'CRITICAL';
+  const riskColor = score >= 75 ? '#22c55e' : score >= 55 ? '#eab308' : score >= 35 ? '#f97316' : '#ef4444';
   const confidence = hasLive ? (incidents.length >= 10 ? 'HIGH' : 'MEDIUM') : 'LOW';
 
   return { score, riskLevel, riskColor, context, breakdown, sitMul: +sitMul.toFixed(2), hasLive, confidence };
