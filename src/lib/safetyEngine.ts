@@ -52,7 +52,7 @@ export const CONTEXT_WEIGHTS: Record<SafetyContext, Record<string, number>> = {
 };
 
 export const SITUATIONAL_MULTIPLIERS = {
-  TIME: { daytime: 1.00, evening: 1.25, nighttime: 1.60 } as Record<string, number>,
+  TIME: { daytime: 1.00, evening: 1.15, nighttime: 1.35 } as Record<string, number>,
   DENSITY: { tourist_heavy: 1.20, residential: 1.00, commercial: 0.90, rural: 0.75 } as Record<string, number>,
   EVENTS: { large_event: 1.30, protest: 1.40, parade: 1.10, none: 1.00 } as Record<string, number>,
   WEATHER: { extreme: 1.20, normal: 1.00, clear: 0.95 } as Record<string, number>,
