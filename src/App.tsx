@@ -377,36 +377,34 @@ export default function App() {
   return (
     <div className="flex flex-col h-dvh overflow-hidden bg-background">
       {/* Top Bar */}
-      <header className="h-[72px] bg-white border-b border-black/40 shadow-sm flex items-center px-4 gap-3 relative z-[100] flex-shrink-0">
+      <header className="h-[64px] bg-white border-b border-black/40 shadow-sm flex items-center pl-2 pr-3 gap-2 relative z-[100] flex-shrink-0">
         <div className="flex-shrink-0">
-          <img src={kipitaLogo} alt="Kipita" className="h-9 w-auto" />
+          <img src={kipitaLogo} alt="Kipita" className="h-8 w-auto" />
         </div>
         <button onClick={() => setShowLocationPicker(true)}
           data-tour="header-location"
-          className="flex-1 max-w-[240px] flex items-center gap-1.5 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-3 py-2 overflow-hidden min-w-0">
-          <span className="ms text-base flex-shrink-0 text-kipita-red">location_on</span>
-          <div className="flex-1 min-w-0 text-left">
-            <div className="text-[12px] font-bold text-kipita-navy leading-tight break-words">{locationName}</div>
-            {fullAddress && fullAddress !== locationName && (
-              <div className="text-[9px] text-muted-foreground leading-tight break-words">{fullAddress.split(',').slice(0, 3).join(',')}</div>
-            )}
+          className="flex-shrink-0 flex items-center gap-1 bg-black/5 hover:bg-black/10 transition-colors rounded-full px-2.5 py-1.5">
+          <span className="ms text-base text-kipita-red">location_on</span>
+          <div className="text-left leading-tight">
+            <div className="text-[11px] font-bold text-kipita-navy">Change</div>
+            <div className="text-[10px] text-muted-foreground -mt-0.5">Location</div>
           </div>
-          <span className="ms text-xs text-kipita-navy/60 flex-shrink-0">expand_more</span>
+          <span className="ms text-sm text-kipita-navy/60">expand_more</span>
         </button>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <button className="flex items-center gap-1 px-2.5 py-2 rounded-kipita-sm text-xs font-bold text-kipita-navy hover:bg-black/5 transition-colors">
+        <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+          <button className="flex items-center gap-0.5 px-1.5 py-1.5 rounded-kipita-sm text-xs font-bold text-kipita-navy hover:bg-black/5 transition-colors">
             <span>{weather.emoji}</span>
             <span>{weather.temp}</span>
           </button>
           <button onClick={() => setShowSOS(true)}
             data-tour="header-sos"
-            className="bg-kipita-red rounded-md w-10 h-10 flex items-center justify-center flex-shrink-0 shadow-md"
+            className="bg-kipita-red rounded-md w-9 h-9 flex items-center justify-center flex-shrink-0 shadow-md"
             title="Emergency SOS">
-            <span className="text-white font-extrabold text-[11px] tracking-wide">SOS</span>
+            <span className="text-white font-extrabold text-[10px] tracking-wide">SOS</span>
           </button>
         </div>
         <button onClick={() => setShowProfile(!showProfile)}
-          className="ml-auto w-11 h-11 rounded-full bg-black/5 hover:bg-black/10 transition-colors flex items-center justify-center overflow-hidden flex-shrink-0">
+          className="ml-auto w-10 h-10 rounded-full bg-black/5 hover:bg-black/10 transition-colors flex items-center justify-center overflow-hidden flex-shrink-0">
           {profile?.avatar_url ? (
             <img src={profile.avatar_url} alt="Profile" className="w-full h-full object-cover rounded-full" />
           ) : (
