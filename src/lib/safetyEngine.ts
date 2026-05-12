@@ -295,9 +295,9 @@ export function categoryRating(pts: number): { label: string; level: number; col
 
 /** 5-level safety band from score (0-100) */
 export function safetyLevel(score: number): { level: number; label: string; color: string } {
-  if (score >= 80) return { level: 4, label: 'Safe', color: '#22c55e' };
-  if (score >= 60) return { level: 3, label: 'Safer', color: '#84cc16' };
-  if (score >= 40) return { level: 2, label: 'Moderate', color: '#eab308' };
-  if (score >= 20) return { level: 1, label: 'Risky', color: '#f97316' };
+  if (score >= 75) return { level: 4, label: 'Safe', color: '#22c55e' };
+  if (score >= 55) return { level: 3, label: 'Safer', color: '#84cc16' };
+  if (score >= 35) return { level: 2, label: 'Moderate', color: '#eab308' };
+  if (score >= 18) return { level: 1, label: 'Risky', color: '#f97316' };
   return { level: 0, label: 'Unsafe', color: '#ef4444' };
 }
