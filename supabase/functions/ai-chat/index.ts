@@ -747,9 +747,10 @@ serve(async (req) => {
 
         const fmt = (label: string, arr: PlaceChip[]) =>
           arr.length
-            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.summary ? ` — ${p.summary}` : ""}`).join("\n")
+            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${p.distanceMi != null ? ` (${p.distanceMi} mi away)` : ""}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}`).join("\n")
             : "";
 
+        liveDataBlock += fmt("\nExact place matches within ~10 miles (radius-based, may cross city/ZIP boundaries)", exactPlaceMatches);
         liveDataBlock += fmt("\nNearby restaurants", restaurants);
         liveDataBlock += fmt("Nearby cafes", cafes);
         liveDataBlock += fmt("Nearby attractions", attractions);
