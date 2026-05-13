@@ -105,6 +105,11 @@ interface PlaceChip {
   summary?: string;
   distanceMi?: number;
   mapsUrl?: string;
+  photoUrl?: string;
+  placeId?: string;
+  priceLevel?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  confidenceReason?: string;
 }
 
 function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -116,7 +121,7 @@ function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5, radius = 8000): Promise<PlaceChip[]> {
+async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5, radius = 16000): Promise<PlaceChip[]> {
   const key = GOOGLE_PLACES_API_KEY();
   if (!key) return [];
   try {
@@ -126,7 +131,7 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location",
+          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.googleMapsUri,places.priceLevel,places.photos",
       },
       body: JSON.stringify({
         includedTypes: [type],
@@ -152,6 +157,10 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
         openNow: p.currentOpeningHours?.openNow,
         summary: p.editorialSummary?.text,
         distanceMi,
+        mapsUrl: p.googleMapsUri || null,
+        photoUrl: p.photos?.[0]?.name ? `https://places.googleapis.com/v1/${p.photos[0].name}/media?maxWidthPx=400&key=${key}` : null,
+        placeId: p.id || null,
+        priceLevel: p.priceLevel || null,
       };
     });
   } catch {
@@ -160,23 +169,59 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
 }
 
 function extractSpecificPlaceQueries(message: string): string[] {
-  const m = (message || "").trim();
-  const quoted = [...m.matchAll(/["“”']([^"“”']{2,70})["“”']/g)].map((x) => x[1]);
-  const patterns = [
-    /(?:restaurant|place|spot|bar|cafe)\s+(?:called|named)\s+([a-z0-9&.'’\-\s]{2,70})/i,
-    /(?:looking for|search(?:ing)? for|find|find me|where is)\s+(?:a\s+|the\s+)?([a-z0-9&.'’\-\s]{2,70})/i,
-  ];
-  const extracted = patterns.flatMap((re) => {
-    const match = m.match(re)?.[1];
-    if (!match) return [];
-    return [match.split(/\b(?:for dinner|for lunch|for breakfast|near|around|in|tonight|today|please|and)\b/i)[0]];
-  });
+  const m = (message || “”).trim();
+
+  // Match curly/smart quotes (U+201C/D) and straight double (U+22) — but NOT the straight
+  // single apostrophe (U+27), which fires false positives on contractions like “I’m” / “it’s”.
+  const OPEN_Q  = ‘”“„‘’;
+  const CLOSE_Q = ‘””‟’’;
+  const quoted: string[] = [];
+  for (const qm of m.matchAll(new RegExp(`[${OPEN_Q}]([^${CLOSE_Q}]{2,70})[${CLOSE_Q}]`, ‘g’))) {
+    quoted.push(qm[1]);
+  }
+
+  // Named patterns: “restaurant called X”, “place named X”
+  const namedRe = /(?:restaurant|place|spot|bar|cafe|hotel|bistro|eatery|diner|grill)\s+(?:called|named)\s+([a-z0-9&.’’\-\s]{2,70})/i;
+
+  // Intent patterns — broad verbs users actually type.
+  // Excludes “what’s / what is” (too often used for weather, safety, etc.)
+  const intentRe = /(?:looking for|search(?:ing)? for|find(?:ing)?(?:\s+me)?|where(?:’s| is)\b|check(?:ing)?(?:\s+(?:for|out|on))?|look(?:ing)?(?:\s+(?:for|up))?|tell me about|is there(?: a| an)?|can you find|want to (?:go to|visit|try|eat at)|going to|i(?:’m| am)(?:\s+at|(?:\s+(?:already\s+)?)?\s*(?:sitting|seated|dining|eating|having dinner|having lunch)\s+(?:in|at))?|need to find|need(?: a| an)?|take me to|get me|show me|pull up|look up|locate|search)\s+(?:a\s+|the\s+|an\s+)?([a-z0-9&.’’\-\s]{2,70})/i;
+
+  // Bare “San Lorenzo restaurant” / “San Lorenzo café” without a preceding verb
+  const bareRe = /\b([A-Z][a-zA-Z0-9&.’’\-]{1,30}(?:\s+[A-Za-z0-9&.’’\-]{1,30}){0,4})\s+(?:restaurant|ristorante|bistro|cafe|café|bar|pub|tavern|grill|kitchen|eatery|diner|cantina|lounge|brasserie|trattoria|pizzeria)\b/;
+
+  const splitClause = (s: string) =>
+    s.split(/\b(?:for dinner|for lunch|for breakfast|near|around|tonight|today|please|and|,)\b/i)[0];
+
+  // Generic food/travel phrases that look like place captures but aren't specific names
+  const isGeneric = (q: string) => {
+    const l = q.toLowerCase().trim();
+    return /^(?:something\b|anything\b|a bite\b|somewhere\b|anywhere\b|the nearest\b|nearby\b|local\b|cheap\b|quick\b)/.test(l)
+      || /^(?:the weather|weather|safety|danger|transport|flight|hotel room)/.test(l)
+      || /^(?:something|a place|a spot|somewhere|anywhere)\s+to\s+eat/.test(l)
+      || /^good\s+(?:food|restaurant|place|spot|option|italian|chinese|mexican|thai|indian|japanese|american|french|greek|korean|vietnamese|ethiopian|seafood|sushi|pizza|burger|steak|vegan)/.test(l)
+      || /^(?:italian|chinese|mexican|thai|indian|japanese|american|french|greek|korean|vietnamese|ethiopian|seafood|sushi|pizza|burger|vegan)\s+(?:food|restaurant|place|option)$/.test(l)
+      || /\bin\s+the\s+(?:restaurant|bar|cafe|place)\b/.test(l);
+  };
+
+  const extracted: string[] = [];
+  const namedM = m.match(namedRe)?.[1];
+  if (namedM) extracted.push(splitClause(namedM));
+  const intentM = m.match(intentRe)?.[1];
+  if (intentM) extracted.push(splitClause(intentM));
+  const bareM = m.match(bareRe)?.[1];
+  if (bareM) extracted.push(bareM.trim());
+
   return [...quoted, ...extracted]
-    .map((q) => q.replace(/\s+/g, " ").trim().replace(/[.,;:!?]+$/, ""))
-    .filter((q) => q.length >= 3 && q.length <= 70)
-    .flatMap((q) => /\b(restaurant|bar|cafe|coffee|hotel|museum|park)\b/i.test(q) ? [q] : [`${q} restaurant`, q])
+    .map((q) => q.replace(/\s+/g, “ “).trim().replace(/[.,;:!?]+$/, “”))
+    .filter((q) => q.length >= 2 && q.length <= 70 && !isGeneric(q))
+    .flatMap((q) =>
+      /\b(restaurant|ristorante|bar|cafe|café|coffee|hotel|museum|park|bistro|grill|kitchen|eatery|diner|trattoria|pizzeria)\b/i.test(q)
+        ? [q]
+        : [`${q} restaurant`, q]
+    )
     .filter((q, i, arr) => arr.findIndex((x) => x.toLowerCase() === q.toLowerCase()) === i)
-    .slice(0, 4);
+    .slice(0, 6);
 }
 
 async function fetchTextPlaces(query: string, lat: number, lng: number, radius = 16000, max = 5): Promise<PlaceChip[]> {
@@ -189,7 +234,7 @@ async function fetchTextPlaces(query: string, lat: number, lng: number, radius =
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.googleMapsUri",
+          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.googleMapsUri,places.priceLevel,places.photos",
       },
       body: JSON.stringify({
         textQuery: query,
@@ -216,11 +261,98 @@ async function fetchTextPlaces(query: string, lat: number, lng: number, radius =
         summary: p.editorialSummary?.text,
         distanceMi,
         mapsUrl: p.googleMapsUri,
+        photoUrl: p.photos?.[0]?.name ? `https://places.googleapis.com/v1/${p.photos[0].name}/media?maxWidthPx=400&key=${key}` : null,
+        placeId: p.id || null,
+        priceLevel: p.priceLevel || null,
       };
     }).filter((p: PlaceChip) => p.name);
   } catch {
     return [];
   }
+}
+
+/* ── Detect "what restaurant am I in?" query ── */
+function detectIdentifyQuery(message: string): boolean {
+  const m = (message || "").toLowerCase().trim();
+  return /\b(?:what|which)\s+(?:restaurant|place|bar|cafe|hotel|spot)\s+(?:am\s+i\s+(?:in|at)|is\s+this)\b/.test(m)
+    || /\b(?:what|where)\s+am\s+i\s+(?:right\s+now|currently|eating|dining|sitting|located)\b/.test(m)
+    || /\bidentify\s+(?:this\s+)?(?:restaurant|place|location)\b/.test(m)
+    || /\bwhich\s+(?:restaurant|place)\s+is\s+this\b/.test(m)
+    || /\bwhat\s+is\s+this\s+(?:restaurant|place|bar|cafe)\b/.test(m)
+    || /\b(?:i(?:'m| am)\s+(?:at|in|inside)\s+(?:a\s+)?(?:restaurant|place|bar|cafe))\b/.test(m)
+    || /\bwhere\s+(?:exactly\s+)?am\s+i\b/.test(m);
+}
+
+/* ── Identify current place: ultra-tight progressive nearby search ── */
+async function fetchIdentifyPlace(lat: number, lng: number): Promise<PlaceChip[]> {
+  const key = GOOGLE_PLACES_API_KEY();
+  if (!key) return [];
+  const radii = [30, 80, 150, 300];
+  const foodTypes = ["restaurant", "cafe", "bar", "bakery", "meal_takeaway"];
+  for (const radius of radii) {
+    try {
+      const resp = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": key,
+          "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.googleMapsUri,places.priceLevel,places.photos",
+        },
+        body: JSON.stringify({
+          includedTypes: foodTypes,
+          maxResultCount: 5,
+          locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius } },
+          rankPreference: "DISTANCE",
+        }),
+      });
+      if (!resp.ok) continue;
+      const data = await resp.json();
+      const places = (data.places || []).map((p: any) => {
+        const plat = p.location?.latitude;
+        const plng = p.location?.longitude;
+        const distanceMi = typeof plat === "number" && typeof plng === "number"
+          ? Math.round(haversineMi(lat, lng, plat, plng) * 1000) / 1000
+          : undefined;
+        return {
+          name: p.displayName?.text,
+          type: p.primaryTypeDisplayName?.text || "Restaurant",
+          address: p.formattedAddress,
+          rating: p.rating,
+          reviews: p.userRatingCount,
+          openNow: p.currentOpeningHours?.openNow,
+          summary: p.editorialSummary?.text,
+          distanceMi,
+          mapsUrl: p.googleMapsUri || null,
+          photoUrl: p.photos?.[0]?.name ? `https://places.googleapis.com/v1/${p.photos[0].name}/media?maxWidthPx=400&key=${key}` : null,
+          placeId: p.id || null,
+          priceLevel: p.priceLevel || null,
+        };
+      }).filter((p: PlaceChip) => p.name);
+      if (places.length > 0) {
+        console.log(`[ai-chat] fetchIdentifyPlace: ${places.length} results at radius ${radius}m`);
+        return places;
+      }
+    } catch (e) {
+      console.error(`[ai-chat] fetchIdentifyPlace radius ${radius}m error:`, e);
+    }
+  }
+  return [];
+}
+
+/* ── Confidence scoring for exact place matches ── */
+function computeConfidence(placeName: string, queryName: string, distanceMi?: number): { confidence: 'high' | 'medium' | 'low'; reason: string } {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  const pn = norm(placeName);
+  const qn = norm(queryName.replace(/\s+restaurant$/, '').replace(/\s+cafe$/, '').trim());
+  const exact = pn === qn || pn.includes(qn) || qn.includes(pn);
+  const closeDistance = distanceMi != null && distanceMi < 0.2;
+  const nearDistance = distanceMi != null && distanceMi < 2.0;
+  if (exact && closeDistance) return { confidence: 'high', reason: 'Exact name match, very close' };
+  if (exact && nearDistance) return { confidence: 'high', reason: 'Exact name match nearby' };
+  if (exact) return { confidence: 'medium', reason: 'Name matches but farther away' };
+  if (closeDistance) return { confidence: 'medium', reason: 'Very close location' };
+  if (nearDistance) return { confidence: 'medium', reason: 'Nearby match' };
+  return { confidence: 'low', reason: 'Partial match' };
 }
 
 async function fetchCountryInfo(countryCode: string): Promise<string> {
@@ -559,6 +691,20 @@ RESPONSE STYLE — BE BRIEF:
 • Use ⚠️ for real risks. Honest, not alarmist.
 • End every reply with 2–3 short follow-up suggestions in italics: *Ask me: "..." · "..."*
 
+SPECIFIC PLACE LOOKUP — CRITICAL RULES (when user asks about a named restaurant/place):
+1. Your ONLY reliable source is the "Exact place matches" block in LIVE TRAVEL CONTEXT below.
+2. If the block lists the place → confirm it with real details: name, address, rating, open status, and a Google Maps link. Say "Found it on Google Maps:".
+3. If a PLACE LOOKUP MISS note is present → say "I searched Google Maps within 15 miles but couldn't find '[name]' by that exact name. It may be listed slightly differently — try the search bar in [Places](kipita://tab/places) and type the name as it appears on Google Maps." Then offer alternatives from the nearby restaurants list.
+4. NEVER use your training knowledge to confirm or deny whether a specific local restaurant exists — that data is unreliable and frequently out of date.
+5. Do NOT say "not in my database" or "not nearby" — say "not found on Google Maps by that name".
+
+PLACE IDENTIFICATION MODE (when user asks "what restaurant am I in?" or "where am I?"):
+1. A "PLACE IDENTIFICATION" block will be in LIVE TRAVEL CONTEXT with GPS-ranked results.
+2. The 🎯 top result is the most likely match — confirm it naturally: "You're at **[Name]**! [address, rating, open status]."
+3. Include the Google Maps link. Add a Navigate button hint: "→ [Open in Maps]([mapsUrl])"
+4. If the user is clearly inside (distance < 264 ft), be confident and enthusiastic.
+5. If nothing found, say GPS accuracy may be low and ask them to type the name.
+
 IN-APP CTAs (USE LIBERALLY when relevant — they deep-link inside Kipita):
 • Places near you: [See places near you](kipita://tab/places)
 • Specific category (replace TYPE with food, coffee, atm, gas, pharmacy, hospital, attractions, shopping, nightlife, transit): [Open TYPE in Places](kipita://tab/places?hint=TYPE)
@@ -716,6 +862,8 @@ serve(async (req) => {
         const includeQuakes = wantsQuakes || wantsLiveEmergencyCheck;
         const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck || disasterCategories.length > 0;
 
+        const isIdentifyQuery = detectIdentifyQuery(typeof message === "string" ? message : "");
+        console.log(`[ai-chat] isIdentifyQuery=${isIdentifyQuery}, lat=${context.lat}, lng=${context.lng}`);
         const exactPlaceQueries = extractSpecificPlaceQueries(typeof message === "string" ? message : "");
         const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters, exactMatches] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6, 16000),
@@ -728,14 +876,23 @@ serve(async (req) => {
           includeQuakes ? fetchEarthquakes(context.lat, context.lng, 200, 2.5) : Promise.resolve([]),
           includeDisasters && context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
           exactPlaceQueries.length
-            ? Promise.all(exactPlaceQueries.map((q) => fetchTextPlaces(q, context.lat, context.lng, 16000, 4)))
+            ? Promise.all(exactPlaceQueries.map((q) => fetchTextPlaces(q, context.lat, context.lng, 24000, 5)))
+            : isIdentifyQuery
+            ? [fetchIdentifyPlace(context.lat, context.lng)]
             : Promise.resolve([]),
         ]);
 
-        exactPlaceMatches = (exactMatches as PlaceChip[][]).flat()
+        // Exact place search — with confidence scoring
+        const rawExactMatches = (exactMatches as PlaceChip[][]).flat()
           .filter((p, i, arr) => p.name && arr.findIndex((x) => x.name?.toLowerCase() === p.name?.toLowerCase()) === i)
           .sort((a, b) => (a.distanceMi ?? 999) - (b.distanceMi ?? 999))
           .slice(0, 6);
+        exactPlaceMatches = rawExactMatches.map((p) => {
+          const queryForConfidence = exactPlaceQueries[0] || "";
+          const { confidence, reason } = computeConfidence(p.name, queryForConfidence, p.distanceMi);
+          return { ...p, confidence, confidenceReason: reason };
+        });
+        console.log(`[ai-chat] exactPlaceMatches: ${exactPlaceMatches.length} for queries: ${exactPlaceQueries.join(', ')}`);
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
         bucketRestaurants = [...exactPlaceMatches, ...restaurants].filter((p, i, arr) => p.name && arr.findIndex((x) => x.name?.toLowerCase() === p.name?.toLowerCase()) === i);
         bucketCafes = cafes;
@@ -745,12 +902,26 @@ serve(async (req) => {
         liveHealth = health;
         nearestHospital = hospitals[0] || null;
 
+        const distLabel = (mi?: number) =>
+          mi == null ? "" : mi < 0.1 ? " (you're here!)" : ` (${mi} mi away)`;
         const fmt = (label: string, arr: PlaceChip[]) =>
           arr.length
-            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${p.distanceMi != null ? ` (${p.distanceMi} mi away)` : ""}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}`).join("\n")
+            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${distLabel(p.distanceMi)}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.priceLevel ? ` [${p.priceLevel}]` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.confidence ? ` [confidence:${p.confidence}]` : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}${p.photoUrl ? " [has photo]" : ""}`).join("\n")
             : "";
 
-        liveDataBlock += fmt("\nExact place matches within ~10 miles (radius-based, may cross city/ZIP boundaries)", exactPlaceMatches);
+        liveDataBlock += fmt("\nExact place matches within ~15 miles (radius-based, crosses city/ZIP boundaries)", exactPlaceMatches);
+        if (exactPlaceQueries.length > 0 && exactPlaceMatches.length === 0) {
+          liveDataBlock += `\n- PLACE LOOKUP MISS: Google Maps text search for "${exactPlaceQueries[0]}" within ~15 miles returned no results. The business may be listed under a slightly different name on Google Maps. Do NOT tell the user the place doesn't exist — say you searched Google Maps but couldn't find it by that exact name, and suggest using the Places tab search bar to try variations of the name.`;
+        }
+        if (isIdentifyQuery && exactPlaceMatches.length > 0) {
+          liveDataBlock += `\n\n=== PLACE IDENTIFICATION (user asked what restaurant they are in) ===`;
+          liveDataBlock += `\nNearest food establishments to user's GPS:\n` + exactPlaceMatches.map((p, i) =>
+            `  ${i === 0 ? "🎯" : "  "} ${p.name}${p.distanceMi != null ? ` (${(p.distanceMi * 5280).toFixed(0)} ft / ${p.distanceMi.toFixed(3)} mi)` : ""}${p.address ? ` — ${p.address}` : ""}${p.openNow === true ? " [OPEN]" : p.openNow === false ? " [CLOSED]" : ""}${p.rating ? ` ★${p.rating}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}`
+          ).join("\n");
+          liveDataBlock += `\n- INSTRUCTION: The top result (🎯) is most likely where the user is. Confirm it confidently with name + address. If distance is under 0.05 mi (264 ft), say "You're at [name]." with high confidence. If 0.05–0.15 mi say "You appear to be at or near [name]." If farther, say "The nearest restaurant I can find is [name] at [distance] — is that right?"`;
+        } else if (isIdentifyQuery && exactPlaceMatches.length === 0) {
+          liveDataBlock += `\n- IDENTIFY MISS: User asked what restaurant they're in but GPS search found nothing within 300m. Tell them GPS accuracy may be the issue and suggest enabling precise location, or ask them to type the name.`;
+        }
         liveDataBlock += fmt("\nNearby restaurants", restaurants);
         liveDataBlock += fmt("Nearby cafes", cafes);
         liveDataBlock += fmt("Nearby attractions", attractions);
