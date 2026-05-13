@@ -695,6 +695,8 @@ RESPONSE STYLE — BE BRIEF:
 • Use ⚠️ for real risks. Honest, not alarmist.
 • End every reply with 2–3 short follow-up suggestions in italics: *Ask me: "..." · "..."*
 
+OPEN/CLOSED RULE — CRITICAL: Never proactively recommend or suggest a place that is marked [CLOSED] in the live context. Only recommend places marked [OPEN] or with no open/closed status. If asked directly about a specific place that is [CLOSED], you may mention it is currently closed and suggest alternatives that are open.
+
 SPECIFIC PLACE LOOKUP — CRITICAL RULES (when user asks about a named restaurant/place):
 1. Your ONLY reliable source is the "Exact place matches" block in LIVE TRAVEL CONTEXT below.
 2. If the block lists the place → confirm it with real details: name, address, rating, open status, and a Google Maps link. Say "Found it on Google Maps:".
@@ -926,10 +928,12 @@ serve(async (req) => {
         } else if (isIdentifyQuery && exactPlaceMatches.length === 0) {
           liveDataBlock += `\n- IDENTIFY MISS: User asked what restaurant they're in but GPS search found nothing within 300m. Tell them GPS accuracy may be the issue and suggest enabling precise location, or ask them to type the name.`;
         }
-        liveDataBlock += fmt("\nNearby restaurants", restaurants);
-        liveDataBlock += fmt("Nearby cafes", cafes);
-        liveDataBlock += fmt("Nearby attractions", attractions);
-        liveDataBlock += fmt("Nearby bars", bars);
+        // Only surface open (or unknown-status) places so Claude never recommends closed ones.
+        const onlyOpen = (arr: PlaceChip[]) => arr.filter(p => p.openNow !== false);
+        liveDataBlock += fmt("\nNearby restaurants", onlyOpen(restaurants));
+        liveDataBlock += fmt("Nearby cafes", onlyOpen(cafes));
+        liveDataBlock += fmt("Nearby attractions", onlyOpen(attractions));
+        liveDataBlock += fmt("Nearby bars", onlyOpen(bars));
         if (hospitals.length) {
           liveDataBlock += fmt("Nearest hospitals", hospitals);
         }
