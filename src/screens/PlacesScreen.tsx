@@ -551,7 +551,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const probes = await Promise.all(chipsToProbe.map(async chip => {
         const term = (chip.query && chip.query.trim()) || chip.label;
         try {
-          const results = await fetchGooglePlaces('search', { query: term, lat, lng, radius: 5000 });
+          const results = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
           let best = Infinity;
           for (const p of results) {
             const types = p.types || [];
@@ -614,7 +614,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const probes = await Promise.all(allChips.map(async (chip) => {
         const term = (chip.query && chip.query.trim()) || chip.label;
         try {
-          const results = await fetchGooglePlaces('search', { query: `${term}`, lat, lng, radius: 5000 });
+          const results = await fetchGooglePlaces('search', { query: `${term}`, lat, lng, radius: PLACE_RADIUS_M });
           let best = Infinity;
           for (const p of results) {
             const types = p.types || [];
