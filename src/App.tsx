@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
 import { useI18n, SUPPORTED_LANGUAGES, type LangCode } from './i18n';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants, useTravelSafety, preciseReverseGeocode } from './hooks';
 import type { ForecastDay } from './hooks';
@@ -7,20 +7,23 @@ import type { TabId } from './types';
 import type { LocationState } from './hooks';
 import kipitaSplash from './assets/kipita-splash.jpeg';
 import kipitaLogo from './assets/kipita-icon.png';
+// Primary screens — always in main bundle (nav tabs, hot path)
 import HomeScreen from './screens/HomeScreen';
 import AIScreen from './screens/AIScreen';
 import TripsScreen from './screens/TripsScreen';
 import PlacesScreen from './screens/PlacesScreen';
-import MapsScreen from './screens/MapsScreen';
-import WalletScreen from './screens/WalletScreen';
 import SafetyScreen from './screens/SafetyScreen';
-import ATMScreen from './screens/ATMScreen';
-import PerksScreen from './screens/PerksScreen';
-import FuelScreen from './screens/FuelScreen';
-import BusinessScreen from './screens/BusinessScreen';
+// Secondary screens — lazy-loaded on first navigation (reduces initial bundle)
+const MapsScreen     = lazy(() => import('./screens/MapsScreen'));
+const WalletScreen   = lazy(() => import('./screens/WalletScreen'));
+const ATMScreen      = lazy(() => import('./screens/ATMScreen'));
+const PerksScreen    = lazy(() => import('./screens/PerksScreen'));
+const FuelScreen     = lazy(() => import('./screens/FuelScreen'));
+const BusinessScreen = lazy(() => import('./screens/BusinessScreen'));
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
 import LocationSafetyBar from './components/LocationSafetyBar';
 import PasswordGate, { isAppUnlocked } from './components/PasswordGate';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useAuth } from './auth/useAuth';
 
 /** First-time tour steps per tab. Each tour runs once, persisted in localStorage. */
@@ -356,19 +359,27 @@ export default function App() {
 
   const renderScreen = () => {
     switch (tab) {
-      case 'home': return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} lat={lat} lng={lng} onSwitchTab={switchTab} />;
-      case 'ai': return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} />;
-      case 'trips': return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} />;
+      case 'home':   return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} lat={lat} lng={lng} onSwitchTab={switchTab} />;
+      case 'ai':     return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} />;
+      case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} />;
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} onBack={goBack} />;
-      case 'maps': return <MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} onBack={goBack} />;
-      case 'wallet': return <WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} onBack={goBack} />;
       case 'safety': return <SafetyScreen locationName={locationName} countryCode={countryCode} advisoryScore={advisoryData?.rawScore} lat={lat} lng={lng} onBack={goBack} />;
-      case 'atm': return <ATMScreen lat={lat} lng={lng} merchants={merchants} onBack={goBack} onViewOnMap={(filter) => switchTab('maps', filter)} />;
-      case 'perks': return <PerksScreen onBack={goBack} />;
-      case 'fuel': return <FuelScreen onBack={goBack} onSwitchTab={switchTab} />;
-      case 'business': return <BusinessScreen onBack={goBack} />;
+      // Lazy-loaded secondary screens
+      case 'maps':     return <Suspense fallback={<ScreenLoader />}><MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} onBack={goBack} /></Suspense>;
+      case 'wallet':   return <Suspense fallback={<ScreenLoader />}><WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} onBack={goBack} /></Suspense>;
+      case 'atm':      return <Suspense fallback={<ScreenLoader />}><ATMScreen lat={lat} lng={lng} merchants={merchants} onBack={goBack} onViewOnMap={(filter) => switchTab('maps', filter)} /></Suspense>;
+      case 'perks':    return <Suspense fallback={<ScreenLoader />}><PerksScreen onBack={goBack} /></Suspense>;
+      case 'fuel':     return <Suspense fallback={<ScreenLoader />}><FuelScreen onBack={goBack} onSwitchTab={switchTab} /></Suspense>;
+      case 'business': return <Suspense fallback={<ScreenLoader />}><BusinessScreen onBack={goBack} /></Suspense>;
     }
   };
+
+  // Minimal inline fallback for lazy screen boundaries
+  const ScreenLoader = () => (
+    <div className="flex items-center justify-center h-full">
+      <div className="w-6 h-6 border-2 border-kipita-red border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   const filteredPresets = locationSearch.trim()
     ? PRESET_LOCATIONS.filter(l => l.name.toLowerCase().includes(locationSearch.toLowerCase()))
@@ -820,9 +831,11 @@ export default function App() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
-        <div key={tab} className="screen-enter h-full">
-          {renderScreen()}
-        </div>
+        <ErrorBoundary>
+          <div key={tab} className="screen-enter h-full">
+            {renderScreen()}
+          </div>
+        </ErrorBoundary>
       </main>
 
       {/* Bottom Nav — bubbly motion */}
