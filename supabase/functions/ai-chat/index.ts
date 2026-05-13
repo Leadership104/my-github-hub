@@ -98,11 +98,13 @@ const HEALTH_NOTES: Record<string, string> = {
 interface PlaceChip {
   name: string;
   type: string;
+  address?: string;
   rating?: number;
   reviews?: number;
   openNow?: boolean;
   summary?: string;
   distanceMi?: number;
+  mapsUrl?: string;
 }
 
 function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -114,7 +116,7 @@ function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5): Promise<PlaceChip[]> {
+async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5, radius = 8000): Promise<PlaceChip[]> {
   const key = GOOGLE_PLACES_API_KEY();
   if (!key) return [];
   try {
@@ -129,7 +131,7 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
       body: JSON.stringify({
         includedTypes: [type],
         maxResultCount: max,
-        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 3500 } },
+        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius } },
         rankPreference: "POPULARITY",
       }),
     });
@@ -152,6 +154,70 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
         distanceMi,
       };
     });
+  } catch {
+    return [];
+  }
+}
+
+function extractSpecificPlaceQueries(message: string): string[] {
+  const m = (message || "").trim();
+  const quoted = [...m.matchAll(/["“”']([^"“”']{2,70})["“”']/g)].map((x) => x[1]);
+  const patterns = [
+    /(?:restaurant|place|spot|bar|cafe)\s+(?:called|named)\s+([a-z0-9&.'’\-\s]{2,70})/i,
+    /(?:looking for|search(?:ing)? for|find|find me|where is)\s+(?:a\s+|the\s+)?([a-z0-9&.'’\-\s]{2,70})/i,
+  ];
+  const extracted = patterns.flatMap((re) => {
+    const match = m.match(re)?.[1];
+    if (!match) return [];
+    return [match.split(/\b(?:for dinner|for lunch|for breakfast|near|around|in|tonight|today|please|and)\b/i)[0]];
+  });
+  return [...quoted, ...extracted]
+    .map((q) => q.replace(/\s+/g, " ").trim().replace(/[.,;:!?]+$/, ""))
+    .filter((q) => q.length >= 3 && q.length <= 70)
+    .flatMap((q) => /\b(restaurant|bar|cafe|coffee|hotel|museum|park)\b/i.test(q) ? [q] : [`${q} restaurant`, q])
+    .filter((q, i, arr) => arr.findIndex((x) => x.toLowerCase() === q.toLowerCase()) === i)
+    .slice(0, 4);
+}
+
+async function fetchTextPlaces(query: string, lat: number, lng: number, radius = 16000, max = 5): Promise<PlaceChip[]> {
+  const key = GOOGLE_PLACES_API_KEY();
+  if (!key || !query.trim()) return [];
+  try {
+    const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": key,
+        "X-Goog-FieldMask":
+          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.googleMapsUri",
+      },
+      body: JSON.stringify({
+        textQuery: query,
+        maxResultCount: Math.min(max, 10),
+        locationBias: { circle: { center: { latitude: lat, longitude: lng }, radius } },
+      }),
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.places || []).map((p: any) => {
+      const plat = p.location?.latitude;
+      const plng = p.location?.longitude;
+      const distanceMi =
+        typeof plat === "number" && typeof plng === "number"
+          ? Math.round(haversineMi(lat, lng, plat, plng) * 10) / 10
+          : undefined;
+      return {
+        name: p.displayName?.text,
+        type: p.primaryTypeDisplayName?.text || "Place",
+        address: p.formattedAddress,
+        rating: p.rating,
+        reviews: p.userRatingCount,
+        openNow: p.currentOpeningHours?.openNow,
+        summary: p.editorialSummary?.text,
+        distanceMi,
+        mapsUrl: p.googleMapsUri,
+      };
+    }).filter((p: PlaceChip) => p.name);
   } catch {
     return [];
   }
@@ -582,6 +648,7 @@ serve(async (req) => {
     let bucketAttractions: PlaceChip[] = [];
     let bucketBars: PlaceChip[] = [];
     let bucketHospitals: PlaceChip[] = [];
+    let exactPlaceMatches: PlaceChip[] = [];
 
     if (context) {
       const now = new Date();
@@ -649,20 +716,28 @@ serve(async (req) => {
         const includeQuakes = wantsQuakes || wantsLiveEmergencyCheck;
         const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck || disasterCategories.length > 0;
 
-        const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters] = await Promise.all([
-          fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
-          fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
-          fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
-          fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
-          fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
+        const exactPlaceQueries = extractSpecificPlaceQueries(typeof message === "string" ? message : "");
+        const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters, exactMatches] = await Promise.all([
+          fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6, 16000),
+          fetchNearbyPlaces(context.lat, context.lng, "cafe", 4, 12000),
+          fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5, 12000),
+          fetchNearbyPlaces(context.lat, context.lng, "bar", 3, 12000),
+          fetchNearbyPlaces(context.lat, context.lng, "hospital", 2, 12000),
           fetchLiveHealth(context.lat, context.lng),
           includeFires ? fetchWildfires(context.lat, context.lng, 100) : Promise.resolve(null),
           includeQuakes ? fetchEarthquakes(context.lat, context.lng, 200, 2.5) : Promise.resolve([]),
           includeDisasters && context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
+          exactPlaceQueries.length
+            ? Promise.all(exactPlaceQueries.map((q) => fetchTextPlaces(q, context.lat, context.lng, 16000, 4)))
+            : Promise.resolve([]),
         ]);
 
+        exactPlaceMatches = (exactMatches as PlaceChip[][]).flat()
+          .filter((p, i, arr) => p.name && arr.findIndex((x) => x.name?.toLowerCase() === p.name?.toLowerCase()) === i)
+          .sort((a, b) => (a.distanceMi ?? 999) - (b.distanceMi ?? 999))
+          .slice(0, 6);
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
-        bucketRestaurants = restaurants;
+        bucketRestaurants = [...exactPlaceMatches, ...restaurants].filter((p, i, arr) => p.name && arr.findIndex((x) => x.name?.toLowerCase() === p.name?.toLowerCase()) === i);
         bucketCafes = cafes;
         bucketAttractions = attractions;
         bucketBars = bars;
@@ -672,9 +747,10 @@ serve(async (req) => {
 
         const fmt = (label: string, arr: PlaceChip[]) =>
           arr.length
-            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.summary ? ` — ${p.summary}` : ""}`).join("\n")
+            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${p.distanceMi != null ? ` (${p.distanceMi} mi away)` : ""}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}`).join("\n")
             : "";
 
+        liveDataBlock += fmt("\nExact place matches within ~10 miles (radius-based, may cross city/ZIP boundaries)", exactPlaceMatches);
         liveDataBlock += fmt("\nNearby restaurants", restaurants);
         liveDataBlock += fmt("Nearby cafes", cafes);
         liveDataBlock += fmt("Nearby attractions", attractions);

@@ -36,6 +36,12 @@ interface Props {
   onBack?: () => void;
 }
 
+const PLACE_RADIUS_M = 16000; // ~10 mi — nearby should cross city/ZIP boundaries
+const PLACE_RADIUS_KM = PLACE_RADIUS_M / 1000;
+const FOOD_RADIUS_M = 16000;
+const FOOD_NEARBY_KM = 16;
+const isLocalityResult = (types: string[] = []) =>
+  types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
 
 async function fetchGooglePlaces(action: string, params: Record<string, unknown>): Promise<LivePlace[]> {
   try {
@@ -371,7 +377,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       (async () => {
         setLoading(true);
         const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
-        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: 5000 });
+        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
         setLivePlaces(places);
         setLoading(false);
       })();
@@ -397,16 +403,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setLoading(true);
     // Use the explicit subcategory query so Google returns businesses, not the locality.
     const searchTerm = (query && query.trim()) || label;
-    const RADIUS_M = 5000;
-    const RADIUS_KM = RADIUS_M / 1000;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: RADIUS_M });
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
     const places = rawPlaces.filter(p => {
-      const types = p.types || [];
-      const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
-      if (isLocality) return false;
-      // Hard distance cap: never show a result outside the selected city's radius.
+      if (isLocalityResult(p.types)) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
-        return haversine(lat, lng, p.lat, p.lng) <= RADIUS_KM * 3; // 15km tolerance
+        return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
       return true;
     });
@@ -440,7 +441,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const query = cuisine === 'all'
       ? `restaurants`
       : `${cuisine} restaurant`;
-    const places = await fetchGooglePlaces('search', { query, lat, lng, radius: 8000 }); // ~10 min drive radius
+    const places = await fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
 
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -462,10 +463,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return (b.rating ?? 0) - (a.rating ?? 0);
     });
 
-    // Only include within ~10 min drive (~7 km in city)
+    // Include practical nearby options by radius, even when the best spot crosses a city line.
     const nearby = sorted.filter(p => {
       if (!p.lat || !p.lng) return true;
-      return haversine(lat, lng, p.lat, p.lng) <= 7;
+      return haversine(lat, lng, p.lat, p.lng) <= FOOD_NEARBY_KM;
     });
 
     setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
@@ -495,16 +496,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     // Use the explicit query (e.g. "american restaurant") not just the label ("American"),
     // otherwise Google can return the locality itself (e.g. "Santa Clarita") instead of restaurants.
     const searchTerm = (chip.query && chip.query.trim()) || chip.label;
-    const RADIUS_M = 5000;
-    const RADIUS_KM = RADIUS_M / 1000;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: RADIUS_M });
-    // Drop locality / non-business results AND anything outside the selected city's radius.
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
+    // Drop locality / non-business results, then cap by nearby radius instead of city/ZIP.
     const places = rawPlaces.filter(p => {
-      const types = p.types || [];
-      const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
-      if (isLocality) return false;
+      if (isLocalityResult(p.types)) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
-        return haversine(lat, lng, p.lat, p.lng) <= RADIUS_KM * 3; // 15km tolerance
+        return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
       return true;
     });
@@ -554,7 +551,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const probes = await Promise.all(chipsToProbe.map(async chip => {
         const term = (chip.query && chip.query.trim()) || chip.label;
         try {
-          const results = await fetchGooglePlaces('search', { query: term, lat, lng, radius: 5000 });
+          const results = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
           let best = Infinity;
           for (const p of results) {
             const types = p.types || [];
@@ -617,7 +614,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const probes = await Promise.all(allChips.map(async (chip) => {
         const term = (chip.query && chip.query.trim()) || chip.label;
         try {
-          const results = await fetchGooglePlaces('search', { query: `${term}`, lat, lng, radius: 5000 });
+          const results = await fetchGooglePlaces('search', { query: `${term}`, lat, lng, radius: PLACE_RADIUS_M });
           let best = Infinity;
           for (const p of results) {
             const types = p.types || [];

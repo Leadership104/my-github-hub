@@ -137,7 +137,7 @@ const OVERPASS_CFGS: Record<string, { tag: string; ico: string; bg: string; labe
   ],
 };
 
-const SEARCH_RADIUS = 3500;
+const SEARCH_RADIUS = 10000; // ~6 mi so nearby results can cross city/ZIP boundaries
 const MAX_RESULTS_PER_QUERY = 30;
 
 function isValidUrl(url?: string): boolean {
@@ -419,7 +419,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
           const nLat = parseFloat(r.lat);
           const nLng = parseFloat(r.lon);
           const key = `${nLat.toFixed(5)},${nLng.toFixed(5)}`;
-          if (seen.has(key) || haversineKm(lat, lng, nLat, nLng) > 5) continue;
+          if (seen.has(key) || haversineKm(lat, lng, nLat, nLng) > 10) continue;
           seen.add(key);
           const place: NearbyPlace = {
             lat: nLat, lng: nLng,

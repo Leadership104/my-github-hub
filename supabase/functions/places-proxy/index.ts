@@ -80,25 +80,30 @@ async function nearbySearch(lat: number, lng: number, type: string, radius = 350
 }
 
 /* ── Text Search (New) ──
- * Uses locationRestriction (hard circle) when lat/lng are provided so results
- * NEVER come from outside the selected city. Falls back to bias-only when no
- * coords are sent.
+ * Uses a coordinate radius bias by default, not a city/ZIP hard boundary. This
+ * lets cross-border nearby places (Arlington → DC, boroughs, suburbs, etc.)
+ * still surface while keeping results anchored around the user's real position.
  */
-async function textSearch(query: string, lat?: number, lng?: number, radius = 5000) {
-  const body: Record<string, unknown> = { textQuery: query, maxResultCount: 20 };
+async function textSearch(query: string, lat?: number, lng?: number, radius = 12000, strict = false) {
+  const textQuery = (query || "").trim();
+  if (!textQuery) return { places: [] };
+  const body: Record<string, unknown> = { textQuery, maxResultCount: 20 };
   if (typeof lat === "number" && typeof lng === "number" && !Number.isNaN(lat) && !Number.isNaN(lng)) {
-    // searchText supports `rectangle` inside `locationRestriction` (hard cap).
-    // Convert radius (m) to a lat/lng box around the user.
-    const r = Math.min(radius || 5000, 50000);
-    const dLat = r / 111320; // meters per degree lat
-    const dLng = r / (111320 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01));
-    body.locationRestriction = {
-      rectangle: {
-        low:  { latitude: lat - dLat, longitude: lng - dLng },
-        high: { latitude: lat + dLat, longitude: lng + dLng },
-      },
-    };
-    // Note: Google Places API rejects locationRestriction + locationBias together.
+    const r = Math.min(Math.max(radius || 12000, 1500), 50000);
+    if (strict) {
+      const dLat = r / 111320; // meters per degree lat
+      const dLng = r / (111320 * Math.max(Math.cos((lat * Math.PI) / 180), 0.01));
+      body.locationRestriction = {
+        rectangle: {
+          low:  { latitude: lat - dLat, longitude: lng - dLng },
+          high: { latitude: lat + dLat, longitude: lng + dLng },
+        },
+      };
+    } else {
+      body.locationBias = {
+        circle: { center: { latitude: lat, longitude: lng }, radius: r },
+      };
+    }
   }
 
   const res = await fetch(
@@ -274,6 +279,7 @@ serve(async (req) => {
     const query = params.query;
     const placeId = params.placeId;
     const category = params.category;
+    const strict = params.strict === true || params.strict === "true";
 
     let result: any;
 
@@ -287,7 +293,7 @@ serve(async (req) => {
         break;
       }
       case "search": {
-        const data = await textSearch(query, lat, lng, radius);
+        const data = await textSearch(query, lat, lng, radius, strict);
         result = normalizePlaces(data);
         break;
       }
