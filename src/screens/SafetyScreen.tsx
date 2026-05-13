@@ -8,7 +8,7 @@ import { supabase } from '../integrations/supabase/client';
 import {
   computeTravelSafetyScore, getRiskColor, adaptBackendPayload,
   type TravelSafetyResult, type TravelerWarning, type NeighborhoodWarning,
-  type RiskBand, ADVISORY_LABELS,
+  type RiskBand, type BackendPayload as EngineBackendPayload, ADVISORY_LABELS,
 } from '../lib/travelSafetyEngine';
 
 /* ── Types from backend ─────────────────────────────────────────────────── */
@@ -197,8 +197,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       nationalRank: null, globalRank: null, source: 'No ranking data',
     };
     const neighborhoodWarnings = (backend.neighborhoodWarnings ?? []) as NeighborhoodWarning[];
+    const enginePayload: EngineBackendPayload = { ...backend, signals: backend.signals ?? undefined };
     const input = adaptBackendPayload(
-      city, country, countryName, backend,
+      city, country, countryName, enginePayload,
       neighborhoodWarnings,
       {
         cityHomicidePer100k: unodc?.cityHomicidePer100k ?? null,
@@ -468,7 +469,7 @@ function RiskBandLegend({ score }: { score: number }) {
           return (
             <div key={b.label}
               className={`flex items-center gap-2 rounded px-2 py-1 transition-all ${active ? 'ring-1' : ''}`}
-              style={{ backgroundColor: active ? `${b.color}18` : undefined, ringColor: active ? b.color : undefined }}>
+              style={{ backgroundColor: active ? `${b.color}18` : undefined, boxShadow: active ? `0 0 0 1px ${b.color}` : undefined }}>
               <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: b.color }} />
               <span className="text-[10px] font-semibold text-foreground flex-1">{b.label}</span>
               <span className="text-[9px] text-muted-foreground">{b.range}</span>
