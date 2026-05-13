@@ -533,10 +533,10 @@ export default function AIScreen({
       return;
     }
     if (onSwitchTab) {
-      if (place.placeId) {
+      if (place.name) {
         // Deep-link directly to this place's detail page
         const payload = encodeURIComponent(JSON.stringify({
-          placeId: place.placeId,
+          placeId: place.placeId ?? null,
           name: place.name,
           address: place.address ?? '',
           photoUrl: place.photoUrl ?? null,
