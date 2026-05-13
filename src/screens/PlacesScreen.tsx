@@ -36,6 +36,12 @@ interface Props {
   onBack?: () => void;
 }
 
+const PLACE_RADIUS_M = 16000; // ~10 mi — nearby should cross city/ZIP boundaries
+const PLACE_RADIUS_KM = PLACE_RADIUS_M / 1000;
+const FOOD_RADIUS_M = 16000;
+const FOOD_NEARBY_KM = 16;
+const isLocalityResult = (types: string[] = []) =>
+  types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
 
 async function fetchGooglePlaces(action: string, params: Record<string, unknown>): Promise<LivePlace[]> {
   try {
@@ -371,7 +377,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       (async () => {
         setLoading(true);
         const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
-        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: 5000 });
+        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
         setLivePlaces(places);
         setLoading(false);
       })();
@@ -397,16 +403,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setLoading(true);
     // Use the explicit subcategory query so Google returns businesses, not the locality.
     const searchTerm = (query && query.trim()) || label;
-    const RADIUS_M = 5000;
-    const RADIUS_KM = RADIUS_M / 1000;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: RADIUS_M });
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
     const places = rawPlaces.filter(p => {
-      const types = p.types || [];
-      const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
-      if (isLocality) return false;
-      // Hard distance cap: never show a result outside the selected city's radius.
+      if (isLocalityResult(p.types)) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
-        return haversine(lat, lng, p.lat, p.lng) <= RADIUS_KM * 3; // 15km tolerance
+        return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
       return true;
     });
