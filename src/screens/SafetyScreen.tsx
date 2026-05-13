@@ -696,7 +696,13 @@ function CrimeMetricsPanel({ result, backend }: { result: TravelSafetyResult; ba
 
   const metricRows: { label: string; value: number | null; unit: string; benchmarkNote?: string }[] = [
     { label: 'Homicide Rate', value: m.homicideRatePer100k, unit: '/100k',
-      benchmarkNote: m.homicideRatePer100k != null ? `${m.homicideRatePer100k < 2 ? 'Very Low' : m.homicideRatePer100k < 8 ? 'Low–Moderate' : m.homicideRatePer100k < 20 ? 'High' : 'Severe'} by global standards` : undefined },
+      benchmarkNote: m.homicideRatePer100k != null ? (() => {
+        const globalLabel = m.homicideRatePer100k! < 2 ? 'Very Low' : m.homicideRatePer100k! < 8 ? 'Low–Moderate' : m.homicideRatePer100k! < 20 ? 'High' : 'Severe';
+        const nationalLabel = m.vsNationalAvg != null
+          ? (m.vsNationalAvg > 2 ? 'High' : m.vsNationalAvg > 1.2 ? 'Above avg' : 'Near avg') + ' nationally'
+          : null;
+        return nationalLabel ? `${globalLabel} globally · ${nationalLabel}` : `${globalLabel} by global standards`;
+      })() : undefined },
     { label: 'Violent Crime Rate', value: m.violentCrimeRatePer100k, unit: '/100k' },
     { label: 'Robbery Rate', value: m.robberyRatePer100k, unit: '/100k' },
     { label: 'Assault Rate', value: m.assaultRatePer100k, unit: '/100k' },
