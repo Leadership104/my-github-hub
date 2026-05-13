@@ -441,7 +441,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const query = cuisine === 'all'
       ? `restaurants`
       : `${cuisine} restaurant`;
-    const places = await fetchGooglePlaces('search', { query, lat, lng, radius: 8000 }); // ~10 min drive radius
+    const places = await fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
 
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
@@ -463,10 +463,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return (b.rating ?? 0) - (a.rating ?? 0);
     });
 
-    // Only include within ~10 min drive (~7 km in city)
+    // Include practical nearby options by radius, even when the best spot crosses a city line.
     const nearby = sorted.filter(p => {
       if (!p.lat || !p.lng) return true;
-      return haversine(lat, lng, p.lat, p.lng) <= 7;
+      return haversine(lat, lng, p.lat, p.lng) <= FOOD_NEARBY_KM;
     });
 
     setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
@@ -496,16 +496,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     // Use the explicit query (e.g. "american restaurant") not just the label ("American"),
     // otherwise Google can return the locality itself (e.g. "Santa Clarita") instead of restaurants.
     const searchTerm = (chip.query && chip.query.trim()) || chip.label;
-    const RADIUS_M = 5000;
-    const RADIUS_KM = RADIUS_M / 1000;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: RADIUS_M });
-    // Drop locality / non-business results AND anything outside the selected city's radius.
+    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
+    // Drop locality / non-business results, then cap by nearby radius instead of city/ZIP.
     const places = rawPlaces.filter(p => {
-      const types = p.types || [];
-      const isLocality = types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
-      if (isLocality) return false;
+      if (isLocalityResult(p.types)) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
-        return haversine(lat, lng, p.lat, p.lng) <= RADIUS_KM * 3; // 15km tolerance
+        return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
       return true;
     });
