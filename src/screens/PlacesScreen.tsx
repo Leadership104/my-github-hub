@@ -724,11 +724,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   // Place detail view
   if (view === 'detail' && selectedPlace) {
+    const isDeepLinked = initialView?.startsWith('place:');
     const backView = activeChip || foodGuidePlaces.length > 0 || chipResults.length > 0 ? 'section' : 'subcategory';
+    const handleDetailBack = isDeepLinked ? goToMain : () => setView(backView as any);
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="flex-shrink-0">
-          <button onClick={() => setView(backView as any)} className="flex items-center gap-1 text-sm text-muted-foreground px-5 pt-5 mb-2">
+          <button onClick={handleDetailBack} className="flex items-center gap-1 text-sm text-muted-foreground px-5 pt-5 mb-2">
             <span className="ms text-lg">arrow_back</span> Back
           </button>
           {selectedPlace.photos && selectedPlace.photos.length > 0 ? (
