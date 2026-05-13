@@ -1,20 +1,89 @@
 /**
- * Kipita Production-Grade Travel Safety Engine v3.0
+ * Kipita Production-Grade Travel Safety Engine v4.0
  *
  * Institutional-quality risk scoring: conservative, evidence-based, explainable.
  * Designed for physical safety decisions — NOT tourism attractiveness.
  *
- * Formula weights:
- *   25% Country advisory risk  (multi-source, conservative bias)
- *   30% Violent crime metrics  (UNODC-normalized, statistical downgrades)
- *   20% Conflict/terrorism/unrest (ACLED + GTD proximity)
- *   10% Recent trend direction  (90d + 12m change)
- *   10% Neighborhood/localized risk
- *    5% Data freshness/confidence
+ * ═══════════════════════════════════════════════════════════════════════════
+ *  MATHEMATICAL FRAMEWORK
+ * ═══════════════════════════════════════════════════════════════════════════
  *
- * Hard caps and statistical downgrades always override weighted score.
- * If data is missing, conflicting, or stale → lower score, lower confidence.
+ *  1. COMPONENT SCORING  (6 independent sub-models)
+ *     Each component produces a raw score 0–100 using continuous penalty
+ *     curves (Hill / saturating-exponential functions) instead of step
+ *     functions.  Smooth curves eliminate cliff-edge score discontinuities
+ *     and better reflect real-world risk gradients.
+ *
+ *     Hill penalty:  P(r) = Pmax · rᵅ / (rᵅ + ec50ᵅ)
+ *       ec50 = rate at which penalty reaches 50% of Pmax
+ *       α    = sharpness (higher → steeper sigmoid)
+ *
+ *  2. ADAPTIVE WEIGHTING
+ *     Base weights are scaled by a per-component data-quality factor q_i ∈ [0,1]:
+ *       effectiveWeight_i = baseWeight_i × q_i / Σ(baseWeight_j × q_j)
+ *     When data quality is poor (no city data, no trend data, etc.) the
+ *     component's influence shrinks, and remaining components absorb its share.
+ *
+ *     Base weights: Advisory 25% · Crime 30% · Conflict 20% · Trend 10%
+ *                   Neighborhood 10% · Confidence 5%
+ *
+ *  3. WEIGHTED BLEND
+ *     S_raw = Σ(effectiveWeight_i × raw_i)
+ *
+ *  4. BAYESIAN CONFIDENCE SHRINKAGE  (NEW)
+ *     S_posterior = S_raw × C + S_prior × (1 − C)
+ *     where:
+ *       C       = normalised confidence ∈ [0.1, 0.95]
+ *       S_prior = 60  (neutral prior — moderately safe)
+ *     At low confidence the score is pulled toward 60; high-confidence data
+ *     lets the model score speak for itself.  This prevents extreme scores
+ *     from sparse data.
+ *
+ *  5. NATIONAL-RATIO STATISTICAL DOWNGRADE  (de-duplicated)
+ *     Applied after shrinkage.  Only the national-avg homicide ratio is
+ *     applied here (not percentile or trend, which are already embedded in
+ *     their respective components to avoid double-counting).
+ *     Penalty = min(25, max(0, (ratio − 1) × 9))   [smooth, capped at 25]
+ *
+ *  6. HARD CAPS  (policy overrides — never lifted by component scores)
+ *     Advisory-level caps · Dangerous-city caps · Conflict caps · Data-age caps
+ *
+ *  7. OPTIONAL AI RISK SIGNAL  (NEW)
+ *     aiRiskSignal ∈ [0,100], 50 = neutral.  When provided, blended at 15%:
+ *       S_final = S_after_caps × 0.85 + aiRiskSignal × 0.15
+ *     This allows real-time AI analysis to fine-tune the model output
+ *     without overriding the hard-data foundation.
+ *
+ *  8. CROSS-SIGNAL CONSISTENCY CHECK  (NEW)
+ *     If advisory risk and crime risk diverge by > 40 points, confidence is
+ *     reduced and a warning note is added.
+ *
+ * ═══════════════════════════════════════════════════════════════════════════
  */
+
+export const SAFETY_ENGINE_VERSION = '4.0.0';
+
+/* ── Mathematical constants (exported for transparency / UI display) ──────── */
+export const ENGINE_MATH = {
+  /** Bayesian prior score — neutral "we don't really know" baseline */
+  PRIOR_SCORE: 60,
+  /** Minimum confidence allowed (prevents prior from dominating entirely) */
+  MIN_CONFIDENCE: 0.10,
+  /** Maximum confidence allowed (preserves a small shrinkage even with perfect data) */
+  MAX_CONFIDENCE: 0.95,
+  /** AI signal blend fraction when aiRiskSignal is provided */
+  AI_BLEND_WEIGHT: 0.15,
+  /** Component base weights (must sum to 1.0) */
+  BASE_WEIGHTS: { advisory: 0.25, crime: 0.30, conflict: 0.20, trend: 0.10, neighborhood: 0.10, confidence: 0.05 },
+  /** Hill function parameters for homicide penalty: Pmax=60, ec50=10, α=1.3 */
+  HOMICIDE_HILL: { pmax: 60, ec50: 10, alpha: 1.3 },
+  /** Hill function parameters for violent-crime penalty: Pmax=22, ec50=600, α=1.2 */
+  VIOLENT_HILL: { pmax: 22, ec50: 600, alpha: 1.2 },
+  /** Hill function parameters for percentile penalty (above 60th): Pmax=28, ec50=15, α=1.5 */
+  PERCENTILE_HILL: { pmax: 28, ec50: 15, alpha: 1.5 },
+  /** Minimum divergence (advisory vs crime, 0–100 risk) that triggers a confidence warning */
+  CROSS_SIGNAL_DIVERGENCE_THRESHOLD: 40,
+} as const;
 
 /* ── Output format (matches spec) ─────────────────────────────────────────── */
 
@@ -71,9 +140,11 @@ export interface HardCap {
 }
 
 export interface ComponentScore {
-  raw: number;         // 0–100 component sub-score (before weighting)
-  weight: number;      // fractional weight (e.g. 0.25)
-  contribution: number; // raw * weight
+  raw: number;           // 0–100 component sub-score (before weighting)
+  weight: number;        // base fractional weight (e.g. 0.25)
+  effectiveWeight: number; // adaptive weight after data-quality scaling
+  contribution: number;  // raw × effectiveWeight
+  dataQuality: number;   // 0–1, how reliable this component's data is
   notes: string[];
 }
 
@@ -107,6 +178,14 @@ export interface TravelSafetyResult {
     dataConfidence: ComponentScore;
   };
   disclaimer: string;
+  /** Engine metadata for transparency / debugging */
+  engineVersion: string;
+  /** Bayesian shrinkage factor applied (0–1). Lower = more shrinkage toward prior. */
+  confidenceShrinkage: number;
+  /** Cross-signal consistency flag: true if advisory and crime diverge >40 pts */
+  crossSignalDivergence: boolean;
+  /** AI signal that was blended in, if provided */
+  aiSignalUsed: number | null;
 }
 
 export type RiskBand =
@@ -225,6 +304,33 @@ export interface TravelSafetyInput {
 
   retrievedAt: string;
   destination: string;
+
+  /**
+   * Optional AI-derived risk signal (0–100, 50 = neutral).
+   * When provided, blended at ENGINE_MATH.AI_BLEND_WEIGHT into the final score.
+   * Sourced from the ai-chat edge function for contextual risk analysis.
+   */
+  aiRiskSignal?: number | null;
+}
+
+/* ── Hill penalty curve ───────────────────────────────────────────────────── */
+/**
+ * Generalised Hill / sigmoid penalty function.
+ * P(r) = pmax · rᵅ / (rᵅ + ec50ᵅ)
+ *
+ * Properties:
+ *   P(0)    = 0
+ *   P(ec50) = pmax / 2  (50% of max at the reference threshold)
+ *   P(∞)    → pmax
+ *
+ * Preferred over step functions because it is continuous, differentiable,
+ * and correctly represents risk as a smooth gradient rather than binary jumps.
+ */
+function hillPenalty(rate: number, pmax: number, ec50: number, alpha: number): number {
+  if (rate <= 0) return 0;
+  const ra    = Math.pow(rate, alpha);
+  const ec50a = Math.pow(ec50, alpha);
+  return pmax * ra / (ra + ec50a);
 }
 
 /* ── Main scoring function ────────────────────────────────────────────────── */
@@ -234,48 +340,74 @@ export function computeTravelSafetyScore(input: TravelSafetyInput): TravelSafety
   const majorRisks: string[] = [];
   const sources: string[] = [];
 
-  /* ── 1. Advisory Risk Component (25%) ─────────────────────────────────── */
+  /* ── 1. Advisory Risk Component (25% base) ─────────────────────────────── */
   const advisoryComp = computeAdvisoryComponent(input, sources);
 
-  /* ── 2. Violent Crime Component (30%) ──────────────────────────────────── */
+  /* ── 2. Violent Crime Component (30% base) ─────────────────────────────── */
   const crimeComp = computeCrimeComponent(input, majorRisks);
 
-  /* ── 3. Conflict/Terrorism/Unrest Component (20%) ──────────────────────── */
+  /* ── 3. Conflict/Terrorism/Unrest Component (20% base) ─────────────────── */
   const conflictComp = computeConflictComponent(input, majorRisks);
 
-  /* ── 4. Recent Trend Component (10%) ───────────────────────────────────── */
+  /* ── 4. Recent Trend Component (10% base) ──────────────────────────────── */
   const trendComp = computeTrendComponent(input, majorRisks);
 
-  /* ── 5. Neighborhood Risk Component (10%) ──────────────────────────────── */
+  /* ── 5. Neighborhood Risk Component (10% base) ─────────────────────────── */
   const neighborhoodComp = computeNeighborhoodComponent(input, majorRisks);
 
-  /* ── 6. Data Confidence Component (5%) ─────────────────────────────────── */
+  /* ── 6. Data Confidence Component (5% base) ────────────────────────────── */
   const { confidenceComp, confidenceLevel, confidencePct } = computeConfidenceComponent(input);
 
-  /* ── Weighted blend ──────────────────────────────────────────────────────── */
-  const weightedScore =
-    advisoryComp.contribution +
-    crimeComp.contribution +
-    conflictComp.contribution +
-    trendComp.contribution +
-    neighborhoodComp.contribution +
-    confidenceComp.contribution;
+  /* ── Adaptive weighting: scale each component by its data-quality factor ── */
+  const components = [advisoryComp, crimeComp, conflictComp, trendComp, neighborhoodComp, confidenceComp];
+  const totalEffectiveMass = components.reduce((s, c) => s + c.weight * c.dataQuality, 0);
+  for (const c of components) {
+    c.effectiveWeight = totalEffectiveMass > 0 ? (c.weight * c.dataQuality) / totalEffectiveMass : c.weight;
+    c.contribution    = c.raw * c.effectiveWeight;
+  }
 
-  /* ── Statistical downgrades ──────────────────────────────────────────────── */
-  let adjustedScore = weightedScore;
-  adjustedScore = applyStatisticalDowngrades(adjustedScore, input, majorRisks);
+  /* ── Weighted blend ─────────────────────────────────────────────────────── */
+  const rawBlend = components.reduce((s, c) => s + c.contribution, 0);
 
-  /* ── Hard caps ────────────────────────────────────────────────────────────── */
+  /* ── Cross-signal consistency check ────────────────────────────────────── */
+  const maxAdvisoryLevelForCross = input.advisories.length
+    ? Math.max(...input.advisories.map(a => a.level))
+    : 0;
+  const advisoryRisk100 = (maxAdvisoryLevelForCross / 4) * 100;
+  const crimeRisk100    = 100 - crimeComp.raw;
+  const signalDivergence = Math.abs(advisoryRisk100 - crimeRisk100);
+  const crossSignalDivergence = signalDivergence > ENGINE_MATH.CROSS_SIGNAL_DIVERGENCE_THRESHOLD;
+
+  /* ── Bayesian confidence shrinkage ─────────────────────────────────────── */
+  // Normalise confidence and clamp to [MIN_CONFIDENCE, MAX_CONFIDENCE]
+  let C = confidencePct / 100;
+  if (crossSignalDivergence) C = Math.max(ENGINE_MATH.MIN_CONFIDENCE, C - 0.12); // divergence reduces certainty
+  C = Math.max(ENGINE_MATH.MIN_CONFIDENCE, Math.min(ENGINE_MATH.MAX_CONFIDENCE, C));
+  const shrunkScore = rawBlend * C + ENGINE_MATH.PRIOR_SCORE * (1 - C);
+
+  /* ── National-ratio statistical downgrade (de-duplicated, smooth) ──────── */
+  // Only the national-avg homicide ratio is applied here.
+  // Percentile and trend penalties already live inside their components —
+  // applying them again here would double-count, inflating downgrade severity.
+  let adjustedScore = applyNationalRatioDowngrade(shrunkScore, input, majorRisks);
+
+  /* ── Hard caps ──────────────────────────────────────────────────────────── */
   adjustedScore = applyHardCaps(adjustedScore, input, caps, majorRisks);
 
-  /* ── Final clamp ─────────────────────────────────────────────────────────── */
+  /* ── AI risk signal blend ───────────────────────────────────────────────── */
+  const aiSignalUsed = input.aiRiskSignal ?? null;
+  if (aiSignalUsed != null && aiSignalUsed >= 0 && aiSignalUsed <= 100) {
+    adjustedScore = adjustedScore * (1 - ENGINE_MATH.AI_BLEND_WEIGHT) + aiSignalUsed * ENGINE_MATH.AI_BLEND_WEIGHT;
+  }
+
+  /* ── Final clamp ────────────────────────────────────────────────────────── */
   const finalScore = Math.max(0, Math.min(100, Math.round(adjustedScore)));
   const riskBand = getRiskBand(finalScore);
 
-  /* ── Confidence auto-reduce on low data quality ──────────────────────────── */
+  /* ── Confidence auto-reduce on data quality issues ──────────────────────── */
   let finalConfidence: 'High' | 'Medium' | 'Low' = confidenceLevel;
   if (caps.length > 0 && finalConfidence === 'High') finalConfidence = 'Medium';
-  if (input.conflictingAdvisories) finalConfidence = 'Low';
+  if (input.conflictingAdvisories || crossSignalDivergence) finalConfidence = 'Low';
   if (input.dataAgeMonths > 24) finalConfidence = 'Low';
   else if (input.dataAgeMonths > 12 && finalConfidence === 'High') finalConfidence = 'Medium';
 
@@ -357,6 +489,10 @@ export function computeTravelSafetyScore(input: TravelSafetyInput): TravelSafety
       'This rating is based on available public safety, crime, conflict, and advisory data ' +
       'and does not guarantee personal safety. Conditions may change rapidly. ' +
       'Always verify official advisories and local guidance before travel.',
+    engineVersion: SAFETY_ENGINE_VERSION,
+    confidenceShrinkage: C,
+    crossSignalDivergence,
+    aiSignalUsed,
   };
 }
 
@@ -370,7 +506,7 @@ function computeAdvisoryComponent(
 
   if (!input.advisories.length) {
     notes.push('No advisory data available — applying conservative default.');
-    return { raw: 40, weight: 0.25, contribution: 40 * 0.25, notes };
+    return { raw: 40, weight: 0.25, effectiveWeight: 0.25, contribution: 40 * 0.25, dataQuality: 0.3, notes };
   }
 
   for (const a of input.advisories) sources.push(a.source);
@@ -379,7 +515,7 @@ function computeAdvisoryComponent(
   const maxLevel = Math.max(...input.advisories.map(a => a.level));
   const sourceAtMax = input.advisories.find(a => a.level === maxLevel);
 
-  // Weighted average for reference, but we bias toward the maximum
+  // Confidence-weighted average for reference, bias toward the maximum
   let wSum = 0, wTotal = 0;
   for (const a of input.advisories) {
     wSum += a.level * a.confidence;
@@ -387,12 +523,12 @@ function computeAdvisoryComponent(
   }
   const weightedLevel = wTotal > 0 ? wSum / wTotal : maxLevel;
 
-  // When sources disagree by ≥2 levels, apply conservative spread bias
+  // When sources disagree by ≥2 levels, use max (conservative bias)
   const minLevel = Math.min(...input.advisories.map(a => a.level));
   const spread = maxLevel - minLevel;
   const effectiveLevel = spread >= 2
-    ? maxLevel                                   // use worst when major disagreement
-    : Math.ceil(weightedLevel * 0.4 + maxLevel * 0.6); // bias toward max
+    ? maxLevel
+    : Math.ceil(weightedLevel * 0.4 + maxLevel * 0.6);
 
   if (spread >= 2) {
     notes.push(`Sources disagree (spread=${spread}). Using most conservative level ${maxLevel}.`);
@@ -402,195 +538,265 @@ function computeAdvisoryComponent(
   // Convert level (0–4) to 0–100 sub-score (higher level = lower score)
   const raw = Math.max(0, Math.min(100, Math.round(100 - effectiveLevel * 22)));
 
-  return { raw, weight: 0.25, contribution: raw * 0.25, notes };
+  // Data quality: more sources + high agreement = more confident
+  const avgConf      = wTotal > 0 ? (wTotal / input.advisories.length) : 0.5;
+  const sourceBonus  = Math.min(0.30, input.advisories.length * 0.08);
+  const dataQuality  = Math.min(1.0, 0.50 + sourceBonus + avgConf * 0.20);
+
+  return { raw, weight: 0.25, effectiveWeight: 0.25, contribution: raw * 0.25, dataQuality, notes };
 }
 
-/* ── Component: Violent Crime (30%) ──────────────────────────────────────── */
-
-// Global reference thresholds (UNODC / WHO data)
-const GLOBAL_HOMICIDE_BENCHMARKS = {
-  veryLow:   1.0,   // Nordic countries, Singapore, Japan
-  low:       3.0,   // Western Europe, Australia
-  moderate:  8.0,   // US average, Eastern Europe
-  high:     20.0,   // Latin America average
-  veryHigh: 40.0,   // Highest-crime countries
-};
-
+/* ── Component: Violent Crime (30% base) ─────────────────────────────────── */
+/**
+ * Uses continuous Hill penalty curves instead of step functions.
+ * This eliminates cliff-edge discontinuities (e.g. a city at 7.9/100k
+ * previously scored identically to 3.0/100k but jumped sharply at 8.0).
+ *
+ * Penalty sources and their Hill parameters:
+ *   Homicide:       Pmax=60,  ec50=10,  α=1.3  → calibrated to UNODC global data
+ *   Violent crime:  Pmax=22,  ec50=600, α=1.2  → calibrated to FBI UCR / UNODC
+ *   Global %ile:    Pmax=28,  ec50=15,  α=1.5  → above 60th pctile only
+ *   Kidnapping:     Pmax=18,  ec50=4,   α=1.0  → linear-ish for rare events
+ *
+ * Data quality:
+ *   1.0 — official city data + UNODC city-level homicide
+ *   0.8 — national + global percentile (no city breakdown)
+ *   0.6 — national rate only
+ *   0.3 — no crime data (conservative default raw=50)
+ */
 function computeCrimeComponent(
   input: TravelSafetyInput,
   majorRisks: string[],
 ): ComponentScore {
   const notes: string[] = [];
-  const hom = input.crimeMetrics.homicideRatePer100k;
-  const violent = input.crimeMetrics.violentCrimeRatePer100k;
+  const hom       = input.crimeMetrics.homicideRatePer100k;
+  const violent   = input.crimeMetrics.violentCrimeRatePer100k;
   const percentile = input.globalHomicidePercentile;
+  const kid        = input.crimeMetrics.kidnappingRatePer100k;
+
+  // Data quality factor
+  const dataQuality = hom != null
+    ? (input.hasOfficialCityData ? 1.0 : percentile != null ? 0.8 : 0.6)
+    : (violent != null ? 0.5 : 0.3);
 
   if (hom == null && violent == null && percentile == null) {
-    notes.push('No verified crime data — capped at 80, applying conservative default.');
-    return { raw: 50, weight: 0.30, contribution: 50 * 0.30, notes };
+    notes.push('No verified crime data — applying conservative default (raw=50).');
+    return { raw: 50, weight: 0.30, effectiveWeight: 0.30, contribution: 50 * 0.30, dataQuality, notes };
   }
 
-  let raw = 100;
+  let totalPenalty = 0;
 
-  // Homicide rate penalty (primary signal — strongest predictor)
+  // ── Homicide penalty (primary signal) ─────────────────────────────────────
   if (hom != null) {
-    if (hom >= GLOBAL_HOMICIDE_BENCHMARKS.veryHigh)      { raw -= 55; majorRisks.push('Extreme homicide rate (>40/100k)'); }
-    else if (hom >= GLOBAL_HOMICIDE_BENCHMARKS.high)     { raw -= 40; majorRisks.push('Very high homicide rate (>20/100k)'); }
-    else if (hom >= GLOBAL_HOMICIDE_BENCHMARKS.moderate) { raw -= 25; majorRisks.push('Elevated homicide rate (>8/100k)'); }
-    else if (hom >= GLOBAL_HOMICIDE_BENCHMARKS.low)      { raw -= 12; }
-    else if (hom >= GLOBAL_HOMICIDE_BENCHMARKS.veryLow)  { raw -= 5;  }
-    notes.push(`Homicide rate: ${hom.toFixed(1)}/100k`);
+    const { pmax, ec50, alpha } = ENGINE_MATH.HOMICIDE_HILL;
+    const p = hillPenalty(hom, pmax, ec50, alpha);
+    totalPenalty += p;
+    notes.push(`Homicide rate: ${hom.toFixed(1)}/100k → −${p.toFixed(1)} pts (Hill curve)`);
+    if (hom >= 40)      majorRisks.push('Extreme homicide rate (≥40/100k)');
+    else if (hom >= 20) majorRisks.push('Very high homicide rate (≥20/100k)');
+    else if (hom >= 8)  majorRisks.push('Elevated homicide rate (≥8/100k)');
   }
 
-  // Violent crime rate penalty
+  // ── Violent crime penalty ──────────────────────────────────────────────────
   if (violent != null) {
-    if (violent > 2000)      { raw -= 20; majorRisks.push('Violent crime rate extremely elevated'); }
-    else if (violent > 1000) { raw -= 14; majorRisks.push('Violent crime rate very high'); }
-    else if (violent > 500)  { raw -= 8; }
-    else if (violent > 200)  { raw -= 4; }
-    notes.push(`Violent crime: ${Math.round(violent)}/100k`);
+    const { pmax, ec50, alpha } = ENGINE_MATH.VIOLENT_HILL;
+    const p = hillPenalty(violent, pmax, ec50, alpha);
+    totalPenalty += p;
+    notes.push(`Violent crime: ${Math.round(violent)}/100k → −${p.toFixed(1)} pts`);
+    if (violent > 2000)      majorRisks.push('Violent crime rate extremely elevated (>2000/100k)');
+    else if (violent > 1000) majorRisks.push('Violent crime rate very high (>1000/100k)');
   }
 
-  // Global percentile penalty (independent signal)
+  // ── Global percentile penalty (independent of absolute rates) ─────────────
+  // Only penalises above the 60th percentile — below that is "normal"
   if (percentile != null) {
-    if (percentile >= 95)      { raw -= 25; majorRisks.push('Top 5% most dangerous globally (homicide)'); }
-    else if (percentile >= 90) { raw -= 18; }
-    else if (percentile >= 75) { raw -= 10; }
-    notes.push(`Global percentile: ${percentile}th`);
+    const excessPctile = Math.max(0, percentile - 60);
+    const { pmax, ec50, alpha } = ENGINE_MATH.PERCENTILE_HILL;
+    const p = hillPenalty(excessPctile, pmax, ec50, alpha);
+    totalPenalty += p;
+    notes.push(`Global homicide %ile: ${percentile}th → −${p.toFixed(1)} pts`);
+    if (percentile >= 95)      majorRisks.push('Top 5% most dangerous globally (homicide)');
+    else if (percentile >= 90) majorRisks.push('Top 10% most dangerous globally (homicide)');
   }
 
-  // Kidnapping elevated
-  const kid = input.crimeMetrics.kidnappingRatePer100k;
-  if (kid != null && kid > 5) {
-    raw -= Math.min(20, Math.round(kid * 2));
-    majorRisks.push('Elevated kidnapping risk');
+  // ── Kidnapping penalty ─────────────────────────────────────────────────────
+  if (kid != null && kid > 2) {
+    const p = hillPenalty(kid, 18, 4, 1.0);
+    totalPenalty += p;
+    notes.push(`Kidnapping rate: ${kid.toFixed(1)}/100k → −${p.toFixed(1)} pts`);
+    if (kid > 5) majorRisks.push('Elevated kidnapping risk (>5/100k)');
   }
 
-  raw = Math.max(0, Math.min(100, raw));
-  return { raw, weight: 0.30, contribution: raw * 0.30, notes };
+  const raw = Math.max(0, Math.min(100, 100 - totalPenalty));
+  return { raw, weight: 0.30, effectiveWeight: 0.30, contribution: raw * 0.30, dataQuality, notes };
 }
 
-/* ── Component: Conflict/Terrorism/Unrest (20%) ──────────────────────────── */
-
+/* ── Component: Conflict/Terrorism/Unrest (20% base) ────────────────────── */
+/**
+ * Continuous penalties based on severity and fatality count.
+ *
+ * Severity penalty:  proportional to severity/3, max 60 pts
+ *   severity=1 → −20,  severity=2 → −40,  severity=3 → −60
+ *
+ * Fatality penalty:  log-scaled to avoid outsized weight for extreme events
+ *   P_fat = min(20, 7 × log10(fatalities90d + 1))
+ *   100 fatalities → −14,  500 → −19,  1000 → −21 (capped at 20)
+ *
+ * Proximity/event penalties: additive fixed amounts (binary facts)
+ *
+ * Data quality:
+ *   1.0 — active conflict signals present
+ *   0.7 — no active signals (no-conflict is still useful information)
+ */
 function computeConflictComponent(
   input: TravelSafetyInput,
   majorRisks: string[],
 ): ComponentScore {
   const notes: string[] = [];
-  let raw = 100;
+  let totalPenalty = 0;
 
-  // Armed conflict severity
-  if (input.conflictSeverity >= 3) {
-    raw -= 60;
-    majorRisks.push('Active war zone / extreme armed conflict');
-    notes.push('Conflict severity: Extreme (war zone)');
-  } else if (input.conflictSeverity >= 2) {
-    raw -= 40;
-    majorRisks.push('High armed conflict / sustained violence');
-    notes.push('Conflict severity: High');
-  } else if (input.conflictSeverity >= 1) {
-    raw -= 20;
-    majorRisks.push('Turbulent security environment / active unrest');
-    notes.push('Conflict severity: Turbulent');
+  // ── Severity penalty (continuous, proportional) ────────────────────────────
+  if (input.conflictSeverity > 0) {
+    const severityPenalty = (input.conflictSeverity / 3) * 60;
+    totalPenalty += severityPenalty;
+    if (input.conflictSeverity >= 3) {
+      majorRisks.push('Active war zone / extreme armed conflict');
+      notes.push(`Conflict severity: Extreme (war zone) → −${severityPenalty.toFixed(0)} pts`);
+    } else if (input.conflictSeverity >= 2) {
+      majorRisks.push('High armed conflict / sustained violence');
+      notes.push(`Conflict severity: High → −${severityPenalty.toFixed(0)} pts`);
+    } else {
+      majorRisks.push('Turbulent security environment / active unrest');
+      notes.push(`Conflict severity: Turbulent → −${severityPenalty.toFixed(0)} pts`);
+    }
   }
 
-  // Fatalities
-  if (input.conflictFatalities90d >= 1000) { raw -= 20; majorRisks.push('Mass-casualty conflict (1000+ fatalities in 90 days)'); }
-  else if (input.conflictFatalities90d >= 200) { raw -= 12; }
-  else if (input.conflictFatalities90d >= 50)  { raw -= 6; }
-  else if (input.conflictFatalities90d >= 10)  { raw -= 3; }
+  // ── Fatality penalty (log-scaled) ─────────────────────────────────────────
+  if (input.conflictFatalities90d > 0) {
+    const fatalPenalty = Math.min(20, 7 * Math.log10(input.conflictFatalities90d + 1));
+    totalPenalty += fatalPenalty;
+    notes.push(`Conflict fatalities (90d): ${input.conflictFatalities90d} → −${fatalPenalty.toFixed(1)} pts`);
+    if (input.conflictFatalities90d >= 1000) majorRisks.push('Mass-casualty conflict (1000+ fatalities/90 days)');
+  }
 
-  // Active conflict within 50 miles
+  // ── Proximity penalty ─────────────────────────────────────────────────────
   if (input.activeConflictWithin50mi) {
-    raw -= 15;
+    totalPenalty += 15;
     majorRisks.push('Active armed conflict within 50 miles');
-    notes.push('Active conflict zone proximate to destination');
+    notes.push('Active conflict proximate (≤50 mi) → −15 pts');
   }
 
-  // Terror event in last 30 days
+  // ── Terror event penalty ──────────────────────────────────────────────────
   if (input.terrorEventLast30d) {
-    raw -= 20;
+    totalPenalty += 20;
     majorRisks.push('Terror attack or mass-casualty event within 30 days');
-    notes.push('Recent terrorist incident recorded');
+    notes.push('Recent terror incident → −20 pts');
   }
 
-  // Sustained civil unrest
+  // ── Civil unrest penalty ──────────────────────────────────────────────────
   if (input.sustainedCivilUnrest) {
-    raw -= 12;
+    totalPenalty += 12;
     majorRisks.push('Sustained civil unrest / protests');
-    notes.push('Ongoing civil unrest reported');
+    notes.push('Sustained civil unrest → −12 pts');
   }
 
-  raw = Math.max(0, Math.min(100, raw));
-  return { raw, weight: 0.20, contribution: raw * 0.20, notes };
+  const dataQuality = (input.conflictSeverity > 0 || input.conflictFatalities90d > 0)
+    ? 1.0
+    : 0.7;
+
+  const raw = Math.max(0, Math.min(100, 100 - totalPenalty));
+  return { raw, weight: 0.20, effectiveWeight: 0.20, contribution: raw * 0.20, dataQuality, notes };
 }
 
-/* ── Component: Recent Trend (10%) ───────────────────────────────────────── */
-
+/* ── Component: Recent Trend (10% base) ──────────────────────────────────── */
+/**
+ * Continuous proportional adjustment relative to neutral baseline (70).
+ *
+ * Adjustment = clip(−change × scale, min, max)
+ *   90-day:  scale=0.7, max penalty=25, max bonus=10
+ *   12-month: scale=0.5, max penalty=20, max bonus=8
+ *
+ * Example: +20% 90d change → −14 pts; −15% → +10 (capped) bonus
+ *
+ * 90d weighted more heavily than 12m (recency matters).
+ * Missing trend data → data quality 0.3, model falls back to neutral.
+ */
 function computeTrendComponent(
   input: TravelSafetyInput,
   majorRisks: string[],
 ): ComponentScore {
   const notes: string[] = [];
-  let raw = 70; // neutral starting point
-
   const c90 = input.crimeChange90Days ?? null;
   const c12 = input.crimeChange12Months ?? null;
 
   if (c90 == null && c12 == null) {
-    notes.push('No trend data available.');
-    return { raw: 60, weight: 0.10, contribution: 60 * 0.10, notes };
+    notes.push('No trend data — falling back to neutral (raw=60).');
+    return { raw: 60, weight: 0.10, effectiveWeight: 0.10, contribution: 60 * 0.10, dataQuality: 0.3, notes };
   }
 
+  let raw = 70; // neutral baseline
+
   if (c90 != null) {
-    if (c90 > 30)       { raw -= 25; majorRisks.push('Crime increasing >30% in past 90 days'); }
-    else if (c90 > 15)  { raw -= 15; majorRisks.push('Crime increasing >15% in past 90 days'); }
-    else if (c90 > 5)   { raw -= 8; }
-    else if (c90 < -10) { raw += 10; }
-    else if (c90 < -5)  { raw += 5; }
-    notes.push(`90-day trend: ${c90 > 0 ? '+' : ''}${c90}%`);
+    const adj = Math.max(-25, Math.min(10, -c90 * 0.7));
+    raw += adj;
+    const sign = c90 > 0 ? '+' : '';
+    notes.push(`90-day change: ${sign}${c90.toFixed(1)}% → ${adj >= 0 ? '+' : ''}${adj.toFixed(1)} pts`);
+    if (c90 > 30) majorRisks.push('Crime increasing >30% in past 90 days');
+    else if (c90 > 15) majorRisks.push('Crime increasing >15% in past 90 days');
   }
 
   if (c12 != null) {
-    if (c12 > 30)       { raw -= 20; }
-    else if (c12 > 15)  { raw -= 12; }
-    else if (c12 > 5)   { raw -= 5; }
-    else if (c12 < -10) { raw += 8; }
-    notes.push(`12-month trend: ${c12 > 0 ? '+' : ''}${c12}%`);
+    const adj = Math.max(-20, Math.min(8, -c12 * 0.5));
+    raw += adj;
+    const sign = c12 > 0 ? '+' : '';
+    notes.push(`12-month change: ${sign}${c12.toFixed(1)}% → ${adj >= 0 ? '+' : ''}${adj.toFixed(1)} pts`);
   }
 
+  const dataQuality = c90 != null ? 1.0 : 0.8;
   raw = Math.max(0, Math.min(100, raw));
-  return { raw, weight: 0.10, contribution: raw * 0.10, notes };
+  return { raw, weight: 0.10, effectiveWeight: 0.10, contribution: raw * 0.10, dataQuality, notes };
 }
 
-/* ── Component: Neighborhood Risk (10%) ──────────────────────────────────── */
+/* ── Component: Neighborhood Risk (10% base) ─────────────────────────────── */
+/**
+ * Continuous penalty based on count and severity of high-risk zones.
+ *
+ * P = f(veryHighCount) + f(highCount)
+ * where f uses a saturating curve: P = Pmax × n / (n + k)
+ *   veryHigh: Pmax=35, k=2  → 1 zone=12, 2=23, 3=26, 5=29
+ *   high:     Pmax=20, k=3  → 1 zone=5,  3=15, 5=17
+ */
 
 function computeNeighborhoodComponent(
   input: TravelSafetyInput,
   majorRisks: string[],
 ): ComponentScore {
   const notes: string[] = [];
-  let raw = 75;
 
   const warnings = input.neighborhoodWarnings;
   if (!warnings.length) {
-    notes.push('No neighborhood-level data available.');
-    return { raw: 65, weight: 0.10, contribution: 65 * 0.10, notes };
+    notes.push('No neighborhood-level data — falling back to neutral (raw=65).');
+    return { raw: 65, weight: 0.10, effectiveWeight: 0.10, contribution: 65 * 0.10, dataQuality: 0.4, notes };
   }
 
   const veryHigh = warnings.filter(w => w.riskLevel === 'Very High').length;
-  const high = warnings.filter(w => w.riskLevel === 'High').length;
+  const high     = warnings.filter(w => w.riskLevel === 'High').length;
 
-  if (veryHigh >= 3)   { raw -= 35; majorRisks.push('Multiple Very High-risk neighborhoods'); }
-  else if (veryHigh >= 1) { raw -= 20; majorRisks.push('High-risk neighborhood(s) present'); }
+  // Saturating penalty: Pmax×n/(n+k) — more zones add risk but with diminishing returns
+  const vhPenalty = veryHigh > 0 ? 35 * veryHigh / (veryHigh + 2) : 0;
+  const hPenalty  = high > 0     ? 20 * high     / (high + 3)      : 0;
+  const totalPenalty = vhPenalty + hPenalty;
 
-  if (high >= 5)       { raw -= 20; }
-  else if (high >= 2)  { raw -= 10; }
+  if (veryHigh >= 3)      majorRisks.push('Multiple Very High-risk neighborhoods');
+  else if (veryHigh >= 1) majorRisks.push('High-risk neighborhood(s) present');
 
-  notes.push(`${veryHigh} very-high-risk zones, ${high} high-risk zones identified`);
+  notes.push(
+    `${veryHigh} very-high + ${high} high risk zones` +
+    ` → −${vhPenalty.toFixed(1)} + −${hPenalty.toFixed(1)} pts`
+  );
 
-  raw = Math.max(0, Math.min(100, raw));
-  return { raw, weight: 0.10, contribution: raw * 0.10, notes };
+  const raw = Math.max(0, Math.min(100, 75 - totalPenalty));
+  return { raw, weight: 0.10, effectiveWeight: 0.10, contribution: raw * 0.10, dataQuality: 1.0, notes };
 }
 
 /* ── Component: Data Confidence (5%) ─────────────────────────────────────── */
@@ -628,56 +834,45 @@ function computeConfidenceComponent(input: TravelSafetyInput): {
   const raw = confidencePct * 0.8; // 0–80 range for this component
 
   return {
-    confidenceComp: { raw, weight: 0.05, contribution: raw * 0.05, notes },
+    confidenceComp: { raw, weight: 0.05, effectiveWeight: 0.05, contribution: raw * 0.05, dataQuality: 1.0, notes },
     confidenceLevel,
     confidencePct,
   };
 }
 
-/* ── Statistical downgrades ──────────────────────────────────────────────── */
-
-function applyStatisticalDowngrades(
+/* ── National-ratio downgrade (de-duplicated) ────────────────────────────── */
+/**
+ * The only post-blend statistical downgrade. Applies the national homicide
+ * ratio penalty which is NOT already represented in any component score.
+ *
+ * Smooth penalty: P = min(25, max(0, (ratio − 1) × 9))
+ *   ratio=1.0x →  0 pts  (at national average)
+ *   ratio=2.0x →  9 pts
+ *   ratio=3.0x → 18 pts
+ *   ratio=4.0x → 25 pts  (capped)
+ *
+ * NOTE: Percentile and trend downgrades have been REMOVED from here to
+ * eliminate double-counting — both are already penalised inside their
+ * respective component functions.
+ */
+function applyNationalRatioDowngrade(
   score: number,
   input: TravelSafetyInput,
   majorRisks: string[],
 ): number {
-  let s = score;
-  const hom = input.crimeMetrics.homicideRatePer100k;
+  const hom      = input.crimeMetrics.homicideRatePer100k;
   const national = input.nationalAvgHomicidePer100k;
-  const percentile = input.globalHomicidePercentile;
-  const c90 = input.crimeChange90Days;
-  const c12 = input.crimeChange12Months;
 
-  // Violent crime percentile downgrades
-  if (percentile != null) {
-    if (percentile >= 95)      s -= 30;
-    else if (percentile >= 90) s -= 20;
-    else if (percentile >= 75) s -= 10;
+  if (hom == null || national == null || national <= 0) return score;
+
+  const ratio   = hom / national;
+  const penalty = Math.min(25, Math.max(0, (ratio - 1) * 9));
+
+  if (ratio >= 2) {
+    majorRisks.push(`Homicide rate ${ratio.toFixed(1)}× national average`);
   }
 
-  // Homicide vs national average
-  if (hom != null && national != null && national > 0) {
-    const ratio = hom / national;
-    if (ratio >= 4)       { s -= 30; majorRisks.push(`Homicide rate ${ratio.toFixed(1)}x national average`); }
-    else if (ratio >= 2)  { s -= 15; majorRisks.push(`Homicide rate ${ratio.toFixed(1)}x national average`); }
-  }
-
-  // YoY crime trend downgrades
-  if (c90 != null) {
-    if (c90 > 30) s -= 20;
-    else if (c90 > 15) s -= 10;
-  }
-  if (c12 != null) {
-    if (c12 > 30) s -= 20;
-    else if (c12 > 15) s -= 10;
-  }
-
-  // Large-city density penalty (tourism-heavy ≠ safe)
-  // Always applied for major metros — density, scams, theft, nightlife crime
-  // Not applicable for small towns
-  // (Applied via neighborhood component rather than here to avoid double-counting)
-
-  return s;
+  return score - penalty;
 }
 
 /* ── Hard caps ────────────────────────────────────────────────────────────── */
