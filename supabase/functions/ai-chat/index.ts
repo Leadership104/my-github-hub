@@ -131,7 +131,7 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.googleMapsUri,places.priceLevel,places.photos",
+          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.businessStatus,places.editorialSummary,places.location,places.googleMapsUri,places.priceLevel,places.photos",
       },
       body: JSON.stringify({
         includedTypes: [type],
@@ -149,12 +149,16 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
         typeof plat === "number" && typeof plng === "number"
           ? Math.round(haversineMi(lat, lng, plat, plng) * 10) / 10
           : undefined;
+      // Treat permanently/temporarily closed businesses as openNow=false regardless
+      // of what currentOpeningHours.openNow says (it may be absent for such places).
+      const notOperational = p.businessStatus && p.businessStatus !== "OPERATIONAL";
+      const openNow = notOperational ? false : (p.currentOpeningHours?.openNow ?? undefined);
       return {
         name: p.displayName?.text,
         type: p.primaryTypeDisplayName?.text || type,
         rating: p.rating,
         reviews: p.userRatingCount,
-        openNow: p.currentOpeningHours?.openNow,
+        openNow,
         summary: p.editorialSummary?.text,
         distanceMi,
         mapsUrl: p.googleMapsUri || null,
@@ -234,7 +238,7 @@ async function fetchTextPlaces(query: string, lat: number, lng: number, radius =
         "Content-Type": "application/json",
         "X-Goog-Api-Key": key,
         "X-Goog-FieldMask":
-          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.editorialSummary,places.location,places.googleMapsUri,places.priceLevel,places.photos",
+          "places.id,places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.primaryTypeDisplayName,places.currentOpeningHours.openNow,places.businessStatus,places.editorialSummary,places.location,places.googleMapsUri,places.priceLevel,places.photos",
       },
       body: JSON.stringify({
         textQuery: query,
@@ -251,13 +255,15 @@ async function fetchTextPlaces(query: string, lat: number, lng: number, radius =
         typeof plat === "number" && typeof plng === "number"
           ? Math.round(haversineMi(lat, lng, plat, plng) * 10) / 10
           : undefined;
+      const notOperational = p.businessStatus && p.businessStatus !== "OPERATIONAL";
+      const openNow = notOperational ? false : (p.currentOpeningHours?.openNow ?? undefined);
       return {
         name: p.displayName?.text,
         type: p.primaryTypeDisplayName?.text || "Place",
         address: p.formattedAddress,
         rating: p.rating,
         reviews: p.userRatingCount,
-        openNow: p.currentOpeningHours?.openNow,
+        openNow,
         summary: p.editorialSummary?.text,
         distanceMi,
         mapsUrl: p.googleMapsUri,

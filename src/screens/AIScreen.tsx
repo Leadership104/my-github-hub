@@ -515,7 +515,7 @@ export default function AIScreen({
       if (error) throw error;
       const reply = data?.reply || `Here's the vibe for **${locationName}** — ask me anything!`;
       setMessages([{ id: 'briefing-result', role: 'ai', text: reply, timestamp: Date.now() }]);
-      if (data?.places?.length) setNearbyPlaces(data.places);
+      if (data?.places?.length) setNearbyPlaces(data.places.filter((p: PlaceChip) => p.openNow !== false));
       if (data?.suggestions?.length) setSuggestions(data.suggestions);
     }).catch(() => {
       setMessages([{
@@ -608,7 +608,7 @@ export default function AIScreen({
 
       // Recommended chips are situational — clear them when the new reply has none,
       // so stale chips from a prior question don't linger.
-      setNearbyPlaces(data?.places?.length ? data.places : []);
+      setNearbyPlaces(data?.places?.length ? data.places.filter((p: PlaceChip) => p.openNow !== false) : []);
       if (data?.suggestions?.length) setSuggestions(data.suggestions);
 
       // Detect trip planning intent
