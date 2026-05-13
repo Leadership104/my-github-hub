@@ -718,11 +718,11 @@ serve(async (req) => {
 
         const exactPlaceQueries = extractSpecificPlaceQueries(typeof message === "string" ? message : "");
         const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters, exactMatches] = await Promise.all([
-          fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
-          fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
-          fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
-          fetchNearbyPlaces(context.lat, context.lng, "bar", 3),
-          fetchNearbyPlaces(context.lat, context.lng, "hospital", 2),
+          fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6, 16000),
+          fetchNearbyPlaces(context.lat, context.lng, "cafe", 4, 12000),
+          fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5, 12000),
+          fetchNearbyPlaces(context.lat, context.lng, "bar", 3, 12000),
+          fetchNearbyPlaces(context.lat, context.lng, "hospital", 2, 12000),
           fetchLiveHealth(context.lat, context.lng),
           includeFires ? fetchWildfires(context.lat, context.lng, 100) : Promise.resolve(null),
           includeQuakes ? fetchEarthquakes(context.lat, context.lng, 200, 2.5) : Promise.resolve([]),
