@@ -629,6 +629,10 @@ function pickSituationalPlaces(args: {
   const m = (message || "").toLowerCase();
   const r = (reply || "").toLowerCase();
 
+  // Only recommend places that are currently open (or have unknown status).
+  // Places confirmed closed by Google (openNow === false) are never surfaced.
+  const open = (arr: PlaceChip[]) => arr.filter(p => p.openNow !== false);
+
   // Hard skip: clearly non-place questions. Avoid suggesting unrelated chips.
   const nonPlaceOnly =
     /\b(currency|exchange rate|fx|btc|bitcoin|crypto|sats?|tip(ping)?|visa|passport|sim card|esim|plug|outlet|voltage|tap water|vaccin|jet ?lag|language|phrase|translate|scam|customs|airport tax)\b/.test(m) &&
@@ -655,17 +659,17 @@ function pickSituationalPlaces(args: {
     for (const p of arr.slice(0, n)) if (p.name) out.push(p);
   };
 
-  if (wantHospital) take(buckets.hospitals, 2);
-  if (wantFood) take(buckets.restaurants, 4);
-  if (wantCoffee) take(buckets.cafes, 3);
-  if (wantBars) take(buckets.bars, 3);
-  if (wantAttractions) take(buckets.attractions, 4);
+  if (wantHospital) take(open(buckets.hospitals), 2);
+  if (wantFood) take(open(buckets.restaurants), 4);
+  if (wantCoffee) take(open(buckets.cafes), 3);
+  if (wantBars) take(open(buckets.bars), 3);
+  if (wantAttractions) take(open(buckets.attractions), 4);
 
   // Agentic briefing: only show a small mixed set if we genuinely have content to recommend.
   // Briefings are situational by design — eat + do.
   if (out.length === 0 && agenticBriefing) {
-    take(buckets.restaurants, 2);
-    take(buckets.attractions, 2);
+    take(open(buckets.restaurants), 2);
+    take(open(buckets.attractions), 2);
   }
 
   // Dedupe by name
