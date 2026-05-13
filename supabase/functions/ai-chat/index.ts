@@ -116,7 +116,7 @@ function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5): Promise<PlaceChip[]> {
+async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5, radius = 8000): Promise<PlaceChip[]> {
   const key = GOOGLE_PLACES_API_KEY();
   if (!key) return [];
   try {
@@ -131,7 +131,7 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
       body: JSON.stringify({
         includedTypes: [type],
         maxResultCount: max,
-        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: 3500 } },
+        locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius } },
         rankPreference: "POPULARITY",
       }),
     });
