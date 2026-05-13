@@ -648,6 +648,7 @@ serve(async (req) => {
     let bucketAttractions: PlaceChip[] = [];
     let bucketBars: PlaceChip[] = [];
     let bucketHospitals: PlaceChip[] = [];
+    let exactPlaceMatches: PlaceChip[] = [];
 
     if (context) {
       const now = new Date();
@@ -715,7 +716,8 @@ serve(async (req) => {
         const includeQuakes = wantsQuakes || wantsLiveEmergencyCheck;
         const includeDisasters = wantsDisasters || wantsLiveEmergencyCheck || disasterCategories.length > 0;
 
-        const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters] = await Promise.all([
+        const exactPlaceQueries = extractSpecificPlaceQueries(typeof message === "string" ? message : "");
+        const [restaurants, cafes, attractions, bars, hospitals, health, fires, quakes, disasters, exactMatches] = await Promise.all([
           fetchNearbyPlaces(context.lat, context.lng, "restaurant", 6),
           fetchNearbyPlaces(context.lat, context.lng, "cafe", 4),
           fetchNearbyPlaces(context.lat, context.lng, "tourist_attraction", 5),
@@ -725,10 +727,17 @@ serve(async (req) => {
           includeFires ? fetchWildfires(context.lat, context.lng, 100) : Promise.resolve(null),
           includeQuakes ? fetchEarthquakes(context.lat, context.lng, 200, 2.5) : Promise.resolve([]),
           includeDisasters && context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
+          exactPlaceQueries.length
+            ? Promise.all(exactPlaceQueries.map((q) => fetchTextPlaces(q, context.lat, context.lng, 16000, 4)))
+            : Promise.resolve([]),
         ]);
 
+        exactPlaceMatches = (exactMatches as PlaceChip[][]).flat()
+          .filter((p, i, arr) => p.name && arr.findIndex((x) => x.name?.toLowerCase() === p.name?.toLowerCase()) === i)
+          .sort((a, b) => (a.distanceMi ?? 999) - (b.distanceMi ?? 999))
+          .slice(0, 6);
         allPlaces = [...restaurants, ...cafes, ...attractions, ...bars].filter((p) => p.name);
-        bucketRestaurants = restaurants;
+        bucketRestaurants = [...exactPlaceMatches, ...restaurants].filter((p, i, arr) => p.name && arr.findIndex((x) => x.name?.toLowerCase() === p.name?.toLowerCase()) === i);
         bucketCafes = cafes;
         bucketAttractions = attractions;
         bucketBars = bars;
