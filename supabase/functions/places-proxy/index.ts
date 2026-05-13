@@ -213,17 +213,54 @@ function normalizePlaces(data: any) {
 /* ── Category to Google Places type mapping ── */
 const CATEGORY_TYPE_MAP: Record<string, string> = {
   food: "restaurant",
+  restaurant: "restaurant",
   cafe: "cafe",
+  coffee: "cafe",
   hotel: "hotel",
+  lodging: "hotel",
   shop: "shopping_mall",
+  shopping: "shopping_mall",
+  mall: "shopping_mall",
+  grocery: "grocery_or_supermarket",
+  supermarket: "grocery_or_supermarket",
   transport: "transit_station",
+  transit: "transit_station",
+  subway: "subway_station",
+  bus: "bus_station",
+  airport: "airport",
   gym: "gym",
+  fitness: "gym",
   beach: "tourist_attraction",
+  attraction: "tourist_attraction",
+  attractions: "tourist_attraction",
+  museum: "museum",
+  park: "park",
   nightlife: "bar",
+  bar: "bar",
+  club: "night_club",
+  lounge: "bar",
   atm: "atm",
   bank: "bank",
   hospital: "hospital",
   pharmacy: "pharmacy",
+  drugstore: "pharmacy",
+  clinic: "doctor",
+  doctor: "doctor",
+  dentist: "dentist",
+  embassy: "embassy",
+  police: "police",
+  gas: "gas_station",
+  fuel: "gas_station",
+  petrol: "gas_station",
+  ev: "electric_vehicle_charging_station",
+  charging: "electric_vehicle_charging_station",
+  coworking: "library",
+  library: "library",
+  spa: "spa",
+  salon: "hair_care",
+  laundry: "laundry",
+  post: "post_office",
+  parking: "parking",
 };
 
 /* ── CoinMap proxy (bypasses CORS) ── */
@@ -300,6 +337,36 @@ serve(async (req) => {
       case "details": {
         const data = await placeDetails(placeId);
         result = data ? normalizePlaces({ places: [data] })[0] : null;
+        break;
+      }
+      case "identify": {
+        // Ultra-tight progressive search to identify which establishment the user is inside.
+        // Tries radii 25m → 75m → 150m → 300m, returns as soon as results found, ranked by distance.
+        const identifyRadii = [25, 75, 150, 300];
+        const identifyTypes = ["restaurant", "cafe", "bar", "bakery", "meal_takeaway", "meal_delivery"];
+        let identifyResult: any[] = [];
+        for (const r of identifyRadii) {
+          const body = {
+            includedTypes: identifyTypes,
+            maxResultCount: 5,
+            locationRestriction: { circle: { center: { latitude: lat, longitude: lng }, radius: r } },
+            rankPreference: "DISTANCE",
+          };
+          const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Goog-Api-Key": GOOGLE_KEY(),
+              "X-Goog-FieldMask": SEARCH_FIELDS,
+            },
+            body: JSON.stringify(body),
+          });
+          if (!res.ok) continue;
+          const data = await res.json();
+          const places = normalizePlaces(data);
+          if (places.length > 0) { identifyResult = places; break; }
+        }
+        result = identifyResult;
         break;
       }
       case "coinmap": {

@@ -15,11 +15,40 @@ function extractDestFromMsg(msg: string) {
 interface PlaceChip {
   name: string;
   type: string;
+  address?: string;
   rating?: number;
   reviews?: number;
   openNow?: boolean;
   summary?: string;
   distanceMi?: number;
+  mapsUrl?: string;
+  photoUrl?: string;
+  placeId?: string;
+  priceLevel?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  confidenceReason?: string;
+}
+
+function typeToEmoji(type: string): string {
+  const t = (type || '').toLowerCase();
+  if (t.includes('restaurant') || t.includes('food') || t.includes('ristorante') || t.includes('trattoria')) return '🍽️';
+  if (t.includes('cafe') || t.includes('coffee') || t.includes('espresso')) return '☕';
+  if (t.includes('bar') || t.includes('pub') || t.includes('cocktail') || t.includes('nightlife')) return '🍸';
+  if (t.includes('hotel') || t.includes('lodging') || t.includes('motel')) return '🏨';
+  if (t.includes('museum') || t.includes('gallery') || t.includes('art')) return '🏛️';
+  if (t.includes('park') || t.includes('garden') || t.includes('nature')) return '🌿';
+  if (t.includes('pharmacy') || t.includes('drug')) return '💊';
+  if (t.includes('hospital') || t.includes('clinic') || t.includes('medical')) return '🏥';
+  if (t.includes('atm') || t.includes('bank')) return '🏧';
+  if (t.includes('gas') || t.includes('fuel') || t.includes('petrol')) return '⛽';
+  if (t.includes('shop') || t.includes('mall') || t.includes('store')) return '🛍️';
+  if (t.includes('airport') || t.includes('transit') || t.includes('station')) return '✈️';
+  if (t.includes('bakery') || t.includes('pastry')) return '🥐';
+  if (t.includes('pizza')) return '🍕';
+  if (t.includes('sushi') || t.includes('japanese')) return '🍱';
+  if (t.includes('burger') || t.includes('american')) return '🍔';
+  if (t.includes('taco') || t.includes('mexican')) return '🌮';
+  return '📍';
 }
 
 interface Props {
@@ -105,7 +134,7 @@ function StatsBar({
 }
 
 // ── Place Chips ───────────────────────────────────────────────────────────────
-function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip) => void }) {
+function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceChip, action?: 'view' | 'navigate') => void }) {
   if (!places.length) return null;
   return (
     <div className="px-1 pb-2 pt-1">
@@ -113,28 +142,79 @@ function PlaceChips({ places, onTap }: { places: PlaceChip[]; onTap: (p: PlaceCh
         ✨ Recommended near you
       </p>
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {places.map((p, i) => (
-          <button
-            key={`${p.name}-${i}`}
-            onClick={() => onTap(p)}
-            className="relative flex-shrink-0 bg-white border border-neutral-200 rounded-xl px-3 py-2 pb-4 text-left hover:border-neutral-400 transition-all min-w-[160px] max-w-[200px] active:scale-95 shadow-sm"
-          >
-            <div className="text-xs font-bold text-black truncate">{p.name}</div>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              {p.rating != null && (
-                <span className="text-[10px] font-semibold text-amber-400">★ <span className="text-black">{p.rating}</span></span>
-              )}
-              {p.openNow === true  && <span className="text-[10px] text-emerald-600 font-medium">Open</span>}
-              {p.openNow === false && <span className="text-[10px] text-neutral-500">Closed</span>}
-            </div>
-            <div className="text-[10px] text-neutral-600 mt-0.5 truncate">{p.type}</div>
-            {p.distanceMi != null && (
-              <div className="absolute bottom-1 right-2 text-[9px] font-medium text-neutral-400">
-                {p.distanceMi < 0.1 ? '<0.1' : p.distanceMi.toFixed(1)} mi
+        {places.map((p, i) => {
+          const confidenceColor =
+            p.confidence === 'high' ? 'bg-emerald-100 text-emerald-700' :
+            p.confidence === 'medium' ? 'bg-amber-100 text-amber-700' :
+            p.confidence === 'low' ? 'bg-neutral-100 text-neutral-500' : '';
+          const distLabel =
+            p.distanceMi == null ? null :
+            p.distanceMi < 0.05 ? '📍 You\'re here' :
+            p.distanceMi < 0.1 ? '<0.1 mi' :
+            `${p.distanceMi.toFixed(1)} mi`;
+          const priceDots = p.priceLevel === 'PRICE_LEVEL_INEXPENSIVE' ? '$'
+            : p.priceLevel === 'PRICE_LEVEL_MODERATE' ? '$$'
+            : p.priceLevel === 'PRICE_LEVEL_EXPENSIVE' ? '$$$'
+            : p.priceLevel === 'PRICE_LEVEL_VERY_EXPENSIVE' ? '$$$$'
+            : null;
+          return (
+            <div
+              key={`${p.name}-${i}`}
+              className="relative flex-shrink-0 bg-white border border-neutral-200 rounded-xl text-left shadow-sm overflow-hidden min-w-[170px] max-w-[210px]"
+            >
+              {/* Photo or emoji fallback */}
+              <div className="w-full h-[80px] bg-neutral-100 flex items-center justify-center overflow-hidden">
+                {p.photoUrl ? (
+                  <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+                ) : (
+                  <span className="text-3xl">{typeToEmoji(p.type)}</span>
+                )}
               </div>
-            )}
-          </button>
-        ))}
+              {/* Confidence badge */}
+              {p.confidence && (
+                <div className={`absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${confidenceColor}`}>
+                  {p.confidence === 'high' ? '✓ Match' : p.confidence === 'medium' ? '~ Near' : '? Partial'}
+                </div>
+              )}
+              <div className="px-2.5 pt-1.5 pb-2">
+                <div className="text-xs font-bold text-black truncate leading-tight">{p.name}</div>
+                <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                  {p.rating != null && (
+                    <span className="text-[10px] font-semibold text-amber-500">★{p.rating}</span>
+                  )}
+                  {priceDots && <span className="text-[10px] text-neutral-400 font-medium">{priceDots}</span>}
+                  {p.openNow === true  && <span className="text-[10px] text-emerald-600 font-semibold">Open</span>}
+                  {p.openNow === false && <span className="text-[10px] text-red-500 font-medium">Closed</span>}
+                  {distLabel && (
+                    <span className={`text-[9px] font-medium ml-auto ${distLabel.startsWith('📍') ? 'text-kipita-red' : 'text-neutral-400'}`}>
+                      {distLabel}
+                    </span>
+                  )}
+                </div>
+                {p.address && (
+                  <div className="text-[9px] text-neutral-400 mt-0.5 truncate">{p.address}</div>
+                )}
+                {/* Action buttons */}
+                <div className="flex gap-1 mt-1.5">
+                  <button
+                    onClick={() => onTap(p, 'view')}
+                    className="flex-1 text-[10px] font-semibold text-kipita-red border border-kipita-red/30 rounded-lg py-1 hover:bg-kipita-red/5 active:scale-95 transition-all"
+                  >
+                    Details
+                  </button>
+                  {p.mapsUrl && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onTap(p, 'navigate'); }}
+                      className="flex-1 text-[10px] font-semibold text-white bg-kipita-red rounded-lg py-1 hover:bg-kipita-red/90 active:scale-95 transition-all"
+                    >
+                      Navigate
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -447,7 +527,11 @@ export default function AIScreen({
     }).finally(() => setBriefingLoading(false));
   }, [locationName, countryCode, lat, lng, weather, advisoryScore, btcPrice]);
 
-  const handlePlaceChipTap = useCallback((place: PlaceChip) => {
+  const handlePlaceChipTap = useCallback((place: PlaceChip, action?: 'view' | 'navigate') => {
+    if (action === 'navigate' && place.mapsUrl) {
+      window.open(place.mapsUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (onSwitchTab) onSwitchTab('places', placeTypeToHint(place.type));
   }, [onSwitchTab]);
 
