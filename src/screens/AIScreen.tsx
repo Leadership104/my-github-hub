@@ -532,7 +532,27 @@ export default function AIScreen({
       window.open(place.mapsUrl, '_blank', 'noopener,noreferrer');
       return;
     }
-    if (onSwitchTab) onSwitchTab('places', placeTypeToHint(place.type));
+    if (onSwitchTab) {
+      if (place.placeId) {
+        // Deep-link directly to this place's detail page
+        const payload = encodeURIComponent(JSON.stringify({
+          placeId: place.placeId,
+          name: place.name,
+          address: place.address ?? '',
+          photoUrl: place.photoUrl ?? null,
+          rating: place.rating ?? null,
+          reviewCount: place.reviews ?? 0,
+          openNow: place.openNow ?? null,
+          mapsUrl: place.mapsUrl ?? null,
+          priceLevel: place.priceLevel ?? null,
+          typeLabel: place.type ?? null,
+          summary: place.summary ?? null,
+        }));
+        onSwitchTab('places', `place:${payload}`);
+      } else {
+        onSwitchTab('places', placeTypeToHint(place.type));
+      }
+    }
   }, [onSwitchTab]);
 
   const handleCreateTrip = (dest: string) => {

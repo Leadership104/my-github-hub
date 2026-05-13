@@ -311,6 +311,42 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   React.useEffect(() => {
     if (!initialView || initialViewHandled.current) return;
     if (initialView === 'phrases' || initialView === 'destinations') return;
+
+    // Deep-link directly to a specific place's detail page (from AI chat chips)
+    if (initialView.startsWith('place:')) {
+      try {
+        const data = JSON.parse(decodeURIComponent(initialView.slice(6)));
+        if (data.placeId) {
+          initialViewHandled.current = true;
+          const partial: LivePlace = {
+            placeId: data.placeId,
+            name: data.name || '',
+            address: data.address || '',
+            lat: lat ?? 0,
+            lng: lng ?? 0,
+            rating: data.rating ?? null,
+            reviewCount: data.reviewCount ?? 0,
+            priceLevel: data.priceLevel ?? null,
+            photoUrl: data.photoUrl ?? null,
+            photos: [],
+            openNow: data.openNow ?? null,
+            closingTime: null,
+            hours: [],
+            phone: null,
+            website: null,
+            types: [],
+            typeLabel: data.typeLabel ?? null,
+            mapsUrl: data.mapsUrl ?? null,
+            reviews: [],
+            summary: data.summary ?? null,
+            source: 'Google',
+          };
+          openPlaceDetail(partial);
+        }
+      } catch {}
+      return;
+    }
+
     const mapping = HINT_TO_SECTION[initialView];
     if (!mapping) return;
     initialViewHandled.current = true;
