@@ -116,7 +116,7 @@ function haversineMi(lat1: number, lng1: number, lat2: number, lng2: number): nu
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
 }
 
-async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5, radius = 8000): Promise<PlaceChip[]> {
+async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5, radius = 16000): Promise<PlaceChip[]> {
   const key = GOOGLE_PLACES_API_KEY();
   if (!key) return [];
   try {
@@ -745,9 +745,11 @@ serve(async (req) => {
         liveHealth = health;
         nearestHospital = hospitals[0] || null;
 
+        const distLabel = (mi?: number) =>
+          mi == null ? "" : mi < 0.1 ? " (you're here!)" : ` (${mi} mi away)`;
         const fmt = (label: string, arr: PlaceChip[]) =>
           arr.length
-            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${p.distanceMi != null ? ` (${p.distanceMi} mi away)` : ""}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}`).join("\n")
+            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${distLabel(p.distanceMi)}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}`).join("\n")
             : "";
 
         liveDataBlock += fmt("\nExact place matches within ~10 miles (radius-based, may cross city/ZIP boundaries)", exactPlaceMatches);
