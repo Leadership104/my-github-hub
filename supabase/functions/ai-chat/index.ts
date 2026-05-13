@@ -162,14 +162,21 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
 function extractSpecificPlaceQueries(message: string): string[] {
   const m = (message || “”).trim();
 
-  // Quoted strings have highest confidence (“San Lorenzo”)
-  const quoted = [...m.matchAll(/[“””’]([^”””’]{2,70})[“””’]/g)].map((x) => x[1]);
+  // Match curly/smart quotes (U+201C/D) and straight double (U+22) — but NOT the straight
+  // single apostrophe (U+27), which fires false positives on contractions like “I’m” / “it’s”.
+  const OPEN_Q  = ‘”“„‘’;
+  const CLOSE_Q = ‘””‟’’;
+  const quoted: string[] = [];
+  for (const qm of m.matchAll(new RegExp(`[${OPEN_Q}]([^${CLOSE_Q}]{2,70})[${CLOSE_Q}]`, ‘g’))) {
+    quoted.push(qm[1]);
+  }
 
   // Named patterns: “restaurant called X”, “place named X”
   const namedRe = /(?:restaurant|place|spot|bar|cafe|hotel|bistro|eatery|diner|grill)\s+(?:called|named)\s+([a-z0-9&.’’\-\s]{2,70})/i;
 
-  // Intent patterns — broad set of natural verbs users actually type
-  const intentRe = /(?:looking for|search(?:ing)? for|find(?:ing)?(?:\s+me)?|where(?:’s| is)|check(?:ing)?(?:\s+(?:for|out|on))?|look(?:ing)?(?:\s+(?:for|up))?|tell me about|what(?:’s| is)|is there(?: a| an)?|can you find|want to (?:go to|visit|try|eat at)|going to|i(?:’m| am)(?:\s+at|(?:\s+(?:already\s+)?)?\s*(?:sitting|seated|dining|eating|having dinner|having lunch)\s+(?:in|at))?|need to find|need(?: a| an)?|take me to|get me|show me|pull up|look up|locate|search)\s+(?:a\s+|the\s+|an\s+)?([a-z0-9&.’’\-\s]{2,70})/i;
+  // Intent patterns — broad verbs users actually type.
+  // Excludes “what’s / what is” (too often used for weather, safety, etc.)
+  const intentRe = /(?:looking for|search(?:ing)? for|find(?:ing)?(?:\s+me)?|where(?:’s| is)\b|check(?:ing)?(?:\s+(?:for|out|on))?|look(?:ing)?(?:\s+(?:for|up))?|tell me about|is there(?: a| an)?|can you find|want to (?:go to|visit|try|eat at)|going to|i(?:’m| am)(?:\s+at|(?:\s+(?:already\s+)?)?\s*(?:sitting|seated|dining|eating|having dinner|having lunch)\s+(?:in|at))?|need to find|need(?: a| an)?|take me to|get me|show me|pull up|look up|locate|search)\s+(?:a\s+|the\s+|an\s+)?([a-z0-9&.’’\-\s]{2,70})/i;
 
   // Bare “San Lorenzo restaurant” / “San Lorenzo café” without a preceding verb
   const bareRe = /\b([A-Z][a-zA-Z0-9&.’’\-]{1,30}(?:\s+[A-Za-z0-9&.’’\-]{1,30}){0,4})\s+(?:restaurant|ristorante|bistro|cafe|café|bar|pub|tavern|grill|kitchen|eatery|diner|cantina|lounge|brasserie|trattoria|pizzeria)\b/;
@@ -177,19 +184,28 @@ function extractSpecificPlaceQueries(message: string): string[] {
   const splitClause = (s: string) =>
     s.split(/\b(?:for dinner|for lunch|for breakfast|near|around|tonight|today|please|and|,)\b/i)[0];
 
+  // Generic food/travel phrases that look like place captures but aren't specific names
+  const isGeneric = (q: string) => {
+    const l = q.toLowerCase().trim();
+    return /^(?:something\b|anything\b|a bite\b|somewhere\b|anywhere\b|the nearest\b|nearby\b|local\b|cheap\b|quick\b)/.test(l)
+      || /^(?:the weather|weather|safety|danger|transport|flight|hotel room)/.test(l)
+      || /^(?:something|a place|a spot|somewhere|anywhere)\s+to\s+eat/.test(l)
+      || /^good\s+(?:food|restaurant|place|spot|option|italian|chinese|mexican|thai|indian|japanese|american|french|greek|korean|vietnamese|ethiopian|seafood|sushi|pizza|burger|steak|vegan)/.test(l)
+      || /^(?:italian|chinese|mexican|thai|indian|japanese|american|french|greek|korean|vietnamese|ethiopian|seafood|sushi|pizza|burger|vegan)\s+(?:food|restaurant|place|option)$/.test(l)
+      || /\bin\s+the\s+(?:restaurant|bar|cafe|place)\b/.test(l);
+  };
+
   const extracted: string[] = [];
   const namedM = m.match(namedRe)?.[1];
   if (namedM) extracted.push(splitClause(namedM));
-
   const intentM = m.match(intentRe)?.[1];
   if (intentM) extracted.push(splitClause(intentM));
-
   const bareM = m.match(bareRe)?.[1];
   if (bareM) extracted.push(bareM.trim());
 
   return [...quoted, ...extracted]
     .map((q) => q.replace(/\s+/g, “ “).trim().replace(/[.,;:!?]+$/, “”))
-    .filter((q) => q.length >= 2 && q.length <= 70)
+    .filter((q) => q.length >= 2 && q.length <= 70 && !isGeneric(q))
     .flatMap((q) =>
       /\b(restaurant|ristorante|bar|cafe|café|coffee|hotel|museum|park|bistro|grill|kitchen|eatery|diner|trattoria|pizzeria)\b/i.test(q)
         ? [q]
