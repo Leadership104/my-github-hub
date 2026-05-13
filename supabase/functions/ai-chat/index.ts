@@ -160,23 +160,43 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
 }
 
 function extractSpecificPlaceQueries(message: string): string[] {
-  const m = (message || "").trim();
-  const quoted = [...m.matchAll(/["“”']([^"“”']{2,70})["“”']/g)].map((x) => x[1]);
-  const patterns = [
-    /(?:restaurant|place|spot|bar|cafe)\s+(?:called|named)\s+([a-z0-9&.'’\-\s]{2,70})/i,
-    /(?:looking for|search(?:ing)? for|find|find me|where is)\s+(?:a\s+|the\s+)?([a-z0-9&.'’\-\s]{2,70})/i,
-  ];
-  const extracted = patterns.flatMap((re) => {
-    const match = m.match(re)?.[1];
-    if (!match) return [];
-    return [match.split(/\b(?:for dinner|for lunch|for breakfast|near|around|in|tonight|today|please|and)\b/i)[0]];
-  });
+  const m = (message || “”).trim();
+
+  // Quoted strings have highest confidence (“San Lorenzo”)
+  const quoted = [...m.matchAll(/[“””’]([^”””’]{2,70})[“””’]/g)].map((x) => x[1]);
+
+  // Named patterns: “restaurant called X”, “place named X”
+  const namedRe = /(?:restaurant|place|spot|bar|cafe|hotel|bistro|eatery|diner|grill)\s+(?:called|named)\s+([a-z0-9&.’’\-\s]{2,70})/i;
+
+  // Intent patterns — broad set of natural verbs users actually type
+  const intentRe = /(?:looking for|search(?:ing)? for|find(?:ing)?(?:\s+me)?|where(?:’s| is)|check(?:ing)?(?:\s+(?:for|out|on))?|look(?:ing)?(?:\s+(?:for|up))?|tell me about|what(?:’s| is)|is there(?: a| an)?|can you find|want to (?:go to|visit|try|eat at)|going to|i(?:’m| am)(?:\s+at|(?:\s+(?:already\s+)?)?\s*(?:sitting|seated|dining|eating|having dinner|having lunch)\s+(?:in|at))?|need to find|need(?: a| an)?|take me to|get me|show me|pull up|look up|locate|search)\s+(?:a\s+|the\s+|an\s+)?([a-z0-9&.’’\-\s]{2,70})/i;
+
+  // Bare “San Lorenzo restaurant” / “San Lorenzo café” without a preceding verb
+  const bareRe = /\b([A-Z][a-zA-Z0-9&.’’\-]{1,30}(?:\s+[A-Za-z0-9&.’’\-]{1,30}){0,4})\s+(?:restaurant|ristorante|bistro|cafe|café|bar|pub|tavern|grill|kitchen|eatery|diner|cantina|lounge|brasserie|trattoria|pizzeria)\b/;
+
+  const splitClause = (s: string) =>
+    s.split(/\b(?:for dinner|for lunch|for breakfast|near|around|tonight|today|please|and|,)\b/i)[0];
+
+  const extracted: string[] = [];
+  const namedM = m.match(namedRe)?.[1];
+  if (namedM) extracted.push(splitClause(namedM));
+
+  const intentM = m.match(intentRe)?.[1];
+  if (intentM) extracted.push(splitClause(intentM));
+
+  const bareM = m.match(bareRe)?.[1];
+  if (bareM) extracted.push(bareM.trim());
+
   return [...quoted, ...extracted]
-    .map((q) => q.replace(/\s+/g, " ").trim().replace(/[.,;:!?]+$/, ""))
-    .filter((q) => q.length >= 3 && q.length <= 70)
-    .flatMap((q) => /\b(restaurant|bar|cafe|coffee|hotel|museum|park)\b/i.test(q) ? [q] : [`${q} restaurant`, q])
+    .map((q) => q.replace(/\s+/g, “ “).trim().replace(/[.,;:!?]+$/, “”))
+    .filter((q) => q.length >= 2 && q.length <= 70)
+    .flatMap((q) =>
+      /\b(restaurant|ristorante|bar|cafe|café|coffee|hotel|museum|park|bistro|grill|kitchen|eatery|diner|trattoria|pizzeria)\b/i.test(q)
+        ? [q]
+        : [`${q} restaurant`, q]
+    )
     .filter((q, i, arr) => arr.findIndex((x) => x.toLowerCase() === q.toLowerCase()) === i)
-    .slice(0, 4);
+    .slice(0, 6);
 }
 
 async function fetchTextPlaces(query: string, lat: number, lng: number, radius = 16000, max = 5): Promise<PlaceChip[]> {
@@ -559,6 +579,13 @@ RESPONSE STYLE — BE BRIEF:
 • Use ⚠️ for real risks. Honest, not alarmist.
 • End every reply with 2–3 short follow-up suggestions in italics: *Ask me: "..." · "..."*
 
+SPECIFIC PLACE LOOKUP — CRITICAL RULES (when user asks about a named restaurant/place):
+1. Your ONLY reliable source is the "Exact place matches" block in LIVE TRAVEL CONTEXT below.
+2. If the block lists the place → confirm it with real details: name, address, rating, open status, and a Google Maps link. Say "Found it on Google Maps:".
+3. If a PLACE LOOKUP MISS note is present → say "I searched Google Maps within 15 miles but couldn't find '[name]' by that exact name. It may be listed slightly differently — try the search bar in [Places](kipita://tab/places) and type the name as it appears on Google Maps." Then offer alternatives from the nearby restaurants list.
+4. NEVER use your training knowledge to confirm or deny whether a specific local restaurant exists — that data is unreliable and frequently out of date.
+5. Do NOT say "not in my database" or "not nearby" — say "not found on Google Maps by that name".
+
 IN-APP CTAs (USE LIBERALLY when relevant — they deep-link inside Kipita):
 • Places near you: [See places near you](kipita://tab/places)
 • Specific category (replace TYPE with food, coffee, atm, gas, pharmacy, hospital, attractions, shopping, nightlife, transit): [Open TYPE in Places](kipita://tab/places?hint=TYPE)
@@ -728,7 +755,7 @@ serve(async (req) => {
           includeQuakes ? fetchEarthquakes(context.lat, context.lng, 200, 2.5) : Promise.resolve([]),
           includeDisasters && context.countryCode ? fetchDisasters(context.countryCode) : Promise.resolve([]),
           exactPlaceQueries.length
-            ? Promise.all(exactPlaceQueries.map((q) => fetchTextPlaces(q, context.lat, context.lng, 16000, 4)))
+            ? Promise.all(exactPlaceQueries.map((q) => fetchTextPlaces(q, context.lat, context.lng, 24000, 5)))
             : Promise.resolve([]),
         ]);
 
@@ -752,7 +779,10 @@ serve(async (req) => {
             ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${distLabel(p.distanceMi)}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}`).join("\n")
             : "";
 
-        liveDataBlock += fmt("\nExact place matches within ~10 miles (radius-based, may cross city/ZIP boundaries)", exactPlaceMatches);
+        liveDataBlock += fmt("\nExact place matches within ~15 miles (radius-based, crosses city/ZIP boundaries)", exactPlaceMatches);
+        if (exactPlaceQueries.length > 0 && exactPlaceMatches.length === 0) {
+          liveDataBlock += `\n- PLACE LOOKUP MISS: Google Maps text search for "${exactPlaceQueries[0]}" within ~15 miles returned no results. The business may be listed under a slightly different name on Google Maps. Do NOT tell the user the place doesn't exist — say you searched Google Maps but couldn't find it by that exact name, and suggest using the Places tab search bar to try variations of the name.`;
+        }
         liveDataBlock += fmt("\nNearby restaurants", restaurants);
         liveDataBlock += fmt("Nearby cafes", cafes);
         liveDataBlock += fmt("Nearby attractions", attractions);
