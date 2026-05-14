@@ -93,10 +93,10 @@ const COUNTRY_NAMES: Record<string, string> = {
  */
 const CITY_CRIME_INDEX: Record<string, number> = {
   // ─ United States ─────────────────────────────────────────────────────────
-  // Calibrated: multiplier = city_violent_crime_rate_2022 / (380.7_national_avg × 0.55_TYPICAL_BIAS)
-  // National avg 380.7/100k is the FBI's official published 2022 NIBRS figure.
-  // Denominator = 380.7 × 0.55 = 209.4. Cap of 5.0 applies in buildRates().
-  // Source: FBI UCR/NIBRS 2022 city-level data (BeautifyData mirror), local PD annual reports.
+  // Calibrated: multiplier = city_violent_crime_rate / (national_avg × 0.55_TYPICAL_BIAS)
+  // Most recent complete data: FBI NIBRS 2023 (published Oct 2024); 2024 local PD reports where available.
+  // 2023 national avg: ~369/100k violent crime (FBI NIBRS). Denominator = 369 × 0.55 = 203.
+  // Sources: FBI NIBRS 2023 (BeautifyData mirror), local PD 2024 annual reports, NeighborhoodScout.
   //
   // Tier 1 — ≥1,050/100k violent crime → multiplier 5.0 (engine cap)
   "jackson|US": 5.00,      // ~2,400+/100k; homicide 92.1/100k (FBI 2022, 135 murders/156k pop)
@@ -280,11 +280,13 @@ interface CrimeRates {
 }
 
 // US national 2022 rates per 100k (UCR/NIBRS), used as a calibrated baseline.
+// FBI NIBRS 2023 national averages (published Oct 2024). Violent crime fell ~3% from 2022.
+// Homicide fell ~11.6% (6.3→5.7/100k). Vehicle theft rose ~3%. Robbery fell to ~60.7/100k.
 const FBI_NATIONAL_PER_100K: CrimeRates = {
-  robbery: 66, assault: 282, sexual_offense: 42, kidnapping: 4,
-  burglary: 269, home_invasion: 12, vandalism: 91, larceny_home: 1401,
-  vehicle_theft: 282, carjacking: 9, vehicle_break_in: 220, traffic_incident: 120,
-  drug_activity: 410, public_disorder: 180, weapons_offense: 90,
+  robbery: 61, assault: 278, sexual_offense: 40, kidnapping: 4,
+  burglary: 252, home_invasion: 11, vandalism: 88, larceny_home: 1350,
+  vehicle_theft: 291, carjacking: 9, vehicle_break_in: 212, traffic_incident: 118,
+  drug_activity: 395, public_disorder: 175, weapons_offense: 88,
 };
 
 const NIBRS_MAP: Record<string, keyof CrimeRates> = {
@@ -452,13 +454,16 @@ async function fbiResolveAgency(city: string, state: string | null) {
 async function fbiOffenses(ori: string) {
   const apiKey = Deno.env.get("FBI_CDE_API_KEY");
   if (!apiKey) return null;
+  // Pull two most recent years — 2023 data was published Oct 2024; fall back to 2022 if 2023 unavailable
+  const currentYear = new Date().getFullYear();
+  const targetYear = currentYear >= 2025 ? 2023 : 2022;
   try {
-    const url = `https://api.usa.gov/crime/fbi/cde/summarized/agency/${ori}/offenses?from=2022&to=2022&API_KEY=${apiKey}`;
+    const url = `https://api.usa.gov/crime/fbi/cde/summarized/agency/${ori}/offenses?from=${targetYear}&to=${targetYear}&API_KEY=${apiKey}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) return null;
     const j = await r.json();
     const counts: Record<string, number> = {};
-    const actuals = j?.offenses?.actuals?.["2022"] ?? j?.offenses?.["2022"] ?? j?.offenses ?? {};
+    const actuals = j?.offenses?.actuals?.[String(targetYear)] ?? j?.offenses?.[String(targetYear)] ?? j?.offenses?.actuals?.["2022"] ?? j?.offenses?.["2022"] ?? j?.offenses ?? {};
     if (actuals && typeof actuals === "object") {
       for (const [k, v] of Object.entries(actuals)) {
         if (typeof v === "number") counts[k] = v;
@@ -468,7 +473,7 @@ async function fbiOffenses(ori: string) {
         }
       }
     }
-    return Object.keys(counts).length ? counts : null;
+    return Object.keys(counts).length ? { counts, year: targetYear } : null;
   } catch { return null; }
 }
 function fbiOffensesToRates(counts: Record<string, number>, population: number): Partial<CrimeRates> {
@@ -1981,10 +1986,10 @@ Deno.serve(async (req) => {
     let fbiPartial: Partial<CrimeRates> | null = null;
     let fbiInfo: { agency: string; year: number; population: number } | null = null;
     if (fbiAgency) {
-      const offenses = await fbiOffenses(fbiAgency.ori);
-      if (offenses) {
-        fbiPartial = fbiOffensesToRates(offenses, fbiAgency.population);
-        fbiInfo = { agency: fbiAgency.agency, year: 2022, population: fbiAgency.population };
+      const offenseResult = await fbiOffenses(fbiAgency.ori);
+      if (offenseResult) {
+        fbiPartial = fbiOffensesToRates(offenseResult.counts, fbiAgency.population);
+        fbiInfo = { agency: fbiAgency.agency, year: offenseResult.year, population: fbiAgency.population };
       }
     }
 
