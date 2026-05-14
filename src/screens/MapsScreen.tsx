@@ -577,14 +577,14 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       fetchSafetyInfo();
     } else {
       setShowSafety(false);
-      if (filter === 'btc') renderBtcMarkers();
+      if (filter === 'btc' || filter === 'btcatm') renderBtcMarkers();
       else fetchOverpassPlaces(filter);
     }
   }, [filter]);
 
   // Re-render BTC markers when merchants load
   useEffect(() => {
-    if (filter === 'btc' && merchants.length > 0) renderBtcMarkers();
+    if ((filter === 'btc' || filter === 'btcatm') && merchants.length > 0) renderBtcMarkers();
   }, [merchants]);
 
   // Re-center map and reload data when location (lat/lng props) changes
@@ -593,7 +593,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
     if (mapRef.current) {
       mapRef.current.setView([lat, lng], 13, { animate: true });
     }
-    if (filter === 'btc') renderBtcMarkers();
+    if (filter === 'btc' || filter === 'btcatm') renderBtcMarkers();
     else fetchOverpassPlaces(filter);
   }, [lat, lng]);
 

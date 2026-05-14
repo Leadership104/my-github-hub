@@ -210,7 +210,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
           <p className="text-xs text-muted-foreground">Find cash & crypto nearby</p>
         </div>
         <button
-          onClick={() => onViewOnMap(activeTab === 'btc' ? 'btcatm' : 'atm')}
+          onClick={() => onViewOnMap(activeTab === 'btc' ? 'btc' : 'atm')}
           className="flex items-center gap-1 text-xs text-kipita-red font-semibold px-2 py-1 rounded-full hover:bg-kipita-red/10 transition-colors"
         >
           <span className="ms text-sm">map</span>
