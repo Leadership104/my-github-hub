@@ -366,7 +366,7 @@ export default function App() {
       case 'safety': return <SafetyScreen locationName={locationName} countryCode={countryCode} advisoryScore={advisoryData?.rawScore} lat={lat} lng={lng} onBack={goBack} />;
       // Lazy-loaded secondary screens
       case 'maps':     return <Suspense fallback={<ScreenLoader />}><MapsScreen lat={lat} lng={lng} merchants={merchants} loading={merchantsLoading} initialFilter={screenHint} onBack={goBack} /></Suspense>;
-      case 'wallet':   return <Suspense fallback={<ScreenLoader />}><WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps')} onBack={goBack} /></Suspense>;
+      case 'wallet':   return <Suspense fallback={<ScreenLoader />}><WalletScreen prices={prices} metals={metals} onOpenMaps={() => switchTab('maps', 'btc')} onBack={goBack} /></Suspense>;
       case 'atm':      return <Suspense fallback={<ScreenLoader />}><ATMScreen lat={lat} lng={lng} merchants={merchants} onBack={goBack} onViewOnMap={(filter) => switchTab('maps', filter)} /></Suspense>;
       case 'perks':    return <Suspense fallback={<ScreenLoader />}><PerksScreen onBack={goBack} /></Suspense>;
       case 'fuel':     return <Suspense fallback={<ScreenLoader />}><FuelScreen onBack={goBack} onSwitchTab={switchTab} /></Suspense>;
