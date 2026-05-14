@@ -81,6 +81,8 @@ export const ENGINE_MATH = {
   VIOLENT_HILL: { pmax: 22, ec50: 600, alpha: 1.2 },
   /** Hill function parameters for percentile penalty (above 60th): Pmax=28, ec50=15, α=1.5 */
   PERCENTILE_HILL: { pmax: 28, ec50: 15, alpha: 1.5 },
+  /** Hill function parameters for robbery/street-crime penalty: Pmax=15, ec50=120, α=1.1 */
+  ROBBERY_HILL: { pmax: 15, ec50: 120, alpha: 1.1 },
   /** Minimum divergence (advisory vs crime, 0–100 risk) that triggers a confidence warning */
   CROSS_SIGNAL_DIVERGENCE_THRESHOLD: 40,
 } as const;
@@ -625,6 +627,19 @@ function computeCrimeComponent(
     totalPenalty += p;
     notes.push(`Kidnapping rate: ${kid.toFixed(1)}/100k → −${p.toFixed(1)} pts`);
     if (kid > 5) majorRisks.push('Elevated kidnapping risk (>5/100k)');
+  }
+
+  // ── Robbery / street crime penalty ─────────────────────────────────────────
+  // Catches high-property-crime cities where homicide is moderate but street
+  // crime is severely elevated (e.g. Portland, San Francisco, Albuquerque).
+  // Pmax=15, ec50=120, α=1.1 → at 80/100k ≈ 6 pts, at 200/100k ≈ 11 pts.
+  const rob = input.crimeMetrics.robberyRatePer100k;
+  if (rob != null && rob > 40) {
+    const p = hillPenalty(rob, 15, 120, 1.1);
+    totalPenalty += p;
+    notes.push(`Robbery rate: ${Math.round(rob)}/100k → −${p.toFixed(1)} pts`);
+    if (rob > 250) majorRisks.push('Robbery rate severely elevated (>250/100k)');
+    else if (rob > 120) majorRisks.push('Robbery rate significantly elevated (>120/100k)');
   }
 
   const raw = Math.max(0, Math.min(100, 100 - totalPenalty));

@@ -93,14 +93,18 @@ const COUNTRY_NAMES: Record<string, string> = {
  */
 const CITY_CRIME_INDEX: Record<string, number> = {
   // ─ United States — High crime ─────────────────────────────────────────────
-  "detroit|US": 2.80,       "st. louis|US": 2.60,    "memphis|US": 2.40,
-  "baltimore|US": 2.30,     "new orleans|US": 2.20,  "cleveland|US": 1.92,
-  "milwaukee|US": 1.75,     "oakland|US": 1.82,      "kansas city|US": 1.65,
-  "chicago|US": 1.55,       "atlanta|US": 1.52,      "houston|US": 1.42,
-  "los angeles|US": 1.28,   "miami|US": 1.22,        "phoenix|US": 1.18,
-  "dallas|US": 1.22,        "las vegas|US": 1.32,    "denver|US": 1.12,
-  "portland|US": 1.18,      "minneapolis|US": 1.35,  "st. paul|US": 1.30,
-  "albuquerque|US": 1.55,   "tucson|US": 1.28,       "indianapolis|US": 1.45,
+  "jackson|US": 2.80,       "detroit|US": 2.80,       "st. louis|US": 2.60,
+  "compton|US": 2.60,       "memphis|US": 2.40,       "baltimore|US": 2.30,
+  "little rock|US": 2.20,   "new orleans|US": 2.20,   "shreveport|US": 2.10,
+  "birmingham|US": 2.10,    "cleveland|US": 1.92,     "baton rouge|US": 1.90,
+  "milwaukee|US": 1.75,     "oakland|US": 1.82,       "kansas city|US": 1.65,
+  "richmond|US": 1.65,      "anchorage|US": 1.65,     "stockton|US": 1.65,
+  "chicago|US": 1.55,       "atlanta|US": 1.52,       "indianapolis|US": 1.45,
+  "houston|US": 1.42,       "los angeles|US": 1.28,   "miami|US": 1.22,
+  "dallas|US": 1.22,        "las vegas|US": 1.32,     "albuquerque|US": 1.55,
+  "tucson|US": 1.28,        "minneapolis|US": 1.35,   "st. paul|US": 1.30,
+  // Portland: FBI 2022 — violent crime 1.7× national avg, property crime 2.2× national avg
+  "portland|US": 2.20,      "denver|US": 1.12,        "phoenix|US": 1.18,
   // ─ United States — Low crime ──────────────────────────────────────────────
   "irvine|US": 0.28,         "gilbert|US": 0.32,      "fremont|US": 0.38,
   "scottsdale|US": 0.42,     "naperville|US": 0.35,   "henderson|US": 0.48,
@@ -1283,13 +1287,18 @@ const UNODC_CITY_HOMICIDE: Record<string, { rate: number; year: number }> = {
   "durban|ZA": { rate: 48.0, year: 2023 },    "pretoria|ZA": { rate: 32.0, year: 2023 },
   "lagos|NG": { rate: 42.0, year: 2022 },     "nairobi|KE": { rate: 12.0, year: 2022 },
   "kinshasa|CD": { rate: 30.0, year: 2022 },
-  // US high-crime cities
-  "st. louis|US": { rate: 45.3, year: 2022 }, "detroit|US": { rate: 38.9, year: 2022 },
-  "baltimore|US": { rate: 51.1, year: 2022 }, "new orleans|US": { rate: 37.5, year: 2022 },
-  "memphis|US": { rate: 29.7, year: 2022 },   "cleveland|US": { rate: 31.7, year: 2022 },
-  "milwaukee|US": { rate: 27.2, year: 2022 }, "kansas city|US": { rate: 30.2, year: 2022 },
-  "chicago|US": { rate: 18.2, year: 2022 },   "oakland|US": { rate: 22.5, year: 2022 },
-  "philadelphia|US": { rate: 20.6, year: 2022 },"washington|US": { rate: 22.0, year: 2022 },
+  // US high-crime cities (source: FBI UCR/NIBRS 2022, local statistical agencies)
+  "jackson|US": { rate: 70.2, year: 2022 },   "st. louis|US": { rate: 45.3, year: 2022 },
+  "detroit|US": { rate: 38.9, year: 2022 },   "baltimore|US": { rate: 51.1, year: 2022 },
+  "new orleans|US": { rate: 37.5, year: 2022 },"memphis|US": { rate: 29.7, year: 2022 },
+  "cleveland|US": { rate: 31.7, year: 2022 },  "milwaukee|US": { rate: 27.2, year: 2022 },
+  "kansas city|US": { rate: 30.2, year: 2022 },"chicago|US": { rate: 18.2, year: 2022 },
+  "oakland|US": { rate: 22.5, year: 2022 },    "philadelphia|US": { rate: 20.6, year: 2022 },
+  "washington|US": { rate: 22.0, year: 2022 }, "baton rouge|US": { rate: 26.0, year: 2022 },
+  "birmingham|US": { rate: 35.0, year: 2022 }, "little rock|US": { rate: 25.0, year: 2022 },
+  "shreveport|US": { rate: 22.0, year: 2022 }, "compton|US": { rate: 51.0, year: 2022 },
+  "richmond|US": { rate: 18.5, year: 2022 },   "stockton|US": { rate: 15.0, year: 2022 },
+  "anchorage|US": { rate: 10.0, year: 2022 },  "portland|US": { rate: 7.5, year: 2022 },
   // US low-crime cities
   "new york|US": { rate: 6.0, year: 2022 },  "los angeles|US": { rate: 8.2, year: 2022 },
   "houston|US": { rate: 13.0, year: 2022 },  "phoenix|US": { rate: 8.7, year: 2022 },
@@ -1331,8 +1340,8 @@ const GLOBAL_TOP25_DANGEROUS_CITIES: Record<string, number> = {
 
 /* ───────── National Top 10 Dangerous Cities per country ─────────────────── */
 const NATIONAL_TOP10_DANGEROUS: Record<string, string[]> = {
-  US: ["st. louis", "baltimore", "detroit", "new orleans", "memphis",
-       "cleveland", "kansas city", "milwaukee", "oakland", "washington"],
+  US: ["jackson", "st. louis", "baltimore", "detroit", "new orleans",
+       "memphis", "cleveland", "baton rouge", "kansas city", "little rock"],
   MX: ["acapulco", "culiacan", "zamora", "zacatecas", "ciudad juarez",
        "tijuana", "fresnillo", "celaya", "juarez", "irapuato"],
   BR: ["fortaleza", "salvador", "recife", "manaus", "belem",
@@ -1370,7 +1379,7 @@ const NEIGHBORHOOD_RISK: Record<string, NeighborhoodRisk> = {
   "los angeles|US": {
     warnings: [
       { area: "Skid Row / Downtown East", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "drug activity"], note: "High concentration of violent incidents" },
-      { area: "Compton", riskLevel: "High", crimeTypes: ["robbery", "assault", "shooting"] },
+      { area: "Compton", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "homicide", "shooting"], note: "~51 homicides/100k (2022); among highest in Southern California" },
       { area: "South Central", riskLevel: "High", crimeTypes: ["robbery", "gang activity"] },
     ],
     safeAreas: ["Santa Monica", "Beverly Hills", "Brentwood", "Century City"],
@@ -1458,6 +1467,47 @@ const NEIGHBORHOOD_RISK: Record<string, NeighborhoodRisk> = {
       { area: "Quiapo", riskLevel: "High", crimeTypes: ["robbery", "pickpocketing"] },
     ],
     safeAreas: ["BGC (Bonifacio Global City)", "Makati CBD", "Ortigas", "Alabang"],
+  },
+  "portland|US": {
+    warnings: [
+      { area: "Old Town/Chinatown", riskLevel: "Very High", crimeTypes: ["drug activity", "robbery", "assault"], note: "Highest crime concentration in Portland; persistent open-air drug market" },
+      { area: "Downtown (night)", riskLevel: "High", crimeTypes: ["theft", "assault", "public disorder"] },
+      { area: "Lents/Pleasant Valley", riskLevel: "High", crimeTypes: ["vehicle theft", "robbery"] },
+    ],
+    safeAreas: ["Irvington", "Northwest Hills", "Sellwood-Moreland", "Pearl District (daytime)"],
+  },
+  "baltimore|US": {
+    warnings: [
+      { area: "Cherry Hill", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"], note: "One of the highest homicide concentrations in any US city" },
+      { area: "Park Heights", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "Sandtown-Winchester", riskLevel: "Very High", crimeTypes: ["homicide", "drug activity", "robbery"] },
+      { area: "Perkins Homes", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Inner Harbor", "Fells Point", "Canton", "Roland Park"],
+  },
+  "detroit|US": {
+    warnings: [
+      { area: "North End", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "carjacking"] },
+      { area: "Brightmoor", riskLevel: "Very High", crimeTypes: ["homicide", "arson", "robbery"] },
+      { area: "East English Village", riskLevel: "High", crimeTypes: ["robbery", "vehicle theft"] },
+    ],
+    safeAreas: ["Midtown", "Corktown", "Downtown", "Indian Village"],
+  },
+  "jackson|US": {
+    warnings: [
+      { area: "West Jackson", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"], note: "Highest homicide rate of any US city over 25,000 population (2022)" },
+      { area: "North Jackson", riskLevel: "Very High", crimeTypes: ["homicide", "carjacking", "robbery"] },
+      { area: "South Jackson", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Fondren", "Belhaven Heights", "Highland Village area"],
+  },
+  "new orleans|US": {
+    warnings: [
+      { area: "Central City", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Lower Ninth Ward", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Treme (night)", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Garden District", "Uptown", "Lakeview", "French Quarter (daytime)"],
   },
 };
 
