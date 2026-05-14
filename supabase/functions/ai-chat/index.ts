@@ -917,9 +917,17 @@ serve(async (req) => {
 
         const distLabel = (mi?: number) =>
           mi == null ? "" : mi < 0.1 ? " (you're here!)" : ` (${mi} mi away)`;
+        const detailLink = (p: PlaceChip) => {
+          if (!p.placeId && !p.name) return "";
+          const params = new URLSearchParams();
+          if (p.placeId) params.set("placeId", p.placeId);
+          if (p.name) params.set("name", p.name);
+          if (p.address) params.set("address", p.address);
+          return ` — Detail link: kipita://place?${params.toString()}`;
+        };
         const fmt = (label: string, arr: PlaceChip[]) =>
           arr.length
-            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${distLabel(p.distanceMi)}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.priceLevel ? ` [${p.priceLevel}]` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.confidence ? ` [confidence:${p.confidence}]` : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}${p.photoUrl ? " [has photo]" : ""}`).join("\n")
+            ? `\n${label}:\n` + arr.map((p) => `  • ${p.name}${distLabel(p.distanceMi)}${p.rating ? ` (★${p.rating}, ${p.reviews || 0} reviews)` : ""}${p.priceLevel ? ` [${p.priceLevel}]` : ""}${p.openNow === false ? " [CLOSED]" : p.openNow === true ? " [OPEN]" : ""}${p.confidence ? ` [confidence:${p.confidence}]` : ""}${p.address ? ` — ${p.address}` : p.summary ? ` — ${p.summary}` : ""}${p.mapsUrl ? ` — ${p.mapsUrl}` : ""}${p.photoUrl ? " [has photo]" : ""}${detailLink(p)}`).join("\n")
             : "";
 
         liveDataBlock += fmt("\nExact place matches within ~15 miles (radius-based, crosses city/ZIP boundaries)", exactPlaceMatches);
