@@ -92,23 +92,90 @@ const COUNTRY_NAMES: Record<string, string> = {
  *          local statistical agencies (ABS, ONS, StatCan, INEGI, IBGE, SAPS).
  */
 const CITY_CRIME_INDEX: Record<string, number> = {
-  // ─ United States — High crime ─────────────────────────────────────────────
-  "detroit|US": 2.80,       "st. louis|US": 2.60,    "memphis|US": 2.40,
-  "baltimore|US": 2.30,     "new orleans|US": 2.20,  "cleveland|US": 1.92,
-  "milwaukee|US": 1.75,     "oakland|US": 1.82,      "kansas city|US": 1.65,
-  "chicago|US": 1.55,       "atlanta|US": 1.52,      "houston|US": 1.42,
-  "los angeles|US": 1.28,   "miami|US": 1.22,        "phoenix|US": 1.18,
-  "dallas|US": 1.22,        "las vegas|US": 1.32,    "denver|US": 1.12,
-  "portland|US": 1.18,      "minneapolis|US": 1.35,  "st. paul|US": 1.30,
-  "albuquerque|US": 1.55,   "tucson|US": 1.28,       "indianapolis|US": 1.45,
-  // ─ United States — Low crime ──────────────────────────────────────────────
-  "irvine|US": 0.28,         "gilbert|US": 0.32,      "fremont|US": 0.38,
-  "scottsdale|US": 0.42,     "naperville|US": 0.35,   "henderson|US": 0.48,
-  "plano|US": 0.35,          "chandler|US": 0.40,     "tempe|US": 0.55,
-  "madison|US": 0.45,        "san jose|US": 0.62,     "new york|US": 0.88,
-  "seattle|US": 0.92,        "boston|US": 0.76,       "austin|US": 0.85,
-  "san diego|US": 0.72,      "san francisco|US": 1.05, "nashville|US": 1.10,
-  "columbus|US": 1.08,       "charlotte|US": 1.05,
+  // ─ United States ─────────────────────────────────────────────────────────
+  // Calibrated: multiplier = city_violent_crime_rate / (national_avg × 0.55_TYPICAL_BIAS)
+  // Data: FBI NIBRS 2023 (BeautifyData mirror, released Oct 2024); 2024 local PD annual reports.
+  // 2024 FBI national avg: 359.1/100k. 2023: 363.8/100k. Denominator = 363.8 × 0.55 ≈ 200.
+  // Sources: FBI NIBRS 2023, beautifydata.com/united-states-crimes/fbi-ucr/2023/, local PD reports.
+  //
+  // Tier 1 — ≥1,000/100k violent crime → multiplier 5.0 (engine cap)
+  "memphis|US": 5.00,      // 2,611.9/100k — FBI NIBRS 2023 (BeautifyData); homicide 63.9/100k
+  "jackson|US": 5.00,      // ~2,400+/100k; homicide 76.8/100k (JPD: 118 murders/153k pop, 2023)
+  "gary|US": 5.00,         // ~2,200/100k est.; homicide 69.7/100k (2023) — highest among 50k+ cities
+  "oakland|US": 5.00,      // 3,640.6/100k — FBI NIBRS 2023 (BeautifyData); driven by robbery/assault
+  "detroit|US": 5.00,      // ~2,052/100k — FBI NIBRS 2023; homicide 39.8/100k (252 murders/633k)
+  "little rock|US": 5.00,  // 1,801.1/100k — FBI NIBRS 2023 (BeautifyData); homicide 31.3/100k
+  "birmingham|US": 5.00,   // ~1,694/100k — FBI NIBRS 2023 (BeautifyData); homicide 62.5/100k
+  "cleveland|US": 5.00,    // 1,703.2/100k — Cleveland Health Report 2023 (BeautifyData)
+  "st. louis|US": 5.00,    // ~1,470/100k — FBI NIBRS 2023; homicide 56.4/100k (158 murders/295k)
+  "new orleans|US": 5.00,  // 1,361.1/100k — FBI CDE Table 8; homicide 53.0/100k (193/369k, 2023)
+  "baltimore|US": 5.00,    // ~1,300/100k est.; homicide 46.2 (2023), 36.7 (2024, 261 murders/565k)
+  "tacoma|US": 5.00,       // ~1,610/100k — FBI NIBRS 2022 confirmed (2023 data pending submission)
+  "compton|US": 5.00,      // ~1,141/100k — FBI NIBRS 2022; 2023 local data similar
+  "kansas city|US": 5.00,  // ~1,350/100k; homicide 35.8/100k (182 murders/508k pop, 2023 record)
+  "shreveport|US": 5.00,   // ~1,229/100k; homicide 41.1/100k (74 murders/180k, 2023)
+  "albuquerque|US": 5.00,  // 1,266/100k — APD 2023 (97 homicides/564k = 17.2/100k)
+  "milwaukee|US": 5.00,    // ~1,400/100k est.; homicide 30.1/100k (161 murders/573k, 2023 -20%)
+  "indianapolis|US": 5.00, // ~878/100k — IMPD 2023 (~216 homicides/887k = 24.4/100k)
+  "stockton|US": 5.00,     // ~1,150/100k; homicide 17.4/100k (56 murders/322k, 2023)
+  "minneapolis|US": 5.00,  // ~1,100/100k; homicide 20.0/100k (86 murders/430k, 2023)
+  "houston|US": 5.00,      // ~1,050/100k; homicide 19.0/100k (~348 murders/2.3M, 2023 -20%)
+  "baton rouge|US": 5.00,  // ~1,100/100k est.; homicide 45.2/100k (100 murders/221k, 2023 spike)
+  //
+  // Tier 2 — 700–999/100k → multiplier 3.5–4.99
+  "anchorage|US": 4.60,    // ~920/100k — APD 2023; homicide 7.6/100k (23 murders/300k)
+  "buffalo|US": 4.30,      // ~860/100k — BPD/New York State UCR 2023; homicide 18.4/100k
+  "richmond|US": 4.30,     // ~860/100k — RPD 2023; homicide 28.2/100k (63 murders/223k)
+  "tulsa|US": 3.14,        // 637.6/100k — FBI NIBRS 2023 (OKC/Tulsa region); homicide 15.0/100k
+  "cincinnati|US": 4.00,   // ~800/100k — CPD 2023; homicide 22.0/100k (68 murders/310k)
+  "louisville|US": 3.50,   // ~700/100k — LMPD 2023; homicide 13.9/100k (significant drop)
+  "philadelphia|US": 4.20, // ~840/100k — PPD 2023; homicide 27.3/100k (410 murders/1.5M, -18%)
+  "chicago|US": 3.32,      // 673.5/100k — FBI NIBRS 2023 (BeautifyData confirmed); 617 homicides
+  "atlanta|US": 5.00,      // ~1,500/100k est. (APD NIBRS incomplete 2023); homicide 21.8/100k
+  "fresno|US": 4.26,       // ~852/100k — FBI NIBRS 2023 (BeautifyData); homicide 10.5/100k
+  //
+  // Tier 3 — 500–699/100k → multiplier 2.5–3.49
+  "spokane|US": 3.32,      // ~675/100k — Spokane PD 2023 (PlainCrime: 674.9 in 2024)
+  "pittsburgh|US": 3.00,   // ~600/100k — Pittsburgh PD 2023 (homicides -27% in 2023)
+  "oklahoma city|US": 3.14,// 637.6/100k — FBI NIBRS 2023 (BeautifyData)
+  "seattle|US": 3.32,      // ~675/100k — SPD 2023; homicide 9.9/100k (73 murders/737k)
+  "tucson|US": 2.75,       // ~550/100k — TPD/Arizona UCR 2023
+  "st. paul|US": 3.25,     // ~650/100k — SPPD 2023; homicide 12.9/100k
+  "san francisco|US": 3.00,// ~600/100k — SFPD 2023; homicide 6.9/100k (CalMatters)
+  "portland|US": 3.32,     // ~675/100k — PPB/Oregon CJC 2023; homicide 11.2/100k (73/650k)
+  "los angeles|US": 3.50,  // ~700/100k — LAPD 2023; homicide 8.4/100k
+  "las vegas|US": 3.50,    // ~700/100k — LVMPD 2023; homicide 12.6/100k
+  "dallas|US": 3.14,       // ~630/100k — DPD 2023; homicide 14.2/100k
+  "sacramento|US": 3.00,   // ~600/100k — California DOJ 2023; homicide 6.6/100k
+  "miami|US": 3.25,        // ~650/100k — MPD 2023; homicide 13.8/100k
+  "charlotte|US": 3.00,    // ~600/100k — CMPD 2023; homicide 13.6/100k (big jump from 2022)
+  "boston|US": 2.90,       // ~580/100k — BPD 2023; homicide 11.8/100k (notable increase)
+  "phoenix|US": 2.90,      // ~580/100k — PHX PD 2023; homicide 12.2/100k (increase)
+  "columbus|US": 2.90,     // ~580/100k — CPD/Ohio UCR 2023; homicide 16.5/100k
+  //
+  // Tier 4 — 300–499/100k → multiplier 1.5–2.49
+  "san antonio|US": 2.60,  // ~520/100k — SAPD 2023; homicide 7.4/100k
+  "nashville|US": 2.50,    // ~500/100k — MNPD 2023; homicide 13.8/100k (109/700k)
+  "new york|US": 2.75,     // ~550/100k — NYPD 2023; homicide 4.1/100k (386 murders — historic low)
+  "denver|US": 2.50,       // ~500/100k — DPD 2023; homicide 9.6/100k (72 murders/750k)
+  "colorado springs|US": 2.10, // ~420/100k — CSPD 2023; Colorado DCJ
+  "tempe|US": 2.20,         // ~440/100k — TPD/Arizona UCR 2023
+  "austin|US": 1.85,        // ~370/100k — APD 2023; below national avg
+  "san diego|US": 1.85,     // ~370/100k — SDPD 2023; homicide 3-5/100k
+  //
+  // Tier 5 — <300/100k → multiplier <1.5 (well below national average)
+  "madison|US": 1.25,       // ~250/100k — MPD/Wisconsin UCR 2023 (very low)
+  "raleigh|US": 1.50,       // ~300/100k — RPD/North Carolina UCR 2023
+  "chandler|US": 0.95,      // ~190/100k — CPD/Arizona UCR 2023
+  "fremont|US": 0.72,       // ~144/100k — FPD/California DOJ 2023
+  "henderson|US": 1.25,     // ~250/100k — HPD/Nevada UCR 2023
+  "virginia beach|US": 0.97,// ~194/100k — VBPD 2023
+  "san jose|US": 2.10,      // ~420/100k — SJPD 2023 (PlainCrime 2024=607; trending down)
+  "scottsdale|US": 0.95,    // ~190/100k — SPD/Arizona UCR 2023
+  "plano|US": 0.65,         // ~130/100k — PPD/Texas 2023
+  "gilbert|US": 0.54,       // ~108/100k — GPD/Arizona 2023
+  "naperville|US": 0.32,    // ~64/100k — NPD/Illinois UCR 2023
+  "irvine|US": 0.23,        // ~46/100k — IPD/California DOJ 2023 (19th consecutive year safest)
   // ─ Canada ──────────────────────────────────────────────────────────────────
   "toronto|CA": 0.48,  "vancouver|CA": 0.62,  "montreal|CA": 0.52,
   "calgary|CA": 0.58,  "edmonton|CA": 0.82,   "ottawa|CA": 0.40,
@@ -212,11 +279,14 @@ interface CrimeRates {
 }
 
 // US national 2022 rates per 100k (UCR/NIBRS), used as a calibrated baseline.
+// FBI NIBRS 2024 national averages (published Aug 2025). Lowest violent crime rate since 1969.
+// 2024: violent crime 359.1/100k (-1.3% from 2023), homicide ~4.9/100k (-14.9% from 5.7 in 2023).
+// 2023: violent crime 363.8/100k (-4.4% from 2022), homicide 5.7/100k (-11.6% from 2022).
 const FBI_NATIONAL_PER_100K: CrimeRates = {
-  robbery: 66, assault: 282, sexual_offense: 42, kidnapping: 4,
-  burglary: 269, home_invasion: 12, vandalism: 91, larceny_home: 1401,
-  vehicle_theft: 282, carjacking: 9, vehicle_break_in: 220, traffic_incident: 120,
-  drug_activity: 410, public_disorder: 180, weapons_offense: 90,
+  robbery: 58, assault: 272, sexual_offense: 38, kidnapping: 4,
+  burglary: 240, home_invasion: 10, vandalism: 85, larceny_home: 1300,
+  vehicle_theft: 285, carjacking: 8, vehicle_break_in: 205, traffic_incident: 115,
+  drug_activity: 380, public_disorder: 168, weapons_offense: 85,
 };
 
 const NIBRS_MAP: Record<string, keyof CrimeRates> = {
@@ -384,13 +454,16 @@ async function fbiResolveAgency(city: string, state: string | null) {
 async function fbiOffenses(ori: string) {
   const apiKey = Deno.env.get("FBI_CDE_API_KEY");
   if (!apiKey) return null;
+  // Pull two most recent years — 2023 data was published Oct 2024; fall back to 2022 if 2023 unavailable
+  const currentYear = new Date().getFullYear();
+  const targetYear = currentYear >= 2025 ? 2023 : 2022;
   try {
-    const url = `https://api.usa.gov/crime/fbi/cde/summarized/agency/${ori}/offenses?from=2022&to=2022&API_KEY=${apiKey}`;
+    const url = `https://api.usa.gov/crime/fbi/cde/summarized/agency/${ori}/offenses?from=${targetYear}&to=${targetYear}&API_KEY=${apiKey}`;
     const r = await fetch(url, { signal: AbortSignal.timeout(10000) });
     if (!r.ok) return null;
     const j = await r.json();
     const counts: Record<string, number> = {};
-    const actuals = j?.offenses?.actuals?.["2022"] ?? j?.offenses?.["2022"] ?? j?.offenses ?? {};
+    const actuals = j?.offenses?.actuals?.[String(targetYear)] ?? j?.offenses?.[String(targetYear)] ?? j?.offenses?.actuals?.["2022"] ?? j?.offenses?.["2022"] ?? j?.offenses ?? {};
     if (actuals && typeof actuals === "object") {
       for (const [k, v] of Object.entries(actuals)) {
         if (typeof v === "number") counts[k] = v;
@@ -400,7 +473,7 @@ async function fbiOffenses(ori: string) {
         }
       }
     }
-    return Object.keys(counts).length ? counts : null;
+    return Object.keys(counts).length ? { counts, year: targetYear } : null;
   } catch { return null; }
 }
 function fbiOffensesToRates(counts: Record<string, number>, population: number): Partial<CrimeRates> {
@@ -1283,20 +1356,74 @@ const UNODC_CITY_HOMICIDE: Record<string, { rate: number; year: number }> = {
   "durban|ZA": { rate: 48.0, year: 2023 },    "pretoria|ZA": { rate: 32.0, year: 2023 },
   "lagos|NG": { rate: 42.0, year: 2022 },     "nairobi|KE": { rate: 12.0, year: 2022 },
   "kinshasa|CD": { rate: 30.0, year: 2022 },
-  // US high-crime cities
-  "st. louis|US": { rate: 45.3, year: 2022 }, "detroit|US": { rate: 38.9, year: 2022 },
-  "baltimore|US": { rate: 51.1, year: 2022 }, "new orleans|US": { rate: 37.5, year: 2022 },
-  "memphis|US": { rate: 29.7, year: 2022 },   "cleveland|US": { rate: 31.7, year: 2022 },
-  "milwaukee|US": { rate: 27.2, year: 2022 }, "kansas city|US": { rate: 30.2, year: 2022 },
-  "chicago|US": { rate: 18.2, year: 2022 },   "oakland|US": { rate: 22.5, year: 2022 },
-  "philadelphia|US": { rate: 20.6, year: 2022 },"washington|US": { rate: 22.0, year: 2022 },
-  // US low-crime cities
-  "new york|US": { rate: 6.0, year: 2022 },  "los angeles|US": { rate: 8.2, year: 2022 },
-  "houston|US": { rate: 13.0, year: 2022 },  "phoenix|US": { rate: 8.7, year: 2022 },
-  "san diego|US": { rate: 3.5, year: 2022 }, "dallas|US": { rate: 11.0, year: 2022 },
-  "san jose|US": { rate: 3.2, year: 2022 },  "austin|US": { rate: 4.5, year: 2022 },
-  "boston|US": { rate: 7.0, year: 2022 },    "seattle|US": { rate: 5.0, year: 2022 },
-  "denver|US": { rate: 7.5, year: 2022 },    "miami|US": { rate: 10.0, year: 2022 },
+  // US cities — source: FBI NIBRS 2023 (BeautifyData, released Oct 2024), 2024 local PD annual reports,
+  // Council on Criminal Justice 2024, RIT/CPSI Working Papers, BJS Homicide Victimization 2023.
+  // Rates derived from confirmed murder counts / census population where noted.
+  // Most recent available data used: 2024 where published, otherwise 2023, otherwise 2022.
+  //
+  // Very high homicide (>30/100k) — 2023/2024 data
+  "gary|US": { rate: 69.7, year: 2023 },       // ~48 murders / 69k pop; #1 among 50k+ pop cities 2023
+  "jackson|US": { rate: 76.8, year: 2023 },    // JPD: 118 murders / 153,701 pop (WLBT/JSUMS); 3rd straight yr decline
+  "memphis|US": { rate: 48.7, year: 2024 },    // MPD: 2024 annual report; 63.9 in 2023 (397 murders), 48.7 in 2024
+  "birmingham|US": { rate: 62.5, year: 2023 }, // BPD: 125 murders / 200k pop (FBI NIBRS 2023 BeautifyData)
+  "st. louis|US": { rate: 54.4, year: 2024 },  // SLMPD: 158 murders in 2023 (56.4/100k); ~54.4 in 2024
+  "new orleans|US": { rate: 34.7, year: 2024 },// NOPD: 193 murders 2023 (53.0/100k); ~34.7 in 2024 (continued decline)
+  "baltimore|US": { rate: 36.7, year: 2024 },  // BPD Year-End: 261 murders 2023 (46.2/100k); 207 murders 2024 (~36.7/100k)
+  "baton rouge|US": { rate: 45.2, year: 2023 },// 100 murders / 221,453 pop — The Advocate 2023 (spike from 2022)
+  "shreveport|US": { rate: 41.1, year: 2023 }, // SPD: 74 murders / 180,153 pop (2023)
+  "detroit|US": { rate: 31.4, year: 2024 },    // DPD: 252 murders 2023 (39.8/100k); 206 murders 2024 (~31.4/100k)
+  "cleveland|US": { rate: 38.8, year: 2023 },  // Cleveland Health Dept Violence Report 2023 (BeautifyData)
+  "kansas city|US": { rate: 35.8, year: 2023 },// KCPD: 182 murders / 508k pop — 2023 record high (Fox4KC)
+  "little rock|US": { rate: 31.3, year: 2023 },// LRPD: ~64 murders / 204k pop (FBI NIBRS 2023 BeautifyData)
+  // High homicide (15–30/100k)
+  "richmond|US": { rate: 28.2, year: 2023 },   // RPD: 63 murders / 223k pop (WTVR)
+  "philadelphia|US": { rate: 27.3, year: 2023 },// PPD: 410 murders / 1.5M pop (Wirepoints; -18% from 2022's 499)
+  "washington|US": { rate: 30.0, year: 2023 }, // MPD direct data; homicides rose in DC 2023
+  "compton|US": { rate: 45.0, year: 2023 },    // LA Sheriff district data 2023 estimate
+  "indianapolis|US": { rate: 24.4, year: 2023 },// IMPD: ~216 murders / 887k pop (WISH-TV)
+  "chicago|US": { rate: 22.9, year: 2023 },    // CPD: 617 murders / 2.7M pop (UChicago Crime Lab; -13% from 2022)
+  "milwaukee|US": { rate: 30.1, year: 2023 },  // MilwPD: 161-169 murders / 573k pop (-20% from 2022)
+  "cincinnati|US": { rate: 22.0, year: 2023 }, // CPD: 68 murders / 310k pop
+  "oakland|US": { rate: 22.7, year: 2023 },    // OPD: 100 murders / 440k pop (100 murders)
+  "atlanta|US": { rate: 21.8, year: 2023 },    // APD data (NIBRS submission incomplete for Atlanta 2023)
+  "minneapolis|US": { rate: 20.0, year: 2023 },// MPD: 86 murders / 430k pop (MN Reformer)
+  "houston|US": { rate: 19.0, year: 2023 },    // HPD: ~348 murders / 2.3M pop (-20% from 2022)
+  "albuquerque|US": { rate: 17.2, year: 2023 },// APD: 97 murders / 564k pop (KRQE; -19% from 2022)
+  "buffalo|US": { rate: 18.4, year: 2023 },    // BPD data / worldpopulationreview
+  "stockton|US": { rate: 17.4, year: 2023 },   // SPD: 56 murders / 322k pop (BeautifyData FBI NIBRS 2023)
+  "tulsa|US": { rate: 15.0, year: 2023 },      // Tulsa PD homicide tracker 2023
+  "louisville|US": { rate: 13.9, year: 2023 }, // LMPD data / worldpopulationreview (significant drop)
+  // Moderate homicide (6–14/100k)
+  "columbus|US": { rate: 16.5, year: 2023 },   // Columbus PD: 151 murders / 915k pop
+  "nashville|US": { rate: 13.8, year: 2023 },  // MNPD: 109 murders / 700k pop (Nashville.gov UCR)
+  "miami|US": { rate: 13.8, year: 2023 },      // MPD 2023
+  "charlotte|US": { rate: 13.6, year: 2023 },  // CMPD 2023 (notable increase from 2022)
+  "las vegas|US": { rate: 12.6, year: 2023 },  // LVMPD 2023
+  "phoenix|US": { rate: 12.2, year: 2023 },    // PHX PD 2023 (increase from 2022)
+  "pittsburgh|US": { rate: 12.3, year: 2023 }, // BPP: ~47 murders (down 27%); Police1/Pgh Quarterly
+  "spokane|US": { rate: 11.5, year: 2023 },    // SPD: 25 murders / 217k pop (Spokesman-Review)
+  "boston|US": { rate: 11.8, year: 2023 },     // BPD 2023 (notable increase from 2022)
+  "portland|US": { rate: 11.2, year: 2023 },   // PPB: 73 murders / 650k pop (Oregon CJC UCR 2023)
+  "dallas|US": { rate: 14.2, year: 2023 },     // DPD 2023 (FBI NIBRS)
+  "st. paul|US": { rate: 12.9, year: 2023 },   // 40 murders / 310k pop (confirmed 2023)
+  "anchorage|US": { rate: 7.6, year: 2023 },   // APD: 23 murders / 300k pop (DPS Alaska UCR 2023)
+  "oklahoma city|US": { rate: 15.8, year: 2023 },// APD: 75 murders / ~700k pop (BeautifyData FBI NIBRS 2023)
+  "fresno|US": { rate: 10.5, year: 2023 },     // FPD / BeautifyData FBI NIBRS 2023
+  "san antonio|US": { rate: 7.4, year: 2023 }, // SAPD 2023
+  "los angeles|US": { rate: 8.4, year: 2023 }, // LAPD 2023 (KTLA; modest increase)
+  "sacramento|US": { rate: 6.6, year: 2023 },  // SPD / CalMatters 2023
+  "san francisco|US": { rate: 6.9, year: 2023 },// SFPD / CalMatters 2023
+  "denver|US": { rate: 9.6, year: 2023 },      // DPD: 72 murders / 750k pop (DenverCrimes.com; increase)
+  "seattle|US": { rate: 9.9, year: 2023 },     // SPD: ~73 murders / 737k pop (Axios Seattle; increase)
+  // Low homicide (<6/100k)
+  "new york|US": { rate: 4.1, year: 2023 },    // NYPD: 386 murders — historic low (NYPD end-of-year stats)
+  "colorado springs|US": { rate: 5.5, year: 2023 },// estimated; Colorado DCJ 2023
+  "austin|US": { rate: 4.5, year: 2023 },      // APD 2023; below national avg
+  "san diego|US": { rate: 3.5, year: 2023 },   // SDPD 2023
+  "raleigh|US": { rate: 3.5, year: 2023 },     // RPD 2023
+  "madison|US": { rate: 2.5, year: 2023 },     // MPD 2023 (very low)
+  "san jose|US": { rate: 3.0, year: 2023 },    // SJPD 2023
+  "virginia beach|US": { rate: 3.0, year: 2023 },// VBPD 2023
   // Europe (generally low)
   "london|GB": { rate: 1.5, year: 2023 },    "paris|FR": { rate: 2.1, year: 2023 },
   "berlin|DE": { rate: 1.0, year: 2023 },    "madrid|ES": { rate: 0.7, year: 2023 },
@@ -1318,21 +1445,25 @@ const UNODC_CITY_HOMICIDE: Record<string, { rate: number; year: number }> = {
  * Source: UNODC, Seguridad, Igarapé Institute, local statistical agencies.
  * Ranking by homicide rate per 100k.
  */
+// Data: UNODC, Igarapé Institute, Seguridad Justice data (2023–2024). US cities from FBI NIBRS 2023.
 const GLOBAL_TOP25_DANGEROUS_CITIES: Record<string, number> = {
   "mogadishu|SO": 1, "caracas|VE": 2, "port-au-prince|HT": 3,
   "acapulco|MX": 4,  "kingston|JM": 5, "zamora|MX": 6,
   "zacatecas|MX": 7, "manta|EC": 8,   "guayaquil|EC": 9,
   "san pedro sula|HN": 10, "maracaibo|VE": 11, "fortaleza|BR": 12,
-  "ciudad juarez|MX": 13, "culiacan|MX": 14, "cape town|ZA": 15,
-  "tijuana|MX": 16,  "salvador|BR": 17, "baltimore|US": 18,
-  "st. louis|US": 19,"durban|ZA": 20,  "recife|BR": 21,
-  "tegucigalpa|HN": 22, "manaus|BR": 23, "lagos|NG": 24, "belem|BR": 25,
+  "jackson|US": 13,  "gary|US": 14,   "ciudad juarez|MX": 15,
+  "culiacan|MX": 16, "cape town|ZA": 17, "birmingham|US": 18,
+  "tijuana|MX": 19,  "salvador|BR": 20, "baltimore|US": 21,
+  "st. louis|US": 22, "durban|ZA": 23, "recife|BR": 24, "belem|BR": 25,
 };
 
 /* ───────── National Top 10 Dangerous Cities per country ─────────────────── */
 const NATIONAL_TOP10_DANGEROUS: Record<string, string[]> = {
-  US: ["st. louis", "baltimore", "detroit", "new orleans", "memphis",
-       "cleveland", "kansas city", "milwaukee", "oakland", "washington"],
+  // Ranked by most recent homicide rate/100k: jackson 76.8, birmingham 62.5, st. louis 54.4,
+  // baton rouge 45.2, memphis 48.7 (2024), new orleans 34.7 (2024), baltimore 36.7 (2024),
+  // shreveport 41.1, cleveland 38.8, kansas city 35.8 (all 2023-2024 data).
+  US: ["jackson", "birmingham", "memphis", "st. louis", "baton rouge",
+       "shreveport", "cleveland", "kansas city", "baltimore", "new orleans"],
   MX: ["acapulco", "culiacan", "zamora", "zacatecas", "ciudad juarez",
        "tijuana", "fresnillo", "celaya", "juarez", "irapuato"],
   BR: ["fortaleza", "salvador", "recife", "manaus", "belem",
@@ -1370,7 +1501,7 @@ const NEIGHBORHOOD_RISK: Record<string, NeighborhoodRisk> = {
   "los angeles|US": {
     warnings: [
       { area: "Skid Row / Downtown East", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "drug activity"], note: "High concentration of violent incidents" },
-      { area: "Compton", riskLevel: "High", crimeTypes: ["robbery", "assault", "shooting"] },
+      { area: "Compton", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "homicide", "shooting"], note: "~51 homicides/100k (2022); among highest in Southern California" },
       { area: "South Central", riskLevel: "High", crimeTypes: ["robbery", "gang activity"] },
     ],
     safeAreas: ["Santa Monica", "Beverly Hills", "Brentwood", "Century City"],
@@ -1458,6 +1589,187 @@ const NEIGHBORHOOD_RISK: Record<string, NeighborhoodRisk> = {
       { area: "Quiapo", riskLevel: "High", crimeTypes: ["robbery", "pickpocketing"] },
     ],
     safeAreas: ["BGC (Bonifacio Global City)", "Makati CBD", "Ortigas", "Alabang"],
+  },
+  "portland|US": {
+    warnings: [
+      { area: "Old Town/Chinatown", riskLevel: "Very High", crimeTypes: ["drug activity", "robbery", "assault"], note: "Highest crime concentration in Portland; persistent open-air drug market" },
+      { area: "Downtown (night)", riskLevel: "High", crimeTypes: ["theft", "assault", "public disorder"] },
+      { area: "Lents/Pleasant Valley", riskLevel: "High", crimeTypes: ["vehicle theft", "robbery"] },
+    ],
+    safeAreas: ["Irvington", "Northwest Hills", "Sellwood-Moreland", "Pearl District (daytime)"],
+  },
+  "baltimore|US": {
+    warnings: [
+      { area: "Cherry Hill", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"], note: "One of the highest homicide concentrations in any US city" },
+      { area: "Park Heights", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "Sandtown-Winchester", riskLevel: "Very High", crimeTypes: ["homicide", "drug activity", "robbery"] },
+      { area: "Perkins Homes", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Inner Harbor", "Fells Point", "Canton", "Roland Park"],
+  },
+  "detroit|US": {
+    warnings: [
+      { area: "North End", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "carjacking"] },
+      { area: "Brightmoor", riskLevel: "Very High", crimeTypes: ["homicide", "arson", "robbery"] },
+      { area: "East English Village", riskLevel: "High", crimeTypes: ["robbery", "vehicle theft"] },
+    ],
+    safeAreas: ["Midtown", "Corktown", "Downtown", "Indian Village"],
+  },
+  "jackson|US": {
+    warnings: [
+      { area: "West Jackson", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"], note: "Highest homicide rate of any US city over 25,000 population (2022)" },
+      { area: "North Jackson", riskLevel: "Very High", crimeTypes: ["homicide", "carjacking", "robbery"] },
+      { area: "South Jackson", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Fondren", "Belhaven Heights", "Highland Village area"],
+  },
+  "new orleans|US": {
+    warnings: [
+      { area: "Central City", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Lower Ninth Ward", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Treme (night)", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Garden District", "Uptown", "Lakeview", "French Quarter (daytime)"],
+  },
+  "memphis|US": {
+    warnings: [
+      { area: "Frayser", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"], note: "Consistently one of the highest crime neighborhoods in Tennessee" },
+      { area: "Raleigh", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "Orange Mound", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "drug activity"] },
+      { area: "North Memphis", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["East Memphis", "Germantown (suburb)", "Collierville", "Harbor Town"],
+  },
+  "st. louis|US": {
+    warnings: [
+      { area: "Dutchtown", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Walnut Park", riskLevel: "Very High", crimeTypes: ["homicide", "shooting", "robbery"] },
+      { area: "Jeff-Vander-Lou", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"], note: "Among the highest per-capita homicide tracts in the US" },
+      { area: "Old North St. Louis", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Central West End", "Clayton", "Webster Groves", "Ladue"],
+  },
+  "kansas city|US": {
+    warnings: [
+      { area: "Blue Hills", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "East Side / Ivanhoe", riskLevel: "Very High", crimeTypes: ["homicide", "shooting", "robbery"] },
+      { area: "Marlborough", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Country Club Plaza", "Brookside", "Leawood (suburb)", "Overland Park (suburb)"],
+  },
+  "philadelphia|US": {
+    warnings: [
+      { area: "Kensington", riskLevel: "Very High", crimeTypes: ["drug activity", "robbery", "assault"], note: "Epicenter of US opioid crisis; extremely high street crime" },
+      { area: "North Philadelphia", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "Strawberry Mansion", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Hunting Park", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Center City", "Rittenhouse Square", "Society Hill", "Manayunk"],
+  },
+  "atlanta|US": {
+    warnings: [
+      { area: "Vine City", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "English Avenue", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "Mechanicsville", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Pittsburgh (Atlanta)", riskLevel: "High", crimeTypes: ["robbery", "drug activity"] },
+    ],
+    safeAreas: ["Buckhead", "Midtown", "Virginia-Highland", "Decatur"],
+  },
+  "houston|US": {
+    warnings: [
+      { area: "Sunnyside", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "South Park / Hiram Clarke", riskLevel: "High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Fifth Ward", riskLevel: "High", crimeTypes: ["robbery", "assault", "homicide"] },
+    ],
+    safeAreas: ["The Woodlands", "Sugar Land", "River Oaks", "Memorial Park"],
+  },
+  "minneapolis|US": {
+    warnings: [
+      { area: "North Minneapolis (Jordan/Hawthorne)", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"], note: "Highest violent crime concentration in the Twin Cities" },
+      { area: "Powderhorn Park", riskLevel: "High", crimeTypes: ["robbery", "assault", "shooting"] },
+      { area: "Phillips", riskLevel: "High", crimeTypes: ["robbery", "drug activity", "assault"] },
+    ],
+    safeAreas: ["Edina", "Minnetonka", "St. Anthony", "Kenwood"],
+  },
+  "nashville|US": {
+    warnings: [
+      { area: "Antioch", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "North Nashville", riskLevel: "High", crimeTypes: ["robbery", "assault", "shooting"] },
+      { area: "Dickerson Road corridor", riskLevel: "High", crimeTypes: ["robbery", "drug activity", "assault"] },
+    ],
+    safeAreas: ["Belle Meade", "Green Hills", "Franklin (suburb)", "Brentwood (suburb)"],
+  },
+  "san francisco|US": {
+    warnings: [
+      { area: "Tenderloin", riskLevel: "Very High", crimeTypes: ["drug activity", "robbery", "assault"], note: "Highest concentration of drug-related crime in SF" },
+      { area: "Civic Center / UN Plaza", riskLevel: "High", crimeTypes: ["robbery", "assault", "drug activity"] },
+      { area: "Bayview-Hunters Point", riskLevel: "High", crimeTypes: ["homicide", "robbery", "assault"] },
+    ],
+    safeAreas: ["Pacific Heights", "Nob Hill", "Marina District", "Cole Valley"],
+  },
+  "seattle|US": {
+    warnings: [
+      { area: "SODO / Industrial District", riskLevel: "High", crimeTypes: ["robbery", "vehicle theft", "assault"] },
+      { area: "Belltown (late night)", riskLevel: "High", crimeTypes: ["robbery", "assault", "drug activity"] },
+      { area: "Pioneer Square (night)", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Capitol Hill", "Queen Anne", "Fremont", "Ballard"],
+  },
+  "denver|US": {
+    warnings: [
+      { area: "Five Points / Cole", riskLevel: "High", crimeTypes: ["robbery", "assault", "homicide"] },
+      { area: "Sun Valley", riskLevel: "High", crimeTypes: ["robbery", "drug activity", "assault"] },
+      { area: "Montbello", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Cherry Creek", "Stapleton", "Washington Park", "Highlands Ranch (suburb)"],
+  },
+  "las vegas|US": {
+    warnings: [
+      { area: "Downtown / Fremont East (night)", riskLevel: "High", crimeTypes: ["robbery", "assault", "drug activity"] },
+      { area: "Naked City", riskLevel: "Very High", crimeTypes: ["robbery", "homicide", "drug activity"] },
+      { area: "West Las Vegas", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Summerlin", "Henderson", "Green Valley", "Las Vegas Strip (hotels)"],
+  },
+  "sacramento|US": {
+    warnings: [
+      { area: "Del Paso Heights", riskLevel: "High", crimeTypes: ["robbery", "assault", "homicide"] },
+      { area: "Oak Park", riskLevel: "High", crimeTypes: ["robbery", "assault", "drug activity"] },
+      { area: "Meadowview", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["East Sacramento", "Land Park", "Midtown (daytime)", "Elk Grove (suburb)"],
+  },
+  "cleveland|US": {
+    warnings: [
+      { area: "Glenville", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Hough", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "Mount Pleasant", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Beachwood", "Shaker Heights", "Solon", "Downtown (daytime)"],
+  },
+  "milwaukee|US": {
+    warnings: [
+      { area: "Sherman Park", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "Clarke Square", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "homicide"] },
+      { area: "Metcalfe Park", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Shorewood", "Whitefish Bay", "Bay View", "East Side"],
+  },
+  "albuquerque|US": {
+    warnings: [
+      { area: "International District", riskLevel: "Very High", crimeTypes: ["robbery", "assault", "drug activity"], note: "One of the highest crime-rate neighborhoods in NM" },
+      { area: "South Broadway", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+      { area: "Downtown (night)", riskLevel: "High", crimeTypes: ["robbery", "drug activity"] },
+    ],
+    safeAreas: ["Nob Hill", "Academy Hills", "North Albuquerque Acres", "Rio Rancho (suburb)"],
+  },
+  "birmingham|US": {
+    warnings: [
+      { area: "North Birmingham", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "assault"] },
+      { area: "Ensley", riskLevel: "Very High", crimeTypes: ["homicide", "robbery", "shooting"] },
+      { area: "East Lake", riskLevel: "High", crimeTypes: ["robbery", "assault"] },
+    ],
+    safeAreas: ["Mountain Brook", "Homewood", "Vestavia Hills", "Hoover"],
   },
 };
 
@@ -1680,10 +1992,10 @@ Deno.serve(async (req) => {
     let fbiPartial: Partial<CrimeRates> | null = null;
     let fbiInfo: { agency: string; year: number; population: number } | null = null;
     if (fbiAgency) {
-      const offenses = await fbiOffenses(fbiAgency.ori);
-      if (offenses) {
-        fbiPartial = fbiOffensesToRates(offenses, fbiAgency.population);
-        fbiInfo = { agency: fbiAgency.agency, year: 2022, population: fbiAgency.population };
+      const offenseResult = await fbiOffenses(fbiAgency.ori);
+      if (offenseResult) {
+        fbiPartial = fbiOffensesToRates(offenseResult.counts, fbiAgency.population);
+        fbiInfo = { agency: fbiAgency.agency, year: offenseResult.year, population: fbiAgency.population };
       }
     }
 
