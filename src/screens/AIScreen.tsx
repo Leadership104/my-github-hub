@@ -251,19 +251,43 @@ function MessageBubble({
 }) {
   const isAI = msg.role === 'ai';
 
+  // Translate a kipita:// URL into a (tab, hint) pair, with special handling
+  // for place deep-links so AI-rendered "Details" links land on the place's
+  // full detail page instead of a generic category.
+  const resolveKipitaUrl = (href: string): { tab: TabId; hint?: string } | null => {
+    try {
+      const u = new URL(href);
+      // kipita://place?placeId=...&name=...&address=... → places tab w/ place: payload
+      if (u.host === 'place' || u.pathname.replace(/^\//, '') === 'place') {
+        const placeId = u.searchParams.get('placeId') || '';
+        const name = u.searchParams.get('name') || '';
+        const address = u.searchParams.get('address') || '';
+        const photoUrl = u.searchParams.get('photoUrl') || '';
+        const mapsUrl = u.searchParams.get('mapsUrl') || '';
+        if (!placeId && !name) return null;
+        const payload = encodeURIComponent(JSON.stringify({
+          placeId: placeId || null,
+          name,
+          address,
+          photoUrl: photoUrl || null,
+          mapsUrl: mapsUrl || null,
+        }));
+        return { tab: 'places' as TabId, hint: `place:${payload}` };
+      }
+      const tab = (u.pathname.replace(/^\//, '') || u.host) as TabId;
+      const hint = u.searchParams.get('hint') || undefined;
+      return { tab, hint };
+    } catch {
+      return null;
+    }
+  };
+
   // kipita://tab/<tab>?hint=<hint>  → in-app navigation
   const handleAnchorClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
     if (href.startsWith('kipita://')) {
       e.preventDefault();
-      try {
-        const u = new URL(href);
-        // host = "tab", pathname = "/<tabId>"
-        const tab = (u.pathname.replace(/^\//, '') || u.host) as TabId;
-        const hint = u.searchParams.get('hint') || undefined;
-        onInAppNav?.(tab, hint);
-      } catch {
-        /* ignore */
-      }
+      const r = resolveKipitaUrl(href);
+      if (r) onInAppNav?.(r.tab, r.hint);
     }
   };
 
@@ -273,12 +297,8 @@ function MessageBubble({
       return (
         <button
           onClick={() => {
-            try {
-              const u = new URL(href);
-              const tab = (u.pathname.replace(/^\//, '') || u.host) as TabId;
-              const hint = u.searchParams.get('hint') || undefined;
-              onInAppNav?.(tab, hint);
-            } catch { /* ignore */ }
+            const r = resolveKipitaUrl(href);
+            if (r) onInAppNav?.(r.tab, r.hint);
           }}
           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold align-baseline mx-0.5 ${
             isAI

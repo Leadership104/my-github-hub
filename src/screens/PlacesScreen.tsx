@@ -306,24 +306,31 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     'Farmers Market': { label: 'Farmers Market', query: 'farmers market produce', emoji: '🌽' },
   };
 
-  // Auto-open section + chip from initialView hint
-  const initialViewHandled = React.useRef(false);
+  // Auto-open section + chip from initialView hint.
+  // Track the LAST handled value (not a boolean) so a second AI deep-link to a
+  // different place re-runs this effect instead of being silently ignored.
+  const lastHandledInitialViewRef = React.useRef<string | null>(null);
   React.useEffect(() => {
-    if (!initialView || initialViewHandled.current) return;
-    if (initialView === 'phrases' || initialView === 'destinations') return;
+    if (!initialView) return;
+    if (lastHandledInitialViewRef.current === initialView) return;
+    if (initialView === 'phrases' || initialView === 'destinations') {
+      lastHandledInitialViewRef.current = initialView;
+      return;
+    }
 
-    // Deep-link directly to a specific place's detail page (from AI chat chips)
+    // Deep-link directly to a specific place's detail page (from AI chat chips
+    // or AI-rendered "Details" markdown links).
     if (initialView.startsWith('place:')) {
       try {
         const data = JSON.parse(decodeURIComponent(initialView.slice(6)));
-        if (data.name) {
-          initialViewHandled.current = true;
+        if (data.name || data.placeId) {
+          lastHandledInitialViewRef.current = initialView;
           const partial: LivePlace = {
             placeId: data.placeId || '',
             name: data.name || '',
             address: data.address || '',
-            lat: lat ?? 0,
-            lng: lng ?? 0,
+            lat: typeof data.lat === 'number' ? data.lat : (lat ?? 0),
+            lng: typeof data.lng === 'number' ? data.lng : (lng ?? 0),
             rating: data.rating ?? null,
             reviewCount: data.reviewCount ?? 0,
             priceLevel: data.priceLevel ?? null,
@@ -341,7 +348,25 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             summary: data.summary ?? null,
             source: 'Google',
           };
+          // Open the detail view immediately (uses any partial data we have),
+          // then hydrate. If we don't have a placeId, look the place up by name
+          // so we still land on a real detail page instead of falling back to
+          // a category list.
           openPlaceDetail(partial);
+          if (!partial.placeId && partial.name) {
+            (async () => {
+              const q = `${partial.name} ${partial.address || ''}`.trim();
+              const results = await fetchGooglePlaces('search', { query: q, lat, lng, radius: 24000 });
+              const best = results.find(p => !isLocalityResult(p.types)) || results[0];
+              if (best) {
+                setSelectedPlace(best);
+                if (best.placeId) {
+                  const detailed = await fetchGooglePlaces('details', { placeId: best.placeId });
+                  if (detailed.length > 0) setSelectedPlace(detailed[0]);
+                }
+              }
+            })();
+          }
         }
       } catch {}
       return;
@@ -349,7 +374,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
     const mapping = HINT_TO_SECTION[initialView];
     if (!mapping) return;
-    initialViewHandled.current = true;
+    lastHandledInitialViewRef.current = initialView;
 
     setSelectedSection(mapping.sectionId);
     setView('section');
