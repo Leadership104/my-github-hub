@@ -209,7 +209,7 @@ function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: nu
 }
 
 export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack }: Props) {
-  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search'>(initialView === 'phrases' || initialView === 'destinations' ? 'main' : (initialView || 'main') as any);
+  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search'>(initialView === 'phrases' || initialView === 'destinations' || initialView?.startsWith('place:') ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
@@ -316,10 +316,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     if (initialView.startsWith('place:')) {
       try {
         const data = JSON.parse(decodeURIComponent(initialView.slice(6)));
-        if (data.placeId) {
+        if (data.name) {
           initialViewHandled.current = true;
           const partial: LivePlace = {
-            placeId: data.placeId,
+            placeId: data.placeId || '',
             name: data.name || '',
             address: data.address || '',
             lat: lat ?? 0,
