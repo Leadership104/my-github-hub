@@ -188,6 +188,8 @@ export interface TravelSafetyResult {
   crossSignalDivergence: boolean;
   /** AI signal that was blended in, if provided */
   aiSignalUsed: number | null;
+  /** If the city is in the top 20 safest US cities, its rank (1 = safest); otherwise null */
+  usSafestRank: number | null;
 }
 
 export type RiskBand =
@@ -323,64 +325,93 @@ export interface TravelSafetyInput {
  */
 export const US_CITY_SAFETY_DATA: Record<string, {
   nationalRank: number;       // rank 1 = most dangerous
-  scoreCap: number;           // hard cap (score never exceeds this)
+  /** Extra downward multiplier applied to the US-relative blend weight (>1 = more penalty) */
+  dangerPenalty: number;
   homicidePer100k: number;    // verified homicide rate
 }> = {
-  // Rank 1–10: Extreme danger (cap 20–38)
-  'jackson':       { nationalRank: 1,  scoreCap: 20, homicidePer100k: 76.8 },
-  'gary':          { nationalRank: 2,  scoreCap: 22, homicidePer100k: 69.7 },
-  'birmingham':    { nationalRank: 3,  scoreCap: 24, homicidePer100k: 62.5 },
-  'st. louis':     { nationalRank: 4,  scoreCap: 26, homicidePer100k: 54.4 },
-  'memphis':       { nationalRank: 5,  scoreCap: 28, homicidePer100k: 48.7 },
-  'baton rouge':   { nationalRank: 6,  scoreCap: 30, homicidePer100k: 45.2 },
-  'compton':       { nationalRank: 7,  scoreCap: 30, homicidePer100k: 45.0 },
-  'shreveport':    { nationalRank: 8,  scoreCap: 32, homicidePer100k: 41.1 },
-  'cleveland':     { nationalRank: 9,  scoreCap: 33, homicidePer100k: 38.8 },
-  'kansas city':   { nationalRank: 10, scoreCap: 34, homicidePer100k: 35.8 },
-  // Rank 11–20: Very high danger (cap 35–47)
-  'baltimore':     { nationalRank: 11, scoreCap: 35, homicidePer100k: 36.7 },
-  'new orleans':   { nationalRank: 12, scoreCap: 36, homicidePer100k: 34.7 },
-  'detroit':       { nationalRank: 13, scoreCap: 37, homicidePer100k: 31.4 },
-  'little rock':   { nationalRank: 14, scoreCap: 38, homicidePer100k: 31.3 },
-  'milwaukee':     { nationalRank: 15, scoreCap: 39, homicidePer100k: 30.1 },
-  'richmond':      { nationalRank: 16, scoreCap: 40, homicidePer100k: 28.2 },
-  'washington':    { nationalRank: 17, scoreCap: 41, homicidePer100k: 30.0 },
-  'philadelphia':  { nationalRank: 18, scoreCap: 42, homicidePer100k: 27.3 },
-  'indianapolis':  { nationalRank: 19, scoreCap: 43, homicidePer100k: 24.4 },
-  'chicago':       { nationalRank: 20, scoreCap: 44, homicidePer100k: 22.9 },
-  // Rank 21–30: High danger (cap 45–53)
-  'oakland':       { nationalRank: 21, scoreCap: 45, homicidePer100k: 22.7 },
-  'cincinnati':    { nationalRank: 22, scoreCap: 46, homicidePer100k: 22.0 },
-  'atlanta':       { nationalRank: 23, scoreCap: 47, homicidePer100k: 21.8 },
-  'minneapolis':   { nationalRank: 24, scoreCap: 48, homicidePer100k: 20.0 },
-  'tacoma':        { nationalRank: 25, scoreCap: 48, homicidePer100k: 19.5 },
-  'houston':       { nationalRank: 26, scoreCap: 49, homicidePer100k: 19.0 },
-  'albuquerque':   { nationalRank: 27, scoreCap: 50, homicidePer100k: 17.2 },
-  'buffalo':       { nationalRank: 28, scoreCap: 51, homicidePer100k: 18.4 },
-  'stockton':      { nationalRank: 29, scoreCap: 51, homicidePer100k: 17.4 },
-  'columbus':      { nationalRank: 30, scoreCap: 52, homicidePer100k: 16.5 },
-  // Rank 31–40: Elevated danger (cap 53–59)
-  'oklahoma city': { nationalRank: 31, scoreCap: 53, homicidePer100k: 15.8 },
-  'jacksonville':  { nationalRank: 32, scoreCap: 53, homicidePer100k: 16.5 },
-  'tulsa':         { nationalRank: 33, scoreCap: 54, homicidePer100k: 15.0 },
-  'dallas':        { nationalRank: 34, scoreCap: 55, homicidePer100k: 14.2 },
-  'nashville':     { nationalRank: 35, scoreCap: 56, homicidePer100k: 13.8 },
-  'miami':         { nationalRank: 36, scoreCap: 56, homicidePer100k: 13.8 },
-  'charlotte':     { nationalRank: 37, scoreCap: 57, homicidePer100k: 13.6 },
-  'las vegas':     { nationalRank: 38, scoreCap: 57, homicidePer100k: 12.6 },
-  'phoenix':       { nationalRank: 39, scoreCap: 58, homicidePer100k: 12.2 },
-  'st. paul':      { nationalRank: 40, scoreCap: 58, homicidePer100k: 12.9 },
-  // Rank 41–50: Moderate-elevated (cap 59–65)
-  'pittsburgh':    { nationalRank: 41, scoreCap: 59, homicidePer100k: 12.3 },
-  'boston':        { nationalRank: 42, scoreCap: 59, homicidePer100k: 11.8 },
-  'spokane':       { nationalRank: 43, scoreCap: 60, homicidePer100k: 11.5 },
-  'portland':      { nationalRank: 44, scoreCap: 61, homicidePer100k: 11.2 },
-  'fresno':        { nationalRank: 45, scoreCap: 61, homicidePer100k: 10.5 },
-  'seattle':       { nationalRank: 46, scoreCap: 62, homicidePer100k: 9.9 },
-  'denver':        { nationalRank: 47, scoreCap: 63, homicidePer100k: 9.6 },
-  'los angeles':   { nationalRank: 48, scoreCap: 64, homicidePer100k: 8.4 },
-  'anchorage':     { nationalRank: 49, scoreCap: 65, homicidePer100k: 7.6 },
-  'san antonio':   { nationalRank: 50, scoreCap: 66, homicidePer100k: 7.4 },
+  // Rank 1–10: Extreme danger
+  'jackson':       { nationalRank: 1,  dangerPenalty: 1.55, homicidePer100k: 76.8 },
+  'gary':          { nationalRank: 2,  dangerPenalty: 1.52, homicidePer100k: 69.7 },
+  'birmingham':    { nationalRank: 3,  dangerPenalty: 1.49, homicidePer100k: 62.5 },
+  'st. louis':     { nationalRank: 4,  dangerPenalty: 1.46, homicidePer100k: 54.4 },
+  'memphis':       { nationalRank: 5,  dangerPenalty: 1.43, homicidePer100k: 48.7 },
+  'baton rouge':   { nationalRank: 6,  dangerPenalty: 1.40, homicidePer100k: 45.2 },
+  'compton':       { nationalRank: 7,  dangerPenalty: 1.40, homicidePer100k: 45.0 },
+  'shreveport':    { nationalRank: 8,  dangerPenalty: 1.37, homicidePer100k: 41.1 },
+  'cleveland':     { nationalRank: 9,  dangerPenalty: 1.35, homicidePer100k: 38.8 },
+  'kansas city':   { nationalRank: 10, dangerPenalty: 1.32, homicidePer100k: 35.8 },
+  // Rank 11–20: Very high danger
+  'baltimore':     { nationalRank: 11, dangerPenalty: 1.30, homicidePer100k: 36.7 },
+  'new orleans':   { nationalRank: 12, dangerPenalty: 1.28, homicidePer100k: 34.7 },
+  'detroit':       { nationalRank: 13, dangerPenalty: 1.26, homicidePer100k: 31.4 },
+  'little rock':   { nationalRank: 14, dangerPenalty: 1.25, homicidePer100k: 31.3 },
+  'milwaukee':     { nationalRank: 15, dangerPenalty: 1.23, homicidePer100k: 30.1 },
+  'richmond':      { nationalRank: 16, dangerPenalty: 1.21, homicidePer100k: 28.2 },
+  'washington':    { nationalRank: 17, dangerPenalty: 1.20, homicidePer100k: 30.0 },
+  'philadelphia':  { nationalRank: 18, dangerPenalty: 1.19, homicidePer100k: 27.3 },
+  'indianapolis':  { nationalRank: 19, dangerPenalty: 1.17, homicidePer100k: 24.4 },
+  'chicago':       { nationalRank: 20, dangerPenalty: 1.16, homicidePer100k: 22.9 },
+  // Rank 21–30: High danger
+  'oakland':       { nationalRank: 21, dangerPenalty: 1.15, homicidePer100k: 22.7 },
+  'cincinnati':    { nationalRank: 22, dangerPenalty: 1.14, homicidePer100k: 22.0 },
+  'atlanta':       { nationalRank: 23, dangerPenalty: 1.13, homicidePer100k: 21.8 },
+  'minneapolis':   { nationalRank: 24, dangerPenalty: 1.12, homicidePer100k: 20.0 },
+  'tacoma':        { nationalRank: 25, dangerPenalty: 1.11, homicidePer100k: 19.5 },
+  'houston':       { nationalRank: 26, dangerPenalty: 1.10, homicidePer100k: 19.0 },
+  'albuquerque':   { nationalRank: 27, dangerPenalty: 1.09, homicidePer100k: 17.2 },
+  'buffalo':       { nationalRank: 28, dangerPenalty: 1.09, homicidePer100k: 18.4 },
+  'stockton':      { nationalRank: 29, dangerPenalty: 1.08, homicidePer100k: 17.4 },
+  'columbus':      { nationalRank: 30, dangerPenalty: 1.07, homicidePer100k: 16.5 },
+  // Rank 31–40: Elevated danger
+  'oklahoma city': { nationalRank: 31, dangerPenalty: 1.07, homicidePer100k: 15.8 },
+  'jacksonville':  { nationalRank: 32, dangerPenalty: 1.06, homicidePer100k: 16.5 },
+  'tulsa':         { nationalRank: 33, dangerPenalty: 1.06, homicidePer100k: 15.0 },
+  'dallas':        { nationalRank: 34, dangerPenalty: 1.05, homicidePer100k: 14.2 },
+  'nashville':     { nationalRank: 35, dangerPenalty: 1.05, homicidePer100k: 13.8 },
+  'miami':         { nationalRank: 36, dangerPenalty: 1.05, homicidePer100k: 13.8 },
+  'charlotte':     { nationalRank: 37, dangerPenalty: 1.04, homicidePer100k: 13.6 },
+  'las vegas':     { nationalRank: 38, dangerPenalty: 1.04, homicidePer100k: 12.6 },
+  'phoenix':       { nationalRank: 39, dangerPenalty: 1.03, homicidePer100k: 12.2 },
+  'st. paul':      { nationalRank: 40, dangerPenalty: 1.03, homicidePer100k: 12.9 },
+  // Rank 41–50: Moderate-elevated
+  'pittsburgh':    { nationalRank: 41, dangerPenalty: 1.03, homicidePer100k: 12.3 },
+  'boston':        { nationalRank: 42, dangerPenalty: 1.02, homicidePer100k: 11.8 },
+  'spokane':       { nationalRank: 43, dangerPenalty: 1.02, homicidePer100k: 11.5 },
+  'portland':      { nationalRank: 44, dangerPenalty: 1.02, homicidePer100k: 11.2 },
+  'fresno':        { nationalRank: 45, dangerPenalty: 1.02, homicidePer100k: 10.5 },
+  'seattle':       { nationalRank: 46, dangerPenalty: 1.01, homicidePer100k: 9.9 },
+  'denver':        { nationalRank: 47, dangerPenalty: 1.01, homicidePer100k: 9.6 },
+  'los angeles':   { nationalRank: 48, dangerPenalty: 1.01, homicidePer100k: 8.4 },
+  'anchorage':     { nationalRank: 49, dangerPenalty: 1.01, homicidePer100k: 7.6 },
+  'san antonio':   { nationalRank: 50, dangerPenalty: 1.00, homicidePer100k: 7.4 },
+};
+
+/**
+ * Top 20 safest US cities by homicide rate (FBI NIBRS 2023, NeighborhoodScout).
+ * safeRank: 1 = safest. Cities earn a higher US-relative weighting and
+ * display the "Top 20 Safest in the US" badge in the UI.
+ */
+export const US_TOP20_SAFEST: Record<string, { safeRank: number; homicidePer100k: number }> = {
+  'irvine':        { safeRank: 1,  homicidePer100k: 0.3  },
+  'naperville':    { safeRank: 2,  homicidePer100k: 0.5  },
+  'gilbert':       { safeRank: 3,  homicidePer100k: 0.8  },
+  'plano':         { safeRank: 4,  homicidePer100k: 1.0  },
+  'scottsdale':    { safeRank: 5,  homicidePer100k: 1.2  },
+  'chandler':      { safeRank: 6,  homicidePer100k: 1.5  },
+  'fremont':       { safeRank: 7,  homicidePer100k: 1.5  },
+  'henderson':     { safeRank: 8,  homicidePer100k: 2.5  },
+  'madison':       { safeRank: 9,  homicidePer100k: 2.8  },
+  'lincoln':       { safeRank: 10, homicidePer100k: 3.0  },
+  'tempe':         { safeRank: 11, homicidePer100k: 3.2  },
+  'raleigh':       { safeRank: 12, homicidePer100k: 3.5  },
+  'virginia beach':{ safeRank: 13, homicidePer100k: 3.8  },
+  'colorado springs':{ safeRank: 14, homicidePer100k: 4.2},
+  'san jose':      { safeRank: 15, homicidePer100k: 4.4  },
+  'austin':        { safeRank: 16, homicidePer100k: 4.6  },
+  'san diego':     { safeRank: 17, homicidePer100k: 4.9  },
+  'el paso':       { safeRank: 18, homicidePer100k: 5.0  },
+  'new york':      { safeRank: 19, homicidePer100k: 5.1  },
+  'fort worth':    { safeRank: 20, homicidePer100k: 5.3  },
 };
 
 /**
@@ -492,12 +523,28 @@ export function computeTravelSafetyScore(input: TravelSafetyInput): TravelSafety
   // For US cities, blend the general engine score (45%) with a US-relative
   // crime score (55%) anchored to the actual US city crime spectrum
   // (Jackson/Gary at bottom ~15, Irvine/Naperville at top ~90).
-  // This eliminates the 72-74 clustering by forcing scores to spread across
-  // the real US city range instead of converging at the Bayesian prior.
+  // Top-50 dangerous cities get extra downward pressure via dangerPenalty;
+  // top-20 safest cities get a slight upward boost to reflect their standing.
   if (input.countryCode === 'US') {
     const hom = input.crimeMetrics.homicideRatePer100k;
     if (hom != null && hom > 0) {
-      const usRelativeScore = computeUSRelativeScore(hom);
+      const cityKey = (input.city || '').toLowerCase().trim();
+      const usCityData = US_CITY_SAFETY_DATA[cityKey];
+      const safeCityData = US_TOP20_SAFEST[cityKey];
+
+      let usRelativeScore = computeUSRelativeScore(hom);
+
+      // Dangerous cities: push the US-relative score further down via penalty
+      if (usCityData) {
+        usRelativeScore = Math.max(0, usRelativeScore / usCityData.dangerPenalty);
+      }
+
+      // Safest cities: mild upward boost — rank 1 gets +4 pts, rank 20 gets +1 pt
+      if (safeCityData) {
+        const safeBoost = Math.round(4 * (1 - (safeCityData.safeRank - 1) / 19));
+        usRelativeScore = Math.min(100, usRelativeScore + safeBoost);
+      }
+
       adjustedScore = adjustedScore * 0.45 + usRelativeScore * 0.55;
     }
   }
@@ -601,6 +648,9 @@ export function computeTravelSafetyScore(input: TravelSafetyInput): TravelSafety
     confidenceShrinkage: C,
     crossSignalDivergence,
     aiSignalUsed,
+    usSafestRank: input.countryCode === 'US'
+      ? (US_TOP20_SAFEST[(input.city || '').toLowerCase().trim()]?.safeRank ?? null)
+      : null,
   };
 }
 
@@ -1060,15 +1110,11 @@ function applyHardCaps(
     }
   }
 
-  // US Top 50 dangerous cities — granular caps based on verified crime data
+  // US Top 50 dangerous cities — add risk label (no hard cap; penalty applied in blending)
   if (input.countryCode === 'US') {
     const cityKey = (input.city || '').toLowerCase().trim();
     const usCityData = US_CITY_SAFETY_DATA[cityKey];
     if (usCityData) {
-      applyCapIfNeeded(
-        `US dangerous city rank #${usCityData.nationalRank} (homicide ${usCityData.homicidePer100k}/100k)`,
-        usCityData.scoreCap,
-      );
       if (usCityData.nationalRank <= 10) {
         majorRisks.push(`One of the 10 most dangerous US cities (#${usCityData.nationalRank} nationally)`);
       } else if (usCityData.nationalRank <= 25) {
