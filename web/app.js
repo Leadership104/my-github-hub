@@ -110,30 +110,41 @@ const App = (() => {
     DC: { level: 4, score: 4.3, label: 'High Risk' },
   };
 
-  // US city-level crime adjustments (delta from state baseline, -3 to +2)
+  // US city-level crime adjustments (delta from state baseline)
   // Positive delta = safer than state avg; negative = less safe
+  // Portland delta updated to -0.1 (from -0.7): reflects 51% homicide drop in 2025,
+  // violent crime now below peer cities; property crime (car prowls) remains the drag.
+  // Rochester -3.3, Rocky Mount -3.1: violent crime 2-3x national avg per cross-reference data.
+  // Santa Clarita (Valencia) +2.8: consistently top-10 safest CA city, crime well below CA avg.
+  // Waldorf +0.7: safer than surrounding MD/DC corridor despite being a retail hub.
   const US_CITY_SAFETY_DELTA = {
-    'New York':      +1.2, 'Los Angeles':   -0.8, 'Chicago':       -1.2, 'Houston':       -0.6,
-    'Phoenix':       -0.5, 'Philadelphia':  -1.0, 'San Antonio':   +0.3, 'San Diego':     +0.8,
-    'Dallas':        -0.7, 'San Jose':      +0.5, 'Austin':        +0.5, 'Jacksonville':  -0.4,
-    'Fort Worth':    -0.2, 'Columbus':      -0.5, 'Charlotte':     -0.3, 'Indianapolis':  -0.7,
-    'San Francisco': -0.6, 'Seattle':       -0.4, 'Denver':        -0.3, 'Nashville':     -0.5,
-    'Oklahoma City': -0.5, 'El Paso':       +0.3, 'Washington':    -1.5, 'Las Vegas':     -0.8,
-    'Louisville':    -0.7, 'Memphis':       -2.0, 'Portland':      -0.7, 'Baltimore':     -1.8,
-    'Milwaukee':     -0.9, 'Albuquerque':   -1.0, 'Tucson':        -0.6, 'Fresno':        -0.8,
-    'Sacramento':    -0.6, 'Atlanta':       -1.2, 'Kansas City':   -1.0, 'Miami':         -0.5,
-    'Raleigh':       +0.3, 'Omaha':         +0.2, 'Minneapolis':   -0.5, 'Tampa':         -0.3,
-    'Tulsa':         -0.9, 'Cleveland':     -1.3, 'Aurora':        -0.4, 'Wichita':       -0.5,
-    'New Orleans':   -2.0, 'Detroit':       -2.0, 'St. Louis':     -2.2, 'Birmingham':    -1.5,
-    'Baton Rouge':   -1.5, 'Anchorage':     -1.2, 'Little Rock':   -1.3, 'Jackson':       -2.0,
+    'New York':       +1.2, 'Los Angeles':    -0.8, 'Chicago':        -1.2, 'Houston':        -0.6,
+    'Phoenix':        -0.5, 'Philadelphia':   -1.0, 'San Antonio':    +0.3, 'San Diego':      +0.8,
+    'Dallas':         -0.7, 'San Jose':       +0.5, 'Austin':         +0.5, 'Jacksonville':   -0.4,
+    'Fort Worth':     -0.2, 'Columbus':       -0.5, 'Charlotte':      -0.3, 'Indianapolis':   -0.7,
+    'San Francisco':  -0.6, 'Seattle':        -0.4, 'Denver':         -0.3, 'Nashville':      -0.5,
+    'Oklahoma City':  -0.5, 'El Paso':        +0.3, 'Washington':     -1.5, 'Las Vegas':      -0.8,
+    'Louisville':     -0.7, 'Memphis':        -2.0, 'Portland':       -0.1, 'Baltimore':      -1.8,
+    'Milwaukee':      -0.9, 'Albuquerque':    -1.0, 'Tucson':         -0.6, 'Fresno':         -0.8,
+    'Sacramento':     -0.6, 'Atlanta':        -1.2, 'Kansas City':    -1.0, 'Miami':          -0.5,
+    'Raleigh':        +0.3, 'Omaha':          +0.2, 'Minneapolis':    -0.5, 'Tampa':          -0.3,
+    'Tulsa':          -0.9, 'Cleveland':      -1.3, 'Aurora':         -0.4, 'Wichita':        -0.5,
+    'New Orleans':    -2.0, 'Detroit':        -2.0, 'St. Louis':      -2.2, 'Birmingham':     -1.5,
+    'Baton Rouge':    -1.5, 'Anchorage':      -1.2, 'Little Rock':    -1.3, 'Jackson':        -2.0,
+    // Cross-reference calibrated entries
+    'Rochester':      -3.3, 'Rocky Mount':    -3.1, 'Waldorf':        +0.7, 'Santa Clarita':  +2.8,
+    'Valencia':       +2.8, 'Irvine':         +2.5, 'Fremont':        +1.2, 'Scottsdale':     +1.0,
+    'Chandler':       +0.8, 'Gilbert':        +0.9, 'Plano':          +1.1, 'Henderson':      +0.5,
   };
 
   function getUSCitySafetyScore(city, stateAbbr) {
     const stateSafety = US_STATE_SAFETY[stateAbbr];
     if (!stateSafety) return null;
-    const delta = US_CITY_SAFETY_DELTA[city] || 0;
-    const raw = stateSafety.score + delta;
-    return Math.max(1.0, Math.min(10.0, raw));
+    // Try exact match first, then partial (e.g. "Santa Clarita" matches "Santa Clarita, CA")
+    const delta = US_CITY_SAFETY_DELTA[city]
+      ?? Object.entries(US_CITY_SAFETY_DELTA).find(([k]) => city.toLowerCase().includes(k.toLowerCase()))?.[1]
+      ?? 0;
+    return Math.max(1.0, Math.min(10.0, stateSafety.score + delta));
   }
 
   function safetyScoreToLevel(score) {
