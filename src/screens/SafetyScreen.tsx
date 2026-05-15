@@ -335,6 +335,21 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
               </div>
             </div>
 
+            {/* Top 20 Safest in the US badge */}
+            {result.usSafestRank != null && (
+              <div className="flex justify-center">
+                <div className="flex items-center gap-2 px-4 py-2 rounded-full border border-green-500/60 bg-green-500/10">
+                  <span className="text-green-400 text-base">🏅</span>
+                  <span className="text-xs font-bold text-green-400 tracking-wide">
+                    Top 20 Safest in the US
+                  </span>
+                  <span className="text-[10px] text-green-600 font-semibold">
+                    #{result.usSafestRank}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Risk band legend */}
             <RiskBandLegend score={result.finalSafetyScore} />
 

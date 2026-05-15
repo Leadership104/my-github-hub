@@ -65,25 +65,25 @@ export const SAFETY_ENGINE_VERSION = '4.0.0';
 
 /* ── Mathematical constants (exported for transparency / UI display) ──────── */
 export const ENGINE_MATH = {
-  /** Bayesian prior score — neutral "we don't really know" baseline */
-  PRIOR_SCORE: 60,
-  /** Minimum confidence allowed (prevents prior from dominating entirely) */
+  /** Bayesian prior score — lowered to 52 (more conservative, US-appropriate) */
+  PRIOR_SCORE: 52,
+  /** Minimum confidence allowed */
   MIN_CONFIDENCE: 0.10,
-  /** Maximum confidence allowed (preserves a small shrinkage even with perfect data) */
+  /** Maximum confidence allowed */
   MAX_CONFIDENCE: 0.95,
-  /** AI signal blend fraction when aiRiskSignal is provided */
+  /** AI signal blend fraction */
   AI_BLEND_WEIGHT: 0.15,
   /** Component base weights (must sum to 1.0) */
-  BASE_WEIGHTS: { advisory: 0.25, crime: 0.30, conflict: 0.20, trend: 0.10, neighborhood: 0.10, confidence: 0.05 },
-  /** Hill function parameters for homicide penalty: Pmax=60, ec50=10, α=1.3 */
-  HOMICIDE_HILL: { pmax: 60, ec50: 10, alpha: 1.3 },
-  /** Hill function parameters for violent-crime penalty: Pmax=22, ec50=600, α=1.2 */
-  VIOLENT_HILL: { pmax: 22, ec50: 600, alpha: 1.2 },
-  /** Hill function parameters for percentile penalty (above 60th): Pmax=28, ec50=15, α=1.5 */
-  PERCENTILE_HILL: { pmax: 28, ec50: 15, alpha: 1.5 },
-  /** Hill function parameters for robbery/street-crime penalty: Pmax=15, ec50=120, α=1.1 */
-  ROBBERY_HILL: { pmax: 15, ec50: 120, alpha: 1.1 },
-  /** Minimum divergence (advisory vs crime, 0–100 risk) that triggers a confidence warning */
+  BASE_WEIGHTS: { advisory: 0.20, crime: 0.40, conflict: 0.15, trend: 0.10, neighborhood: 0.10, confidence: 0.05 },
+  /** Hill function parameters for homicide penalty: Pmax=65, ec50=7, α=1.4 — tightened for stricter US scoring */
+  HOMICIDE_HILL: { pmax: 65, ec50: 7, alpha: 1.4 },
+  /** Hill function parameters for violent-crime penalty: Pmax=25, ec50=400, α=1.3 — tightened */
+  VIOLENT_HILL: { pmax: 25, ec50: 400, alpha: 1.3 },
+  /** Hill function parameters for percentile penalty: Pmax=30, ec50=10, α=1.5 */
+  PERCENTILE_HILL: { pmax: 30, ec50: 10, alpha: 1.5 },
+  /** Hill function parameters for robbery: Pmax=18, ec50=80, α=1.2 */
+  ROBBERY_HILL: { pmax: 18, ec50: 80, alpha: 1.2 },
+  /** Minimum divergence threshold for cross-signal warning */
   CROSS_SIGNAL_DIVERGENCE_THRESHOLD: 40,
 } as const;
 
@@ -188,6 +188,8 @@ export interface TravelSafetyResult {
   crossSignalDivergence: boolean;
   /** AI signal that was blended in, if provided */
   aiSignalUsed: number | null;
+  /** If the city is in the top 20 safest US cities, its rank (1 = safest); otherwise null */
+  usSafestRank: number | null;
 }
 
 export type RiskBand =
@@ -315,6 +317,127 @@ export interface TravelSafetyInput {
   aiRiskSignal?: number | null;
 }
 
+/* ── US City Safety Database (top 50 most dangerous + safe benchmarks) ──────
+ * Sources: FBI NIBRS 2023 (released Oct 2024), 2024 local PD annual reports,
+ * Council on Criminal Justice 2024, BJS Homicide Victimization 2023.
+ * Used for: (1) city-specific score caps, (2) US-relative score computation,
+ * (3) homicide rate fallback when UNODC city data is unavailable.
+ */
+export const US_CITY_SAFETY_DATA: Record<string, {
+  nationalRank: number;       // rank 1 = most dangerous
+  /** Extra downward multiplier applied to the US-relative blend weight (>1 = more penalty) */
+  dangerPenalty: number;
+  homicidePer100k: number;    // verified homicide rate
+}> = {
+  // Rank 1–10: Extreme danger
+  'jackson':       { nationalRank: 1,  dangerPenalty: 1.55, homicidePer100k: 76.8 },
+  'gary':          { nationalRank: 2,  dangerPenalty: 1.52, homicidePer100k: 69.7 },
+  'birmingham':    { nationalRank: 3,  dangerPenalty: 1.49, homicidePer100k: 62.5 },
+  'st. louis':     { nationalRank: 4,  dangerPenalty: 1.46, homicidePer100k: 54.4 },
+  'memphis':       { nationalRank: 5,  dangerPenalty: 1.43, homicidePer100k: 48.7 },
+  'baton rouge':   { nationalRank: 6,  dangerPenalty: 1.40, homicidePer100k: 45.2 },
+  'compton':       { nationalRank: 7,  dangerPenalty: 1.40, homicidePer100k: 45.0 },
+  'shreveport':    { nationalRank: 8,  dangerPenalty: 1.37, homicidePer100k: 41.1 },
+  'cleveland':     { nationalRank: 9,  dangerPenalty: 1.35, homicidePer100k: 38.8 },
+  'kansas city':   { nationalRank: 10, dangerPenalty: 1.32, homicidePer100k: 35.8 },
+  // Rank 11–20: Very high danger
+  'baltimore':     { nationalRank: 11, dangerPenalty: 1.30, homicidePer100k: 36.7 },
+  'new orleans':   { nationalRank: 12, dangerPenalty: 1.28, homicidePer100k: 34.7 },
+  'detroit':       { nationalRank: 13, dangerPenalty: 1.26, homicidePer100k: 31.4 },
+  'little rock':   { nationalRank: 14, dangerPenalty: 1.25, homicidePer100k: 31.3 },
+  'milwaukee':     { nationalRank: 15, dangerPenalty: 1.23, homicidePer100k: 30.1 },
+  'richmond':      { nationalRank: 16, dangerPenalty: 1.21, homicidePer100k: 28.2 },
+  'washington':    { nationalRank: 17, dangerPenalty: 1.20, homicidePer100k: 30.0 },
+  'philadelphia':  { nationalRank: 18, dangerPenalty: 1.19, homicidePer100k: 27.3 },
+  'indianapolis':  { nationalRank: 19, dangerPenalty: 1.17, homicidePer100k: 24.4 },
+  'chicago':       { nationalRank: 20, dangerPenalty: 1.16, homicidePer100k: 22.9 },
+  // Rank 21–30: High danger
+  'oakland':       { nationalRank: 21, dangerPenalty: 1.15, homicidePer100k: 22.7 },
+  'cincinnati':    { nationalRank: 22, dangerPenalty: 1.14, homicidePer100k: 22.0 },
+  'atlanta':       { nationalRank: 23, dangerPenalty: 1.13, homicidePer100k: 21.8 },
+  'minneapolis':   { nationalRank: 24, dangerPenalty: 1.12, homicidePer100k: 20.0 },
+  'tacoma':        { nationalRank: 25, dangerPenalty: 1.11, homicidePer100k: 19.5 },
+  'houston':       { nationalRank: 26, dangerPenalty: 1.10, homicidePer100k: 19.0 },
+  'albuquerque':   { nationalRank: 27, dangerPenalty: 1.09, homicidePer100k: 17.2 },
+  'buffalo':       { nationalRank: 28, dangerPenalty: 1.09, homicidePer100k: 18.4 },
+  'stockton':      { nationalRank: 29, dangerPenalty: 1.08, homicidePer100k: 17.4 },
+  'columbus':      { nationalRank: 30, dangerPenalty: 1.07, homicidePer100k: 16.5 },
+  // Rank 31–40: Elevated danger
+  'oklahoma city': { nationalRank: 31, dangerPenalty: 1.07, homicidePer100k: 15.8 },
+  'jacksonville':  { nationalRank: 32, dangerPenalty: 1.06, homicidePer100k: 16.5 },
+  'tulsa':         { nationalRank: 33, dangerPenalty: 1.06, homicidePer100k: 15.0 },
+  'dallas':        { nationalRank: 34, dangerPenalty: 1.05, homicidePer100k: 14.2 },
+  'nashville':     { nationalRank: 35, dangerPenalty: 1.05, homicidePer100k: 13.8 },
+  'miami':         { nationalRank: 36, dangerPenalty: 1.05, homicidePer100k: 13.8 },
+  'charlotte':     { nationalRank: 37, dangerPenalty: 1.04, homicidePer100k: 13.6 },
+  'las vegas':     { nationalRank: 38, dangerPenalty: 1.04, homicidePer100k: 12.6 },
+  'phoenix':       { nationalRank: 39, dangerPenalty: 1.03, homicidePer100k: 12.2 },
+  'st. paul':      { nationalRank: 40, dangerPenalty: 1.03, homicidePer100k: 12.9 },
+  // Rank 41–50: Moderate-elevated
+  'pittsburgh':    { nationalRank: 41, dangerPenalty: 1.03, homicidePer100k: 12.3 },
+  'boston':        { nationalRank: 42, dangerPenalty: 1.02, homicidePer100k: 11.8 },
+  'spokane':       { nationalRank: 43, dangerPenalty: 1.02, homicidePer100k: 11.5 },
+  'portland':      { nationalRank: 44, dangerPenalty: 1.02, homicidePer100k: 11.2 },
+  'fresno':        { nationalRank: 45, dangerPenalty: 1.02, homicidePer100k: 10.5 },
+  'seattle':       { nationalRank: 46, dangerPenalty: 1.01, homicidePer100k: 9.9 },
+  'denver':        { nationalRank: 47, dangerPenalty: 1.01, homicidePer100k: 9.6 },
+  'los angeles':   { nationalRank: 48, dangerPenalty: 1.01, homicidePer100k: 8.4 },
+  'anchorage':     { nationalRank: 49, dangerPenalty: 1.01, homicidePer100k: 7.6 },
+  'san antonio':   { nationalRank: 50, dangerPenalty: 1.00, homicidePer100k: 7.4 },
+};
+
+/**
+ * Top 20 safest US cities by homicide rate (FBI NIBRS 2023, NeighborhoodScout).
+ * safeRank: 1 = safest. Cities earn a higher US-relative weighting and
+ * display the "Top 20 Safest in the US" badge in the UI.
+ */
+export const US_TOP20_SAFEST: Record<string, { safeRank: number; homicidePer100k: number }> = {
+  'irvine':        { safeRank: 1,  homicidePer100k: 0.3  },
+  'naperville':    { safeRank: 2,  homicidePer100k: 0.5  },
+  'gilbert':       { safeRank: 3,  homicidePer100k: 0.8  },
+  'plano':         { safeRank: 4,  homicidePer100k: 1.0  },
+  'scottsdale':    { safeRank: 5,  homicidePer100k: 1.2  },
+  'chandler':      { safeRank: 6,  homicidePer100k: 1.5  },
+  'fremont':       { safeRank: 7,  homicidePer100k: 1.5  },
+  'henderson':     { safeRank: 8,  homicidePer100k: 2.5  },
+  'madison':       { safeRank: 9,  homicidePer100k: 2.8  },
+  'lincoln':       { safeRank: 10, homicidePer100k: 3.0  },
+  'tempe':         { safeRank: 11, homicidePer100k: 3.2  },
+  'raleigh':       { safeRank: 12, homicidePer100k: 3.5  },
+  'virginia beach':{ safeRank: 13, homicidePer100k: 3.8  },
+  'colorado springs':{ safeRank: 14, homicidePer100k: 4.2},
+  'san jose':      { safeRank: 15, homicidePer100k: 4.4  },
+  'austin':        { safeRank: 16, homicidePer100k: 4.6  },
+  'san diego':     { safeRank: 17, homicidePer100k: 4.9  },
+  'el paso':       { safeRank: 18, homicidePer100k: 5.0  },
+  'new york':      { safeRank: 19, homicidePer100k: 5.1  },
+  'fort worth':    { safeRank: 20, homicidePer100k: 5.3  },
+};
+
+/**
+ * Compute a US-relative safety score (0–100) based on a city's homicide rate,
+ * calibrated so the most dangerous US cities land near 15 and the safest near 90.
+ *
+ * Reference anchors (verified FBI NIBRS 2023 / local PD data):
+ *   Jackson, MS   (76.8/100k)  → target ~15  (most dangerous US city)
+ *   Irvine, CA    (0.3/100k)   → target ~90  (one of the safest US cities)
+ *
+ * Formula uses a power curve (exponent 0.65) so moderate-crime cities are
+ * penalised more heavily than a linear scale would suggest — erring on caution.
+ */
+export function computeUSRelativeScore(homicideRatePer100k: number): number {
+  const ANCHOR_SAFE       = 0.3;   // Irvine benchmark
+  const ANCHOR_DANGEROUS  = 76.8;  // Jackson benchmark
+  const SCORE_SAFE        = 90;
+  const SCORE_DANGEROUS   = 15;
+
+  const clamped = Math.max(ANCHOR_SAFE, Math.min(ANCHOR_DANGEROUS, homicideRatePer100k));
+  const fraction = (clamped - ANCHOR_SAFE) / (ANCHOR_DANGEROUS - ANCHOR_SAFE);
+  // Power curve: concave so mid-range cities score lower than linear would suggest
+  const curved = Math.pow(fraction, 0.65);
+  return Math.max(SCORE_DANGEROUS, Math.round(SCORE_SAFE - curved * (SCORE_SAFE - SCORE_DANGEROUS)));
+}
+
 /* ── Hill penalty curve ───────────────────────────────────────────────────── */
 /**
  * Generalised Hill / sigmoid penalty function.
@@ -395,6 +518,36 @@ export function computeTravelSafetyScore(input: TravelSafetyInput): TravelSafety
 
   /* ── Hard caps ──────────────────────────────────────────────────────────── */
   adjustedScore = applyHardCaps(adjustedScore, input, caps, majorRisks);
+
+  /* ── US-relative score blending ─────────────────────────────────────────── */
+  // For US cities, blend the general engine score (45%) with a US-relative
+  // crime score (55%) anchored to the actual US city crime spectrum
+  // (Jackson/Gary at bottom ~15, Irvine/Naperville at top ~90).
+  // Top-50 dangerous cities get extra downward pressure via dangerPenalty;
+  // top-20 safest cities get a slight upward boost to reflect their standing.
+  if (input.countryCode === 'US') {
+    const hom = input.crimeMetrics.homicideRatePer100k;
+    if (hom != null && hom > 0) {
+      const cityKey = (input.city || '').toLowerCase().trim();
+      const usCityData = US_CITY_SAFETY_DATA[cityKey];
+      const safeCityData = US_TOP20_SAFEST[cityKey];
+
+      let usRelativeScore = computeUSRelativeScore(hom);
+
+      // Dangerous cities: push the US-relative score further down via penalty
+      if (usCityData) {
+        usRelativeScore = Math.max(0, usRelativeScore / usCityData.dangerPenalty);
+      }
+
+      // Safest cities: mild upward boost — rank 1 gets +4 pts, rank 20 gets +1 pt
+      if (safeCityData) {
+        const safeBoost = Math.round(4 * (1 - (safeCityData.safeRank - 1) / 19));
+        usRelativeScore = Math.min(100, usRelativeScore + safeBoost);
+      }
+
+      adjustedScore = adjustedScore * 0.45 + usRelativeScore * 0.55;
+    }
+  }
 
   /* ── AI risk signal blend ───────────────────────────────────────────────── */
   const aiSignalUsed = input.aiRiskSignal ?? null;
@@ -495,6 +648,9 @@ export function computeTravelSafetyScore(input: TravelSafetyInput): TravelSafety
     confidenceShrinkage: C,
     crossSignalDivergence,
     aiSignalUsed,
+    usSafestRank: input.countryCode === 'US'
+      ? (US_TOP20_SAFEST[(input.city || '').toLowerCase().trim()]?.safeRank ?? null)
+      : null,
   };
 }
 
@@ -508,7 +664,7 @@ function computeAdvisoryComponent(
 
   if (!input.advisories.length) {
     notes.push('No advisory data available — applying conservative default.');
-    return { raw: 40, weight: 0.25, effectiveWeight: 0.25, contribution: 40 * 0.25, dataQuality: 0.3, notes };
+    return { raw: 40, weight: 0.20, effectiveWeight: 0.20, contribution: 40 * 0.20, dataQuality: 0.3, notes };
   }
 
   for (const a of input.advisories) sources.push(a.source);
@@ -545,10 +701,10 @@ function computeAdvisoryComponent(
   const sourceBonus  = Math.min(0.30, input.advisories.length * 0.08);
   const dataQuality  = Math.min(1.0, 0.50 + sourceBonus + avgConf * 0.20);
 
-  return { raw, weight: 0.25, effectiveWeight: 0.25, contribution: raw * 0.25, dataQuality, notes };
+  return { raw, weight: 0.20, effectiveWeight: 0.20, contribution: raw * 0.20, dataQuality, notes };
 }
 
-/* ── Component: Violent Crime (30% base) ─────────────────────────────────── */
+/* ── Component: Violent Crime (40% base) ─────────────────────────────────── */
 /**
  * Uses continuous Hill penalty curves instead of step functions.
  * This eliminates cliff-edge discontinuities (e.g. a city at 7.9/100k
@@ -583,7 +739,7 @@ function computeCrimeComponent(
 
   if (hom == null && violent == null && percentile == null) {
     notes.push('No verified crime data — applying conservative default (raw=50).');
-    return { raw: 50, weight: 0.30, effectiveWeight: 0.30, contribution: 50 * 0.30, dataQuality, notes };
+    return { raw: 50, weight: 0.40, effectiveWeight: 0.40, contribution: 50 * 0.40, dataQuality, notes };
   }
 
   let totalPenalty = 0;
@@ -630,20 +786,32 @@ function computeCrimeComponent(
   }
 
   // ── Robbery / street crime penalty ─────────────────────────────────────────
-  // Catches high-property-crime cities where homicide is moderate but street
-  // crime is severely elevated (e.g. Portland, San Francisco, Albuquerque).
-  // Pmax=15, ec50=120, α=1.1 → at 80/100k ≈ 6 pts, at 200/100k ≈ 11 pts.
   const rob = input.crimeMetrics.robberyRatePer100k;
-  if (rob != null && rob > 40) {
-    const p = hillPenalty(rob, 15, 120, 1.1);
+  if (rob != null && rob > 30) {
+    const { pmax, ec50, alpha } = ENGINE_MATH.ROBBERY_HILL;
+    const p = hillPenalty(rob, pmax, ec50, alpha);
     totalPenalty += p;
     notes.push(`Robbery rate: ${Math.round(rob)}/100k → −${p.toFixed(1)} pts`);
-    if (rob > 250) majorRisks.push('Robbery rate severely elevated (>250/100k)');
-    else if (rob > 120) majorRisks.push('Robbery rate significantly elevated (>120/100k)');
+    if (rob > 200) majorRisks.push('Robbery rate severely elevated (>200/100k)');
+    else if (rob > 100) majorRisks.push('Robbery rate significantly elevated (>100/100k)');
   }
 
-  const raw = Math.max(0, Math.min(100, 100 - totalPenalty));
-  return { raw, weight: 0.30, effectiveWeight: 0.30, contribution: raw * 0.30, dataQuality, notes };
+  // ── Assault-specific penalty (US cities with very high assault rates) ────
+  const assault = input.crimeMetrics.assaultRatePer100k;
+  if (assault != null && assault > 400) {
+    const p = hillPenalty(assault, 12, 600, 1.1);
+    totalPenalty += p;
+    notes.push(`Assault rate: ${Math.round(assault)}/100k → −${p.toFixed(1)} pts`);
+    if (assault > 1200) majorRisks.push('Assault rate extremely elevated (>1200/100k)');
+    else if (assault > 700) majorRisks.push('Assault rate very high (>700/100k)');
+  }
+
+  // ── Conservative safety multiplier: err on the side of caution ────────────
+  // Applies a 1.15× uplift to total penalty to ensure scores lean conservative.
+  const conservativePenalty = totalPenalty * 1.15;
+
+  const raw = Math.max(0, Math.min(100, 100 - conservativePenalty));
+  return { raw, weight: 0.40, effectiveWeight: 0.40, contribution: raw * 0.40, dataQuality, notes };
 }
 
 /* ── Component: Conflict/Terrorism/Unrest (20% base) ────────────────────── */
@@ -719,8 +887,13 @@ function computeConflictComponent(
     ? 1.0
     : 0.7;
 
-  const raw = Math.max(0, Math.min(100, 100 - totalPenalty));
-  return { raw, weight: 0.20, effectiveWeight: 0.20, contribution: raw * 0.20, dataQuality, notes };
+  // For zero-conflict areas, baseline is 78 (not 100) — avoid inflating scores
+  // for safe-at-national-level countries that have high city-level crime.
+  const baseline = (input.conflictSeverity === 0 && input.conflictFatalities90d === 0
+    && !input.activeConflictWithin50mi && !input.terrorEventLast30d && !input.sustainedCivilUnrest)
+    ? 78 : 100;
+  const raw = Math.max(0, Math.min(100, baseline - totalPenalty));
+  return { raw, weight: 0.15, effectiveWeight: 0.15, contribution: raw * 0.15, dataQuality, notes };
 }
 
 /* ── Component: Recent Trend (10% base) ──────────────────────────────────── */
@@ -931,9 +1104,24 @@ function applyHardCaps(
       majorRisks.push('Ranked among top 5 most dangerous cities nationally');
     }
   } else if (input.dangerousCityRanking.isTop10Nationally) {
-    applyCapIfNeeded('Top 10 most dangerous cities nationally', 60);
+    applyCapIfNeeded('Top 10 most dangerous cities nationally', 55);
     if (!majorRisks.includes('Ranked among top 10 most dangerous nationally')) {
       majorRisks.push('Ranked among top 10 most dangerous cities nationally');
+    }
+  }
+
+  // US Top 50 dangerous cities — add risk label (no hard cap; penalty applied in blending)
+  if (input.countryCode === 'US') {
+    const cityKey = (input.city || '').toLowerCase().trim();
+    const usCityData = US_CITY_SAFETY_DATA[cityKey];
+    if (usCityData) {
+      if (usCityData.nationalRank <= 10) {
+        majorRisks.push(`One of the 10 most dangerous US cities (#${usCityData.nationalRank} nationally)`);
+      } else if (usCityData.nationalRank <= 25) {
+        majorRisks.push(`Ranked #${usCityData.nationalRank} most dangerous US city`);
+      } else if (usCityData.nationalRank <= 50) {
+        majorRisks.push(`Ranked among top 50 most dangerous US cities (#${usCityData.nationalRank})`);
+      }
     }
   }
 
@@ -1265,9 +1453,29 @@ export function adaptBackendPayload(
   const conflictingAdvisories = levels.length >= 2
     && (Math.max(...levels) - Math.min(...levels)) >= 2;
 
-  // Derive homicide per 100k: prefer UNODC city, then UNODC national, then FBI-derived
-  const homicideRatePer100k = unodc.cityHomicidePer100k
-    ?? unodc.countryHomicidePer100k
+  // Derive homicide per 100k: prefer UNODC city, then US city database,
+  // then derive from city multiplier (US only), then UNODC national, then FBI-derived.
+  const cityKey = city.toLowerCase().trim();
+  const usCityEntry = countryCode === 'US' ? (US_CITY_SAFETY_DATA[cityKey] ?? null) : null;
+
+  // For US cities without UNODC city data: derive from city multiplier if available.
+  // Formula: nationalAvg × multiplier^0.85 — non-linear to reflect that high-crime
+  // cities have disproportionately elevated homicide relative to violent crime.
+  const cityMultiplierVal = (payload as any).cityMultiplier as number | null | undefined;
+  const derivedFromMultiplier = (
+    countryCode === 'US' &&
+    unodc.cityHomicidePer100k == null &&
+    usCityEntry == null &&
+    cityMultiplierVal != null && cityMultiplierVal > 0
+  )
+    ? Math.round((unodc.countryHomicidePer100k ?? 6.3) * Math.pow(cityMultiplierVal, 0.85) * 10) / 10
+    : null;
+
+  const homicideRatePer100k =
+    unodc.cityHomicidePer100k      // Most accurate: UNODC city-level
+    ?? usCityEntry?.homicidePer100k // US city database fallback
+    ?? derivedFromMultiplier        // Derived from crime multiplier (US only)
+    ?? unodc.countryHomicidePer100k // Country average (last resort before FBI)
     ?? deriveHomicideFromRates(payload.rates);
 
   // Violent crime rate: from backend rates
