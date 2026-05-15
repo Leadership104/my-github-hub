@@ -421,7 +421,7 @@ export const US_TOP20_SAFEST: Record<string, { safeRank: number; homicidePer100k
  *
  * Reference anchors (verified FBI NIBRS 2023 / local PD data):
  *   Jackson, MS   (76.8/100k)  → target ~15  (most dangerous US city)
- *   Irvine, CA    (0.3/100k)   → target ~90  (one of the safest US cities)
+ *   Irvine, CA    (0.3/100k)   → target ~95  (one of the safest US cities)
  *
  * Formula uses a power curve (exponent 0.65) so moderate-crime cities are
  * penalised more heavily than a linear scale would suggest — erring on caution.
@@ -429,7 +429,7 @@ export const US_TOP20_SAFEST: Record<string, { safeRank: number; homicidePer100k
 export function computeUSRelativeScore(homicideRatePer100k: number): number {
   const ANCHOR_SAFE       = 0.3;   // Irvine benchmark
   const ANCHOR_DANGEROUS  = 76.8;  // Jackson benchmark
-  const SCORE_SAFE        = 90;
+  const SCORE_SAFE        = 95;
   const SCORE_DANGEROUS   = 15;
 
   const clamped = Math.max(ANCHOR_SAFE, Math.min(ANCHOR_DANGEROUS, homicideRatePer100k));
@@ -523,7 +523,7 @@ export function computeTravelSafetyScore(input: TravelSafetyInput): TravelSafety
   /* ── US-relative score blending ─────────────────────────────────────────── */
   // For US cities, blend the general engine score (45%) with a US-relative
   // crime score (55%) anchored to the actual US city crime spectrum
-  // (Jackson/Gary at bottom ~15, Irvine/Naperville at top ~90).
+  // (Jackson/Gary at bottom ~15, Irvine/Naperville at top ~95).
   // Top-50 dangerous cities get extra downward pressure via dangerPenalty;
   // top-20 safest cities get a slight upward boost to reflect their standing.
   if (input.countryCode === 'US') {
