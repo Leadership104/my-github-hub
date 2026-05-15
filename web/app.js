@@ -144,7 +144,7 @@ const App = (() => {
     'Riverside':       { v:-0.2, p:-0.2 },  // →6.2
     'Stockton':        { v:-1.3, p:-1.0 },  // →4.7
     'Chula Vista':     { v:+0.3, p:+0.2 },  // →6.9
-    'Irvine':          { v:+3.0, p:+2.5 },  // →9.2  #1 safest large US city
+    'Irvine':          { v:+3.3, p:+2.7 },  // →9.5  #1 safest large US city
     'Fremont':         { v:+1.0, p:+0.9 },  // →7.8
     'Santa Clarita':   { v:+2.9, p:+2.5 },  // →9.2  ← calibrated ref
     'Valencia':        { v:+2.9, p:+2.5 },  // →9.2  alias for Santa Clarita
