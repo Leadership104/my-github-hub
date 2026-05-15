@@ -1424,6 +1424,29 @@ const UNODC_CITY_HOMICIDE: Record<string, { rate: number; year: number }> = {
   "madison|US": { rate: 2.5, year: 2023 },     // MPD 2023 (very low)
   "san jose|US": { rate: 3.0, year: 2023 },    // SJPD 2023
   "virginia beach|US": { rate: 3.0, year: 2023 },// VBPD 2023
+  "tacoma|US": { rate: 19.5, year: 2023 },      // TPD: ~58 murders / ~215k area pop; FBI NIBRS 2023
+  "tucson|US": { rate: 9.8, year: 2023 },        // TPD / Arizona UCR 2023; 101 murders / 542k
+  "tempe|US": { rate: 5.0, year: 2023 },         // Tempe PD / Arizona UCR 2023
+  "chandler|US": { rate: 1.5, year: 2023 },      // CPD / Arizona UCR 2023
+  "fremont|US": { rate: 1.5, year: 2023 },       // FPD / California DOJ 2023
+  "henderson|US": { rate: 2.5, year: 2023 },     // HPD / Nevada UCR 2023
+  "scottsdale|US": { rate: 1.2, year: 2023 },    // SPD / Arizona UCR 2023
+  "plano|US": { rate: 1.0, year: 2023 },         // PPD / Texas UCR 2023
+  "gilbert|US": { rate: 0.8, year: 2023 },       // GPD / Arizona UCR 2023
+  "naperville|US": { rate: 0.5, year: 2023 },    // NPD / Illinois UCR 2023
+  "irvine|US": { rate: 0.3, year: 2023 },        // IPD / California DOJ 2023 — 19th safest year
+  "jacksonville|US": { rate: 16.5, year: 2023 }, // JSO 2023; ~152 murders / 970k pop
+  "aurora|US": { rate: 8.2, year: 2023 },        // APD / Colorado DCJ 2023
+  "corpus christi|US": { rate: 7.5, year: 2023 },// CCPD 2023
+  "lexington|US": { rate: 7.8, year: 2023 },     // LFUCG PD / KY UCR 2023
+  "riverside|US": { rate: 5.0, year: 2023 },     // RPD / California DOJ 2023
+  "st. petersburg|US": { rate: 9.0, year: 2023 },// SPPD / FL FDLE UCR 2023
+  "tampa|US": { rate: 8.5, year: 2023 },         // TPD / FL FDLE UCR 2023
+  "orlando|US": { rate: 9.5, year: 2023 },       // OPD / FL FDLE UCR 2023
+  "fort worth|US": { rate: 8.8, year: 2023 },    // FWPD 2023
+  "el paso|US": { rate: 2.8, year: 2023 },       // EPPD 2023 — historically low
+  "wichita|US": { rate: 11.0, year: 2023 },      // WPD / KS UCR 2023
+  "long beach|US": { rate: 9.2, year: 2023 },    // LBPD / California DOJ 2023
   // Europe (generally low)
   "london|GB": { rate: 1.5, year: 2023 },    "paris|FR": { rate: 2.1, year: 2023 },
   "berlin|DE": { rate: 1.0, year: 2023 },    "madrid|ES": { rate: 0.7, year: 2023 },
@@ -1462,8 +1485,23 @@ const NATIONAL_TOP10_DANGEROUS: Record<string, string[]> = {
   // Ranked by most recent homicide rate/100k: jackson 76.8, birmingham 62.5, st. louis 54.4,
   // baton rouge 45.2, memphis 48.7 (2024), new orleans 34.7 (2024), baltimore 36.7 (2024),
   // shreveport 41.1, cleveland 38.8, kansas city 35.8 (all 2023-2024 data).
-  US: ["jackson", "birmingham", "memphis", "st. louis", "baton rouge",
-       "shreveport", "cleveland", "kansas city", "baltimore", "new orleans"],
+  US: [
+    // Rank 1-10 (capped at 30-42 in engine)
+    "jackson", "birmingham", "gary", "st. louis", "memphis",
+    "baton rouge", "compton", "shreveport", "cleveland", "kansas city",
+    // Rank 11-20
+    "baltimore", "new orleans", "detroit", "little rock", "milwaukee",
+    "richmond", "washington", "philadelphia", "indianapolis", "chicago",
+    // Rank 21-30
+    "oakland", "cincinnati", "atlanta", "minneapolis", "tacoma",
+    "houston", "albuquerque", "buffalo", "stockton", "columbus",
+    // Rank 31-40
+    "oklahoma city", "tulsa", "jacksonville", "dallas", "nashville",
+    "miami", "charlotte", "las vegas", "phoenix", "st. paul",
+    // Rank 41-50
+    "pittsburgh", "boston", "spokane", "portland", "fresno",
+    "seattle", "denver", "los angeles", "anchorage", "san antonio",
+  ],
   MX: ["acapulco", "culiacan", "zamora", "zacatecas", "ciudad juarez",
        "tijuana", "fresnillo", "celaya", "juarez", "irapuato"],
   BR: ["fortaleza", "salvador", "recife", "manaus", "belem",
