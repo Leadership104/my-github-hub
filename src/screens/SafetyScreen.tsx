@@ -86,7 +86,9 @@ function relativeTime(iso?: string | null): string {
 
 function parseCityState(name: string): { city: string; state: string | null } {
   if (!name) return { city: '', state: null };
-  const parts = name.split(',').map(s => s.trim()).filter(Boolean);
+  // Strip trailing "USA" or "US" country suffix before parsing
+  const cleaned = name.replace(/,\s*(USA|US)\s*$/i, '');
+  const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
   const city = parts[0] ?? '';
   let state: string | null = null;
   for (const p of parts.slice(1)) {

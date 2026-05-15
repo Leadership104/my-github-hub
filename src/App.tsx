@@ -56,18 +56,18 @@ const NAV_ITEMS: { id: TabId; label: string; icon: string }[] = [
 ];
 
 const PRESET_LOCATIONS: LocationState[] = [
-  { lat: 40.7128, lng: -74.006, name: 'New York, US', countryCode: 'US' },
-  { lat: 34.0522, lng: -118.2437, name: 'Los Angeles, US', countryCode: 'US' },
-  { lat: 41.8781, lng: -87.6298, name: 'Chicago, US', countryCode: 'US' },
-  { lat: 29.7604, lng: -95.3698, name: 'Houston, US', countryCode: 'US' },
-  { lat: 25.7617, lng: -80.1918, name: 'Miami, US', countryCode: 'US' },
-  { lat: 51.5074, lng: -0.1278, name: 'London, UK', countryCode: 'GB' },
-  { lat: 48.8566, lng: 2.3522, name: 'Paris, FR', countryCode: 'FR' },
-  { lat: 35.6762, lng: 139.6503, name: 'Tokyo, JP', countryCode: 'JP' },
-  { lat: 13.7563, lng: 100.5018, name: 'Bangkok, TH', countryCode: 'TH' },
-  { lat: 1.3521, lng: 103.8198, name: 'Singapore, SG', countryCode: 'SG' },
-  { lat: -33.8688, lng: 151.2093, name: 'Sydney, AU', countryCode: 'AU' },
-  { lat: 19.4326, lng: -99.1332, name: 'Mexico City, MX', countryCode: 'MX' },
+  { lat: 40.7128,  lng: -74.0060,  name: 'New York, NY, USA',     countryCode: 'US' },
+  { lat: 34.0522,  lng: -118.2437, name: 'Los Angeles, CA, USA',  countryCode: 'US' },
+  { lat: 41.8781,  lng: -87.6298,  name: 'Chicago, IL, USA',      countryCode: 'US' },
+  { lat: 29.7604,  lng: -95.3698,  name: 'Houston, TX, USA',      countryCode: 'US' },
+  { lat: 25.7617,  lng: -80.1918,  name: 'Miami, FL, USA',        countryCode: 'US' },
+  { lat: 51.5074,  lng: -0.1278,   name: 'London, UK',            countryCode: 'GB' },
+  { lat: 48.8566,  lng: 2.3522,    name: 'Paris, FR',             countryCode: 'FR' },
+  { lat: 35.6762,  lng: 139.6503,  name: 'Tokyo, JP',             countryCode: 'JP' },
+  { lat: 13.7563,  lng: 100.5018,  name: 'Bangkok, TH',           countryCode: 'TH' },
+  { lat: 1.3521,   lng: 103.8198,  name: 'Singapore, SG',         countryCode: 'SG' },
+  { lat: -33.8688, lng: 151.2093,  name: 'Sydney, AU',            countryCode: 'AU' },
+  { lat: 19.4326,  lng: -99.1332,  name: 'Mexico City, MX',       countryCode: 'MX' },
 ];
 
 const EMERGENCY_NUMBERS: { country: string; police: string; ambulance: string; fire: string }[] = [
@@ -283,20 +283,24 @@ export default function App() {
             a.village || a.town || a.city_district || a.city ||
             a.municipality || a.county || item.namedetails?.name ||
             item.display_name?.split(',')[0] || val;
-          const region = a.city || a.town || a.state || '';
+          const cc = a.country_code?.toUpperCase() || '';
+          const stateAbbr = a.ISO3166_2_lvl4?.split('-')[1] || '';
+          const region = cc === 'US'
+            ? (stateAbbr || a.state || '')
+            : (a.city || a.town || a.state || '');
           const postcode = a.postcode || '';
-          const country = a.country_code?.toUpperCase() || '';
-          // Build a compact label like "Whalley Range, Manchester, GB"
+          // US cities: "City, ST, USA" — all other countries: "Place, Region, CC"
+          const displayCountry = cc === 'US' ? 'USA' : cc;
           const parts: string[] = [locality];
           if (region && region !== locality) parts.push(region);
-          if (postcode && !region) parts.push(postcode);
-          if (country) parts.push(country);
+          if (postcode && !region && cc !== 'US') parts.push(postcode);
+          if (displayCountry) parts.push(displayCountry);
           return {
             lat: parseFloat(item.lat),
             lng: parseFloat(item.lon),
             name: parts.join(', '),
             fullAddress: item.display_name || val,
-            countryCode: country,
+            countryCode: cc,
           };
         }));
       } catch { setLocationSuggestions([]); }
