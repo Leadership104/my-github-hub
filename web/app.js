@@ -58,93 +58,560 @@ const App = (() => {
   /* ── US STATE SAFETY BASELINES (FBI Violent Crime per 100k, 2022-2023) ── */
   // level: 1=Very Safe, 2=Mostly Safe, 3=Moderate, 4=High Risk
   // score: 0-10 safety score baseline (higher = safer)
+  /* ── US STATE SAFETY BASELINES (FBI Violent Crime per 100k, 2022-2024) ── */
+  // level: 1=Very Safe · 2=Mostly Safe · 3=Moderate · 4=High Risk
   const US_STATE_SAFETY = {
-    VT: { level: 1, score: 9.2, label: 'Very Safe' },
-    ME: { level: 1, score: 8.9, label: 'Very Safe' },
-    NH: { level: 1, score: 8.8, label: 'Very Safe' },
-    MA: { level: 1, score: 8.6, label: 'Very Safe' },
-    CT: { level: 2, score: 8.3, label: 'Mostly Safe' },
-    NJ: { level: 2, score: 8.2, label: 'Mostly Safe' },
-    HI: { level: 2, score: 7.9, label: 'Mostly Safe' },
-    NY: { level: 2, score: 7.8, label: 'Mostly Safe' },
-    RI: { level: 2, score: 7.8, label: 'Mostly Safe' },
-    ID: { level: 2, score: 7.7, label: 'Mostly Safe' },
-    WY: { level: 2, score: 7.6, label: 'Mostly Safe' },
-    VA: { level: 2, score: 7.5, label: 'Mostly Safe' },
-    WI: { level: 2, score: 7.5, label: 'Mostly Safe' },
-    MN: { level: 2, score: 7.4, label: 'Mostly Safe' },
-    UT: { level: 2, score: 7.4, label: 'Mostly Safe' },
-    PA: { level: 2, score: 7.3, label: 'Mostly Safe' },
-    SD: { level: 2, score: 7.2, label: 'Mostly Safe' },
-    IA: { level: 2, score: 7.2, label: 'Mostly Safe' },
-    WA: { level: 2, score: 7.1, label: 'Mostly Safe' },
-    CO: { level: 3, score: 7.0, label: 'Moderate' },
-    OR: { level: 3, score: 6.9, label: 'Moderate' },
-    NC: { level: 3, score: 6.9, label: 'Moderate' },
-    GA: { level: 3, score: 6.8, label: 'Moderate' },
-    FL: { level: 3, score: 6.8, label: 'Moderate' },
-    TX: { level: 3, score: 6.7, label: 'Moderate' },
-    OH: { level: 3, score: 6.7, label: 'Moderate' },
-    MI: { level: 3, score: 6.6, label: 'Moderate' },
-    AZ: { level: 3, score: 6.5, label: 'Moderate' },
-    IN: { level: 3, score: 6.5, label: 'Moderate' },
-    CA: { level: 3, score: 6.4, label: 'Moderate' },
-    IL: { level: 3, score: 6.3, label: 'Moderate' },
-    SC: { level: 3, score: 6.2, label: 'Moderate' },
-    TN: { level: 3, score: 6.2, label: 'Moderate' },
-    MO: { level: 3, score: 6.1, label: 'Moderate' },
-    NV: { level: 3, score: 6.0, label: 'Moderate' },
-    KY: { level: 3, score: 6.0, label: 'Moderate' },
-    MT: { level: 3, score: 5.9, label: 'Moderate' },
-    WV: { level: 3, score: 5.9, label: 'Moderate' },
-    ND: { level: 3, score: 5.8, label: 'Moderate' },
-    DE: { level: 3, score: 5.8, label: 'Moderate' },
-    MD: { level: 4, score: 5.5, label: 'High Risk' },
-    AL: { level: 4, score: 5.4, label: 'High Risk' },
-    AR: { level: 4, score: 5.3, label: 'High Risk' },
-    OK: { level: 4, score: 5.2, label: 'High Risk' },
-    MS: { level: 4, score: 5.1, label: 'High Risk' },
-    AK: { level: 4, score: 4.9, label: 'High Risk' },
-    LA: { level: 4, score: 4.7, label: 'High Risk' },
-    NM: { level: 4, score: 4.5, label: 'High Risk' },
-    DC: { level: 4, score: 4.3, label: 'High Risk' },
+    VT:{ level:1, score:9.2, label:'Very Safe'   }, ME:{ level:1, score:8.9, label:'Very Safe'   },
+    NH:{ level:1, score:8.8, label:'Very Safe'   }, MA:{ level:1, score:8.6, label:'Very Safe'   },
+    CT:{ level:2, score:8.3, label:'Mostly Safe' }, NJ:{ level:2, score:8.2, label:'Mostly Safe' },
+    HI:{ level:2, score:7.9, label:'Mostly Safe' }, NY:{ level:2, score:7.8, label:'Mostly Safe' },
+    RI:{ level:2, score:7.8, label:'Mostly Safe' }, ID:{ level:2, score:7.7, label:'Mostly Safe' },
+    WY:{ level:2, score:7.6, label:'Mostly Safe' }, VA:{ level:2, score:7.5, label:'Mostly Safe' },
+    WI:{ level:2, score:7.5, label:'Mostly Safe' }, MN:{ level:2, score:7.4, label:'Mostly Safe' },
+    UT:{ level:2, score:7.4, label:'Mostly Safe' }, PA:{ level:2, score:7.3, label:'Mostly Safe' },
+    NE:{ level:2, score:7.1, label:'Mostly Safe' }, SD:{ level:2, score:7.2, label:'Mostly Safe' },
+    IA:{ level:2, score:7.2, label:'Mostly Safe' }, WA:{ level:2, score:7.1, label:'Mostly Safe' },
+    CO:{ level:3, score:7.0, label:'Moderate'    }, OR:{ level:3, score:6.9, label:'Moderate'    },
+    NC:{ level:3, score:6.9, label:'Moderate'    }, GA:{ level:3, score:6.8, label:'Moderate'    },
+    FL:{ level:3, score:6.8, label:'Moderate'    }, TX:{ level:3, score:6.7, label:'Moderate'    },
+    OH:{ level:3, score:6.7, label:'Moderate'    }, MI:{ level:3, score:6.6, label:'Moderate'    },
+    AZ:{ level:3, score:6.5, label:'Moderate'    }, IN:{ level:3, score:6.5, label:'Moderate'    },
+    KS:{ level:3, score:6.3, label:'Moderate'    }, CA:{ level:3, score:6.4, label:'Moderate'    },
+    IL:{ level:3, score:6.3, label:'Moderate'    }, SC:{ level:3, score:6.2, label:'Moderate'    },
+    TN:{ level:3, score:6.2, label:'Moderate'    }, MO:{ level:3, score:6.1, label:'Moderate'    },
+    NV:{ level:3, score:6.0, label:'Moderate'    }, KY:{ level:3, score:6.0, label:'Moderate'    },
+    MT:{ level:3, score:5.9, label:'Moderate'    }, WV:{ level:3, score:5.9, label:'Moderate'    },
+    ND:{ level:3, score:5.8, label:'Moderate'    }, DE:{ level:3, score:5.8, label:'Moderate'    },
+    MD:{ level:4, score:5.5, label:'High Risk'   }, AL:{ level:4, score:5.4, label:'High Risk'   },
+    AR:{ level:4, score:5.3, label:'High Risk'   }, OK:{ level:4, score:5.2, label:'High Risk'   },
+    MS:{ level:4, score:5.1, label:'High Risk'   }, AK:{ level:4, score:4.9, label:'High Risk'   },
+    LA:{ level:4, score:4.7, label:'High Risk'   }, NM:{ level:4, score:4.5, label:'High Risk'   },
+    DC:{ level:4, score:4.3, label:'High Risk'   },
   };
 
-  // US city-level crime adjustments (delta from state baseline)
-  // Positive delta = safer than state avg; negative = less safe
-  // Portland delta updated to -0.1 (from -0.7): reflects 51% homicide drop in 2025,
-  // violent crime now below peer cities; property crime (car prowls) remains the drag.
-  // Rochester -3.3, Rocky Mount -3.1: violent crime 2-3x national avg per cross-reference data.
-  // Santa Clarita (Valencia) +2.8: consistently top-10 safest CA city, crime well below CA avg.
-  // Waldorf +0.7: safer than surrounding MD/DC corridor despite being a retail hub.
+  // ── US CITY SAFETY DELTAS ───────────────────────────────────────────────
+  // Format: { v: violent_delta, p: property_delta, improving?: true }
+  //   score = state_base + (0.65 × v) + (0.35 × p)   [violent weighted higher]
+  //   Plain numbers treated as symmetric (v = p = n).
+  // Ambiguous city names use "ST:City" keys; unambiguous use plain name.
+  // All calibrated against FBI UCR/NIBRS 2022-2024 data.
   const US_CITY_SAFETY_DELTA = {
-    'New York':       +1.2, 'Los Angeles':    -0.8, 'Chicago':        -1.2, 'Houston':        -0.6,
-    'Phoenix':        -0.5, 'Philadelphia':   -1.0, 'San Antonio':    +0.3, 'San Diego':      +0.8,
-    'Dallas':         -0.7, 'San Jose':       +0.5, 'Austin':         +0.5, 'Jacksonville':   -0.4,
-    'Fort Worth':     -0.2, 'Columbus':       -0.5, 'Charlotte':      -0.3, 'Indianapolis':   -0.7,
-    'San Francisco':  -0.6, 'Seattle':        -0.4, 'Denver':         -0.3, 'Nashville':      -0.5,
-    'Oklahoma City':  -0.5, 'El Paso':        +0.3, 'Washington':     -1.5, 'Las Vegas':      -0.8,
-    'Louisville':     -0.7, 'Memphis':        -2.0, 'Portland':       -0.1, 'Baltimore':      -1.8,
-    'Milwaukee':      -0.9, 'Albuquerque':    -1.0, 'Tucson':         -0.6, 'Fresno':         -0.8,
-    'Sacramento':     -0.6, 'Atlanta':        -1.2, 'Kansas City':    -1.0, 'Miami':          -0.5,
-    'Raleigh':        +0.3, 'Omaha':          +0.2, 'Minneapolis':    -0.5, 'Tampa':          -0.3,
-    'Tulsa':          -0.9, 'Cleveland':      -1.3, 'Aurora':         -0.4, 'Wichita':        -0.5,
-    'New Orleans':    -2.0, 'Detroit':        -2.0, 'St. Louis':      -2.2, 'Birmingham':     -1.5,
-    'Baton Rouge':    -1.5, 'Anchorage':      -1.2, 'Little Rock':    -1.3, 'Jackson':        -2.0,
-    // Cross-reference calibrated entries
-    'Rochester':      -3.3, 'Rocky Mount':    -3.1, 'Waldorf':        +0.7, 'Santa Clarita':  +2.8,
-    'Valencia':       +2.8, 'Irvine':         +2.5, 'Fremont':        +1.2, 'Scottsdale':     +1.0,
-    'Chandler':       +0.8, 'Gilbert':        +0.9, 'Plano':          +1.1, 'Henderson':      +0.5,
+
+    // ── ALABAMA (base 5.4) ──────────────────────────────────────────────
+    'Birmingham':      { v:-1.5, p:-1.0 },  // →3.9
+    'Huntsville':      { v:+0.7, p:+0.3 },  // →6.1  tech hub, lower crime
+    'Montgomery':      { v:-1.2, p:-0.7 },  // →4.2
+    'Mobile':          { v:-0.8, p:-0.5 },  // →4.6
+    'Auburn':          { v:+0.5, p:+0.2 },  // →5.9  college town
+
+    // ── ALASKA (base 4.9) ───────────────────────────────────────────────
+    'Anchorage':       { v:-1.2, p:-0.8 },  // →3.6
+    'Fairbanks':       { v:-0.9, p:-0.6 },  // →3.9
+    'Juneau':          { v:-0.3, p:-0.2 },  // →4.5
+
+    // ── ARIZONA (base 6.5) ──────────────────────────────────────────────
+    'Phoenix':         { v:-0.6, p:-0.5 },  // →5.7
+    'Tucson':          { v:-0.7, p:-0.5 },  // →5.6
+    'Mesa':            { v:+0.3, p:+0.1 },  // →6.9
+    'Chandler':        { v:+0.9, p:+0.6 },  // →7.7
+    'Gilbert':         { v:+1.0, p:+0.7 },  // →7.9
+    'Scottsdale':      { v:+1.0, p:+0.5 },  // →7.7
+    'Tempe':           { v:-0.1, p:-0.2 },  // →6.3
+    'Peoria':          { v:+0.5, p:+0.3 },  // →7.1
+    'Surprise':        { v:+0.7, p:+0.3 },  // →7.3
+    'Goodyear':        { v:+0.8, p:+0.4 },  // →7.5
+    'AZ:Glendale':     { v:-0.2, p:-0.2 },  // →6.2
+    'Yuma':            { v:-0.5, p:-0.4 },  // →5.8
+    'Flagstaff':       { v:-0.1, p:+0.1 },  // →6.5
+
+    // ── ARKANSAS (base 5.3) ─────────────────────────────────────────────
+    'Little Rock':     { v:-1.3, p:-0.9 },  // →3.7
+    'Fort Smith':      { v:-0.8, p:-0.6 },  // →4.3
+    'AR:Fayetteville': { v:+0.3, p:+0.2 },  // →5.7
+    'Jonesboro':       { v:-0.5, p:-0.4 },  // →4.6
+
+    // ── CALIFORNIA (base 6.4) ───────────────────────────────────────────
+    'Los Angeles':     { v:-0.8, p:-0.9 },  // →5.3
+    'San Diego':       { v:+0.6, p:+0.5 },  // →7.1
+    'San Jose':        { v:+0.4, p:+0.4 },  // →6.9
+    'San Francisco':   { v:-0.2, p:-1.5 },  // →5.5  property crime crisis; ok violent
+    'Fresno':          { v:-0.9, p:-0.7 },  // →5.0
+    'Sacramento':      { v:-0.6, p:-0.6 },  // →5.6
+    'Oakland':         { v:-1.8, p:-1.2 },  // →4.4  high violent
+    'Bakersfield':     { v:-0.7, p:-0.6 },  // →5.4
+    'Long Beach':      { v:-0.5, p:-0.5 },  // →5.8
+    'Anaheim':         { v:+0.3, p:+0.2 },  // →6.9
+    'Riverside':       { v:-0.2, p:-0.2 },  // →6.2
+    'Stockton':        { v:-1.3, p:-1.0 },  // →4.7
+    'Chula Vista':     { v:+0.3, p:+0.2 },  // →6.9
+    'Irvine':          { v:+3.0, p:+2.5 },  // →9.2  #1 safest large US city
+    'Fremont':         { v:+1.0, p:+0.9 },  // →7.8
+    'Santa Clarita':   { v:+2.9, p:+2.5 },  // →9.2  ← calibrated ref
+    'Valencia':        { v:+2.9, p:+2.5 },  // →9.2  alias for Santa Clarita
+    'Modesto':         { v:-0.9, p:-0.8 },  // →5.1
+    'Fontana':         { v:-0.3, p:-0.2 },  // →6.1
+    'Moreno Valley':   { v:-0.6, p:-0.4 },  // →5.8
+    'CA:Glendale':     { v:+0.3, p:+0.2 },  // →6.9
+    'Huntington Beach':{ v:+0.7, p:+0.4 },  // →7.3
+    'Santa Ana':       { v:-0.4, p:-0.3 },  // →6.0
+    'Hayward':         { v:-0.5, p:-0.5 },  // →5.8
+    'CA:Pasadena':     { v:+0.3, p:+0.2 },  // →6.9
+    'Torrance':        { v:+0.6, p:+0.4 },  // →7.2
+    'Pomona':          { v:-0.7, p:-0.6 },  // →5.4
+    'Sunnyvale':       { v:+1.5, p:+1.0 },  // →8.5  tech suburb, very safe
+    'Garden Grove':    { v:-0.1, p:-0.1 },  // →6.3
+    'Lancaster':       { v:-0.7, p:-0.5 },  // →5.5
+    'Palmdale':        { v:-0.6, p:-0.4 },  // →5.7
+    'Salinas':         { v:-1.2, p:-0.8 },  // →4.7
+    'Oxnard':          { v:-0.5, p:-0.3 },  // →5.9
+    'Escondido':       { v:-0.1, p:-0.1 },  // →6.3
+    'Oceanside':       { v:+0.1, p:+0.1 },  // →6.5
+
+    // ── COLORADO (base 7.0) ─────────────────────────────────────────────
+    'Denver':          { v:-0.1, p:-0.7 },  // →6.7  property > violent issue
+    'CO:Aurora':       { v:-0.4, p:-0.5 },  // →6.4
+    'Colorado Springs':{ v:+0.1, p:-0.2 },  // →6.9
+    'Fort Collins':    { v:+0.6, p:+0.3 },  // →7.7
+    'Lakewood':        { v:+0.1, p:-0.1 },  // →6.9
+    'Thornton':        { v:+0.3, p:+0.1 },  // →7.2
+    'Arvada':          { v:+0.4, p:+0.2 },  // →7.3
+    'Westminster':     { v:+0.3, p:+0.1 },  // →7.2
+    'CO:Boulder':      { v:+0.7, p:+0.2 },  // →7.7
+    'Pueblo':          { v:-1.0, p:-0.7 },  // →5.8  notably more dangerous
+
+    // ── CONNECTICUT (base 8.3) ──────────────────────────────────────────
+    'Bridgeport':      { v:-1.0, p:-0.7 },  // →7.1
+    'New Haven':       { v:-0.8, p:-0.6 },  // →7.3
+    'Hartford':        { v:-1.1, p:-0.7 },  // →6.9
+    'Stamford':        { v:+0.5, p:+0.3 },  // →8.9
+    'Waterbury':       { v:-0.7, p:-0.5 },  // →7.4
+    'Norwalk':         { v:+0.3, p:+0.2 },  // →8.7
+
+    // ── DELAWARE (base 5.8) ─────────────────────────────────────────────
+    'Wilmington':      { v:-1.0, p:-0.7 },  // →4.6
+    'DE:Dover':        { v:-0.3, p:-0.2 },  // →5.4
+
+    // ── FLORIDA (base 6.8) ──────────────────────────────────────────────
+    'Jacksonville':    { v:-0.5, p:-0.4 },  // →6.1
+    'Miami':           { v:-0.5, p:-0.5 },  // →6.1
+    'Tampa':           { v:-0.3, p:-0.3 },  // →6.4
+    'Orlando':         { v:-0.5, p:-0.4 },  // →6.1
+    'St. Petersburg':  { v:-0.2, p:-0.2 },  // →6.5
+    'Hialeah':         { v:+0.1, p:+0.1 },  // →6.9
+    'Fort Lauderdale': { v:-0.5, p:-0.4 },  // →6.1
+    'Tallahassee':     { v:-0.6, p:-0.4 },  // →6.1
+    'Pembroke Pines':  { v:+0.5, p:+0.3 },  // →7.4
+    'Hollywood':       { v:-0.2, p:-0.2 },  // →6.5
+    'Cape Coral':      { v:+0.4, p:+0.3 },  // →7.3
+    'Gainesville':     { v:-0.4, p:-0.3 },  // →6.3
+    'Clearwater':      { v:+0.1, p:+0.1 },  // →6.9
+    'Palm Bay':        { v:+0.1, p:+0.2 },  // →6.9
+    'West Palm Beach': { v:-0.4, p:-0.4 },  // →6.2
+    'Miramar':         { v:+0.4, p:+0.3 },  // →7.3
+    'Coral Springs':   { v:+0.6, p:+0.4 },  // →7.5
+    'Pompano Beach':   { v:-0.4, p:-0.3 },  // →6.3
+
+    // ── GEORGIA (base 6.8) ──────────────────────────────────────────────
+    'Atlanta':         { v:-1.3, p:-1.0 },  // →5.1
+    'Augusta':         { v:-1.0, p:-0.8 },  // →5.4
+    'GA:Columbus':     { v:-0.9, p:-0.7 },  // →5.5
+    'Macon':           { v:-1.3, p:-1.0 },  // →5.0
+    'Savannah':        { v:-0.5, p:-0.4 },  // →6.2
+    'Sandy Springs':   { v:+0.7, p:+0.5 },  // →7.7
+    'Roswell':         { v:+0.8, p:+0.5 },  // →7.8
+    'Athens':          { v:-0.2, p:-0.2 },  // →6.5
+    'GA:Albany':       { v:-1.4, p:-1.0 },  // →5.0
+
+    // ── HAWAII (base 7.9) ───────────────────────────────────────────────
+    'Honolulu':        { v:+0.2, p:-0.3 },  // →8.0
+    'Pearl City':      { v:+0.4, p:+0.2 },  // →8.3
+
+    // ── IDAHO (base 7.7) ────────────────────────────────────────────────
+    'Boise':           { v:+0.5, p:+0.3 },  // →8.3
+    'Meridian':        { v:+0.9, p:+0.5 },  // →8.8
+    'Nampa':           { v:+0.2, p:+0.1 },  // →7.9
+    'Idaho Falls':     { v:+0.3, p:+0.2 },  // →8.1
+
+    // ── ILLINOIS (base 6.3) ─────────────────────────────────────────────
+    'Chicago':         { v:-1.3, p:-0.9 },  // →4.7
+    'IL:Aurora':       { v:+0.1, p:+0.1 },  // →6.4
+    'Rockford':        { v:-1.6, p:-1.0 },  // →4.2
+    'Joliet':          { v:-0.5, p:-0.4 },  // →5.7
+    'Naperville':      { v:+1.0, p:+0.7 },  // →7.6
+    'IL:Springfield':  { v:-0.5, p:-0.4 },  // →5.7
+    'Elgin':           { v:-0.2, p:-0.2 },  // →6.0
+    'IL:Peoria':       { v:-0.9, p:-0.6 },  // →5.1
+
+    // ── INDIANA (base 6.5) ──────────────────────────────────────────────
+    'Indianapolis':    { v:-0.8, p:-0.6 },  // →5.5
+    'Fort Wayne':      { v:+0.1, p:+0.1 },  // →6.6
+    'Evansville':      { v:-0.7, p:-0.5 },  // →5.6
+    'South Bend':      { v:-1.0, p:-0.7 },  // →5.2
+    'Carmel':          { v:+1.2, p:+0.8 },  // →8.1
+    'Fishers':         { v:+1.0, p:+0.7 },  // →7.9
+    'Hammond':         { v:-0.9, p:-0.6 },  // →5.2
+
+    // ── IOWA (base 7.2) ─────────────────────────────────────────────────
+    'Des Moines':      { v:-0.1, p:-0.1 },  // →7.1
+    'Cedar Rapids':    { v:+0.1, p:+0.1 },  // →7.3
+    'Davenport':       { v:-0.4, p:-0.3 },  // →6.7
+    'Iowa City':       { v:+0.4, p:+0.2 },  // →7.7
+
+    // ── KANSAS (base 6.3) ───────────────────────────────────────────────
+    'Wichita':         { v:-0.5, p:-0.4 },  // →5.7
+    'Overland Park':   { v:+0.8, p:+0.5 },  // →7.4
+    'KS:Kansas City':  { v:-1.1, p:-0.8 },  // →4.8
+    'Olathe':          { v:+0.6, p:+0.4 },  // →7.1
+    'Topeka':          { v:-0.5, p:-0.4 },  // →5.7
+
+    // ── KENTUCKY (base 6.0) ─────────────────────────────────────────────
+    'Louisville':      { v:-0.7, p:-0.6 },  // →5.1
+    'Lexington':       { v:-0.1, p:-0.1 },  // →5.9
+    'Bowling Green':   { v:+0.1, p:+0.1 },  // →6.1
+    'Covington':       { v:-0.5, p:-0.4 },  // →5.4
+
+    // ── LOUISIANA (base 4.7) ────────────────────────────────────────────
+    'New Orleans':     { v:-2.1, p:-1.5 },  // →2.5
+    'Baton Rouge':     { v:-1.6, p:-1.2 },  // →2.8
+    'Shreveport':      { v:-1.9, p:-1.3 },  // →2.5
+    'Lafayette':       { v:-0.8, p:-0.6 },  // →3.7
+    'Lake Charles':    { v:-1.1, p:-0.8 },  // →3.4
+
+    // ── MAINE (base 8.9) ────────────────────────────────────────────────
+    'ME:Portland':     { v:+0.2, p:+0.1 },  // →9.1  (Maine Portland — very safe)
+    'Bangor':          { v:+0.1, p:+0.1 },  // →9.0
+
+    // ── MARYLAND (base 5.5) ─────────────────────────────────────────────
+    'Baltimore':       { v:-1.9, p:-1.3 },  // →3.3
+    'Waldorf':         { v:+0.8, p:+0.6 },  // →6.2  ← calibrated ref
+    'Frederick':       { v:+0.5, p:+0.4 },  // →6.1
+    'Silver Spring':   { v:-0.2, p:-0.1 },  // →5.3
+    'Annapolis':       { v:+0.2, p:+0.2 },  // →5.8
+    'Rockville':       { v:+0.4, p:+0.3 },  // →6.1
+    'Gaithersburg':    { v:+0.3, p:+0.2 },  // →5.9
+    'Bethesda':        { v:+0.6, p:+0.4 },  // →6.3
+
+    // ── MASSACHUSETTS (base 8.6) ─────────────────────────────────────────
+    'Boston':          { v:-0.1, p:-0.2 },  // →8.4
+    'Worcester':       { v:-0.3, p:-0.2 },  // →8.2
+    'MA:Springfield':  { v:-1.3, p:-0.9 },  // →7.0
+    'Cambridge':       { v:+0.4, p:+0.2 },  // →9.0
+    'Lowell':          { v:-0.4, p:-0.3 },  // →8.1
+    'New Bedford':     { v:-0.5, p:-0.4 },  // →7.9
+    'Brockton':        { v:-0.6, p:-0.5 },  // →7.8
+
+    // ── MICHIGAN (base 6.6) ─────────────────────────────────────────────
+    'Detroit':         { v:-2.1, p:-1.5 },  // →4.0
+    'Grand Rapids':    { v:-0.4, p:-0.3 },  // →6.1
+    'Warren':          { v:+0.2, p:+0.1 },  // →6.9
+    'Sterling Heights':{ v:+0.5, p:+0.3 },  // →7.2
+    'Lansing':         { v:-0.8, p:-0.6 },  // →5.6
+    'Ann Arbor':       { v:+0.5, p:+0.3 },  // →7.2
+    'Flint':           { v:-2.1, p:-1.5 },  // →4.0
+    'Saginaw':         { v:-1.9, p:-1.3 },  // →4.2
+    'Kalamazoo':       { v:-0.6, p:-0.5 },  // →5.8
+    'Pontiac':         { v:-1.3, p:-1.0 },  // →4.9
+
+    // ── MINNESOTA (base 7.4) ────────────────────────────────────────────
+    'Minneapolis':     { v:-0.5, p:-0.5 },  // →6.8
+    'St. Paul':        { v:-0.4, p:-0.4 },  // →6.9
+    'MN:Rochester':    { v:+0.6, p:+0.4 },  // →8.1  safe medical hub city
+    'Duluth':          { v:-0.1, p:-0.1 },  // →7.3
+    'Bloomington':     { v:+0.4, p:+0.3 },  // →7.9
+    'Eden Prairie':    { v:+0.8, p:+0.5 },  // →8.4
+
+    // ── MISSISSIPPI (base 5.1) ──────────────────────────────────────────
+    'Jackson':         { v:-2.1, p:-1.5 },  // →2.9
+    'Gulfport':        { v:-0.8, p:-0.6 },  // →4.0
+    'Biloxi':          { v:-0.5, p:-0.4 },  // →4.4
+    'Hattiesburg':     { v:-0.6, p:-0.5 },  // →4.3
+
+    // ── MISSOURI (base 6.1) ─────────────────────────────────────────────
+    'MO:Kansas City':  { v:-1.0, p:-0.8 },  // →4.8
+    'St. Louis':       { v:-2.3, p:-1.5 },  // →3.3
+    'MO:Springfield':  { v:-0.9, p:-0.7 },  // →5.0
+    'MO:Columbia':     { v:-0.2, p:-0.2 },  // →5.9
+    'Independence':    { v:-0.7, p:-0.5 },  // →5.3
+    "Lee's Summit":    { v:+0.3, p:+0.2 },  // →6.5
+
+    // ── MONTANA (base 5.9) ──────────────────────────────────────────────
+    'Billings':        { v:-0.2, p:-0.2 },  // →5.6
+    'Missoula':        { v:+0.1, p:+0.1 },  // →6.0
+    'Great Falls':     { v:-0.1, p:-0.1 },  // →5.8
+
+    // ── NEBRASKA (base 7.1) ─────────────────────────────────────────────
+    'Omaha':           { v:+0.2, p:+0.1 },  // →7.4
+    'Lincoln':         { v:+0.4, p:+0.3 },  // →7.6
+    'NE:Bellevue':     { v:+0.3, p:+0.2 },  // →7.5
+
+    // ── NEVADA (base 6.0) ───────────────────────────────────────────────
+    'Las Vegas':       { v:-0.8, p:-0.7 },  // →5.0
+    'Henderson':       { v:+0.5, p:+0.4 },  // →6.6
+    'Reno':            { v:-0.5, p:-0.6 },  // →5.3
+    'North Las Vegas': { v:-1.1, p:-0.9 },  // →4.6
+    'Sparks':          { v:-0.2, p:-0.3 },  // →5.7
+
+    // ── NEW HAMPSHIRE (base 8.8) ─────────────────────────────────────────
+    'Manchester':      { v:+0.2, p:+0.1 },  // →9.0
+    'Nashua':          { v:+0.3, p:+0.2 },  // →9.1
+    'NH:Concord':      { v:+0.2, p:+0.2 },  // →9.1
+
+    // ── NEW JERSEY (base 8.2) ────────────────────────────────────────────
+    'Newark':          { v:-1.3, p:-0.9 },  // →6.7
+    'Trenton':         { v:-2.5, p:-1.8 },  // →5.5
+    'Paterson':        { v:-1.1, p:-0.8 },  // →6.8
+    'Jersey City':     { v:-0.4, p:-0.3 },  // →7.7
+    'Edison':          { v:+0.6, p:+0.4 },  // →9.0
+    'Camden':          { v:-4.0, p:-2.5 },  // →4.7  very dangerous vs. safe-state baseline
+    'Elizabeth':       { v:-0.6, p:-0.4 },  // →7.6
+    'Toms River':      { v:+0.3, p:+0.2 },  // →8.6
+    'Clifton':         { v:+0.2, p:+0.1 },  // →8.5
+
+    // ── NEW MEXICO (base 4.5) ────────────────────────────────────────────
+    'Albuquerque':     { v:-1.0, p:-0.9 },  // →3.2
+    'Las Cruces':      { v:-0.4, p:-0.3 },  // →3.9
+    'Rio Rancho':      { v:+0.5, p:+0.3 },  // →5.1
+
+    // ── NEW YORK (base 7.8) ──────────────────────────────────────────────
+    'New York':        { v:+1.1, p:+0.7 },  // →9.1
+    'Buffalo':         { v:-0.9, p:-0.7 },  // →6.8
+    'NY:Rochester':    { v:-3.6, p:-2.7 },  // →4.5  ← calibrated ref
+    'Yonkers':         { v:-0.2, p:-0.2 },  // →7.6
+    'Syracuse':        { v:-0.9, p:-0.7 },  // →6.8
+    'NY:Albany':       { v:-0.5, p:-0.4 },  // →7.2
+    'White Plains':    { v:+0.3, p:+0.2 },  // →8.2
+
+    // ── NORTH CAROLINA (base 6.9) ────────────────────────────────────────
+    'Charlotte':       { v:-0.3, p:-0.3 },  // →6.5
+    'Raleigh':         { v:+0.4, p:+0.2 },  // →7.4
+    'Greensboro':      { v:-0.5, p:-0.4 },  // →6.3
+    'Durham':          { v:-0.7, p:-0.5 },  // →6.1
+    'Winston-Salem':   { v:-0.5, p:-0.4 },  // →6.3
+    'NC:Fayetteville': { v:-0.8, p:-0.6 },  // →6.0
+    'Cary':            { v:+1.0, p:+0.7 },  // →8.1  very safe suburb
+    'Rocky Mount':     { v:-3.4, p:-2.6 },  // →3.8  ← calibrated ref
+    'High Point':      { v:-0.5, p:-0.4 },  // →6.3
+    'NC:Wilmington':   { v:-0.1, p:-0.1 },  // →6.8
+    'Asheville':       { v:-0.2, p:-0.1 },  // →6.7
+    'NC:Concord':      { v:+0.4, p:+0.3 },  // →7.4
+
+    // ── NORTH DAKOTA (base 5.8) ──────────────────────────────────────────
+    'Fargo':           { v:+0.2, p:+0.2 },  // →6.0
+    'Bismarck':        { v:+0.3, p:+0.3 },  // →6.2
+    'Grand Forks':     { v:+0.1, p:+0.1 },  // →5.9
+
+    // ── OHIO (base 6.7) ──────────────────────────────────────────────────
+    'OH:Columbus':     { v:-0.5, p:-0.4 },  // →6.1
+    'Cleveland':       { v:-1.4, p:-1.0 },  // →5.1
+    'Cincinnati':      { v:-0.9, p:-0.7 },  // →5.6
+    'Toledo':          { v:-0.9, p:-0.7 },  // →5.6
+    'Akron':           { v:-1.0, p:-0.8 },  // →5.4
+    'Dayton':          { v:-1.3, p:-1.0 },  // →5.1
+    'Youngstown':      { v:-2.1, p:-1.5 },  // →4.1
+    'Parma':           { v:+0.3, p:+0.2 },  // →7.1
+    'Canton':          { v:-1.0, p:-0.8 },  // →5.4
+
+    // ── OKLAHOMA (base 5.2) ──────────────────────────────────────────────
+    'Oklahoma City':   { v:-0.5, p:-0.5 },  // →4.6
+    'Tulsa':           { v:-1.0, p:-0.8 },  // →4.0
+    'Norman':          { v:+0.2, p:+0.2 },  // →5.4
+    'Broken Arrow':    { v:+0.5, p:+0.4 },  // →5.8
+    'Edmond':          { v:+0.6, p:+0.4 },  // →5.9
+
+    // ── OREGON (base 6.9) ────────────────────────────────────────────────
+    'OR:Portland':     { v:+0.4, p:-1.0, improving:true }, // →6.8 violent improving; property crime high
+    'Eugene':          { v:-0.1, p:-0.4 },  // →6.6
+    'Salem':           { v:-0.1, p:-0.3 },  // →6.7
+    'Gresham':         { v:-0.3, p:-0.5 },  // →6.4
+    'Hillsboro':       { v:+0.4, p:+0.1 },  // →7.3
+    'Bend':            { v:+0.5, p:+0.2 },  // →7.4
+    'Medford':         { v:-0.2, p:-0.3 },  // →6.5
+
+    // ── PENNSYLVANIA (base 7.3) ──────────────────────────────────────────
+    'Philadelphia':    { v:-1.1, p:-0.8 },  // →6.0
+    'Pittsburgh':      { v:-0.3, p:-0.3 },  // →6.9
+    'Allentown':       { v:-0.7, p:-0.5 },  // →6.4
+    'Erie':            { v:-0.8, p:-0.6 },  // →6.3
+    'Reading':         { v:-1.1, p:-0.8 },  // →6.0
+    'Scranton':        { v:-0.3, p:-0.3 },  // →6.9
+    'Bethlehem':       { v:-0.2, p:-0.2 },  // →7.1
+
+    // ── RHODE ISLAND (base 7.8) ──────────────────────────────────────────
+    'Providence':      { v:-0.3, p:-0.3 },  // →7.4
+    'Cranston':        { v:+0.2, p:+0.2 },  // →8.0
+    'Warwick':         { v:+0.3, p:+0.2 },  // →8.1
+    'Pawtucket':       { v:-0.4, p:-0.3 },  // →7.3
+
+    // ── SOUTH CAROLINA (base 6.2) ────────────────────────────────────────
+    'SC:Columbia':     { v:-0.9, p:-0.7 },  // →5.1
+    'SC:Charleston':   { v:-0.2, p:-0.2 },  // →5.9
+    'North Charleston':{ v:-0.9, p:-0.7 },  // →5.1
+    'Greenville':      { v:-0.1, p:-0.1 },  // →6.1
+    'Rock Hill':       { v:-0.2, p:-0.2 },  // →5.9
+    'Spartanburg':     { v:-0.7, p:-0.6 },  // →5.3
+
+    // ── SOUTH DAKOTA (base 7.2) ──────────────────────────────────────────
+    'Sioux Falls':     { v:+0.3, p:+0.2 },  // →7.6
+    'Rapid City':      { v:-0.1, p:-0.1 },  // →7.1
+
+    // ── TENNESSEE (base 6.2) ─────────────────────────────────────────────
+    'Nashville':       { v:-0.5, p:-0.4 },  // →5.7
+    'Memphis':         { v:-2.1, p:-1.5 },  // →3.9
+    'Knoxville':       { v:-0.4, p:-0.3 },  // →5.7
+    'Chattanooga':     { v:-0.7, p:-0.5 },  // →5.5
+    'Clarksville':     { v:-0.2, p:-0.2 },  // →5.9
+    'Murfreesboro':    { v:+0.1, p:+0.1 },  // →6.3
+    'Franklin':        { v:+0.8, p:+0.5 },  // →7.2
+
+    // ── TEXAS (base 6.7) ─────────────────────────────────────────────────
+    'Houston':         { v:-0.7, p:-0.6 },  // →5.8
+    'San Antonio':     { v:+0.3, p:+0.3 },  // →7.0
+    'Dallas':          { v:-0.8, p:-0.7 },  // →5.7
+    'Austin':          { v:+0.5, p:+0.3 },  // →7.3
+    'TX:Fort Worth':   { v:-0.2, p:-0.2 },  // →6.5
+    'El Paso':         { v:+0.3, p:+0.3 },  // →7.0
+    'TX:Arlington':    { v:-0.3, p:-0.3 },  // →6.3
+    'Corpus Christi':  { v:-0.2, p:-0.2 },  // →6.5
+    'Plano':           { v:+1.1, p:+0.8 },  // →8.1
+    'Laredo':          { v:-0.7, p:-0.5 },  // →5.8
+    'Lubbock':         { v:-0.5, p:-0.4 },  // →6.1
+    'Garland':         { v:-0.3, p:-0.3 },  // →6.3
+    'Irving':          { v:-0.1, p:-0.1 },  // →6.6
+    'Frisco':          { v:+1.3, p:+0.9 },  // →8.3
+    'McKinney':        { v:+1.0, p:+0.7 },  // →8.0
+    'Amarillo':        { v:-0.5, p:-0.4 },  // →6.1
+    'Brownsville':     { v:-0.3, p:-0.3 },  // →6.3
+    'Waco':            { v:-0.7, p:-0.6 },  // →5.8
+    'Killeen':         { v:-0.6, p:-0.5 },  // →5.9
+    'Midland':         { v:+0.1, p:+0.1 },  // →6.8
+    'McAllen':         { v:-0.2, p:-0.2 },  // →6.5
+    'Carrollton':      { v:+0.4, p:+0.3 },  // →7.2
+    'Denton':          { v:-0.1, p:-0.1 },  // →6.6
+    'Allen':           { v:+1.2, p:+0.8 },  // →8.2
+    'Richardson':      { v:+0.8, p:+0.5 },  // →7.8
+    'Grand Prairie':   { v:-0.3, p:-0.3 },  // →6.3
+    'Lewisville':      { v:+0.1, p:+0.1 },  // →6.8
+    'Pearland':        { v:+0.6, p:+0.4 },  // →7.4
+    'Sugar Land':      { v:+0.8, p:+0.5 },  // →7.7
+    'TX:Pasadena':     { v:-0.3, p:-0.2 },  // →6.4
+    'Mesquite':        { v:-0.1, p:-0.1 },  // →6.6
+    'Beaumont':        { v:-0.8, p:-0.6 },  // →5.7
+
+    // ── UTAH (base 7.4) ──────────────────────────────────────────────────
+    'Salt Lake City':  { v:-0.3, p:-0.4 },  // →7.0
+    'West Valley City':{ v:-0.5, p:-0.5 },  // →6.8
+    'Provo':           { v:+0.6, p:+0.4 },  // →8.1
+    'West Jordan':     { v:+0.3, p:+0.2 },  // →7.8
+    'Orem':            { v:+0.7, p:+0.5 },  // →8.2
+    'Sandy':           { v:+0.5, p:+0.4 },  // →8.0
+    'St. George':      { v:+0.7, p:+0.5 },  // →8.2
+    'Ogden':           { v:-0.4, p:-0.4 },  // →6.9
+
+    // ── VERMONT (base 9.2) ───────────────────────────────────────────────
+    'Burlington':      { v:+0.1, p:+0.1 },  // →9.3
+
+    // ── VIRGINIA (base 7.5) ──────────────────────────────────────────────
+    'Virginia Beach':  { v:+0.4, p:+0.3 },  // →7.9
+    'Norfolk':         { v:-0.5, p:-0.4 },  // →6.9
+    'Chesapeake':      { v:+0.5, p:+0.4 },  // →8.1
+    'Richmond':        { v:-0.8, p:-0.6 },  // →6.5
+    'Newport News':    { v:-0.5, p:-0.4 },  // →6.9
+    'Alexandria':      { v:+0.3, p:+0.2 },  // →7.9
+    'Hampton':         { v:-0.4, p:-0.3 },  // →7.0
+    'Roanoke':         { v:-0.3, p:-0.3 },  // →7.1
+    'VA:Arlington':    { v:+0.5, p:+0.4 },  // →8.1
+
+    // ── WASHINGTON (base 7.1) ────────────────────────────────────────────
+    'Seattle':         { v:-0.2, p:-0.8 },  // →6.6  property elevated; violent moderate
+    'Spokane':         { v:-0.3, p:-0.5 },  // →6.5
+    'Tacoma':          { v:-0.4, p:-0.6 },  // →6.4
+    'WA:Vancouver':    { v:+0.1, p:-0.2 },  // →6.9
+    'Bellevue':        { v:+0.9, p:+0.5 },  // →8.2
+    'Kirkland':        { v:+0.6, p:+0.4 },  // →7.8
+    'Redmond':         { v:+0.8, p:+0.5 },  // →8.0
+    'Kent':            { v:-0.2, p:-0.4 },  // →6.7
+    'Everett':         { v:-0.2, p:-0.4 },  // →6.7
+    'Renton':          { v:-0.1, p:-0.3 },  // →6.8
+    'Olympia':         { v:+0.1, p:-0.1 },  // →7.1
+
+    // ── WEST VIRGINIA (base 5.9) ─────────────────────────────────────────
+    'WV:Charleston':   { v:-0.5, p:-0.4 },  // →5.3
+    'Huntington':      { v:-1.1, p:-0.8 },  // →4.5
+    'Morgantown':      { v:+0.1, p:+0.1 },  // →6.0
+
+    // ── WISCONSIN (base 7.5) ─────────────────────────────────────────────
+    'Milwaukee':       { v:-1.0, p:-0.7 },  // →6.3
+    'Madison':         { v:+0.4, p:+0.3 },  // →8.0
+    'Green Bay':       { v:+0.2, p:+0.2 },  // →7.8
+    'Kenosha':         { v:-0.2, p:-0.2 },  // →7.3
+    'Racine':          { v:-0.5, p:-0.5 },  // →7.0
+    'Waukesha':        { v:+0.4, p:+0.3 },  // →8.0
+    'Appleton':        { v:+0.5, p:+0.4 },  // →8.1
+
+    // ── WYOMING (base 7.6) ───────────────────────────────────────────────
+    'Cheyenne':        { v:+0.2, p:+0.1 },  // →7.8
+    'Casper':          { v:+0.1, p:+0.1 },  // →7.7
+
+    // ── DC (base 4.3) ────────────────────────────────────────────────────
+    'Washington':      { v:-1.5, p:-1.2 },  // →2.8
+
+    // ── SAFE SUBURBS / PLANNED COMMUNITIES ───────────────────────────────
+    'Naperville':      { v:+1.0, p:+0.7 },  // IL →7.6
+    'Schaumburg':      { v:+0.6, p:+0.4 },  // IL →7.5
+    'Round Rock':      { v:+0.7, p:+0.5 },  // TX →7.8
+    'Cedar Park':      { v:+0.8, p:+0.5 },  // TX →7.9
+    'The Woodlands':   { v:+0.9, p:+0.6 },  // TX →8.0
+    'Katy':            { v:+0.7, p:+0.4 },  // TX →7.8
+    'Gilbert':         { v:+1.0, p:+0.7 },  // AZ →7.9 (duplicate OK — AZ already set)
+    'Alpharetta':      { v:+0.8, p:+0.5 },  // GA →7.8
+    'Johns Creek':     { v:+0.9, p:+0.6 },  // GA →7.9
+    'Peachtree City':  { v:+0.7, p:+0.5 },  // GA →7.7
   };
+
+  // Lookup delta entry respecting state-prefixed keys for ambiguous city names
+  function findCityDelta(city, stateAbbr) {
+    const stateKey = `${stateAbbr}:${city}`;
+    if (US_CITY_SAFETY_DELTA[stateKey] !== undefined) return US_CITY_SAFETY_DELTA[stateKey];
+    if (US_CITY_SAFETY_DELTA[city]     !== undefined) return US_CITY_SAFETY_DELTA[city];
+    // Partial match — handles "Santa Clarita" when Nominatim returns a suburb
+    const lc = city.toLowerCase();
+    for (const [k, v] of Object.entries(US_CITY_SAFETY_DELTA)) {
+      const name = k.includes(':') ? k.split(':')[1] : k;
+      if (lc === name.toLowerCase() || lc.startsWith(name.toLowerCase())) return v;
+    }
+    return null;
+  }
 
   function getUSCitySafetyScore(city, stateAbbr) {
     const stateSafety = US_STATE_SAFETY[stateAbbr];
     if (!stateSafety) return null;
-    // Try exact match first, then partial (e.g. "Santa Clarita" matches "Santa Clarita, CA")
-    const delta = US_CITY_SAFETY_DELTA[city]
-      ?? Object.entries(US_CITY_SAFETY_DELTA).find(([k]) => city.toLowerCase().includes(k.toLowerCase()))?.[1]
-      ?? 0;
+    const entry = findCityDelta(city, stateAbbr);
+    let delta = 0;
+    if (entry !== null) {
+      if (typeof entry === 'number') {
+        delta = entry;
+      } else {
+        // Violent crime weighted 65%, property crime 35%
+        delta = 0.65 * (entry.v ?? 0) + 0.35 * (entry.p ?? 0);
+      }
+    }
     return Math.max(1.0, Math.min(10.0, stateSafety.score + delta));
+  }
+
+  // Returns a short crime profile note for the advisory panel
+  function getCityCrimeProfile(city, stateAbbr) {
+    const entry = findCityDelta(city, stateAbbr);
+    if (!entry || typeof entry === 'number') return null;
+    const { v = 0, p = 0, improving = false } = entry;
+    const notes = [];
+    if (improving)   notes.push('violent crime trending down');
+    if (v >=  0.8)   notes.push('low violent crime');
+    else if (v <= -1.5) notes.push('high violent crime');
+    else if (v <= -0.8) notes.push('elevated violent crime');
+    if (p <= -0.8)   notes.push('high property/theft risk');
+    else if (p <= -0.5) notes.push('elevated property crime');
+    else if (p >=  0.8) notes.push('low property crime');
+    return notes.length ? notes.join(' · ') : null;
   }
 
   function safetyScoreToLevel(score) {
@@ -1595,11 +2062,13 @@ const App = (() => {
       const usState = state.location.usState;
       const stateSafe = usState ? US_STATE_SAFETY[usState] : null;
       if (stateSafe) {
-        const cityName = state.location.name?.split(',')[0] || 'your city';
+        const cityName  = state.location.name?.split(',')[0]?.trim() || 'your city';
         const cityScore = getUSCitySafetyScore(cityName, usState);
-        const displayScore = cityScore !== null ? cityScore.toFixed(1) : stateSafe.score.toFixed(1);
-        const { label } = safetyScoreToLevel(cityScore ?? stateSafe.score);
-        return `🛡️ **Safety: ${state.location.name}**\n\n**City Score: ${displayScore}/10 — ${label}**\n\n📊 **${usState} State Baseline:** ${stateSafe.score}/10 (${stateSafe.label})\n\n${AI_RESPONSES.safety(state.location.name)}`;
+        const score     = cityScore ?? stateSafe.score;
+        const { label } = safetyScoreToLevel(score);
+        const profile   = getCityCrimeProfile(cityName, usState);
+        const profLine  = profile ? `\n🔎 **Crime Profile:** ${profile}` : '';
+        return `🛡️ **Safety: ${state.location.name}**\n\n**City Score: ${score.toFixed(1)}/10 — ${label}**\n📊 **${usState} State Baseline:** ${stateSafe.score}/10 (${stateSafe.label})${profLine}\n\n${AI_RESPONSES.safety(state.location.name)}`;
       }
       const sorted = [...DESTINATIONS].sort((a, b) => b.safetyScore - a.safetyScore).slice(0, 4);
       return `🛡️ **Safest Nomad Destinations**\n\n${sorted.map((d, i) => `${i + 1}. **${d.city}** — ${d.safetyScore}/10 ${d.emoji}`).join('\n')}\n\n${AI_RESPONSES.safety(state.location.name)}`;
@@ -2292,13 +2761,17 @@ const App = (() => {
     const labels  = { 1:'Very Safe', 2:'Mostly Safe', 3:'Moderate', 4:'High Risk' };
     const badge   = document.getElementById('adv-level-badge');
     if (badge) { badge.textContent = labels[level]; badge.dataset.level = level; }
-    const usState   = state.location.usState;
-    const stateSafe = usState ? US_STATE_SAFETY[usState] : null;
-    const stateNote = stateSafe ? ` ${usState} ranks as "${stateSafe.label}" statewide (score ${stateSafe.score}/10).` : '';
+    const usState    = state.location.usState;
+    const stateSafe  = usState ? US_STATE_SAFETY[usState] : null;
+    const cityName   = (state.location.name || '').split(',')[0].trim();
+    const profile    = usState ? getCityCrimeProfile(cityName, usState) : null;
+    const stateNote  = stateSafe ? ` ${usState} state baseline: ${stateSafe.label} (${stateSafe.score}/10).` : '';
+    const profNote   = profile   ? ` Crime profile: ${profile}.` : '';
+    const contextNote = stateNote + profNote;
     const insights = [
-      `Safety conditions in ${state.location.name || 'your area'} appear stable.${stateNote} Standard precautions apply. Keep valuables secure in crowded areas and use licensed transportation.`,
-      `Current conditions show moderate activity.${stateNote} Tourist areas are generally safe during daylight hours. Avoid unfamiliar areas after midnight and keep emergency contacts ready.`,
-      `Exercise increased awareness in ${state.location.name || 'current location'}.${stateNote} Several advisories are active. Monitor local news, register with your embassy, and stay in contact with your travel group.`,
+      `Safety conditions in ${state.location.name || 'your area'} appear stable.${contextNote} Standard precautions apply. Keep valuables secure in crowded areas and use licensed transportation.`,
+      `Current conditions show moderate activity.${contextNote} Tourist areas are generally safe during daylight hours. Avoid unfamiliar areas after midnight and keep emergency contacts ready.`,
+      `Exercise increased awareness in ${state.location.name || 'current location'}.${contextNote} Several advisories are active. Monitor local news and stay in contact with your travel group.`,
     ];
     const adv_text = document.getElementById('adv-ai-text');
     if (adv_text) adv_text.textContent = insights[Math.min(level-1, insights.length-1)];
