@@ -15,7 +15,7 @@ const App = (() => {
     lang: 'es',
     modalStack: [],
     user: null,
-    location: { lat: null, lng: null, name: 'Detecting…' },
+    location: { lat: null, lng: null, name: 'Detecting…', usState: '', country: '' },
     weather: { emoji: '🌤️', temp: '--', desc: '' },
     safety: { level: 3, label: 'Moderate' },
     trips: [],
@@ -54,6 +54,94 @@ const App = (() => {
     set: (k, v) => { try { localStorage.setItem('kip_' + k, JSON.stringify(v)) } catch {} },
     del: (k) => { try { localStorage.removeItem('kip_' + k) } catch {} },
   };
+
+  /* ── US STATE SAFETY BASELINES (FBI Violent Crime per 100k, 2022-2023) ── */
+  // level: 1=Very Safe, 2=Mostly Safe, 3=Moderate, 4=High Risk
+  // score: 0-10 safety score baseline (higher = safer)
+  const US_STATE_SAFETY = {
+    VT: { level: 1, score: 9.2, label: 'Very Safe' },
+    ME: { level: 1, score: 8.9, label: 'Very Safe' },
+    NH: { level: 1, score: 8.8, label: 'Very Safe' },
+    MA: { level: 1, score: 8.6, label: 'Very Safe' },
+    CT: { level: 2, score: 8.3, label: 'Mostly Safe' },
+    NJ: { level: 2, score: 8.2, label: 'Mostly Safe' },
+    HI: { level: 2, score: 7.9, label: 'Mostly Safe' },
+    NY: { level: 2, score: 7.8, label: 'Mostly Safe' },
+    RI: { level: 2, score: 7.8, label: 'Mostly Safe' },
+    ID: { level: 2, score: 7.7, label: 'Mostly Safe' },
+    WY: { level: 2, score: 7.6, label: 'Mostly Safe' },
+    VA: { level: 2, score: 7.5, label: 'Mostly Safe' },
+    WI: { level: 2, score: 7.5, label: 'Mostly Safe' },
+    MN: { level: 2, score: 7.4, label: 'Mostly Safe' },
+    UT: { level: 2, score: 7.4, label: 'Mostly Safe' },
+    PA: { level: 2, score: 7.3, label: 'Mostly Safe' },
+    SD: { level: 2, score: 7.2, label: 'Mostly Safe' },
+    IA: { level: 2, score: 7.2, label: 'Mostly Safe' },
+    WA: { level: 2, score: 7.1, label: 'Mostly Safe' },
+    CO: { level: 3, score: 7.0, label: 'Moderate' },
+    OR: { level: 3, score: 6.9, label: 'Moderate' },
+    NC: { level: 3, score: 6.9, label: 'Moderate' },
+    GA: { level: 3, score: 6.8, label: 'Moderate' },
+    FL: { level: 3, score: 6.8, label: 'Moderate' },
+    TX: { level: 3, score: 6.7, label: 'Moderate' },
+    OH: { level: 3, score: 6.7, label: 'Moderate' },
+    MI: { level: 3, score: 6.6, label: 'Moderate' },
+    AZ: { level: 3, score: 6.5, label: 'Moderate' },
+    IN: { level: 3, score: 6.5, label: 'Moderate' },
+    CA: { level: 3, score: 6.4, label: 'Moderate' },
+    IL: { level: 3, score: 6.3, label: 'Moderate' },
+    SC: { level: 3, score: 6.2, label: 'Moderate' },
+    TN: { level: 3, score: 6.2, label: 'Moderate' },
+    MO: { level: 3, score: 6.1, label: 'Moderate' },
+    NV: { level: 3, score: 6.0, label: 'Moderate' },
+    KY: { level: 3, score: 6.0, label: 'Moderate' },
+    MT: { level: 3, score: 5.9, label: 'Moderate' },
+    WV: { level: 3, score: 5.9, label: 'Moderate' },
+    ND: { level: 3, score: 5.8, label: 'Moderate' },
+    DE: { level: 3, score: 5.8, label: 'Moderate' },
+    MD: { level: 4, score: 5.5, label: 'High Risk' },
+    AL: { level: 4, score: 5.4, label: 'High Risk' },
+    AR: { level: 4, score: 5.3, label: 'High Risk' },
+    OK: { level: 4, score: 5.2, label: 'High Risk' },
+    MS: { level: 4, score: 5.1, label: 'High Risk' },
+    AK: { level: 4, score: 4.9, label: 'High Risk' },
+    LA: { level: 4, score: 4.7, label: 'High Risk' },
+    NM: { level: 4, score: 4.5, label: 'High Risk' },
+    DC: { level: 4, score: 4.3, label: 'High Risk' },
+  };
+
+  // US city-level crime adjustments (delta from state baseline, -3 to +2)
+  // Positive delta = safer than state avg; negative = less safe
+  const US_CITY_SAFETY_DELTA = {
+    'New York':      +1.2, 'Los Angeles':   -0.8, 'Chicago':       -1.2, 'Houston':       -0.6,
+    'Phoenix':       -0.5, 'Philadelphia':  -1.0, 'San Antonio':   +0.3, 'San Diego':     +0.8,
+    'Dallas':        -0.7, 'San Jose':      +0.5, 'Austin':        +0.5, 'Jacksonville':  -0.4,
+    'Fort Worth':    -0.2, 'Columbus':      -0.5, 'Charlotte':     -0.3, 'Indianapolis':  -0.7,
+    'San Francisco': -0.6, 'Seattle':       -0.4, 'Denver':        -0.3, 'Nashville':     -0.5,
+    'Oklahoma City': -0.5, 'El Paso':       +0.3, 'Washington':    -1.5, 'Las Vegas':     -0.8,
+    'Louisville':    -0.7, 'Memphis':       -2.0, 'Portland':      -0.7, 'Baltimore':     -1.8,
+    'Milwaukee':     -0.9, 'Albuquerque':   -1.0, 'Tucson':        -0.6, 'Fresno':        -0.8,
+    'Sacramento':    -0.6, 'Atlanta':       -1.2, 'Kansas City':   -1.0, 'Miami':         -0.5,
+    'Raleigh':       +0.3, 'Omaha':         +0.2, 'Minneapolis':   -0.5, 'Tampa':         -0.3,
+    'Tulsa':         -0.9, 'Cleveland':     -1.3, 'Aurora':        -0.4, 'Wichita':       -0.5,
+    'New Orleans':   -2.0, 'Detroit':       -2.0, 'St. Louis':     -2.2, 'Birmingham':    -1.5,
+    'Baton Rouge':   -1.5, 'Anchorage':     -1.2, 'Little Rock':   -1.3, 'Jackson':       -2.0,
+  };
+
+  function getUSCitySafetyScore(city, stateAbbr) {
+    const stateSafety = US_STATE_SAFETY[stateAbbr];
+    if (!stateSafety) return null;
+    const delta = US_CITY_SAFETY_DELTA[city] || 0;
+    const raw = stateSafety.score + delta;
+    return Math.max(1.0, Math.min(10.0, raw));
+  }
+
+  function safetyScoreToLevel(score) {
+    if (score >= 8.0) return { level: 1, label: 'Very Safe' };
+    if (score >= 6.5) return { level: 2, label: 'Mostly Safe' };
+    if (score >= 5.0) return { level: 3, label: 'Moderate' };
+    return { level: 4, label: 'High Risk' };
+  }
 
   /* ── DESTINATIONS DATA ─────────────────────────────────────── */
   const DESTINATIONS = [
@@ -501,8 +589,13 @@ const App = (() => {
             const d = await r.json();
             if (d.status === 'success') {
               onGot(d.lat, d.lon);
-              state.location.name = `${d.city}, ${d.countryCode}`;
+              const isUS = d.countryCode === 'US';
+              const suffix = isUS ? d.region : d.countryCode;
+              state.location.name    = `${d.city}, ${suffix}`;
+              state.location.usState = isUS ? d.region : '';
+              state.location.country = d.countryCode;
               document.getElementById('location-text').textContent = state.location.name;
+              if (isUS) updateSafetyFromLocation(d.city, d.region);
             }
           } catch {
             document.getElementById('location-text').textContent = 'Location unavailable';
@@ -513,21 +606,54 @@ const App = (() => {
     }
   }
 
+  const US_STATE_ABBR = {
+    'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA',
+    'Colorado':'CO','Connecticut':'CT','Delaware':'DE','Florida':'FL','Georgia':'GA',
+    'Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA',
+    'Kansas':'KS','Kentucky':'KY','Louisiana':'LA','Maine':'ME','Maryland':'MD',
+    'Massachusetts':'MA','Michigan':'MI','Minnesota':'MN','Mississippi':'MS','Missouri':'MO',
+    'Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH','New Jersey':'NJ',
+    'New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND','Ohio':'OH',
+    'Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC',
+    'South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT',
+    'Virginia':'VA','Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY',
+    'District of Columbia':'DC',
+  };
+
   async function reverseGeocode(lat, lng) {
     try {
       const r = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
       const d = await r.json();
       const city    = d.address?.city || d.address?.town || d.address?.village || d.address?.county || '';
       const country = d.address?.country_code?.toUpperCase() || '';
-      const name    = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
-      state.location.name = name;
+      const isoCode = d.address?.['ISO3166-2-lvl4'] || '';
+      const usState = country === 'US'
+        ? (isoCode.replace('US-', '') || US_STATE_ABBR[d.address?.state] || d.address?.state || '')
+        : '';
+      const locSuffix = country === 'US' && usState ? usState : country;
+      const name = city ? `${city}${locSuffix ? ', ' + locSuffix : ''}` : 'Current Location';
+      state.location.name    = name;
+      state.location.usState = usState;
+      state.location.country = country;
       document.getElementById('location-text').textContent = name;
       document.getElementById('hbw-loc').textContent = '📍 ' + name;
       document.getElementById('adv-country-sub').textContent = name;
       const explLoc = document.getElementById('explore-location-text');
       if (explLoc) explLoc.textContent = name;
+      if (country === 'US' && usState) updateSafetyFromLocation(city, usState);
     } catch {
       document.getElementById('location-text').textContent = 'GPS Active';
+    }
+  }
+
+  function updateSafetyFromLocation(city, stateAbbr) {
+    const score = getUSCitySafetyScore(city, stateAbbr);
+    if (score !== null) {
+      const { level, label } = safetyScoreToLevel(score);
+      updateSafetyUI(level, label);
+    } else {
+      const stateSafety = US_STATE_SAFETY[stateAbbr];
+      if (stateSafety) updateSafetyUI(stateSafety.level, stateSafety.label);
     }
   }
 
@@ -1455,6 +1581,15 @@ const App = (() => {
         const level = d.safetyScore >= 8.5 ? 'VERY SAFE ✅' : d.safetyScore >= 7.5 ? 'SAFE ✅' : '⚠️ MODERATE';
         return `🛡️ **Safety: ${d.city}, ${d.country}**\n\n**Score: ${d.safetyScore}/10 — ${level}**\n\n${AI_RESPONSES.safety(d.city)}`;
       }
+      const usState = state.location.usState;
+      const stateSafe = usState ? US_STATE_SAFETY[usState] : null;
+      if (stateSafe) {
+        const cityName = state.location.name?.split(',')[0] || 'your city';
+        const cityScore = getUSCitySafetyScore(cityName, usState);
+        const displayScore = cityScore !== null ? cityScore.toFixed(1) : stateSafe.score.toFixed(1);
+        const { label } = safetyScoreToLevel(cityScore ?? stateSafe.score);
+        return `🛡️ **Safety: ${state.location.name}**\n\n**City Score: ${displayScore}/10 — ${label}**\n\n📊 **${usState} State Baseline:** ${stateSafe.score}/10 (${stateSafe.label})\n\n${AI_RESPONSES.safety(state.location.name)}`;
+      }
       const sorted = [...DESTINATIONS].sort((a, b) => b.safetyScore - a.safetyScore).slice(0, 4);
       return `🛡️ **Safest Nomad Destinations**\n\n${sorted.map((d, i) => `${i + 1}. **${d.city}** — ${d.safetyScore}/10 ${d.emoji}`).join('\n')}\n\n${AI_RESPONSES.safety(state.location.name)}`;
     }
@@ -1774,11 +1909,21 @@ const App = (() => {
     const q = document.getElementById('map-screen-input').value.trim();
     if (!q || !state.mapScreen) return;
     try {
-      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1`);
+      const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=1&addressdetails=1`);
       const d = await r.json();
       if (d[0]) {
         state.mapScreen.setView([+d[0].lat, +d[0].lon], 14);
-        snack('📍 Moved to ' + d[0].display_name.split(',')[0]);
+        const addr    = d[0].address || {};
+        const city    = addr.city || addr.town || addr.village || addr.county || d[0].display_name.split(',')[0];
+        const country = (addr.country_code || '').toUpperCase();
+        const usState = country === 'US' ? (addr['ISO3166-2-lvl4']?.replace('US-', '') || addr.state || '') : '';
+        const label   = country === 'US' && usState ? `${city}, ${usState}` : city;
+        snack('📍 Moved to ' + label);
+        if (country === 'US' && usState) {
+          state.location.usState = usState;
+          state.location.country = country;
+          updateSafetyFromLocation(city, usState);
+        }
       } else snack('Location not found');
     } catch { snack('Search failed') }
   }
@@ -2136,10 +2281,13 @@ const App = (() => {
     const labels  = { 1:'Very Safe', 2:'Mostly Safe', 3:'Moderate', 4:'High Risk' };
     const badge   = document.getElementById('adv-level-badge');
     if (badge) { badge.textContent = labels[level]; badge.dataset.level = level; }
+    const usState   = state.location.usState;
+    const stateSafe = usState ? US_STATE_SAFETY[usState] : null;
+    const stateNote = stateSafe ? ` ${usState} ranks as "${stateSafe.label}" statewide (score ${stateSafe.score}/10).` : '';
     const insights = [
-      `Safety conditions in ${state.location.name || 'your area'} appear stable. Standard traveler precautions apply. Keep valuables secure in crowded areas and use licensed transportation.`,
-      `Current conditions show moderate activity. Tourist areas are generally safe during daylight hours. Avoid unfamiliar areas after midnight and keep emergency contacts ready.`,
-      `Exercise increased awareness in ${state.location.name || 'current location'}. Several advisories are active. Monitor local news, register with your embassy, and stay in contact with your travel group.`,
+      `Safety conditions in ${state.location.name || 'your area'} appear stable.${stateNote} Standard precautions apply. Keep valuables secure in crowded areas and use licensed transportation.`,
+      `Current conditions show moderate activity.${stateNote} Tourist areas are generally safe during daylight hours. Avoid unfamiliar areas after midnight and keep emergency contacts ready.`,
+      `Exercise increased awareness in ${state.location.name || 'current location'}.${stateNote} Several advisories are active. Monitor local news, register with your embassy, and stay in contact with your travel group.`,
     ];
     const adv_text = document.getElementById('adv-ai-text');
     if (adv_text) adv_text.textContent = insights[Math.min(level-1, insights.length-1)];
