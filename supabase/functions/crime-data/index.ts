@@ -1911,12 +1911,24 @@ Deno.serve(async (req) => {
       for (const k of Object.keys(fallback) as (keyof CrimeRates)[]) {
         fallback[k] = Math.round(fallback[k] * 0.55);
       }
+      // Include static lookups even without coords — these don't require live API calls
+      // and are critical for safe-city score accuracy (e.g. Irvine without geocoding).
+      const fallbackUnodc = lookupUnodc(city, country);
+      const fallbackCityMul = lookupCityMultiplier(city, country);
       return new Response(JSON.stringify({
         source: "FALLBACK",
         coords: null,
         rates: fallback,
         signals: null,
         city, state, country,
+        cityMultiplier: fallbackCityMul,
+        unodc: {
+          cityHomicidePer100k: fallbackUnodc.cityRate,
+          countryHomicidePer100k: fallbackUnodc.countryRate,
+          nationalAvgPer100k: fallbackUnodc.nationalAvg,
+          globalPercentile: fallbackUnodc.globalPercentile,
+          yearOfData: fallbackUnodc.year,
+        },
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 

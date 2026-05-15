@@ -65,8 +65,9 @@ export const SAFETY_ENGINE_VERSION = '4.0.0';
 
 /* ── Mathematical constants (exported for transparency / UI display) ──────── */
 export const ENGINE_MATH = {
-  /** Bayesian prior score — lowered to 52 (more conservative, US-appropriate) */
-  PRIOR_SCORE: 52,
+  /** Bayesian prior score — 60 reflects median US city; avoids over-penalising
+   *  safe cities with moderate confidence while still shrinking uncertain outliers. */
+  PRIOR_SCORE: 60,
   /** Minimum confidence allowed */
   MIN_CONFIDENCE: 0.10,
   /** Maximum confidence allowed */
@@ -663,6 +664,12 @@ function computeAdvisoryComponent(
   const notes: string[] = [];
 
   if (!input.advisories.length) {
+    // US domestic cities never have international travel advisories; absence is a
+    // positive signal (State Dept only issues advisories for international destinations).
+    if (input.countryCode === 'US') {
+      notes.push('US domestic city — no international travel advisory applies (positive signal).');
+      return { raw: 90, weight: 0.20, effectiveWeight: 0.20, contribution: 90 * 0.20, dataQuality: 0.5, notes };
+    }
     notes.push('No advisory data available — applying conservative default.');
     return { raw: 40, weight: 0.20, effectiveWeight: 0.20, contribution: 40 * 0.20, dataQuality: 0.3, notes };
   }
@@ -887,11 +894,12 @@ function computeConflictComponent(
     ? 1.0
     : 0.7;
 
-  // For zero-conflict areas, baseline is 78 (not 100) — avoid inflating scores
-  // for safe-at-national-level countries that have high city-level crime.
+  // For zero-conflict areas, use 85 as baseline — enough headroom below 100 to
+  // differentiate from truly pristine destinations while still allowing safe cities
+  // to reach high scores. (Old 78 was too conservative, dragging US safe cities down.)
   const baseline = (input.conflictSeverity === 0 && input.conflictFatalities90d === 0
     && !input.activeConflictWithin50mi && !input.terrorEventLast30d && !input.sustainedCivilUnrest)
-    ? 78 : 100;
+    ? 85 : 100;
   const raw = Math.max(0, Math.min(100, baseline - totalPenalty));
   return { raw, weight: 0.15, effectiveWeight: 0.15, contribution: raw * 0.15, dataQuality, notes };
 }
@@ -918,8 +926,11 @@ function computeTrendComponent(
   const c12 = input.crimeChange12Months ?? null;
 
   if (c90 == null && c12 == null) {
-    notes.push('No trend data — falling back to neutral (raw=60).');
-    return { raw: 60, weight: 0.10, effectiveWeight: 0.10, contribution: 60 * 0.10, dataQuality: 0.3, notes };
+    // 70 is the true neutral (same as the baseline when both changes are 0%).
+    // Using 60 was an unduly conservative penalty for missing data that skewed
+    // safe cities downward with no factual basis.
+    notes.push('No trend data — falling back to neutral (raw=70).');
+    return { raw: 70, weight: 0.10, effectiveWeight: 0.10, contribution: 70 * 0.10, dataQuality: 0.3, notes };
   }
 
   let raw = 70; // neutral baseline
@@ -1453,10 +1464,15 @@ export function adaptBackendPayload(
   const conflictingAdvisories = levels.length >= 2
     && (Math.max(...levels) - Math.min(...levels)) >= 2;
 
-  // Derive homicide per 100k: prefer UNODC city, then US city database,
+  // Derive homicide per 100k: prefer UNODC city, then US city databases
+  // (both dangerous and safe lists are sourced from FBI NIBRS 2023 — official data),
   // then derive from city multiplier (US only), then UNODC national, then FBI-derived.
   const cityKey = city.toLowerCase().trim();
-  const usCityEntry = countryCode === 'US' ? (US_CITY_SAFETY_DATA[cityKey] ?? null) : null;
+  const usCityEntry    = countryCode === 'US' ? (US_CITY_SAFETY_DATA[cityKey] ?? null) : null;
+  // US_TOP20_SAFEST must also be checked: without it, safe cities like Irvine fall
+  // through to the national average (~5.5/100k) instead of their actual near-zero rate.
+  const safeCityEntry  = countryCode === 'US' ? (US_TOP20_SAFEST[cityKey]     ?? null) : null;
+  const inUsDatabase   = usCityEntry != null || safeCityEntry != null;
 
   // For US cities without UNODC city data: derive from city multiplier if available.
   // Formula: nationalAvg × multiplier^0.85 — non-linear to reflect that high-crime
@@ -1465,17 +1481,18 @@ export function adaptBackendPayload(
   const derivedFromMultiplier = (
     countryCode === 'US' &&
     unodc.cityHomicidePer100k == null &&
-    usCityEntry == null &&
+    !inUsDatabase &&
     cityMultiplierVal != null && cityMultiplierVal > 0
   )
     ? Math.round((unodc.countryHomicidePer100k ?? 6.3) * Math.pow(cityMultiplierVal, 0.85) * 10) / 10
     : null;
 
   const homicideRatePer100k =
-    unodc.cityHomicidePer100k      // Most accurate: UNODC city-level
-    ?? usCityEntry?.homicidePer100k // US city database fallback
-    ?? derivedFromMultiplier        // Derived from crime multiplier (US only)
-    ?? unodc.countryHomicidePer100k // Country average (last resort before FBI)
+    unodc.cityHomicidePer100k       // Most accurate: UNODC city-level
+    ?? usCityEntry?.homicidePer100k  // FBI NIBRS 2023 — top 50 dangerous US cities
+    ?? safeCityEntry?.homicidePer100k // FBI NIBRS 2023 — top 20 safest US cities
+    ?? derivedFromMultiplier         // Derived from crime multiplier (US only)
+    ?? unodc.countryHomicidePer100k  // Country average (last resort before FBI)
     ?? deriveHomicideFromRates(payload.rates);
 
   // Violent crime rate: from backend rates
@@ -1518,7 +1535,9 @@ export function adaptBackendPayload(
     neighborhoodWarnings,
     sourceCount,
     dataAgeMonths: 0,          // live data
-    hasOfficialCityData: payload.source === 'LIVE_AGGREGATE' && !!payload.fbi,
+    // FBI NIBRS 2023 static databases count as official city data even in FALLBACK mode —
+    // they are verified, city-specific figures, not national estimates.
+    hasOfficialCityData: (payload.source === 'LIVE_AGGREGATE' && !!payload.fbi) || inUsDatabase,
     conflictingAdvisories,
     retrievedAt: payload.fetchedAt ?? new Date().toISOString(),
   };
