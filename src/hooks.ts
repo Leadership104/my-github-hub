@@ -21,7 +21,8 @@ export async function preciseReverseGeocode(lat: number, lng: number): Promise<{
     if (!error && data && !data.error && data.formattedAddress) {
       const cc = (data.countryCode || '').toUpperCase();
       const cityState = [data.city, data.state].filter(Boolean).join(', ');
-      const name = cityState ? `${cityState}${cc ? ', ' + cc : ''}` : (data.formattedAddress || 'Current Location');
+      const displayCountry = cc === 'US' ? 'USA' : cc;
+      const name = cityState ? `${cityState}${displayCountry ? ', ' + displayCountry : ''}` : (data.formattedAddress || 'Current Location');
       return { name, fullAddress: data.formattedAddress, countryCode: cc };
     }
   } catch { /* fall through */ }
@@ -35,7 +36,12 @@ export async function preciseReverseGeocode(lat: number, lng: number): Promise<{
   const nom = await nomRes.json().catch(() => ({} as any));
   const city = bdc.city || bdc.locality || bdc.principalSubdivision || nom.address?.city || nom.address?.town || nom.address?.village || '';
   const country = (bdc.countryCode || nom.address?.country_code || '').toUpperCase();
-  const name = city ? `${city}${country ? ', ' + country : ''}` : 'Current Location';
+  const state = bdc.principalSubdivisionCode?.split('-')[1] || nom.address?.state_code || '';
+  const displayCountry = country === 'US' ? 'USA' : country;
+  const locationParts = [city];
+  if (country === 'US' && state && state !== city) locationParts.push(state);
+  if (displayCountry) locationParts.push(displayCountry);
+  const name = city ? locationParts.join(', ') : 'Current Location';
   const fullAddress = nom.display_name || [bdc.locality, bdc.principalSubdivision, bdc.countryName].filter(Boolean).join(', ') || name;
   return { name, fullAddress, countryCode: country };
 }

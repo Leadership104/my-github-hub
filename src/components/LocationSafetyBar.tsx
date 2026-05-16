@@ -33,7 +33,8 @@ export default function LocationSafetyBar({ locationName, fullAddress, countryCo
     if (!locationName) { setLiveRates(null); return; }
     let cancelled = false;
     setLiveRates(null);
-    const parts = locationName.split(',').map(s => s.trim()).filter(Boolean);
+    const cleaned = locationName.replace(/,\s*(USA|US)\s*$/i, '');
+    const parts = cleaned.split(',').map(s => s.trim()).filter(Boolean);
     const city = parts[0] ?? '';
     let state: string | null = null;
     for (const p of parts.slice(1)) {
