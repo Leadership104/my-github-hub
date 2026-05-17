@@ -217,11 +217,17 @@ export function computeSafetyScore(params: {
   // categories don't tank the score, but real hot-spots still register.
   const worstPair = (worst + secondWorst) / 2;
   const blendedRaw = meanPts * 0.65 + worstPair * 0.35;
-  // Mild upward curve above 5 pts so genuinely dangerous areas still drop,
-  // but typical urban centers stay in the realistic 60-85 range.
-  const curved = blendedRaw <= 5
-    ? blendedRaw
-    : 5 + (blendedRaw - 5) * 1.20;
+  // Piecewise curve calibrated against FBI city-level data (see crime-data
+  // CITY_CRIME_INDEX comments). Targets:
+  //   Irvine / Valencia (mul ≤0.25)    → 93–97  ("Safe")
+  //   Avg US suburb     (mul ~1.0)     → 70–80  ("Safer")
+  //   Portland / Seattle (mul ~3.3)    → 40–50  ("Moderate")
+  //   Memphis / Detroit  (mul ~5.0)    → 15–25  ("Risky / Unsafe")
+  const curved = blendedRaw <= 0.8
+    ? blendedRaw * 0.55
+    : blendedRaw <= 4
+      ? 0.44 + (blendedRaw - 0.8) * 1.25
+      : 4.44 + (blendedRaw - 4) * 1.10;
   const score = Math.max(0, Math.min(100, Math.round(100 - curved * 10)));
   const riskLevel = score >= 75 ? 'LOW RISK' : score >= 55 ? 'MODERATE' : score >= 35 ? 'ELEVATED' : score >= 18 ? 'HIGH RISK' : 'CRITICAL';
   const riskColor = score >= 75 ? '#22c55e' : score >= 55 ? '#eab308' : score >= 35 ? '#f97316' : '#ef4444';

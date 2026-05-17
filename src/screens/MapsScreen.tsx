@@ -598,25 +598,48 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   }, [lat, lng]);
 
 
+  // Bias Nominatim to a ~150km box around the user so generic queries like
+  // "dry cleaner" don't snap to an unrelated match in another country.
+  const buildNomUrl = useCallback((val: string, limit = 5) => {
+    const dLat = 1.4; // ~155km N/S
+    const dLng = 1.4 / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const left = lng - dLng, right = lng + dLng;
+    const top = lat + dLat, bottom = lat - dLat;
+    const params = new URLSearchParams({
+      q: val,
+      format: 'json',
+      limit: String(limit),
+      addressdetails: '1',
+      viewbox: `${left},${top},${right},${bottom}`,
+      bounded: '0', // prefer in-box but allow global as fallback (we filter below)
+    });
+    return `https://nominatim.openstreetmap.org/search?${params}`;
+  }, [lat, lng]);
+
   const handleSearchInput = useCallback((val: string) => {
     setSearch(val);
     if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
     if (val.trim().length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
     suggestTimerRef.current = setTimeout(async () => {
       try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+        const r = await fetch(buildNomUrl(val, 8));
         const d = await r.json();
-        const items = d.map((item: any) => ({
-          name: item.display_name?.split(',')[0] || val,
-          address: item.display_name?.split(',').slice(1, 3).join(',').trim() || '',
-          lat: parseFloat(item.lat),
-          lng: parseFloat(item.lon),
-        }));
+        // Reject geocodes >200km from user — prevents "dry cleaner" jumping abroad.
+        const items = d
+          .map((item: any) => ({
+            name: item.display_name?.split(',')[0] || val,
+            address: item.display_name?.split(',').slice(1, 3).join(',').trim() || '',
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+            _dist: haversineKm(lat, lng, parseFloat(item.lat), parseFloat(item.lon)),
+          }))
+          .filter((it: any) => Number.isFinite(it.lat) && it._dist <= 200)
+          .slice(0, 5);
         setSuggestions(items);
         setShowSuggestions(items.length > 0);
       } catch { setSuggestions([]); }
     }, 400);
-  }, []);
+  }, [buildNomUrl, lat, lng]);
 
   const selectSuggestion = useCallback((s: { name: string; address: string; lat: number; lng: number }) => {
     setSearch(s.name);
@@ -660,10 +683,16 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         query: search, lat, lng, radius: 10000,
       });
 
-      // Also Nominatim for geocoding
-      const nomR = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&limit=5&addressdetails=1`);
-      const nomD = await nomR.json();
+      // Also Nominatim for geocoding — biased to user's area so generic terms
+      // (e.g. "dry cleaner") don't recenter the map to another country.
+      const nomR = await fetch(buildNomUrl(search, 5));
+      const nomDRaw = await nomR.json();
+      const nomD = (Array.isArray(nomDRaw) ? nomDRaw : []).filter((it: any) => {
+        const la = parseFloat(it.lat), ln = parseFloat(it.lon);
+        return Number.isFinite(la) && haversineKm(lat, lng, la, ln) <= 200;
+      });
 
+      // Only recenter if we have a *local* geocode OR Google returned local results.
       if (nomD[0]) {
         const sLat = parseFloat(nomD[0].lat);
         const sLng = parseFloat(nomD[0].lon);
@@ -671,6 +700,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       } else if (googlePlaces.length > 0) {
         mapRef.current.setView([googlePlaces[0].lat, googlePlaces[0].lng], 14);
       }
+      // else: keep current view — better than jumping to an unrelated hit.
 
       clearMarkers();
 

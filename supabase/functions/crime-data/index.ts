@@ -176,6 +176,25 @@ const CITY_CRIME_INDEX: Record<string, number> = {
   "gilbert|US": 0.54,       // ~108/100k — GPD/Arizona 2023
   "naperville|US": 0.32,    // ~64/100k — NPD/Illinois UCR 2023
   "irvine|US": 0.23,        // ~46/100k — IPD/California DOJ 2023 (19th consecutive year safest)
+  // ─ Master-planned / very-low-crime US suburbs ────────────────────────────
+  "valencia|US": 0.20,      // ~40/100k — Newhall Land master-planned; LASD Santa Clarita station
+  "santa clarita|US": 0.25, // ~50/100k — LASD 2023; one of safest cities >100k pop
+  "frisco|US": 0.30,        // ~60/100k — Frisco PD 2023 (TX); master-planned, low crime
+  "mckinney|US": 0.45,      // ~90/100k — McKinney PD 2023
+  "cary|US": 0.35,          // ~70/100k — Cary PD/NC UCR 2023
+  "carlsbad|US": 0.55,      // ~110/100k — CPD/California DOJ 2023
+  "thousand oaks|US": 0.40, // ~80/100k — Ventura County SO 2023
+  "simi valley|US": 0.55,   // ~110/100k — Simi Valley PD 2023
+  "fishers|US": 0.30,       // ~60/100k — Fishers PD/Indiana UCR 2023
+  "round rock|US": 0.60,    // ~120/100k — Round Rock PD/Texas 2023
+  // ─ User-flagged reference cities ─────────────────────────────────────────
+  "arlington|US": 0.95,     // Arlington VA ~190/100k (ACPD 2023) + Arlington TX ~520/100k blended
+  "alexandria|US": 1.40,    // ~280/100k — APD/Virginia UCR 2023
+  "rocky mount|US": 4.10,   // ~820/100k — RMPD/NC SBI 2023; homicide ~30/100k
+  "rochester|US": 4.10,     // ~820/100k — RPD/NY UCR 2023; homicide ~25/100k
+  "syracuse|US": 3.80,      // ~760/100k — SPD/NY UCR 2023
+  "fayetteville|US": 3.20,  // ~640/100k — FPD/NC SBI 2023
+  "greensboro|US": 2.80,    // ~560/100k — GPD/NC SBI 2023
   // ─ Canada ──────────────────────────────────────────────────────────────────
   "toronto|CA": 0.48,  "vancouver|CA": 0.62,  "montreal|CA": 0.52,
   "calgary|CA": 0.58,  "edmonton|CA": 0.82,   "ottawa|CA": 0.40,
