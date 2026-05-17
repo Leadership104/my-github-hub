@@ -598,25 +598,48 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   }, [lat, lng]);
 
 
+  // Bias Nominatim to a ~150km box around the user so generic queries like
+  // "dry cleaner" don't snap to an unrelated match in another country.
+  const buildNomUrl = useCallback((val: string, limit = 5) => {
+    const dLat = 1.4; // ~155km N/S
+    const dLng = 1.4 / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
+    const left = lng - dLng, right = lng + dLng;
+    const top = lat + dLat, bottom = lat - dLat;
+    const params = new URLSearchParams({
+      q: val,
+      format: 'json',
+      limit: String(limit),
+      addressdetails: '1',
+      viewbox: `${left},${top},${right},${bottom}`,
+      bounded: '0', // prefer in-box but allow global as fallback (we filter below)
+    });
+    return `https://nominatim.openstreetmap.org/search?${params}`;
+  }, [lat, lng]);
+
   const handleSearchInput = useCallback((val: string) => {
     setSearch(val);
     if (suggestTimerRef.current) clearTimeout(suggestTimerRef.current);
     if (val.trim().length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
     suggestTimerRef.current = setTimeout(async () => {
       try {
-        const r = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&limit=5&addressdetails=1`);
+        const r = await fetch(buildNomUrl(val, 8));
         const d = await r.json();
-        const items = d.map((item: any) => ({
-          name: item.display_name?.split(',')[0] || val,
-          address: item.display_name?.split(',').slice(1, 3).join(',').trim() || '',
-          lat: parseFloat(item.lat),
-          lng: parseFloat(item.lon),
-        }));
+        // Reject geocodes >200km from user — prevents "dry cleaner" jumping abroad.
+        const items = d
+          .map((item: any) => ({
+            name: item.display_name?.split(',')[0] || val,
+            address: item.display_name?.split(',').slice(1, 3).join(',').trim() || '',
+            lat: parseFloat(item.lat),
+            lng: parseFloat(item.lon),
+            _dist: haversineKm(lat, lng, parseFloat(item.lat), parseFloat(item.lon)),
+          }))
+          .filter((it: any) => Number.isFinite(it.lat) && it._dist <= 200)
+          .slice(0, 5);
         setSuggestions(items);
         setShowSuggestions(items.length > 0);
       } catch { setSuggestions([]); }
     }, 400);
-  }, []);
+  }, [buildNomUrl, lat, lng]);
 
   const selectSuggestion = useCallback((s: { name: string; address: string; lat: number; lng: number }) => {
     setSearch(s.name);
