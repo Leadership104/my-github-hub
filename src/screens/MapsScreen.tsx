@@ -683,10 +683,16 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         query: search, lat, lng, radius: 10000,
       });
 
-      // Also Nominatim for geocoding
-      const nomR = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(search)}&format=json&limit=5&addressdetails=1`);
-      const nomD = await nomR.json();
+      // Also Nominatim for geocoding — biased to user's area so generic terms
+      // (e.g. "dry cleaner") don't recenter the map to another country.
+      const nomR = await fetch(buildNomUrl(search, 5));
+      const nomDRaw = await nomR.json();
+      const nomD = (Array.isArray(nomDRaw) ? nomDRaw : []).filter((it: any) => {
+        const la = parseFloat(it.lat), ln = parseFloat(it.lon);
+        return Number.isFinite(la) && haversineKm(lat, lng, la, ln) <= 200;
+      });
 
+      // Only recenter if we have a *local* geocode OR Google returned local results.
       if (nomD[0]) {
         const sLat = parseFloat(nomD[0].lat);
         const sLng = parseFloat(nomD[0].lon);
@@ -694,6 +700,7 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
       } else if (googlePlaces.length > 0) {
         mapRef.current.setView([googlePlaces[0].lat, googlePlaces[0].lng], 14);
       }
+      // else: keep current view — better than jumping to an unrelated hit.
 
       clearMarkers();
 
