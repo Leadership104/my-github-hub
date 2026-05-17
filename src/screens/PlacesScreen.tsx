@@ -537,18 +537,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       : `${cuisine} restaurant`;
     const places = await fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
 
-    const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
-    // Filter: open and not closing within 30 min
-    const filtered = places.filter(p => {
-      if (p.openNow === false) return false;
-      if (p.closingTime && isClosingSoon(p.closingTime, 30)) return false;
-      return true;
-    });
-
-    // Sort by proximity (closest first)
-    const sorted = [...filtered].sort((a, b) => {
+    // Sort: open (true) first, unknown (null) second, closed (false) last.
+    // Within each group, sort by proximity bucket then rating so closer
+    // higher-rated places surface first. Closed places appear at the bottom
+    // so users can plan ahead (e.g. places that require reservations).
+    const sorted = [...places].sort((a, b) => {
+      const openRank = (v: boolean | null) => v === true ? 0 : v === null ? 1 : 2;
+      const rankDiff = openRank(a.openNow) - openRank(b.openNow);
+      if (rankDiff !== 0) return rankDiff;
       const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
       const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
       const bucketA = Math.floor(distA * 2);
@@ -906,7 +902,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {locationName}</span>
             <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {currentTime}</span>
           </div>
-          <p className="text-[11px] text-muted-foreground/70 mt-1">Open now · within 10 min drive · sorted by closest</p>
+          <p className="text-[11px] text-muted-foreground/70 mt-1">Open now first · closed below · within 10 min drive · sorted by closest</p>
 
           {/* Cuisine filter chips */}
           <div ref={cuisineScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
@@ -945,76 +941,103 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           ) : foodGuidePlaces.length === 0 ? (
             <div className="text-center py-12">
               <span className="text-4xl block mb-3">🍽️</span>
-              <p className="text-sm font-semibold text-foreground">No open restaurants found</p>
+              <p className="text-sm font-semibold text-foreground">No restaurants found nearby</p>
               <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or check back later</p>
             </div>
-          ) : foodGuidePlaces.map((p, i) => {
-            const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
-            const isHere = distKm !== null && distKm < 0.3;
-            const driveTime = distKm && !isHere ? estimateDriveTime(distKm) : null;
-            const mustTry = extractMustTry(p.reviews);
-            const closingSoon = isClosingSoon(p.closingTime);
+          ) : (() => {
+            const openPlaces = foodGuidePlaces.filter(p => p.openNow !== false);
+            const closedPlaces = foodGuidePlaces.filter(p => p.openNow === false);
+
+            const renderCard = (p: LivePlace, i: number) => {
+              const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
+              const isHere = distKm !== null && distKm < 0.3;
+              const driveTime = distKm && !isHere ? estimateDriveTime(distKm) : null;
+              const mustTry = extractMustTry(p.reviews);
+              const closingSoon = isClosingSoon(p.closingTime);
+              const isClosed = p.openNow === false;
+
+              return (
+                <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
+                  className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
+                  <div className="flex gap-3 p-4">
+                    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                      {p.photoUrl ? (
+                        <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                      <div className="font-bold text-sm truncate">{p.name}</div>
+                      {p.typeLabel && <div className="text-[10px] text-muted-foreground">{p.typeLabel}</div>}
+
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {p.rating && (
+                          <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
+                            <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
+                          </span>
+                        )}
+                        {p.reviewCount > 0 && <span className="text-[10px] text-muted-foreground">({p.reviewCount.toLocaleString()})</span>}
+                        {isHere ? (
+                          <span className="text-[10px] text-green-600 font-semibold flex items-center gap-0.5">
+                            <MapPin className="w-2.5 h-2.5" /> You're here
+                          </span>
+                        ) : driveTime && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                            <Navigation className="w-2.5 h-2.5" /> {driveTime}
+                          </span>
+                        )}
+                        {p.priceLevel && <span className="text-[10px] text-muted-foreground">{p.priceLevel.replace('PRICE_LEVEL_', '')}</span>}
+                      </div>
+
+                      <div className="flex items-center gap-2 mt-1">
+                        {isClosed ? (
+                          <>
+                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">CLOSED</span>
+                            <span className="text-[10px] text-muted-foreground">Call ahead to confirm hours</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">OPEN</span>
+                            {p.closingTime && (
+                              <span className={`text-[10px] ${closingSoon ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}`}>
+                                {closingSoon ? '⚠ Closing soon' : `Closes ${p.closingTime}`}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      {mustTry && (
+                        <div className="flex items-center gap-1 mt-1.5 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit max-w-full truncate">
+                          <ChefHat className="w-2.5 h-2.5 flex-shrink-0" />
+                          <span className="truncate">{mustTry}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            };
 
             return (
-              <button key={p.placeId || i} onClick={() => openPlaceDetail(p)}
-                className="w-full bg-card border border-border rounded-kipita overflow-hidden text-left hover:shadow-md transition-shadow">
-                <div className="flex gap-3 p-4">
-                  {/* Photo or placeholder */}
-                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
-                    {p.photoUrl ? (
-                      <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    {/* Name & type */}
-                    <div className="font-bold text-sm truncate">{p.name}</div>
-                    {p.typeLabel && <div className="text-[10px] text-muted-foreground">{p.typeLabel}</div>}
-
-                    {/* Rating + Drive time row */}
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {p.rating && (
-                        <span className="flex items-center gap-0.5 text-xs font-bold text-amber-500">
-                          <Star className="w-3 h-3 fill-amber-400 text-amber-400" /> {p.rating.toFixed(1)}
-                        </span>
-                      )}
-                      {p.reviewCount > 0 && <span className="text-[10px] text-muted-foreground">({p.reviewCount.toLocaleString()})</span>}
-                      {isHere ? (
-                        <span className="text-[10px] text-green-600 font-semibold flex items-center gap-0.5">
-                          <MapPin className="w-2.5 h-2.5" /> You're here
-                        </span>
-                      ) : driveTime && (
-                        <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                          <Navigation className="w-2.5 h-2.5" /> {driveTime}
-                        </span>
-                      )}
-                      {p.priceLevel && <span className="text-[10px] text-muted-foreground">{p.priceLevel.replace('PRICE_LEVEL_', '')}</span>}
+              <>
+                {openPlaces.map((p, i) => renderCard(p, i))}
+                {closedPlaces.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-2 pt-2">
+                      <div className="h-px flex-1 bg-border" />
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider px-1">Plan Ahead</span>
+                      <div className="h-px flex-1 bg-border" />
                     </div>
-
-                    {/* Open status */}
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded-full">OPEN</span>
-                      {p.closingTime && (
-                        <span className={`text-[10px] ${closingSoon ? 'text-amber-600 font-semibold' : 'text-muted-foreground'}`}>
-                          {closingSoon ? '⚠ Closing soon' : `Closes ${p.closingTime}`}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Must-try dish */}
-                    {mustTry && (
-                      <div className="flex items-center gap-1 mt-1.5 text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full w-fit max-w-full truncate">
-                        <ChefHat className="w-2.5 h-2.5 flex-shrink-0" />
-                        <span className="truncate">{mustTry}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </button>
+                    <p className="text-[10px] text-muted-foreground -mt-1">Not open yet · call ahead to reserve or confirm hours</p>
+                    {closedPlaces.map((p, i) => renderCard(p, openPlaces.length + i))}
+                  </>
+                )}
+              </>
             );
-          })}
+          })()}
         </div>
       </div>
     );
