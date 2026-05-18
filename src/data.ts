@@ -284,6 +284,7 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Indian', query: 'indian restaurant', emoji: '🍛' },
     { label: 'Italian', query: 'italian restaurant', emoji: '🍝' },
     { label: 'Japanese', query: 'japanese restaurant', emoji: '🍱' },
+    { label: 'Mediterranean', query: 'mediterranean restaurant', emoji: '🥙' },
     { label: 'Mexican', query: 'mexican restaurant', emoji: '🌮' },
     { label: 'Pizza', query: 'pizza restaurant', emoji: '🍕' },
     { label: 'Seafood', query: 'seafood restaurant', emoji: '🦞' },
