@@ -7,6 +7,7 @@ import type { TabId } from './types';
 import type { LocationState } from './hooks';
 import kipitaSplash from './assets/kipita-splash.jpeg';
 import kipitaLogo from './assets/kipita-icon.png';
+import { buildTrip } from './lib/tripPlanner';
 // Primary screens — always in main bundle (nav tabs, hot path)
 import HomeScreen from './screens/HomeScreen';
 import AIScreen from './screens/AIScreen';
@@ -112,15 +113,12 @@ export default function App() {
   }, []);
 
   const handleCreateTrip = useCallback((dest: string, country: string, days: number) => {
-    const emoji = ['🏔️', '🌴', '🏖️', '🌺', '🗼', '🏙️'][Math.floor(Math.random() * 6)];
     const start = new Date(); start.setDate(start.getDate() + 14);
-    const end = new Date(start); end.setDate(end.getDate() + days);
-    const t: Trip = {
-      id: Date.now().toString(), dest, country, emoji,
-      start: start.toISOString().split('T')[0], end: end.toISOString().split('T')[0],
-      notes: `AI-planned ${days}-day trip`, status: 'upcoming', items: [], bookings: [], createdAt: Date.now(),
-    };
+    const t = buildTrip({ dest, country, days, startDate: start.toISOString().split('T')[0] });
     saveTrips([t, ...trips]);
+    // Navigate directly to the new trip so the user sees the itinerary
+    setTab('trips');
+    setScreenHint(`view:${t.id}`);
   }, [trips, saveTrips]);
 
   const handleAddBooking = useCallback((tripId: string, booking: Booking) => {
@@ -364,7 +362,7 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home':   return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} lat={lat} lng={lng} onSwitchTab={switchTab} />;
-      case 'ai':     return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} />;
+      case 'ai':     return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={screenHint === 'plan-trip' ? "I'd like to plan a trip with your help. Please ask me where I want to go, roughly when I want to travel, and how many days. Once you have the key details, give me a brief trip overview so I can confirm before you create it." : undefined} handoffLabel={screenHint === 'plan-trip' ? '✈️ AI Trip Planner' : undefined} />;
       case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} />;
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} onBack={goBack} />;
       case 'safety': return <SafetyScreen locationName={locationName} countryCode={countryCode} advisoryScore={advisoryData?.rawScore} lat={lat} lng={lng} onBack={goBack} />;

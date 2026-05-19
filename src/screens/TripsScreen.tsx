@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import type { Trip, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import { buildTrip, pickEmoji } from '../lib/tripPlanner';
-import { searchDestinations, getRichDestinationDetails, type DestinationResult, type DestinationDetails, type NewsItem } from '../lib/destinationSearch';
+import { searchDestinations, getDestinationDetails, getRichDestinationDetails, type DestinationResult, type DestinationDetails, type NewsItem } from '../lib/destinationSearch';
 import AIScreen from './AIScreen';
 import GroupsScreen from './GroupsScreen';
 import InAppBrowser from '../components/InAppBrowser';
@@ -118,33 +118,52 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     return () => { cancelled = true; };
   }, [selectedTrip]);
 
-  // Auto-open wizard from external hint, e.g. "plan:Lisbon|Portugal"
+  // Auto-open wizard from "plan:City|Country" or navigate directly to a trip with "view:tripId"
   useEffect(() => {
-    if (!initialHint || !initialHint.startsWith('plan:')) return;
-    const payload = initialHint.slice(5);
-    const [city, country = ''] = payload.split('|');
-    if (!city) return;
-    setShowWizard(true);
-    setWStep('dest');
-    pickDestination(city.trim(), country.trim());
+    if (!initialHint) return;
+    if (initialHint.startsWith('plan:')) {
+      const payload = initialHint.slice(5);
+      const [city, country = ''] = payload.split('|');
+      if (!city) return;
+      setShowWizard(true);
+      setWStep('dest');
+      pickDestination(city.trim(), country.trim());
+    } else if (initialHint.startsWith('view:')) {
+      const tripId = initialHint.slice(5);
+      // trips and initialHint update in the same React batch so the new trip exists here
+      const trip = trips.find(t => t.id === tripId);
+      if (trip) { setSelectedTrip(trip); setExpandedDays({ 1: true }); }
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialHint]);
 
-  // Hydrate photo + summary + gallery + history when destination picked
+  // Hydrate photo + summary + gallery + history when destination picked.
+  // Phase 1: quick Wikipedia summary fetch (~300ms) shows the photo immediately.
+  // Phase 2: concurrent rich-details fetch fills gallery, history, news.
   const pickDestination = async (city: string, country: string) => {
     setWDest(city); setWCountry(country);
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
     setWPickedGallery([]); setWPickedHistory(undefined); setWPickedArea(undefined);
     setWPickedHero(undefined); setWPickedNews([]);
     setWLoadingDetails(true);
-    const d = await getRichDestinationDetails(city, country);
-    setWPickedPhoto(d.photo);
-    setWPickedHero(d.photo);
-    setWPickedSummary(d.summary);
-    setWPickedGallery(d.gallery || []);
-    setWPickedHistory(d.history);
-    setWPickedArea(d.areaOverview);
-    setWPickedNews(d.news || []);
+
+    // Fire both fetches simultaneously; surface photo as soon as quick resolves
+    const richPromise = getRichDestinationDetails(city, country);
+    getDestinationDetails(city, country).then(q => {
+      if (q.photo) setWPickedPhoto(prev => prev || q.photo);
+      if (q.summary) setWPickedSummary(prev => prev || q.summary);
+    }).catch(() => {});
+
+    // Await rich details and upgrade everything
+    try {
+      const d = await richPromise;
+      if (d.photo) setWPickedPhoto(d.photo);
+      if (d.summary) setWPickedSummary(d.summary);
+      setWPickedGallery(d.gallery || []);
+      if (d.history) setWPickedHistory(d.history);
+      if (d.areaOverview) setWPickedArea(d.areaOverview);
+      setWPickedNews(d.news || []);
+    } catch { /* gallery/history/news are optional */ }
     setWLoadingDetails(false);
   };
 
@@ -1004,13 +1023,13 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   <span className="ms text-muted-foreground">chevron_right</span>
                 </button>
                 <button
-                  onClick={() => { setShowPlanChooser(false); setAiHandoff(null); setShowAiPlanner(true); }}
+                  onClick={() => { setShowPlanChooser(false); onSwitchTab?.('ai', 'plan-trip'); }}
                   className="w-full flex items-center gap-3 p-4 rounded-kipita border border-border bg-background hover:border-kipita-red/50 hover:shadow-md transition-all text-left active:scale-[0.99]"
                 >
                   <span className="text-2xl">✨</span>
                   <div className="flex-1">
                     <div className="font-extrabold text-sm">Plan with AI</div>
-                    <div className="text-xs text-muted-foreground">Describe your trip · AI builds an itinerary</div>
+                    <div className="text-xs text-muted-foreground">Chat with AI · it collects your preferences & builds an itinerary</div>
                   </div>
                   <span className="ms text-muted-foreground">chevron_right</span>
                 </button>
@@ -1019,20 +1038,21 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
           </div>
         )}
 
-        {/* AI Planner Modal */}
-        {showAiPlanner && (
+        {/* Support Handoff Modal — only for booking/trip issue escalations */}
+        {showAiPlanner && aiHandoff && (
           <div className="fixed inset-0 z-[350] flex flex-col bg-background">
             <div className="flex items-center gap-2 p-3 border-b border-border bg-card flex-shrink-0">
               <button onClick={() => { setShowAiPlanner(false); setAiHandoff(null); }} className="ms text-lg text-muted-foreground hover:text-foreground">close</button>
-              <h3 className="font-bold text-sm flex-1">{aiHandoff ? `🆘 ${aiHandoff.label}` : 'AI Trip Planner'}</h3>
+              <h3 className="font-bold text-sm flex-1">🆘 {aiHandoff.label}</h3>
             </div>
             <div className="flex-1 overflow-hidden">
               <AIScreen
                 trips={trips}
                 onCreateTrip={createTripFromAi}
                 onAddBooking={addBookingToTrip}
-                handoffPrompt={aiHandoff?.prompt}
-                handoffLabel={aiHandoff?.label}
+                onSwitchTab={(newTab, hint) => { setShowAiPlanner(false); setAiHandoff(null); onSwitchTab?.(newTab, hint); }}
+                handoffPrompt={aiHandoff.prompt}
+                handoffLabel={aiHandoff.label}
               />
             </div>
           </div>
@@ -1464,7 +1484,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 )}
                 {/* Stuck? Ask AI */}
                 <button
-                  onClick={() => { resetWizard(); setShowAiPlanner(true); }}
+                  onClick={() => { resetWizard(); onSwitchTab?.('ai', 'plan-trip'); }}
                   className="w-full text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-2 rounded-full flex items-center justify-center gap-1 mt-1"
                 >
                   ✨ Stuck? Ask AI to suggest dates & flights
@@ -1495,8 +1515,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               </section>
             </div>
 
-            {/* Single submit button */}
-            <div className="p-4 border-t border-border bg-card flex-shrink-0">
+            {/* Single submit button — safe-area-inset-bottom keeps it above iOS home bar */}
+            <div className="px-4 pt-4 border-t border-border bg-card flex-shrink-0" style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
               <button
                 onClick={finishWizard}
                 disabled={!wDest}
