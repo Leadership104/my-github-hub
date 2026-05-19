@@ -121,7 +121,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   // Auto-open wizard from "plan:City|Country" or navigate directly to a trip with "view:tripId"
   useEffect(() => {
     if (!initialHint) return;
-    if (initialHint.startsWith('plan:')) {
+    if (initialHint === 'show-chooser') {
+      setShowPlanChooser(true);
+    } else if (initialHint.startsWith('plan:')) {
       const payload = initialHint.slice(5);
       const [city, country = ''] = payload.split('|');
       if (!city) return;
@@ -1260,7 +1262,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               <h3 className="font-bold text-base flex-1">Plan a Trip</h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+            <div className="flex-1 min-h-0 overflow-y-auto p-5 space-y-6">
               {/* ── Destination search ── */}
               <section className="space-y-3">
                 <div>
