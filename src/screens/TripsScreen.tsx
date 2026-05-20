@@ -962,7 +962,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
             {/* Quick book — one-tap shortcuts (no trip required) */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               <button
-                onClick={() => openInternal('https://www.hotels.com/Hotel-Search', 'Hotels')}
+                onClick={() => openInternal('https://www.hotels.com/affiliate/RrZ7bmg', 'Hotels')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">🏨</span>
@@ -970,7 +970,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 <div className="text-muted-foreground text-[9px]">Hotels.com</div>
               </button>
               <button
-                onClick={() => openInternal('https://www.expedia.com/Flights', 'Flights')}
+                onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Flights')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">✈️</span>
@@ -978,7 +978,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 <div className="text-muted-foreground text-[9px]">Expedia</div>
               </button>
               <button
-                onClick={() => openInternal('https://www.expedia.com/Cars', 'Car Rental')}
+                onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Car Rental')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">🚗</span>
