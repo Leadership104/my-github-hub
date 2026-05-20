@@ -385,24 +385,25 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
       return `${fmt(trip.start)} → ${fmt(trip.end)}`;
     };
 
-    const destQuery = encodeURIComponent(trip.dest || '');
+    const EXPEDIA_AFFILIATE = 'https://expedia.com/affiliate/eA2cKky';
+    const HOTELS_AFFILIATE = 'https://www.hotels.com/affiliate/RrZ7bmg';
     const BOOK_MANAGE_TILES = [
       {
         emoji: '✈️', label: 'Flights',
         sub: flightBooking?.flightNumber || 'Search',
-        url: `https://www.expedia.com/Flights-Search?trip=roundtrip&leg1=to:${destQuery}`,
+        url: EXPEDIA_AFFILIATE,
         active: !!flightBooking,
       },
       {
         emoji: '🏨', label: 'Hotels',
         sub: hotelBooking?.name?.slice(0, 14) || 'Search',
-        url: `https://www.hotels.com/Hotel-Search?destination=${destQuery}`,
+        url: HOTELS_AFFILIATE,
         active: !!hotelBooking,
       },
       {
         emoji: '🚢', label: 'Cruises',
         sub: 'Search',
-        url: `https://www.expedia.com/Cruises`,
+        url: EXPEDIA_AFFILIATE,
         active: false,
       },
     ];
@@ -961,7 +962,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
             {/* Quick book — one-tap shortcuts (no trip required) */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               <button
-                onClick={() => openInternal('https://www.hotels.com/Hotel-Search', 'Hotels')}
+                onClick={() => openInternal('https://www.hotels.com/affiliate/RrZ7bmg', 'Hotels')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">🏨</span>
@@ -969,7 +970,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 <div className="text-muted-foreground text-[9px]">Hotels.com</div>
               </button>
               <button
-                onClick={() => openInternal('https://www.expedia.com/Flights', 'Flights')}
+                onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Flights')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">✈️</span>
@@ -977,7 +978,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 <div className="text-muted-foreground text-[9px]">Expedia</div>
               </button>
               <button
-                onClick={() => openInternal('https://www.expedia.com/Cars', 'Car Rental')}
+                onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Car Rental')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">🚗</span>
