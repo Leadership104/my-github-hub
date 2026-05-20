@@ -535,12 +535,26 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const query = cuisine === 'all'
       ? `restaurants`
       : `${cuisine} restaurant`;
-    const places = await fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
 
-    // Sort: open (true) first, unknown (null) second, closed (false) last.
-    // Within each group, sort by proximity bucket then rating so closer
-    // higher-rated places surface first. Closed places appear at the bottom
-    // so users can plan ahead (e.g. places that require reservations).
+    // For the unfiltered "all" view, combine a relevance-based text search with
+    // a pure proximity nearby search (Google's Nearby endpoint ranked by radius
+    // within 10 min drive). Text search alone tops out at ~20 results and skips
+    // small closer spots (e.g. Olive Terrace) in favor of well-known ones.
+    const textPromise = fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
+    const nearbyPromise = cuisine === 'all'
+      ? fetchGooglePlaces('nearby', { type: 'restaurant', lat, lng, radius: Math.min(FOOD_RADIUS_M, 5000) })
+      : Promise.resolve([] as LivePlace[]);
+    const [textPlaces, nearbyPlaces] = await Promise.all([textPromise, nearbyPromise]);
+
+    // Dedupe by placeId, preferring text-search entries (richer metadata when present)
+    const merged = new Map<string, LivePlace>();
+    [...textPlaces, ...nearbyPlaces].forEach(p => {
+      const key = p.placeId || `${p.name}-${p.lat}-${p.lng}`;
+      if (!merged.has(key)) merged.set(key, p);
+    });
+    const places = Array.from(merged.values());
+
+    // Sort: open first, then by distance bucket (0.5km), then rating
     const sorted = [...places].sort((a, b) => {
       const openRank = (v: boolean | null) => v === true ? 0 : v === null ? 1 : 2;
       const rankDiff = openRank(a.openNow) - openRank(b.openNow);
@@ -553,7 +567,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return (b.rating ?? 0) - (a.rating ?? 0);
     });
 
-    // Include practical nearby options by radius, even when the best spot crosses a city line.
     const nearby = sorted.filter(p => {
       if (!p.lat || !p.lng) return true;
       return haversine(lat, lng, p.lat, p.lng) <= FOOD_NEARBY_KM;
