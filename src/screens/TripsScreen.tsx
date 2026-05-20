@@ -385,24 +385,25 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
       return `${fmt(trip.start)} → ${fmt(trip.end)}`;
     };
 
-    const destQuery = encodeURIComponent(trip.dest || '');
+    const EXPEDIA_AFFILIATE = 'https://expedia.com/affiliate/eA2cKky';
+    const HOTELS_AFFILIATE = 'https://www.hotels.com/affiliate/RrZ7bmg';
     const BOOK_MANAGE_TILES = [
       {
         emoji: '✈️', label: 'Flights',
         sub: flightBooking?.flightNumber || 'Search',
-        url: `https://www.expedia.com/Flights-Search?trip=roundtrip&leg1=to:${destQuery}`,
+        url: EXPEDIA_AFFILIATE,
         active: !!flightBooking,
       },
       {
         emoji: '🏨', label: 'Hotels',
         sub: hotelBooking?.name?.slice(0, 14) || 'Search',
-        url: `https://www.hotels.com/Hotel-Search?destination=${destQuery}`,
+        url: HOTELS_AFFILIATE,
         active: !!hotelBooking,
       },
       {
         emoji: '🚢', label: 'Cruises',
         sub: 'Search',
-        url: `https://www.expedia.com/Cruises`,
+        url: EXPEDIA_AFFILIATE,
         active: false,
       },
     ];
