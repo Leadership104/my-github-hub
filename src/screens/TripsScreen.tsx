@@ -88,7 +88,20 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   // In-app browser for affiliate links
   const [browserUrl, setBrowserUrl] = useState<string | null>(null);
   const [browserTitle, setBrowserTitle] = useState<string>('');
-  const openInternal = (url: string, title: string) => { setBrowserUrl(url); setBrowserTitle(title); };
+  // Domains that block iframe embedding (X-Frame-Options / CSP frame-ancestors).
+  // These must open in a new tab instead of the in-app browser.
+  const EXTERNAL_ONLY_HOSTS = [
+    'expedia.com', 'hotels.com', 'booking.com', 'kayak.com',
+    'google.com', 'tripadvisor.com', 'airbnb.com', 'vrbo.com',
+  ];
+  const mustOpenExternal = (url: string) => {
+    try { const h = new URL(url).hostname.toLowerCase(); return EXTERNAL_ONLY_HOSTS.some(d => h === d || h.endsWith('.' + d)); }
+    catch { return false; }
+  };
+  const openInternal = (url: string, title: string) => {
+    if (mustOpenExternal(url)) { window.open(url, '_blank', 'noopener,noreferrer'); return; }
+    setBrowserUrl(url); setBrowserTitle(title);
+  };
 
   // Debounced live search
   useEffect(() => {
