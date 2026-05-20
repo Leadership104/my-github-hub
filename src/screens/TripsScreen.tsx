@@ -371,23 +371,24 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
       return `${fmt(trip.start)} → ${fmt(trip.end)}`;
     };
 
+    const destQuery = encodeURIComponent(trip.dest || '');
     const BOOK_MANAGE_TILES = [
       {
         emoji: '✈️', label: 'Flights',
         sub: flightBooking?.flightNumber || 'Search',
-        url: 'https://expedia.com/affiliate/eA2cKky',
+        url: `https://www.expedia.com/Flights-Search?trip=roundtrip&leg1=to:${destQuery}`,
         active: !!flightBooking,
       },
       {
         emoji: '🏨', label: 'Hotels',
         sub: hotelBooking?.name?.slice(0, 14) || 'Search',
-        url: 'https://www.hotels.com/affiliate/RrZ7bmg',
+        url: `https://www.hotels.com/Hotel-Search?destination=${destQuery}`,
         active: !!hotelBooking,
       },
       {
         emoji: '🚢', label: 'Cruises',
         sub: 'Search',
-        url: 'https://www.expedia.com/?siteid=1&langid=1033&clickref=1110l34GXzfF&affcid=US.DIRECT.PHG.1100l360011.1100l68075&ref_id=1110l34GXzfF&my_ad=AFF.US.DIRECT.PHG.1100l360011.1100l68075&afflid=1110l34GXzfF&affdtl=PHG.1110l34GXzfF.PZ2TDkyK4w',
+        url: `https://www.expedia.com/Cruises`,
         active: false,
       },
     ];
@@ -946,7 +947,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
             {/* Quick book — one-tap shortcuts (no trip required) */}
             <div className="grid grid-cols-3 gap-2 mb-4">
               <button
-                onClick={() => openInternal('https://www.hotels.com/affiliate/RrZ7bmg', 'Hotels')}
+                onClick={() => openInternal('https://www.hotels.com/Hotel-Search', 'Hotels')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">🏨</span>
@@ -954,7 +955,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                 <div className="text-muted-foreground text-[9px]">Hotels.com</div>
               </button>
               <button
-                onClick={() => openInternal('https://expedia.com/affiliate/eA2cKky', 'Flights')}
+                onClick={() => openInternal('https://www.expedia.com/Flights', 'Flights')}
                 className="flex flex-col items-center gap-1 p-3 bg-card rounded-kipita border border-border hover:border-kipita-red/40 hover:shadow-md transition-all active:scale-95"
               >
                 <span className="text-2xl">✈️</span>
@@ -1254,7 +1255,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
         {/* Plan a Trip — single-screen form */}
         {showWizard && (
-          <div className="fixed inset-0 z-[350] flex flex-col bg-background">
+          <div className="fixed inset-0 z-[350] flex flex-col bg-background" style={{ height: '100dvh' }}>
             <div className="flex items-center gap-2 p-4 border-b border-border bg-card flex-shrink-0">
               <button onClick={resetWizard} className="ms text-xl text-muted-foreground">close</button>
               <h3 className="font-bold text-base flex-1">Plan a Trip</h3>
