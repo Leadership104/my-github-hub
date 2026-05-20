@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import type { Trip, Booking } from '../types';
 import { BOOKING_TILES, PERKS, DESTINATIONS, PHRASES } from '../data';
 import { buildTrip, pickEmoji } from '../lib/tripPlanner';
@@ -1254,8 +1255,8 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         })()}
 
         {/* Plan a Trip — single-screen form */}
-        {showWizard && (
-          <div className="fixed inset-0 z-[350] flex flex-col bg-background" style={{ height: '100dvh' }}>
+        {showWizard && createPortal((
+          <div className="fixed inset-0 z-[1000] flex flex-col bg-background" style={{ height: '100dvh' }}>
             <div className="flex items-center gap-2 p-4 border-b border-border bg-card flex-shrink-0">
               <button onClick={resetWizard} className="ms text-xl text-muted-foreground">close</button>
               <h3 className="font-bold text-base flex-1">Plan a Trip</h3>
@@ -1528,7 +1529,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               </button>
             </div>
           </div>
-        )}
+        ), document.body)}
 
         {/* Trip list — only on Upcoming/Completed tabs */}
         {tab !== 'plan' && filtered.map(trip => (
