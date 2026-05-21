@@ -98,6 +98,36 @@ export type Database = {
         }
         Relationships: []
       }
+      signup_notifications: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          email_sent: boolean
+          first_name: string
+          id: string
+          notified_email_to: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          email_sent?: boolean
+          first_name: string
+          id?: string
+          notified_email_to?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          email_sent?: boolean
+          first_name?: string
+          id?: string
+          notified_email_to?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

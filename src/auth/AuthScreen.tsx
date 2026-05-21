@@ -28,6 +28,11 @@ export default function AuthScreen() {
           },
         });
         if (error) throw error;
+        // Fire-and-forget internal notification to the Kipita team
+        const firstName = (displayName || email.split('@')[0] || 'New user').trim().split(/\s+/)[0];
+        supabase.functions.invoke('notify-signup', {
+          body: { firstName, displayName, email },
+        }).catch(() => { /* non-blocking */ });
         setInfo('Check your email to confirm your account, then sign in.');
         setMode('signin');
       } else if (mode === 'signin') {

@@ -125,23 +125,74 @@ function isClosingSoon(closingTime: string | null, withinMinutes = 30): boolean 
   return diff > 0 && diff <= withinMinutes;
 }
 
-/* ── Cuisine types for the food guide ── */
-const CUISINE_FILTERS = [
-  { id: 'all', label: 'All', emoji: '🍽️' },
-  { id: 'italian', label: 'Italian', emoji: '🍝' },
-  { id: 'japanese', label: 'Japanese', emoji: '🍱' },
-  { id: 'mexican', label: 'Mexican', emoji: '🌮' },
-  { id: 'chinese', label: 'Chinese', emoji: '🥡' },
-  { id: 'thai', label: 'Thai', emoji: '🍜' },
-  { id: 'indian', label: 'Indian', emoji: '🍛' },
-  { id: 'caribbean', label: 'Caribbean', emoji: '🍹' },
-  { id: 'american', label: 'American', emoji: '🍔' },
-  { id: 'mediterranean', label: 'Mediterranean', emoji: '🥙' },
-  { id: 'korean', label: 'Korean', emoji: '🥘' },
-  { id: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
-  { id: 'ethiopian', label: 'Ethiopian', emoji: '🫓' },
-  { id: 'seafood', label: 'Seafood', emoji: '🦞' },
-  { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
+/* ── Regional groupings (shown first) + sub-cuisines under each region ── */
+const CUISINE_REGIONS: {
+  id: string;
+  label: string;
+  emoji: string;
+  query: string;
+  subs: { id: string; label: string; emoji: string }[];
+}[] = [
+  { id: 'all', label: 'All', emoji: '🍽️', query: 'restaurants', subs: [] },
+  {
+    id: 'american', label: 'American', emoji: '🇺🇸', query: 'american restaurant',
+    subs: [
+      { id: 'american', label: 'Classic American', emoji: '🍔' },
+      { id: 'bbq', label: 'BBQ', emoji: '🍖' },
+      { id: 'southern', label: 'Southern / Soul', emoji: '🍗' },
+      { id: 'cajun', label: 'Cajun / Creole', emoji: '🦐' },
+      { id: 'tex-mex', label: 'Tex-Mex', emoji: '🌯' },
+      { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
+      { id: 'seafood', label: 'Seafood', emoji: '🦞' },
+    ],
+  },
+  {
+    id: 'european', label: 'European', emoji: '🇪🇺', query: 'european restaurant',
+    subs: [
+      { id: 'italian', label: 'Italian', emoji: '🍝' },
+      { id: 'french', label: 'French', emoji: '🥐' },
+      { id: 'spanish', label: 'Spanish / Tapas', emoji: '🥘' },
+      { id: 'greek', label: 'Greek', emoji: '🫒' },
+      { id: 'mediterranean', label: 'Mediterranean', emoji: '🥙' },
+      { id: 'german', label: 'German', emoji: '🥨' },
+      { id: 'portuguese', label: 'Portuguese', emoji: '🐟' },
+    ],
+  },
+  {
+    id: 'asian', label: 'Asian', emoji: '🥢', query: 'asian restaurant',
+    subs: [
+      { id: 'japanese', label: 'Japanese', emoji: '🍱' },
+      { id: 'chinese', label: 'Chinese', emoji: '🥡' },
+      { id: 'thai', label: 'Thai', emoji: '🍜' },
+      { id: 'korean', label: 'Korean', emoji: '🥘' },
+      { id: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
+      { id: 'indian', label: 'Indian', emoji: '🍛' },
+      { id: 'filipino', label: 'Filipino', emoji: '🍢' },
+      { id: 'sushi', label: 'Sushi', emoji: '🍣' },
+    ],
+  },
+  {
+    id: 'latin', label: 'Latin', emoji: '🌎', query: 'latin american restaurant',
+    subs: [
+      { id: 'mexican', label: 'Mexican', emoji: '🌮' },
+      { id: 'caribbean', label: 'Caribbean', emoji: '🍹' },
+      { id: 'cuban', label: 'Cuban', emoji: '🥪' },
+      { id: 'peruvian', label: 'Peruvian', emoji: '🐟' },
+      { id: 'brazilian', label: 'Brazilian', emoji: '🥩' },
+      { id: 'argentine', label: 'Argentine', emoji: '🥩' },
+    ],
+  },
+  {
+    id: 'african_me', label: 'African & Middle Eastern', emoji: '🌍', query: 'middle eastern restaurant',
+    subs: [
+      { id: 'ethiopian', label: 'Ethiopian', emoji: '🫓' },
+      { id: 'moroccan', label: 'Moroccan', emoji: '🍲' },
+      { id: 'lebanese', label: 'Lebanese', emoji: '🥙' },
+      { id: 'turkish', label: 'Turkish', emoji: '🥙' },
+      { id: 'israeli', label: 'Israeli', emoji: '🧆' },
+      { id: 'persian', label: 'Persian', emoji: '🍢' },
+    ],
+  },
 ];
 
 /* Build a directions URL that opens the OS-default maps app (Google/Apple/etc.). */
@@ -235,6 +286,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   // Food Guide state
   const [selectedCuisine, setSelectedCuisine] = useState('all');
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [foodGuidePlaces, setFoodGuidePlaces] = useState<LivePlace[]>([]);
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
   const cuisineScrollRef = useDragScroll<HTMLDivElement>();
@@ -401,7 +453,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
         if (subs.length > 0) selectChip(subs[0]);
       } else {
-        loadFoodGuide('all');
+        loadFoodGuide('restaurants');
       }
     } else {
       const sectionCats = categories.filter(c => section.catIds.includes(c.id));
@@ -451,7 +503,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       })();
     }
     if (view === 'foodguide') {
-      loadFoodGuide(selectedCuisine);
+      const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
+      const sub = region?.subs.find(s => s.id === selectedCuisine);
+      const q = sub ? `${sub.label.toLowerCase()} restaurant` : (region?.query ?? 'restaurants');
+      loadFoodGuide(q);
     }
     if (activeChip) {
       const chip = activeChip;
@@ -530,18 +585,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, []);
 
   /* ── Food Guide loader ── */
-  const loadFoodGuide = useCallback(async (cuisine: string) => {
+  const loadFoodGuide = useCallback(async (queryInput: string) => {
     setFoodGuideLoading(true);
-    const query = cuisine === 'all'
-      ? `restaurants`
-      : `${cuisine} restaurant`;
+    const isAll = !queryInput || queryInput === 'all' || queryInput.trim().toLowerCase() === 'restaurants';
+    const query = isAll ? 'restaurants' : queryInput;
 
-    // For the unfiltered "all" view, combine a relevance-based text search with
-    // a pure proximity nearby search (Google's Nearby endpoint ranked by radius
-    // within 10 min drive). Text search alone tops out at ~20 results and skips
-    // small closer spots (e.g. Olive Terrace) in favor of well-known ones.
     const textPromise = fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
-    const nearbyPromise = cuisine === 'all'
+    const nearbyPromise = isAll
       ? fetchGooglePlaces('nearby', { type: 'restaurant', lat, lng, radius: Math.min(FOOD_RADIUS_M, 5000) })
       : Promise.resolve([] as LivePlace[]);
     const [textPlaces, nearbyPlaces] = await Promise.all([textPromise, nearbyPromise]);
@@ -578,13 +628,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   const openFoodGuide = useCallback(async () => {
     setView('foodguide');
+    setSelectedRegion('all');
     setSelectedCuisine('all');
-    await loadFoodGuide('all');
+    await loadFoodGuide('restaurants');
   }, [loadFoodGuide]);
 
   const changeCuisine = useCallback(async (cuisine: string) => {
     setSelectedCuisine(cuisine);
-    await loadFoodGuide(cuisine);
+    await loadFoodGuide(cuisine === 'all' ? 'restaurants' : `${cuisine} restaurant`);
   }, [loadFoodGuide]);
 
   /* ── Inline chip tap for eat section ── */
@@ -917,19 +968,56 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
           <p className="text-[11px] text-muted-foreground/70 mt-1">Open now first · closed below · within 10 min drive · sorted by closest</p>
 
-          {/* Cuisine filter chips */}
+          {/* Region chips (top level) */}
           <div ref={cuisineScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
-            {CUISINE_FILTERS.map(c => (
-              <button key={c.id} onClick={() => changeCuisine(c.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
-                  ${selectedCuisine === c.id
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'bg-card border-border text-foreground hover:shadow-sm'
-                  }`}>
-                <span>{c.emoji}</span> {c.label}
-              </button>
-            ))}
+            {CUISINE_REGIONS.map(r => {
+              const active = selectedRegion === r.id;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    setSelectedRegion(r.id);
+                    setSelectedCuisine(r.id);
+                    loadFoodGuide(r.query);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                    ${active
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-card border-border text-foreground hover:shadow-sm'
+                    }`}>
+                  <span>{r.emoji}</span> {r.label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Sub-cuisine chips for the selected region */}
+          {(() => {
+            const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
+            if (!region || region.subs.length === 0) return null;
+            return (
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
+                {region.subs.map(s => {
+                  const active = selectedCuisine === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setSelectedCuisine(s.id);
+                        loadFoodGuide(`${s.label.toLowerCase()} restaurant`);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                        ${active
+                          ? 'bg-kipita-red text-white border-kipita-red'
+                          : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted'
+                        }`}>
+                      <span>{s.emoji}</span> {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
