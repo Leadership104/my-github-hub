@@ -286,6 +286,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   // Food Guide state
   const [selectedCuisine, setSelectedCuisine] = useState('all');
+  const [selectedRegion, setSelectedRegion] = useState<string>('all');
   const [foodGuidePlaces, setFoodGuidePlaces] = useState<LivePlace[]>([]);
   const [foodGuideLoading, setFoodGuideLoading] = useState(false);
   const cuisineScrollRef = useDragScroll<HTMLDivElement>();
