@@ -125,23 +125,74 @@ function isClosingSoon(closingTime: string | null, withinMinutes = 30): boolean 
   return diff > 0 && diff <= withinMinutes;
 }
 
-/* ── Cuisine types for the food guide ── */
-const CUISINE_FILTERS = [
-  { id: 'all', label: 'All', emoji: '🍽️' },
-  { id: 'italian', label: 'Italian', emoji: '🍝' },
-  { id: 'japanese', label: 'Japanese', emoji: '🍱' },
-  { id: 'mexican', label: 'Mexican', emoji: '🌮' },
-  { id: 'chinese', label: 'Chinese', emoji: '🥡' },
-  { id: 'thai', label: 'Thai', emoji: '🍜' },
-  { id: 'indian', label: 'Indian', emoji: '🍛' },
-  { id: 'caribbean', label: 'Caribbean', emoji: '🍹' },
-  { id: 'american', label: 'American', emoji: '🍔' },
-  { id: 'mediterranean', label: 'Mediterranean', emoji: '🥙' },
-  { id: 'korean', label: 'Korean', emoji: '🥘' },
-  { id: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
-  { id: 'ethiopian', label: 'Ethiopian', emoji: '🫓' },
-  { id: 'seafood', label: 'Seafood', emoji: '🦞' },
-  { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
+/* ── Regional groupings (shown first) + sub-cuisines under each region ── */
+const CUISINE_REGIONS: {
+  id: string;
+  label: string;
+  emoji: string;
+  query: string;
+  subs: { id: string; label: string; emoji: string }[];
+}[] = [
+  { id: 'all', label: 'All', emoji: '🍽️', query: 'restaurants', subs: [] },
+  {
+    id: 'american', label: 'American', emoji: '🇺🇸', query: 'american restaurant',
+    subs: [
+      { id: 'american', label: 'Classic American', emoji: '🍔' },
+      { id: 'bbq', label: 'BBQ', emoji: '🍖' },
+      { id: 'southern', label: 'Southern / Soul', emoji: '🍗' },
+      { id: 'cajun', label: 'Cajun / Creole', emoji: '🦐' },
+      { id: 'tex-mex', label: 'Tex-Mex', emoji: '🌯' },
+      { id: 'steakhouse', label: 'Steakhouse', emoji: '🥩' },
+      { id: 'seafood', label: 'Seafood', emoji: '🦞' },
+    ],
+  },
+  {
+    id: 'european', label: 'European', emoji: '🇪🇺', query: 'european restaurant',
+    subs: [
+      { id: 'italian', label: 'Italian', emoji: '🍝' },
+      { id: 'french', label: 'French', emoji: '🥐' },
+      { id: 'spanish', label: 'Spanish / Tapas', emoji: '🥘' },
+      { id: 'greek', label: 'Greek', emoji: '🫒' },
+      { id: 'mediterranean', label: 'Mediterranean', emoji: '🥙' },
+      { id: 'german', label: 'German', emoji: '🥨' },
+      { id: 'portuguese', label: 'Portuguese', emoji: '🐟' },
+    ],
+  },
+  {
+    id: 'asian', label: 'Asian', emoji: '🥢', query: 'asian restaurant',
+    subs: [
+      { id: 'japanese', label: 'Japanese', emoji: '🍱' },
+      { id: 'chinese', label: 'Chinese', emoji: '🥡' },
+      { id: 'thai', label: 'Thai', emoji: '🍜' },
+      { id: 'korean', label: 'Korean', emoji: '🥘' },
+      { id: 'vietnamese', label: 'Vietnamese', emoji: '🍲' },
+      { id: 'indian', label: 'Indian', emoji: '🍛' },
+      { id: 'filipino', label: 'Filipino', emoji: '🍢' },
+      { id: 'sushi', label: 'Sushi', emoji: '🍣' },
+    ],
+  },
+  {
+    id: 'latin', label: 'Latin', emoji: '🌎', query: 'latin american restaurant',
+    subs: [
+      { id: 'mexican', label: 'Mexican', emoji: '🌮' },
+      { id: 'caribbean', label: 'Caribbean', emoji: '🍹' },
+      { id: 'cuban', label: 'Cuban', emoji: '🥪' },
+      { id: 'peruvian', label: 'Peruvian', emoji: '🐟' },
+      { id: 'brazilian', label: 'Brazilian', emoji: '🥩' },
+      { id: 'argentine', label: 'Argentine', emoji: '🥩' },
+    ],
+  },
+  {
+    id: 'african_me', label: 'African & Middle Eastern', emoji: '🌍', query: 'middle eastern restaurant',
+    subs: [
+      { id: 'ethiopian', label: 'Ethiopian', emoji: '🫓' },
+      { id: 'moroccan', label: 'Moroccan', emoji: '🍲' },
+      { id: 'lebanese', label: 'Lebanese', emoji: '🥙' },
+      { id: 'turkish', label: 'Turkish', emoji: '🥙' },
+      { id: 'israeli', label: 'Israeli', emoji: '🧆' },
+      { id: 'persian', label: 'Persian', emoji: '🍢' },
+    ],
+  },
 ];
 
 /* Build a directions URL that opens the OS-default maps app (Google/Apple/etc.). */
