@@ -628,13 +628,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   const openFoodGuide = useCallback(async () => {
     setView('foodguide');
+    setSelectedRegion('all');
     setSelectedCuisine('all');
-    await loadFoodGuide('all');
+    await loadFoodGuide('restaurants');
   }, [loadFoodGuide]);
 
   const changeCuisine = useCallback(async (cuisine: string) => {
     setSelectedCuisine(cuisine);
-    await loadFoodGuide(cuisine);
+    await loadFoodGuide(cuisine === 'all' ? 'restaurants' : `${cuisine} restaurant`);
   }, [loadFoodGuide]);
 
   /* ── Inline chip tap for eat section ── */
