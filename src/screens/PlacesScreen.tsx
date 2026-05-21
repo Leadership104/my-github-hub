@@ -969,19 +969,56 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
           <p className="text-[11px] text-muted-foreground/70 mt-1">Open now first · closed below · within 10 min drive · sorted by closest</p>
 
-          {/* Cuisine filter chips */}
+          {/* Region chips (top level) */}
           <div ref={cuisineScrollRef} className="flex gap-2 overflow-x-auto scrollbar-hide mt-3 pb-2 -mx-1 px-1">
-            {CUISINE_FILTERS.map(c => (
-              <button key={c.id} onClick={() => changeCuisine(c.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
-                  ${selectedCuisine === c.id
-                    ? 'bg-foreground text-background border-foreground'
-                    : 'bg-card border-border text-foreground hover:shadow-sm'
-                  }`}>
-                <span>{c.emoji}</span> {c.label}
-              </button>
-            ))}
+            {CUISINE_REGIONS.map(r => {
+              const active = selectedRegion === r.id;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => {
+                    setSelectedRegion(r.id);
+                    setSelectedCuisine(r.id);
+                    loadFoodGuide(r.query);
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                    ${active
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-card border-border text-foreground hover:shadow-sm'
+                    }`}>
+                  <span>{r.emoji}</span> {r.label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Sub-cuisine chips for the selected region */}
+          {(() => {
+            const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
+            if (!region || region.subs.length === 0) return null;
+            return (
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2 -mx-1 px-1">
+                {region.subs.map(s => {
+                  const active = selectedCuisine === s.id;
+                  return (
+                    <button
+                      key={s.id}
+                      onClick={() => {
+                        setSelectedCuisine(s.id);
+                        loadFoodGuide(`${s.label.toLowerCase()} restaurant`);
+                      }}
+                      className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all flex-shrink-0
+                        ${active
+                          ? 'bg-kipita-red text-white border-kipita-red'
+                          : 'bg-muted/50 border-border text-muted-foreground hover:bg-muted'
+                        }`}>
+                      <span>{s.emoji}</span> {s.label}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
 
         <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
