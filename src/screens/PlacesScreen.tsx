@@ -453,7 +453,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         const subs = CATEGORY_SUBS[mapping.chipCatId] || [];
         if (subs.length > 0) selectChip(subs[0]);
       } else {
-        loadFoodGuide('all');
+        loadFoodGuide('restaurants');
       }
     } else {
       const sectionCats = categories.filter(c => section.catIds.includes(c.id));
