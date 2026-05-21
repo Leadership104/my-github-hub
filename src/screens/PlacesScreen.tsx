@@ -503,7 +503,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       })();
     }
     if (view === 'foodguide') {
-      loadFoodGuide(selectedCuisine);
+      const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
+      const sub = region?.subs.find(s => s.id === selectedCuisine);
+      const q = sub ? `${sub.label.toLowerCase()} restaurant` : (region?.query ?? 'restaurants');
+      loadFoodGuide(q);
     }
     if (activeChip) {
       const chip = activeChip;
