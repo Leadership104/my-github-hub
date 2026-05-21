@@ -582,18 +582,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, []);
 
   /* ── Food Guide loader ── */
-  const loadFoodGuide = useCallback(async (cuisine: string) => {
+  const loadFoodGuide = useCallback(async (queryInput: string) => {
     setFoodGuideLoading(true);
-    const query = cuisine === 'all'
-      ? `restaurants`
-      : `${cuisine} restaurant`;
+    const isAll = !queryInput || queryInput === 'all' || queryInput.trim().toLowerCase() === 'restaurants';
+    const query = isAll ? 'restaurants' : queryInput;
 
-    // For the unfiltered "all" view, combine a relevance-based text search with
-    // a pure proximity nearby search (Google's Nearby endpoint ranked by radius
-    // within 10 min drive). Text search alone tops out at ~20 results and skips
-    // small closer spots (e.g. Olive Terrace) in favor of well-known ones.
     const textPromise = fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
-    const nearbyPromise = cuisine === 'all'
+    const nearbyPromise = isAll
       ? fetchGooglePlaces('nearby', { type: 'restaurant', lat, lng, radius: Math.min(FOOD_RADIUS_M, 5000) })
       : Promise.resolve([] as LivePlace[]);
     const [textPlaces, nearbyPlaces] = await Promise.all([textPromise, nearbyPromise]);
