@@ -326,7 +326,11 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
   const availableCategories = useMemo(() => {
     const set = new Set<RecreationCategory>();
     for (const s of allSpots) set.add(s.category);
-    if (cityHighlights) for (const h of cityHighlights) set.add(h.category);
+    if (cityHighlights) for (const h of cityHighlights) {
+      if ((CATEGORY_TABS as { id: string }[]).some(t => t.id === h.category)) {
+        set.add(h.category as RecreationCategory);
+      }
+    }
     return set;
   }, [allSpots, cityHighlights]);
 
