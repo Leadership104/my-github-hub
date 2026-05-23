@@ -20,7 +20,8 @@ const WalletScreen   = lazy(() => import('./screens/WalletScreen'));
 const ATMScreen      = lazy(() => import('./screens/ATMScreen'));
 const PerksScreen    = lazy(() => import('./screens/PerksScreen'));
 const FuelScreen     = lazy(() => import('./screens/FuelScreen'));
-const BusinessScreen = lazy(() => import('./screens/BusinessScreen'));
+const BusinessScreen    = lazy(() => import('./screens/BusinessScreen'));
+const RecreationScreen  = lazy(() => import('./screens/RecreationScreen'));
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
 import LocationSafetyBar from './components/LocationSafetyBar';
 import PasswordGate, { isAppUnlocked } from './components/PasswordGate';
@@ -372,7 +373,8 @@ export default function App() {
       case 'atm':      return <Suspense fallback={<ScreenLoader />}><ATMScreen lat={lat} lng={lng} merchants={merchants} onBack={goBack} onViewOnMap={(filter) => switchTab('maps', filter)} /></Suspense>;
       case 'perks':    return <Suspense fallback={<ScreenLoader />}><PerksScreen onBack={goBack} /></Suspense>;
       case 'fuel':     return <Suspense fallback={<ScreenLoader />}><FuelScreen onBack={goBack} onSwitchTab={switchTab} /></Suspense>;
-      case 'business': return <Suspense fallback={<ScreenLoader />}><BusinessScreen onBack={goBack} /></Suspense>;
+      case 'business':   return <Suspense fallback={<ScreenLoader />}><BusinessScreen onBack={goBack} /></Suspense>;
+      case 'recreation': return <Suspense fallback={<ScreenLoader />}><RecreationScreen lat={lat} lng={lng} locationName={locationName} countryCode={countryCode} onBack={goBack} /></Suspense>;
     }
   };
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { CryptoPrice, BTCMerchant, MetalPrice } from './types';
+import type { CryptoPrice, BTCMerchant, MetalPrice, RecreationSpot, RecreationCategory } from './types';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -453,6 +453,226 @@ export function useCurrencyConverter() {
     return fromUSD(toUSD(amount, from), to);
   }, [rates]);
   return { rates, convert, currencies: Object.keys(rates) };
+}
+
+// ── Recreation / Outdoor ──────────────────────────────────────────────────────
+
+function osmTagsToRecCategory(tags: Record<string, string>): RecreationCategory {
+  const leisure = (tags.leisure || '').toLowerCase();
+  const sport   = (tags.sport   || '').toLowerCase();
+  const tourism = (tags.tourism || '').toLowerCase();
+  const natural = (tags.natural || '').toLowerCase();
+  if (tourism === 'camp_site' || leisure === 'campsite') return 'camping';
+  if (['skiing', 'snowboard', 'ice_skating', 'biathlon', 'sledding'].some(s => sport.includes(s))) return 'winter';
+  if (['swimming', 'kayaking', 'surfing', 'kitesurfing', 'sailing', 'diving', 'fishing', 'canoeing', 'rowing'].some(s => sport.includes(s))) return 'water';
+  if (['cycling', 'mountain_biking', 'bmx'].some(s => sport.includes(s))) return 'cycling';
+  if (['climbing', 'bouldering', 'via_ferrata', 'zipline', 'paragliding', 'hang_gliding'].some(s => sport.includes(s))) return 'adventure';
+  if (['bird_watching', 'wildlife_hide'].some(s => leisure.includes(s)) || natural === 'wetland') return 'wildlife';
+  if (['fitness', 'gymnastics', 'yoga', 'crossfit'].some(s => sport.includes(s)) || leisure === 'fitness_centre') return 'fitness';
+  return 'hiking';
+}
+
+function osmExtractAmenities(tags: Record<string, string>): string[] {
+  const out: string[] = [];
+  if (tags.toilets === 'yes' || tags['amenity:toilets'] === 'yes') out.push('Restrooms');
+  if (tags.drinking_water === 'yes') out.push('Drinking Water');
+  if (tags.shower === 'yes') out.push('Showers');
+  if (tags.picnic_table === 'yes' || tags['leisure'] === 'picnic_table') out.push('Picnic Tables');
+  if (tags.fire_pit === 'yes') out.push('Fire Pit');
+  if (tags.electricity === 'yes') out.push('Electricity');
+  if (tags.dog === 'yes' || tags['dog'] === 'yes') out.push('Dog Friendly');
+  if (tags.parking === 'yes' || tags['amenity'] === 'parking') out.push('Parking');
+  return out;
+}
+
+function osmExtractActivities(tags: Record<string, string>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  const addAct = (s: string) => {
+    const key = s.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' '));
+  };
+  (tags.sport || '').split(';').map(s => s.trim()).filter(Boolean).forEach(addAct);
+  if (tags.hiking === 'yes') addAct('hiking');
+  if (tags.cycling === 'yes') addAct('cycling');
+  if (tags.swimming === 'yes') addAct('swimming');
+  if (tags.fishing === 'yes') addAct('fishing');
+  return out.slice(0, 5);
+}
+
+/** Fetch recreation spots near a location via OpenStreetMap Overpass API (free, global, no key). */
+export function useOSMRecreation(lat: number, lng: number) {
+  const [spots, setSpots] = useState<RecreationSpot[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!lat || !lng) return;
+    let cancelled = false;
+    setLoading(true);
+
+    const R = 20000; // 20 km radius
+    const q = `
+[out:json][timeout:30];
+(
+  node["tourism"="camp_site"]["name"](around:${R},${lat},${lng});
+  node["leisure"="park"]["name"](around:${R},${lat},${lng});
+  node["leisure"="nature_reserve"]["name"](around:${R},${lat},${lng});
+  node["leisure"="sports_centre"]["name"](around:${R},${lat},${lng});
+  node["sport"~"swimming|kayaking|surfing|climbing|skiing|cycling|fishing|sailing"]["name"](around:${R},${lat},${lng});
+  node["leisure"="fitness_station"]["name"](around:${R},${lat},${lng});
+  node["leisure"="bird_watching"]["name"](around:${R},${lat},${lng});
+  way["tourism"="camp_site"]["name"](around:${R},${lat},${lng});
+  way["leisure"="park"]["name"](around:${R},${lat},${lng});
+  way["leisure"="nature_reserve"]["name"](around:${R},${lat},${lng});
+  way["natural"="beach"]["name"](around:${R},${lat},${lng});
+  way["natural"="water"]["sport"~"kayaking|rowing|sailing"]["name"](around:${R},${lat},${lng});
+  relation["boundary"="national_park"]["name"](around:${R},${lat},${lng});
+  relation["boundary"="protected_area"]["name"](around:${R},${lat},${lng});
+  relation["leisure"="park"]["name"](around:${R},${lat},${lng});
+);
+out center tags qt;
+`.trim();
+
+    fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: 'data=' + encodeURIComponent(q),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        const elements: any[] = data.elements || [];
+        const seen = new Set<string>();
+        const results: RecreationSpot[] = [];
+
+        for (const el of elements) {
+          const elLat = el.lat ?? el.center?.lat;
+          const elLng = el.lon ?? el.center?.lon;
+          if (!elLat || !elLng) continue;
+          const tags: Record<string, string> = el.tags || {};
+          const name = tags.name;
+          if (!name) continue;
+          const key = name.toLowerCase().replace(/\s+/g, '');
+          if (seen.has(key)) continue;
+          seen.add(key);
+
+          results.push({
+            id: `osm-${el.id}`,
+            name,
+            category: osmTagsToRecCategory(tags),
+            source: 'osm',
+            lat: elLat,
+            lng: elLng,
+            distKm: haversine(lat, lng, elLat, elLng),
+            description: tags['description:en'] || tags.description || undefined,
+            amenities: osmExtractAmenities(tags),
+            activities: osmExtractActivities(tags),
+            cost: tags.fee === 'yes' ? 'Fee required' : tags.fee === 'no' ? 'Free' : undefined,
+            reservable: false,
+            website: tags.website || tags.url || undefined,
+          });
+        }
+
+        results.sort((a, b) => (a.distKm ?? 0) - (b.distKm ?? 0));
+        setSpots(results.slice(0, 60));
+      })
+      .catch(() => { if (!cancelled) setSpots([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [lat, lng]);
+
+  return { spots, loading };
+}
+
+/** Fetch US National Park Service parks near a location (uses NPS DEMO_KEY — 50 req/hr). */
+export function useNPSParks(lat: number, lng: number, countryCode?: string) {
+  const [parks, setParks] = useState<RecreationSpot[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!lat || !lng || countryCode !== 'US') return;
+    let cancelled = false;
+    setLoading(true);
+
+    const key = (import.meta as any).env?.VITE_NPS_API_KEY || 'DEMO_KEY';
+    fetch(`https://developer.nps.gov/api/v1/parks?limit=10&api_key=${key}&sort=`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        const results: RecreationSpot[] = (data.data || [])
+          .filter((p: any) => p.latitude && p.longitude)
+          .map((p: any) => ({
+            id: `nps-${p.parkCode}`,
+            name: p.fullName,
+            category: 'hiking' as RecreationCategory,
+            source: 'nps' as const,
+            lat: parseFloat(p.latitude),
+            lng: parseFloat(p.longitude),
+            distKm: haversine(lat, lng, parseFloat(p.latitude), parseFloat(p.longitude)),
+            description: p.description?.slice(0, 200) || undefined,
+            activities: (p.activities || []).slice(0, 5).map((a: any) => a.name),
+            cost: p.entranceFees?.[0]?.cost ? `$${p.entranceFees[0].cost} entrance` : 'Free',
+            reservationUrl: p.url,
+            website: p.url,
+            imageUrl: p.images?.[0]?.url,
+            reservable: false,
+          }));
+        results.sort((a, b) => (a.distKm ?? 0) - (b.distKm ?? 0));
+        setParks(results.slice(0, 10));
+      })
+      .catch(() => { if (!cancelled) setParks([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [lat, lng, countryCode]);
+
+  return { parks, loading };
+}
+
+/** Fetch Recreation.gov RIDB campgrounds/facilities near a location.
+ *  Requires VITE_RECREATION_GOV_API_KEY env var (free key from https://ridb.recreation.gov/landing). */
+export function useRecreationGov(lat: number, lng: number, countryCode?: string) {
+  const [facilities, setFacilities] = useState<RecreationSpot[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const apiKey = (import.meta as any).env?.VITE_RECREATION_GOV_API_KEY;
+    if (!lat || !lng || countryCode !== 'US' || !apiKey) return;
+    let cancelled = false;
+    setLoading(true);
+
+    fetch(`https://ridb.recreation.gov/api/v1/facilities?latitude=${lat}&longitude=${lng}&radius=50&limit=10&apikey=${apiKey}`)
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return;
+        const results: RecreationSpot[] = (data.RECDATA || []).map((f: any) => ({
+          id: `recgov-${f.FacilityID}`,
+          name: f.FacilityName,
+          category: (f.FacilityTypeDescription?.toLowerCase().includes('camp') ? 'camping' : 'hiking') as RecreationCategory,
+          source: 'recreation.gov' as const,
+          lat: parseFloat(f.FacilityLatitude),
+          lng: parseFloat(f.FacilityLongitude),
+          distKm: haversine(lat, lng, parseFloat(f.FacilityLatitude), parseFloat(f.FacilityLongitude)),
+          description: f.FacilityDescription?.replace(/<[^>]*>/g, '')?.slice(0, 200) || undefined,
+          activities: (f.Activities || []).slice(0, 5).map((a: any) => a.ActivityName),
+          reservable: f.Reservable === true,
+          reservationUrl: f.FacilityReservationURL || `https://www.recreation.gov/camping/campgrounds/${f.FacilityID}`,
+          website: f.FacilityReservationURL || undefined,
+          phone: f.FacilityPhone || undefined,
+        }));
+        results.sort((a, b) => (a.distKm ?? 0) - (b.distKm ?? 0));
+        setFacilities(results);
+      })
+      .catch(() => { if (!cancelled) setFacilities([]); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+
+    return () => { cancelled = true; };
+  }, [lat, lng, countryCode]);
+
+  return { facilities, loading };
 }
 
 export function generateCashAppMerchants(lat: number, lng: number) {

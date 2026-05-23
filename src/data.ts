@@ -298,6 +298,9 @@ export const getCategories = (): PlaceCategory[] => [
   { id: 'park', label: 'Parks', emoji: '🌳', query: 'park nature garden' },
   { id: 'parking', label: 'Parking', emoji: '🅿️', query: 'parking lot garage' },
   { id: 'lodge', label: 'Lodges', emoji: '🏕️', query: 'lodge cabin resort inn' },
+  { id: 'outdoor', label: 'Outdoor', emoji: '🏕️', query: 'campground hiking trail recreation' },
+  { id: 'watersports', label: 'Water Sports', emoji: '🏄', query: 'surfing kayaking diving snorkeling sailing' },
+  { id: 'wintersports', label: 'Winter Sports', emoji: '⛷️', query: 'ski resort snowboarding ice skating' },
 ];
 
 export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
@@ -433,6 +436,29 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
     { label: 'Playground', query: 'playground park children', emoji: '🛝' },
     { label: 'Botanical Garden', query: 'botanical garden arboretum', emoji: '🌸' },
     { label: 'National Park', query: 'national park state park', emoji: '🏞️' },
+  ],
+  outdoor: [
+    { label: 'Campgrounds', query: 'campground camping site', emoji: '⛺' },
+    { label: 'Hiking Trails', query: 'hiking trail trailhead', emoji: '🥾' },
+    { label: 'Rock Climbing', query: 'rock climbing bouldering', emoji: '🧗' },
+    { label: 'Cycling Trails', query: 'mountain bike trail cycling path', emoji: '🚴' },
+    { label: 'Wildlife Areas', query: 'nature reserve wildlife sanctuary', emoji: '🦅' },
+    { label: 'Picnic Areas', query: 'picnic area park pavilion', emoji: '🧺' },
+  ],
+  watersports: [
+    { label: 'Surfing', query: 'surf school surfing beach', emoji: '🏄' },
+    { label: 'Kayaking', query: 'kayak rental kayaking', emoji: '🛶' },
+    { label: 'Scuba & Snorkel', query: 'scuba diving snorkeling', emoji: '🤿' },
+    { label: 'Sailing', query: 'sailing charter boat tour', emoji: '⛵' },
+    { label: 'Fishing', query: 'fishing charter pier fishing', emoji: '🎣' },
+    { label: 'Whitewater', query: 'whitewater rafting river kayak', emoji: '🌊' },
+  ],
+  wintersports: [
+    { label: 'Skiing', query: 'ski resort ski area', emoji: '⛷️' },
+    { label: 'Snowboarding', query: 'snowboard park terrain', emoji: '🏂' },
+    { label: 'Ice Skating', query: 'ice skating rink', emoji: '⛸️' },
+    { label: 'Snowshoeing', query: 'snowshoe trail winter hiking', emoji: '🌨️' },
+    { label: 'Sledding', query: 'sledding hill tubing park', emoji: '🛷' },
   ],
 };
 
@@ -774,3 +800,220 @@ export function generateDemoPlaces(query: string, label: string, count: number, 
     price: ['$', '$$', '$$$'][Math.floor(Math.random() * 3)],
   }));
 }
+
+/* ── Recreation Highlights (curated per destination city) ── */
+export interface RecreationHighlight {
+  name: string;
+  category: 'hiking' | 'water' | 'adventure' | 'cycling' | 'wildlife' | 'camping' | 'winter' | 'cultural';
+  emoji: string;
+  difficulty?: string;
+  duration?: string;
+  cost?: string;
+  description: string;
+  tip?: string;
+  source?: string;
+  bookingUrl?: string;
+}
+
+export const RECREATION_HIGHLIGHTS: Record<string, RecreationHighlight[]> = {
+  'Tokyo': [
+    { name: 'Mount Takao (Takaosan)', category: 'hiking', emoji: '🏔️', difficulty: 'Easy', duration: '3–4 hrs', cost: 'Free (cable car $6)', description: 'World\'s most-climbed mountain with 8 trails, temples, and sweeping views of Fuji on clear days. 45 min by train from Shinjuku.', tip: 'Trail 1 has a paved surface — ideal for beginners. Take the summit cable car down.', source: 'OpenStreetMap', bookingUrl: 'https://www.takaotozan.co.jp/english/' },
+    { name: 'Nikko National Park', category: 'hiking', emoji: '🌲', difficulty: 'Moderate', duration: 'Full day', cost: '$10–15 shrines', description: 'UNESCO-listed mountain park 2 hrs from Tokyo featuring waterfalls, shrines, and alpine hiking.', tip: 'Kegon Falls and Senjogahara Marshland are unmissable stops.', source: 'NPS-equivalent (Japan)' },
+    { name: 'Tama River Cycling Path', category: 'cycling', emoji: '🚴', difficulty: 'Easy', duration: '2–4 hrs', cost: 'Bike rental ~$8', description: '130 km dedicated cycling path along the Tama River through western Tokyo — flat, scenic, and car-free.', tip: 'Start near Futako-Tamagawa station and ride toward the mountains.', source: 'OpenStreetMap' },
+    { name: 'Odaiba Beach Park', category: 'water', emoji: '🏖️', difficulty: 'Easy', duration: '2–3 hrs', cost: 'Free', description: 'Artificial waterfront park with views of Rainbow Bridge. Kayak rentals available seasonally.', source: 'OpenStreetMap' },
+    { name: 'Fujikawaguchiko Fishing', category: 'water', emoji: '🎣', difficulty: 'Easy', duration: 'Half day', cost: '$15–25', description: 'Freshwater fishing for rainbow trout and carp in the Fuji Five Lakes region with Mount Fuji as backdrop.', source: 'Featured' },
+  ],
+  'Bangkok': [
+    { name: 'Khao Yai National Park', category: 'hiking', emoji: '🌿', difficulty: 'Moderate', duration: 'Full day', cost: '$8 entry', description: 'UNESCO World Heritage Site 2.5 hrs from Bangkok — elephants, hornbills, gibbons, and 50+ km of trails through monsoon forest.', tip: 'Haew Narok Waterfall (5-tier, 150m) is the highlight. Book a guide — wildlife tracking is rewarding.', source: 'Thailand National Parks', bookingUrl: 'https://www.thainationalparks.com/khao-yai-national-park' },
+    { name: 'Erawan National Park', category: 'water', emoji: '💧', difficulty: 'Easy', duration: 'Full day', cost: '$7 entry', description: 'Emerald-green tiered waterfalls in Kanchanaburi. Swim in natural rock pools among small fish. 3 hrs from Bangkok.', tip: 'Arrive early — pools get crowded by noon. Bring food; vendors close at 4 PM.', source: 'Thailand National Parks' },
+    { name: 'Kanchanaburi River Kayaking', category: 'water', emoji: '🛶', difficulty: 'Easy', duration: '3–5 hrs', cost: '$15–25', description: 'Paddle the Kwai River past limestone cliffs, floating rafthouses, and lush jungle scenery.', source: 'Featured' },
+    { name: 'Chatuchak Park Cycling', category: 'cycling', emoji: '🚴', difficulty: 'Easy', duration: '1–2 hrs', cost: 'Bike rental $3/hr', description: 'Weekend cycling hub next to one of the world\'s largest markets. Flat paths through gardens and past the canal.', source: 'OpenStreetMap' },
+    { name: 'Phang Nga Bay Kayaking', category: 'water', emoji: '⛵', difficulty: 'Easy', duration: 'Full day', cost: '$40–70', description: 'Sea-kayak through cave-pocked limestone karsts and hidden lagoons (hongs) — one of SE Asia\'s iconic tours. Day trip from Bangkok (fly 1hr) or Phuket.', source: 'Featured' },
+  ],
+  'Bali': [
+    { name: 'Mount Batur Sunrise Hike', category: 'hiking', emoji: '🌋', difficulty: 'Moderate', duration: '4–5 hrs', cost: '$30–50 guided', description: 'Active volcano rising 1,717m — hike through lava fields to reach the summit for a spectacular caldera sunrise.', tip: 'Start at 2 AM to reach summit by dawn. Hire a guide — required and well worth it.', source: 'Featured', bookingUrl: 'https://www.klook.com/en-US/activity/1063-mount-batur-sunrise-trek/' },
+    { name: 'Canggu Surf Lessons', category: 'water', emoji: '🏄', difficulty: 'Easy', duration: '2 hrs', cost: '$20–30', description: 'Beginner-friendly beach breaks at Echo Beach and Old Man\'s. Batu Bolong Beach suits all levels.', tip: 'Morning sessions (7–9 AM) have smaller, cleaner waves. Avoid wet season chop (Nov–Mar).', source: 'Featured' },
+    { name: 'Nusa Penida Snorkeling', category: 'water', emoji: '🤿', difficulty: 'Easy', duration: 'Full day', cost: '$35–55 boat tour', description: 'Swim with giant manta rays at Manta Point and see crystal-clear coral gardens at Gamat Bay. Fast boat from Sanur (45 min).', tip: 'Manta rays are most active 7–10 AM. Bring reef-safe sunscreen.', source: 'Featured' },
+    { name: 'Ubud Rice Terrace Cycling', category: 'cycling', emoji: '🚴', difficulty: 'Easy', duration: '3–4 hrs', cost: '$20–35 guided', description: 'Downhill bike tour through Tegallalang rice terraces, traditional villages, and coffee plantations.', source: 'Featured' },
+    { name: 'Munduk Waterfall Trek', category: 'hiking', emoji: '🌊', difficulty: 'Easy', duration: '3–4 hrs', cost: '$5–10', description: 'Trek through highland forest to 3 stunning waterfalls — Golden Valley, Melanting, and Munduk Falls — near Bedugul.', source: 'Featured' },
+  ],
+  'Barcelona': [
+    { name: 'Montserrat Mountain Hike', category: 'hiking', emoji: '⛰️', difficulty: 'Moderate', duration: 'Full day', cost: 'Train ~$14 return', description: 'Serrated limestone mountain 1 hr from city. Hike to Sant Joan chapel (1,236m) past medieval monastery and panoramic Catalonia views.', tip: 'Take the rack railway (cremallera) to the monastery, then hike above. Early train avoids crowds.', source: 'Featured' },
+    { name: 'Fontainebleau-style Rock Climbing (Montserrat)', category: 'adventure', emoji: '🧗', difficulty: 'Moderate', duration: 'Full day', cost: 'Gear rental ~$20', description: 'World-class trad and sport climbing on Montserrat\'s conglomerate pinnacles. 300+ routes for all grades.', source: 'Featured' },
+    { name: 'Costa Brava Snorkeling', category: 'water', emoji: '🤿', difficulty: 'Easy', duration: 'Full day', cost: '$10–30', description: 'Crystal Mediterranean waters at Cap de Creus — sea caves, octopuses, posidonia meadows. 2 hrs from Barcelona.', source: 'Featured' },
+    { name: 'Collserola Park Trails', category: 'hiking', emoji: '🌲', difficulty: 'Easy', duration: '2–4 hrs', cost: 'Free', description: 'Barcelona\'s 8,000-hectare forested ridge park — 40+ marked trails, mountain biking, picnic areas, and city viewpoints.', tip: 'Take bus V3 or L6 FGC to Peu del Funicular for easy access.', source: 'OpenStreetMap' },
+    { name: 'Barceloneta Paddleboarding', category: 'water', emoji: '🏄', difficulty: 'Easy', duration: '2 hrs', cost: '$20–30', description: 'SUP and kayak rentals right on the beach, plus guided coastal paddle tours. Best April–October.', source: 'Featured' },
+  ],
+  'Paris': [
+    { name: 'Fontainebleau Rock Climbing', category: 'adventure', emoji: '🧗', difficulty: 'Moderate', duration: 'Full day', cost: 'Free (park entry)', description: 'World\'s most iconic bouldering destination with 100,000+ problems in Fontainebleau Forest, 45 min from Paris. The birthplace of bouldering.', tip: 'Bas Cuvier and Cuisinière are the classic circuits. Grades marked by colored arrows on boulders.', source: 'Featured' },
+    { name: 'Loire Valley Cycling', category: 'cycling', emoji: '🚴', difficulty: 'Easy', duration: '2 days+', cost: 'Train + bike rental ~$30', description: 'World\'s best cycling route along France\'s largest river — châteaux every few km, wine country, and entirely flat paths.', tip: 'La Loire à Vélo is a 900 km marked route. Blois–Amboise section (40 km) is the most scenic day ride.', source: 'Featured', bookingUrl: 'https://www.loireavelo.fr/en/' },
+    { name: 'Bois de Vincennes Running & Cycling', category: 'cycling', emoji: '🏃', difficulty: 'Easy', duration: '1–3 hrs', cost: 'Free', description: 'Paris\'s largest park (995 ha) with a 10 km lake circuit, mountain bike trails, archery ranges, and horse riding.', source: 'OpenStreetMap' },
+    { name: 'Seine River Kayaking', category: 'water', emoji: '🛶', difficulty: 'Easy', duration: '2–3 hrs', cost: '$30–50', description: 'Paddle past Notre-Dame, the Eiffel Tower, and Île de la Cité on guided Seine kayak tours.', tip: 'Book through Paris Kayak — morning tours have calmer water and better light for photos.', source: 'Featured' },
+    { name: 'Vercors Ski Area (Day Trip)', category: 'winter', emoji: '⛷️', difficulty: 'Moderate', duration: 'Full day', cost: '$40–60 pass', description: 'Closest major ski area to Paris (~2.5 hrs). Cross-country skiing, snowshoeing, and moderate downhill runs in the pre-Alps.', source: 'Featured' },
+  ],
+  'Lisbon': [
+    { name: 'Sintra Hiking Trails', category: 'hiking', emoji: '🏰', difficulty: 'Moderate', duration: 'Full day', cost: 'Free trail access', description: 'UNESCO-protected mountain with fairy-tale palaces connected by woodland trails. Cruz Alta peak offers views from Serra da Sintra to the Atlantic.', tip: 'Hike from Sintra train station to Pena Palace (2 km steep), then continue to Moorish Castle. Avoid weekends — very crowded.', source: 'Featured' },
+    { name: 'Costa da Caparica Surfing', category: 'water', emoji: '🏄', difficulty: 'Easy', duration: '2–4 hrs', cost: '$35–50 lesson', description: '30 km of Atlantic beach break — Portugal\'s most popular beginner surf spot, 30 min from Lisbon by ferry + bus.', source: 'Featured' },
+    { name: 'Arrábida Natural Park Snorkeling', category: 'water', emoji: '🤿', difficulty: 'Easy', duration: 'Full day', cost: '$30–50 boat trip', description: 'Portugal\'s clearest waters in a protected limestone park south of Setúbal. Vibrant marine life, sea caves, and turquoise coves.', source: 'Featured', bookingUrl: 'https://www.arrábida.pt' },
+    { name: 'Cascais Coast Cycling', category: 'cycling', emoji: '🚴', difficulty: 'Easy', duration: '3–4 hrs', cost: 'Bike rental $12/day', description: '30 km coastal cycleway from Lisbon to Cascais following the Tagus estuary and Atlantic coastline — flat and spectacular.', source: 'Featured' },
+    { name: 'Gerês National Park (Day Trip)', category: 'hiking', emoji: '🌿', difficulty: 'Moderate', duration: 'Full day', cost: 'Free', description: 'Portugal\'s only national park with granite peaks, glacial valleys, wolves, and wild horses. 3.5 hrs north of Lisbon.', source: 'Featured' },
+  ],
+  'Medellín': [
+    { name: 'El Peñón de Guatapé', category: 'hiking', emoji: '🪨', difficulty: 'Moderate', duration: 'Full day', cost: '$6 climb + transport', description: '740 steps carved into a 200m granite monolith — summit gives 360° views over Colombia\'s reservoir lake district. 2 hrs from Medellín.', tip: 'Start early to beat heat. Combine with a catamaran tour on Guatapé Lake.', source: 'Featured' },
+    { name: 'Paragliding in San Félix', category: 'adventure', emoji: '🪂', difficulty: 'Easy (tandem)', duration: '30–45 min flight', cost: '$40–60', description: 'Tandem paragliding above the Andes with views of Medellín\'s "City of Eternal Spring" valley. Colombia\'s most popular paragliding site.', source: 'Featured' },
+    { name: 'Arví Park Eco-Trails', category: 'hiking', emoji: '🌿', difficulty: 'Easy', duration: '2–4 hrs', cost: '$2 cable car', description: '16,000-hectare cloud forest park accessed by metro + cable car from the city. 44 km of marked trails, butterflies, orchids, and local food markets.', tip: 'Take Line L cable car from Acevedo — the cable ride itself is a highlight.', source: 'Featured' },
+    { name: 'Río Claro Canyon Kayaking', category: 'water', emoji: '🛶', difficulty: 'Moderate', duration: '2 days', cost: '$80–120 tour', description: 'White-water kayaking and rafting through a marble canyon in tropical forest, 3 hrs east of Medellín. Ziplining and caving also available.', source: 'Featured' },
+    { name: 'Guatapé Lake Paddle', category: 'water', emoji: '⛵', difficulty: 'Easy', duration: '2–3 hrs', cost: '$20–40', description: 'Kayak or SUP through the flooded lake district\'s colorful island villages. Combine with El Peñón for a full day trip.', source: 'Featured' },
+  ],
+  'Chiang Mai': [
+    { name: 'Doi Inthanon National Park', category: 'hiking', emoji: '🌿', difficulty: 'Easy–Moderate', duration: 'Full day', cost: '$9 entry', description: 'Roof of Thailand (2,565m) with cloud forest, royal twin chedis, 400+ bird species, and Siriphum Waterfall. 2 hrs from city.', tip: 'Kew Mae Pan Nature Trail (3 km loop) is the scenic highland walk. Visit November–February for best weather and rarest birds.', source: 'Thailand National Parks', bookingUrl: 'https://www.dnp.go.th/' },
+    { name: 'Crazy Horse Buttress Rock Climbing', category: 'adventure', emoji: '🧗', difficulty: 'Moderate', duration: 'Full day', cost: '$20–30 guided', description: 'Stunning limestone sport climbing 45 min from Chiang Mai — 150+ routes on towering karst towers in jungle setting.', source: 'Featured' },
+    { name: 'Mae Taeng River Rafting', category: 'water', emoji: '🌊', difficulty: 'Moderate', duration: 'Half day', cost: '$25–40', description: 'White-water rafting Grade 3–4 rapids through forested gorges in the Mae Taeng valley, 45 min from the city.', source: 'Featured' },
+    { name: 'Doi Suthep Cycling Tour', category: 'cycling', emoji: '🚴', difficulty: 'Hard', duration: '4–5 hrs', cost: 'Bike rental $8', description: 'Classic climb from city center to Doi Suthep temple (1,050m) — 15 km of switchbacks through forest. Thrilling descent.', tip: 'Rent from Chiang Mai Mountain Biking shop. Start before 7 AM to beat traffic and heat.', source: 'OpenStreetMap' },
+    { name: 'Flight of the Gibbon Zip-line', category: 'adventure', emoji: '🌿', difficulty: 'Easy', duration: '3 hrs', cost: '$90–120', description: 'Award-winning zip-line through Mae Kampong\'s old-growth forest canopy — 33 lines, sky bridges, and rappels. Ethical wildlife sanctuary included.', source: 'Featured', bookingUrl: 'https://www.treetopasia.com/' },
+  ],
+  'Dubai': [
+    { name: 'Hatta Mountain Hiking', category: 'hiking', emoji: '🏔️', difficulty: 'Moderate', duration: 'Full day', cost: 'Free', description: 'Rocky Hajar Mountain trails 1.5 hrs from Dubai with wadis, heritage villages, and a mountain lake. Hatta Dam trail is most scenic.', tip: 'Visit October–March only — summer heat is dangerous. Hatta Road Biking Trail (11 km loop) is excellent for cycling.', source: 'Featured' },
+    { name: 'Dubai Desert Dune Sports', category: 'adventure', emoji: '🏜️', difficulty: 'Easy', duration: 'Half day', cost: '$40–80 tour', description: 'Sandboarding, quad biking, and camel trekking on the red dunes of Dubai Desert Conservation Reserve. Evening tours include stargazing.', source: 'Featured' },
+    { name: 'Jebel Ali Mangrove Kayaking', category: 'water', emoji: '🛶', difficulty: 'Easy', duration: '2 hrs', cost: '$30–45', description: 'Paddle through the Jebel Ali mangrove forest — a rare marine ecosystem teeming with herons, flamingos, and rays. Best at sunrise.', source: 'Featured' },
+    { name: 'Palm Beach Paddleboarding', category: 'water', emoji: '🏄', difficulty: 'Easy', duration: '2 hrs', cost: '$25–40', description: 'SUP along the Palm Jumeirah shoreline with views of the Atlantis hotel and Dubai Marina skyline.', source: 'Featured' },
+    { name: 'Wadi Wurayah Waterfall Trek', category: 'hiking', emoji: '💧', difficulty: 'Moderate', duration: 'Full day', cost: 'Free', description: 'UAE\'s only perennial waterfall in a federally protected wadi (Fujairah emirate). Wild swimming pools, leopard habitat, and dramatic canyon walls.', tip: 'Only accessible Oct–May. 4WD vehicle required for the rough track. Bring ample water.', source: 'Featured' },
+  ],
+};
+
+/* ── Outdoor Activity Type Guide ── */
+export interface ActivityTypeGuide {
+  id: string;
+  name: string;
+  emoji: string;
+  description: string;
+  difficulty: string;
+  bestSeason: string;
+  gear: string[];
+  globalBest: string[];
+  bookingTip: string;
+  sourceUrl?: string;
+}
+
+export const OUTDOOR_ACTIVITY_GUIDE: ActivityTypeGuide[] = [
+  {
+    id: 'camping',
+    name: 'Camping',
+    emoji: '⛺',
+    description: 'Sleep under the stars in national forests, lakeside campgrounds, or backcountry wilderness.',
+    difficulty: 'Easy–Hard depending on site type',
+    bestSeason: 'Spring–Fall (US), Year-round (tropics)',
+    gear: ['Tent', 'Sleeping bag', 'Headlamp', 'Bear canister (backcountry)', 'Camp stove'],
+    globalBest: ['Yosemite, USA', 'Fiordland, New Zealand', 'Scottish Highlands', 'Patagonia, Argentina'],
+    bookingTip: 'Book US sites 6 months ahead on Recreation.gov. International sites often walk-in only.',
+    sourceUrl: 'https://www.recreation.gov/camping',
+  },
+  {
+    id: 'hiking',
+    name: 'Hiking & Trekking',
+    emoji: '🥾',
+    description: 'From easy forest walks to multi-day mountain traverses — hiking is the most universal outdoor activity.',
+    difficulty: 'Easy day walks to Expert multi-week expeditions',
+    bestSeason: 'Year-round (altitude/region dependent)',
+    gear: ['Trail shoes/boots', 'Trekking poles', 'Rain jacket', 'Navigation app', '2L+ water'],
+    globalBest: ['Torres del Paine, Chile', 'Everest Base Camp, Nepal', 'Milford Track, NZ', 'Camino de Santiago, Spain', 'Pacific Crest Trail, USA'],
+    bookingTip: 'Many iconic treks (Inca Trail, Everest) require permits booked months ahead. Check NPS.gov for US permits.',
+    sourceUrl: 'https://www.nps.gov/subjects/hiking/index.htm',
+  },
+  {
+    id: 'water',
+    name: 'Water Sports',
+    emoji: '🌊',
+    description: 'Ocean surfing, river kayaking, lake paddleboarding, snorkeling coral reefs — water opens up a world of adventure.',
+    difficulty: 'Easy (snorkeling) to Expert (big wave surfing)',
+    bestSeason: 'Varies by sport and location',
+    gear: ['Wetsuit (cold water)', 'Reef-safe sunscreen', 'Waterproof bag', 'Life jacket (whitewater)'],
+    globalBest: ['Pipeline, Hawaii (surfing)', 'Great Barrier Reef (snorkeling)', 'Colorado River (rafting)', 'Komodo, Indonesia (diving)', 'Amazon tributaries (kayaking)'],
+    bookingTip: 'US river permits via Recreation.gov. International dive centers on PADI website.',
+    sourceUrl: 'https://www.recreation.gov/activities/2607',
+  },
+  {
+    id: 'cycling',
+    name: 'Cycling & Mountain Biking',
+    emoji: '🚴',
+    description: 'Road touring through vineyards, mountain bike singletrack, or gravel adventures off the beaten path.',
+    difficulty: 'Easy (flat rail trails) to Expert (technical DH singletrack)',
+    bestSeason: 'Spring–Fall (temperate), dry season (tropics)',
+    gear: ['Helmet', 'Gloves', 'Padded shorts', 'Repair kit', 'GPS/navigation'],
+    globalBest: ['Loire Valley, France', 'Moab Utah, USA', 'Queenstown, NZ', 'Mallorca, Spain', 'Kyoto–Osaka, Japan'],
+    bookingTip: 'EuroVelo (eurovelo.com) maps 17 long-distance European routes. US trails on TrailForks.com.',
+  },
+  {
+    id: 'adventure',
+    name: 'Adventure Sports',
+    emoji: '🧗',
+    description: 'Rock climbing, paragliding, zip-lining, canyoneering — push your limits in the vertical world.',
+    difficulty: 'Easy tandem flights to Expert alpine routes',
+    bestSeason: 'Varies — check local conditions',
+    gear: ['Harness + helmet (climbing)', 'Tandem guide required (paragliding)', 'Canyoneering wetsuit'],
+    globalBest: ['Kalymnos, Greece (climbing)', 'Interlaken, Switzerland (paragliding)', 'Chamonix, France (mountaineering)', 'Queenstown, NZ (multi-sport)', 'Moab, USA (canyoneering)'],
+    bookingTip: 'Always use certified instructors. Mountain guides: IFMGA certified. Paragliding: USHPA (US) / BHPA (UK) qualified schools.',
+  },
+  {
+    id: 'wildlife',
+    name: 'Wildlife Watching',
+    emoji: '🦅',
+    description: 'Birdwatching, safari game drives, whale watching, and wildlife sanctuaries — observe Earth\'s magnificent creatures.',
+    difficulty: 'Easy',
+    bestSeason: 'Migration periods (spring/fall for birds), dry season (African safari)',
+    gear: ['Binoculars 8×42', 'Field guide app (Merlin)', 'Long lens camera', 'Neutral clothing'],
+    globalBest: ['Serengeti, Tanzania (safari)', 'Galápagos (endemic species)', 'Costa Rica (biodiversity)', 'Khao Yai, Thailand (elephants)', 'Alaska (bears/whales)'],
+    bookingTip: 'African safaris: book 12+ months ahead for peak season. US wildlife refuges: recreation.gov and fws.gov.',
+    sourceUrl: 'https://www.fws.gov/recreation',
+  },
+  {
+    id: 'winter',
+    name: 'Winter Sports',
+    emoji: '⛷️',
+    description: 'Skiing, snowboarding, cross-country, snowshoeing, ice climbing — winter transforms landscapes into playgrounds.',
+    difficulty: 'Easy (beginner ski area) to Expert (backcountry touring)',
+    bestSeason: 'December–March (N. Hemisphere), June–September (S. Hemisphere)',
+    gear: ['Helmet (mandatory most resorts)', 'Avalanche beacon (backcountry)', 'Goggles', 'Layering system'],
+    globalBest: ['Whistler, Canada', 'Zermatt, Switzerland', 'Niseko, Japan', 'Portillo, Chile', 'Aspen, USA'],
+    bookingTip: 'US ski resorts on iSki or Liftopia. Backcountry safety: take an avalanche course before venturing off-piste.',
+  },
+  {
+    id: 'fitness',
+    name: 'Outdoor Fitness',
+    emoji: '💪',
+    description: 'Trail running, outdoor yoga, calisthenics parks, open-water swimming — fitness without four walls.',
+    difficulty: 'All levels',
+    bestSeason: 'Year-round',
+    gear: ['Trail running shoes', 'GPS watch', 'Hydration vest (long runs)'],
+    globalBest: ['Ultra-Trail du Mont-Blanc (UTMB)', 'Comrades Marathon, South Africa', 'Spartan Race series', 'Outdoor gyms in Singapore\'s parks', 'Tel Aviv beachfront fitness parks'],
+    bookingTip: 'Free outdoor workout spots globally via Workout.World (app). Yoga retreats on YogaTrail.com.',
+  },
+];
+
+/* ── Recreation.gov & NPS external search links ── */
+export const RECREATION_EXTERNAL_LINKS = {
+  recreationGov: {
+    search: 'https://www.recreation.gov/search',
+    camping: 'https://www.recreation.gov/camping',
+    permits: 'https://www.recreation.gov/permits',
+    tours: 'https://www.recreation.gov/tours',
+    dayUse: 'https://www.recreation.gov/day-use',
+  },
+  nps: {
+    findApark: 'https://www.nps.gov/findapark/',
+    trails: 'https://www.nps.gov/subjects/hiking/index.htm',
+    camping: 'https://www.nps.gov/subjects/camping/campgrounds.htm',
+    events: 'https://www.nps.gov/subjects/events/index.htm',
+  },
+  parksCanada: {
+    home: 'https://parks.canada.ca/en',
+    reservations: 'https://reservation.pc.gc.ca/',
+    findApark: 'https://parks.canada.ca/voyage-travel/parks',
+  },
+  international: {
+    alltrails: 'https://www.alltrails.com/',
+    komoot: 'https://www.komoot.com/',
+    outdooractive: 'https://www.outdooractive.com/',
+    wikiloc: 'https://www.wikiloc.com/',
+  },
+};
