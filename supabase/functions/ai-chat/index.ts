@@ -775,12 +775,38 @@ SAFETY CONSISTENCY GUARDRAILS — CRITICAL (no contradictions allowed):
 
 NEVER MENTION: Strike, River, Skyscanner, Booking.com, Airbnb.`;
 
+async function requireUser(req: Request): Promise<{ ok: true; userId: string } | { ok: false; res: Response }> {
+  const authHeader = req.headers.get("Authorization") || "";
+  const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  if (!token) {
+    return { ok: false, res: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }) };
+  }
+  try {
+    const url = Deno.env.get("SUPABASE_URL")!;
+    const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const r = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}`, apikey: anon } });
+    if (!r.ok) {
+      return { ok: false, res: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }) };
+    }
+    const u = await r.json();
+    if (!u?.id) {
+      return { ok: false, res: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }) };
+    }
+    return { ok: true, userId: u.id };
+  } catch {
+    return { ok: false, res: new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }) };
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    const auth = await requireUser(req);
+    if (!auth.ok) return auth.res;
+
     const { message, history, context, agenticBriefing } = await req.json();
 
     if (!message || typeof message !== "string") {
@@ -789,6 +815,7 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const apiKey = LOVABLE_API_KEY();
     if (!apiKey) {
