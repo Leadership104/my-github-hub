@@ -23,7 +23,23 @@
 // Per-city responses are cached in memory for 10 minutes to keep load light
 // across the upstream APIs while supporting the screen's auto-refresh cadence.
 
-import { corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.95.0/cors";
+// Set APP_URL in Supabase secrets (e.g. https://kipita.com) to restrict CORS.
+const ALLOWED_ORIGIN = Deno.env.get("APP_URL") ?? "*";
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allow =
+    ALLOWED_ORIGIN === "*"
+      ? "*"
+      : origin === ALLOWED_ORIGIN
+      ? origin
+      : ALLOWED_ORIGIN;
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  };
+}
 
 const UA = "kipita-safety/1.0 (https://kipita.app)";
 
@@ -1911,7 +1927,7 @@ function lookupNeighborhoodRisk(city: string, country: string): NeighborhoodRisk
 /* ───────── handler ─────────────────────────────────────────────────────── */
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders(req) });
 
   try {
     const url = new URL(req.url);
@@ -1948,7 +1964,7 @@ Deno.serve(async (req) => {
           globalPercentile: fallbackUnodc.globalPercentile,
           yearOfData: fallbackUnodc.year,
         },
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }), { headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
     }
 
     // Cache check (10 min) — keyed by city/state/country + rounded coords.
@@ -1956,7 +1972,7 @@ Deno.serve(async (req) => {
     const hit = cache.get(key);
     if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
       return new Response(JSON.stringify(hit.payload), {
-        headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "HIT" },
+        headers: { ...corsHeaders(req), "Content-Type": "application/json", "X-Cache": "HIT" },
       });
     }
 
@@ -2127,12 +2143,12 @@ Deno.serve(async (req) => {
     }
 
     return new Response(JSON.stringify(payload), {
-      headers: { ...corsHeaders, "Content-Type": "application/json", "X-Cache": "MISS" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json", "X-Cache": "MISS" },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
     return new Response(JSON.stringify({
       source: "FALLBACK", error: msg, rates: FBI_NATIONAL_PER_100K, signals: null,
-    }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }), { status: 200, headers: { ...corsHeaders(req), "Content-Type": "application/json" } });
   }
 });

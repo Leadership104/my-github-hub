@@ -1,10 +1,24 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+// Set APP_URL in Supabase secrets (e.g. https://kipita.com) to restrict CORS.
+// Falls back to '*' only when the env var is absent (local dev / unset).
+const ALLOWED_ORIGIN = Deno.env.get("APP_URL") ?? "*";
+
+function corsHeaders(req: Request) {
+  const origin = req.headers.get("origin") ?? "";
+  const allow =
+    ALLOWED_ORIGIN === "*"
+      ? "*"
+      : origin === ALLOWED_ORIGIN
+      ? origin
+      : ALLOWED_ORIGIN;
+  return {
+    "Access-Control-Allow-Origin": allow,
+    "Access-Control-Allow-Headers":
+      "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  };
+}
 
 const GOOGLE_KEY = () => Deno.env.get("GOOGLE_PLACES_API_KEY") || "";
 
@@ -291,25 +305,26 @@ async function coinmapVenues(lat: number, lng: number) {
 async function requireUser(req: Request): Promise<Response | null> {
   const authHeader = req.headers.get("Authorization") || "";
   const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+  const ch = { ...corsHeaders(req), "Content-Type": "application/json" };
   if (!token) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: ch });
   }
   try {
     const url = Deno.env.get("SUPABASE_URL")!;
     const anon = Deno.env.get("SUPABASE_ANON_KEY")!;
     const r = await fetch(`${url}/auth/v1/user`, { headers: { Authorization: `Bearer ${token}`, apikey: anon } });
-    if (!r.ok) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!r.ok) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: ch });
     const u = await r.json();
-    if (!u?.id) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (!u?.id) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: ch });
     return null;
   } catch {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: ch });
   }
 }
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders(req) });
   }
 
   const unauthorized = await requireUser(req);
@@ -428,18 +443,18 @@ serve(async (req) => {
       default:
         return new Response(
           JSON.stringify({ error: "Invalid action. Use: nearby, search, details, coinmap" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          { status: 400, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
         );
     }
 
     return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...corsHeaders(req), "Content-Type": "application/json" },
     });
   } catch (err: any) {
     console.error("places-proxy error:", err);
     return new Response(
       JSON.stringify({ error: err.message || "Internal error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders(req), "Content-Type": "application/json" } }
     );
   }
 });
