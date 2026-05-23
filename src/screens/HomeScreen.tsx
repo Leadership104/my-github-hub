@@ -281,19 +281,6 @@ export default function HomeScreen({ weather, forecast, locationName, fullAddres
           ))}
         </div>
 
-        {/* Outdoor Recreation CTA */}
-        <button onClick={() => onSwitchTab('recreation')}
-          className="btn-outline-3d w-full flex items-center gap-2.5 rounded-kipita px-3 py-2 mb-2 text-left"
-          style={{ borderColor: '#38A169', borderWidth: '1.5px' }}>
-          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#38A16922' }}>
-            <span className="text-xl">🏕️</span>
-          </div>
-          <div className="flex-1 min-w-0 leading-tight">
-            <div className="text-foreground font-extrabold text-base leading-tight">Outdoor Recreation</div>
-            <div className="text-muted-foreground text-[10px] leading-tight">Recreation.gov · NPS · OpenStreetMap</div>
-          </div>
-          <span className="ms text-muted-foreground text-lg">chevron_right</span>
-        </button>
 
         {/* Kipita Perks */}
         <button
