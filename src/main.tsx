@@ -48,12 +48,20 @@ function AuthGate() {
   return <App />;
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+function Root() {
+  const [unlocked, setUnlocked] = React.useState(() => isAppUnlocked());
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  return (
     <I18nProvider>
       <AuthProvider>
         <AuthGate />
       </AuthProvider>
     </I18nProvider>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <Root />
   </React.StrictMode>
 );
