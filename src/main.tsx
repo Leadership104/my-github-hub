@@ -7,9 +7,12 @@ import { AuthProvider, useAuth } from './auth/useAuth';
 import AuthScreen from './auth/AuthScreen';
 import OnboardingScreen from './auth/OnboardingScreen';
 import ResetPasswordScreen from './auth/ResetPasswordScreen';
+import PasswordGate, { isAppUnlocked } from './components/PasswordGate';
 import kipitaSplash from './assets/kipita-splash.jpeg';
 
 function AuthGate() {
+  const [unlocked, setUnlocked] = React.useState(() => isAppUnlocked());
+  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
   const { session, profile, loading } = useAuth();
   const [guest, setGuest] = React.useState(() => typeof window !== 'undefined' && localStorage.getItem('kip_guest') === '1');
 
