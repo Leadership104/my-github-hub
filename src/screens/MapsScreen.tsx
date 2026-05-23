@@ -248,11 +248,13 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
   }, [getTrips]);
 
   const btcAtmIds = new Set(['atm', 'btcatm']);
+  // Only include categories that have Overpass configs — others return no results on the map.
+  const mapOnlyIds = new Set(Object.keys(OVERPASS_CFGS));
   const allFilters = [
-    ...categories.filter(c => !btcAtmIds.has(c.id)).map(c => ({ id: c.id, label: `${c.emoji} ${c.label}`, emoji: c.emoji })),
+    ...categories.filter(c => !btcAtmIds.has(c.id) && mapOnlyIds.has(c.id)).map(c => ({ id: c.id, label: `${c.emoji} ${c.label}`, emoji: c.emoji })),
     { id: 'safety', label: '🛡️ Safety', emoji: '🛡️' },
     { id: 'btc', label: '₿ BTC', emoji: '₿' },
-    ...categories.filter(c => btcAtmIds.has(c.id)).map(c => ({ id: c.id, label: `${c.emoji} ${c.label}`, emoji: c.emoji })),
+    ...categories.filter(c => btcAtmIds.has(c.id) && mapOnlyIds.has(c.id)).map(c => ({ id: c.id, label: `${c.emoji} ${c.label}`, emoji: c.emoji })),
   ];
 
   // Init map
