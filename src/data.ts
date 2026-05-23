@@ -1008,7 +1008,7 @@ export const RECREATION_EXTERNAL_LINKS = {
   parksCanada: {
     home: 'https://parks.canada.ca/en',
     reservations: 'https://reservation.pc.gc.ca/',
-    findApark: 'https://parks.canada.ca/voyage-travel/parks',
+    findApark: 'https://parks.canada.ca/pn-np',
   },
   international: {
     alltrails: 'https://www.alltrails.com/',
