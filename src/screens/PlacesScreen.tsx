@@ -260,7 +260,7 @@ function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: nu
   );
 }
 
-export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack }: Props) {
+export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack, onSwitchTab }: Props) {
   const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search'>(initialView === 'phrases' || initialView === 'destinations' || initialView?.startsWith('place:') ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
