@@ -1633,6 +1633,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             const color = sectionColors[section.id] || '#3182CE';
             return (
               <button key={section.id} onClick={() => {
+                if (section.id === 'wellness' && onSwitchTab) {
+                  onSwitchTab('recreation');
+                  return;
+                }
                 setSelectedSection(section.id);
                 setView('section');
                 setActiveChip(null);
@@ -1651,7 +1655,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 }
                 if (firstChips.length > 0) selectChip(firstChips[0]);
               }}
-                className="btn-outline-3d flex flex-col items-center gap-2 p-4 rounded-kipita"
+                className="btn-outline-3d flex flex-col items-center gap-2 p-4 rounded-kipita transition-transform hover:scale-105 active:scale-95"
                 style={{ borderColor: color }}
               >
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: color + '22' }}>
