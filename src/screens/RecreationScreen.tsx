@@ -31,7 +31,7 @@ const CATEGORY_TABS: { id: RecreationCategory; label: string; emoji: string }[] 
 ];
 
 const SOURCE_STYLES: Record<RecreationSpot['source'], { label: string; cls: string }> = {
-  'recreation.gov': { label: 'Recreation.gov', cls: 'bg-green-100 text-green-800' },
+  'recreation.gov': { label: 'Recreation.gov', cls: 'bg-muted text-foreground' },
   'nps':            { label: 'NPS',             cls: 'bg-blue-100 text-blue-800'  },
   'osm':            { label: 'OpenStreetMap',   cls: 'bg-amber-100 text-amber-800'},
   'parks_canada':   { label: 'Parks Canada',    cls: 'bg-red-100 text-red-800'   },
@@ -39,21 +39,9 @@ const SOURCE_STYLES: Record<RecreationSpot['source'], { label: string; cls: stri
 };
 
 const DIFFICULTY_STYLES = {
-  easy:     'bg-green-100 text-green-700',
+  easy:     'bg-muted text-foreground',
   moderate: 'bg-amber-100 text-amber-700',
   hard:     'bg-red-100 text-red-700',
-};
-
-const CATEGORY_ICON: Record<RecreationCategory, React.ReactNode> = {
-  all:       <TreePine className="w-4 h-4" />,
-  camping:   <Tent      className="w-4 h-4" />,
-  hiking:    <Mountain  className="w-4 h-4" />,
-  water:     <Waves     className="w-4 h-4" />,
-  adventure: <Compass   className="w-4 h-4" />,
-  cycling:   <Bike      className="w-4 h-4" />,
-  winter:    <Snowflake className="w-4 h-4" />,
-  wildlife:  <Bird      className="w-4 h-4" />,
-  fitness:   <Dumbbell  className="w-4 h-4" />,
 };
 
 function SourceBadge({ source }: { source: RecreationSpot['source'] }) {
@@ -67,7 +55,7 @@ function SpotCard({ spot }: { spot: RecreationSpot }) {
     : null;
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+    <div className="bg-card rounded-2xl border border-border p-4 space-y-2 animate-fade-in transition-transform hover:scale-[1.01]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
@@ -120,7 +108,7 @@ function SpotCard({ spot }: { spot: RecreationSpot }) {
             href={spot.reservationUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[11px] font-bold text-white bg-kipita-red rounded-full px-3 py-1.5 hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1 text-[11px] font-bold text-white bg-kipita-red rounded-full px-3 py-1.5 hover:opacity-90 hover:scale-105 active:scale-95 transition-all"
           >
             {spot.reservable ? 'Reserve' : 'View'}
             <ExternalLink className="w-3 h-3" />
@@ -131,7 +119,7 @@ function SpotCard({ spot }: { spot: RecreationSpot }) {
             href={spot.website}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-[11px] font-bold text-kipita-red border border-kipita-red rounded-full px-3 py-1.5 hover:bg-kipita-red/5 transition-colors"
+            className="flex items-center gap-1 text-[11px] font-bold text-kipita-red border border-kipita-red rounded-full px-3 py-1.5 hover:bg-kipita-red/5 hover:scale-105 active:scale-95 transition-all"
           >
             Website
             <ExternalLink className="w-3 h-3" />
@@ -144,7 +132,7 @@ function SpotCard({ spot }: { spot: RecreationSpot }) {
 
 function HighlightCard({ item, city }: { item: RecreationHighlight; city: string }) {
   return (
-    <div className="bg-card rounded-2xl border border-border p-4 space-y-2 flex-shrink-0 w-72">
+    <div className="bg-card rounded-2xl border border-border p-4 space-y-2 flex-shrink-0 w-72 animate-fade-in transition-transform hover:scale-[1.02]">
       <div className="flex items-start gap-2">
         <span className="text-2xl">{item.emoji}</span>
         <div className="flex-1 min-w-0">
@@ -180,7 +168,7 @@ function HighlightCard({ item, city }: { item: RecreationHighlight; city: string
           href={item.bookingUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-[11px] font-bold text-white bg-kipita-red rounded-full px-3 py-1.5 w-fit hover:opacity-90 transition-opacity"
+          className="flex items-center gap-1 text-[11px] font-bold text-white bg-kipita-red rounded-full px-3 py-1.5 w-fit hover:opacity-90 hover:scale-105 active:scale-95 transition-all"
         >
           Book / Info
           <ExternalLink className="w-3 h-3" />
@@ -193,7 +181,7 @@ function HighlightCard({ item, city }: { item: RecreationHighlight; city: string
 function ActivityGuideCard({ guide }: { guide: ActivityTypeGuide }) {
   const [expanded, setExpanded] = useState(false);
   return (
-    <div className="bg-card rounded-2xl border border-border overflow-hidden">
+    <div className="bg-card rounded-2xl border border-border overflow-hidden transition-transform hover:scale-[1.01]">
       <button
         onClick={() => setExpanded(e => !e)}
         className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
@@ -207,7 +195,7 @@ function ActivityGuideCard({ guide }: { guide: ActivityTypeGuide }) {
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 space-y-3 border-t border-border pt-3">
+        <div className="px-4 pb-4 space-y-3 border-t border-border pt-3 animate-fade-in">
           <div className="grid grid-cols-2 gap-2 text-[11px]">
             <div>
               <div className="font-bold text-muted-foreground uppercase tracking-wide mb-1">Difficulty</div>
@@ -228,69 +216,11 @@ function ActivityGuideCard({ guide }: { guide: ActivityTypeGuide }) {
             </div>
           </div>
 
-          <div>
-            <div className="font-bold text-muted-foreground uppercase tracking-wide text-[11px] mb-1">Best in the World</div>
-            <div className="flex flex-wrap gap-1">
-              {guide.globalBest.map(b => (
-                <span key={b} className="text-[10px] bg-kipita-red/10 text-kipita-red rounded-full px-2 py-0.5 font-medium">{b}</span>
-              ))}
-            </div>
-          </div>
-
           <div className="bg-blue-50 rounded-xl p-2.5 text-[11px] text-blue-800 leading-snug">
             <span className="font-bold">📋 Booking tip:</span> {guide.bookingTip}
           </div>
-
-          {guide.sourceUrl && (
-            <a
-              href={guide.sourceUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 text-[11px] font-bold text-kipita-red hover:underline"
-            >
-              Official resource <ExternalLink className="w-3 h-3" />
-            </a>
-          )}
         </div>
       )}
-    </div>
-  );
-}
-
-function RecGovBanner({ lat, lng, category }: { lat: number; lng: number; category: RecreationCategory }) {
-  const baseUrl = RECREATION_EXTERNAL_LINKS.recreationGov;
-  const searchUrl = `${baseUrl.search}?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&radius=50&sort=Distance`;
-  const campUrl = `${baseUrl.camping}?latitude=${lat.toFixed(4)}&longitude=${lng.toFixed(4)}&radius=50&sort=Distance`;
-
-  return (
-    <div className="bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl p-4 text-white">
-      <div className="flex items-start gap-3 mb-3">
-        <span className="text-3xl">🏕️</span>
-        <div>
-          <div className="font-extrabold text-base">Recreation.gov</div>
-          <div className="text-white/80 text-[12px]">Official US campground & activity reservations</div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2">
-        {[
-          { label: 'Search Near Me', url: searchUrl, emoji: '🔍' },
-          { label: 'Find Campgrounds', url: campUrl, emoji: '⛺' },
-          { label: 'Get Permits',      url: baseUrl.permits, emoji: '📋' },
-          { label: 'Tours & Programs', url: baseUrl.tours,   emoji: '🗺️' },
-        ].map(link => (
-          <a
-            key={link.label}
-            href={link.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl p-2.5 text-[12px] font-bold transition-colors"
-          >
-            <span>{link.emoji}</span>
-            {link.label}
-          </a>
-        ))}
-      </div>
     </div>
   );
 }
@@ -316,7 +246,7 @@ function ParksCanadaBanner() {
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl p-2.5 text-[12px] font-bold transition-colors"
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 hover:scale-[1.02] active:scale-95 rounded-xl p-2.5 text-[12px] font-bold transition-all"
           >
             <span>{link.emoji}</span>
             {link.label}
@@ -350,7 +280,7 @@ function InternationalLinks() {
             href={link.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 rounded-xl p-2.5 text-[12px] font-bold transition-colors"
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 hover:scale-[1.02] active:scale-95 rounded-xl p-2.5 text-[12px] font-bold transition-all"
           >
             <span>{link.emoji}</span>
             {link.label}
@@ -391,6 +321,25 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
     });
   }, [osmSpots, npsParks, recGovFacilities]);
 
+  // Determine which categories actually have content available (live spots OR city highlights).
+  // Only show chips for categories that have something to show.
+  const availableCategories = useMemo(() => {
+    const set = new Set<RecreationCategory>();
+    for (const s of allSpots) set.add(s.category);
+    if (cityHighlights) for (const h of cityHighlights) {
+      if ((CATEGORY_TABS as { id: string }[]).some(t => t.id === h.category)) {
+        set.add(h.category as RecreationCategory);
+      }
+    }
+    return set;
+  }, [allSpots, cityHighlights]);
+
+  const visibleTabs = useMemo(() => {
+    if (availableCategories.size === 0) return [];
+    // Always include 'all' first when anything is available
+    return CATEGORY_TABS.filter(t => t.id === 'all' || availableCategories.has(t.id));
+  }, [availableCategories]);
+
   const filteredSpots = activeCategory === 'all'
     ? allSpots
     : allSpots.filter(s => s.category === activeCategory);
@@ -411,7 +360,7 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
       <div className="bg-white border-b border-black/10 px-4 py-3 flex items-center gap-3 flex-shrink-0 shadow-sm">
         <button
           onClick={onBack}
-          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition-colors flex-shrink-0"
+          className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-muted transition-all hover:scale-110 active:scale-95 flex-shrink-0"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
@@ -422,33 +371,30 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
             <span className="text-[11px] text-muted-foreground truncate">{locationName}</span>
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          <span className="text-[9px] font-bold bg-green-100 text-green-700 rounded-full px-1.5 py-0.5">rec.gov</span>
-          <span className="text-[9px] font-bold bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5">NPS</span>
-          <span className="text-[9px] font-bold bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5">OSM</span>
-        </div>
       </div>
 
-      {/* Category Tabs */}
-      <div
-        ref={tabsRef}
-        className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-black/5 bg-white"
-      >
-        {CATEGORY_TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveCategory(tab.id)}
-            className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
-              activeCategory === tab.id
-                ? 'bg-kipita-red text-white shadow-sm'
-                : 'bg-muted text-muted-foreground hover:bg-muted/70'
-            }`}
-          >
-            <span>{tab.emoji}</span>
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
+      {/* Category Tabs — only show categories with content */}
+      {visibleTabs.length > 0 && (
+        <div
+          ref={tabsRef}
+          className="flex gap-2 px-4 py-3 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-black/5 bg-white"
+        >
+          {visibleTabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveCategory(tab.id)}
+              className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all hover:scale-105 active:scale-95 ${
+                activeCategory === tab.id
+                  ? 'bg-kipita-red text-white shadow-sm'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/70'
+              }`}
+            >
+              <span>{tab.emoji}</span>
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Main Scroll Area */}
       <div className="flex-1 overflow-y-auto pb-8">
@@ -457,14 +403,7 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
         <section className="px-4 pt-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="font-extrabold text-base">Near You</h3>
-            <div className="flex items-center gap-1.5">
-              {isLoading && <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin" />}
-              <div className="flex gap-1">
-                <span className="text-[9px] bg-amber-100 text-amber-700 rounded-full px-1.5 py-0.5 font-bold">OSM</span>
-                {isUS && <span className="text-[9px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-bold">rec.gov</span>}
-                {isUS && <span className="text-[9px] bg-blue-100 text-blue-700 rounded-full px-1.5 py-0.5 font-bold">NPS</span>}
-              </div>
-            </div>
+            {isLoading && <RefreshCw className="w-3.5 h-3.5 text-muted-foreground animate-spin" />}
           </div>
 
           {isLoading && filteredSpots.length === 0 ? (
@@ -476,10 +415,9 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
             <div className="text-center py-8">
               <div className="text-4xl mb-2">🌲</div>
               <p className="text-sm text-muted-foreground">No {activeCategory === 'all' ? '' : activeCategory + ' '}spots found within 20 km</p>
-              <p className="text-xs text-muted-foreground mt-1">Try the global resources below</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 stagger">
               {filteredSpots.slice(0, 12).map(spot => (
                 <SpotCard key={spot.id} spot={spot} />
               ))}
@@ -492,23 +430,15 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
           )}
         </section>
 
-        {/* ── US: Recreation.gov ── */}
-        {isUS && (activeCategory === 'all' || ['camping', 'hiking', 'water', 'adventure', 'wildlife'].includes(activeCategory)) && (
+        {/* ── NPS National Parks (US only) ── */}
+        {isUS && npsParks.length > 0 && (activeCategory === 'all' || ['camping', 'hiking', 'water', 'adventure', 'wildlife'].includes(activeCategory)) && (
           <section className="px-4 pt-6">
-            <div className="flex items-center gap-2 mb-3">
-              <h3 className="font-extrabold text-base">Reserve a Site</h3>
-              <span className="text-[10px] bg-green-100 text-green-700 rounded-full px-2 py-0.5 font-bold">Recreation.gov</span>
+            <h3 className="font-extrabold text-base mb-3">National Parks</h3>
+            <div className="space-y-3">
+              {npsParks.slice(0, 4).map(park => (
+                <SpotCard key={park.id} spot={park} />
+              ))}
             </div>
-            <RecGovBanner lat={lat} lng={lng} category={activeCategory} />
-            {/* NPS parks */}
-            {npsParks.length > 0 && (
-              <div className="mt-3 space-y-3">
-                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wide">National Parks</p>
-                {npsParks.slice(0, 4).map(park => (
-                  <SpotCard key={park.id} spot={park} />
-                ))}
-              </div>
-            )}
           </section>
         )}
 
@@ -565,10 +495,12 @@ export default function RecreationScreen({ lat, lng, locationName, countryCode, 
           <p className="text-[10px] text-muted-foreground text-center leading-relaxed">
             Live data from{' '}
             <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap</a>
-            {' '}· US data from{' '}
-            <a href="https://www.recreation.gov/" target="_blank" rel="noopener noreferrer" className="underline">Recreation.gov</a>
-            {' '}&amp;{' '}
-            <a href="https://www.nps.gov/" target="_blank" rel="noopener noreferrer" className="underline">NPS</a>
+            {isUS && (
+              <>
+                {' '}·{' '}
+                <a href="https://www.nps.gov/" target="_blank" rel="noopener noreferrer" className="underline">NPS</a>
+              </>
+            )}
             {' '}· Curated picks by Kipita
           </p>
         </div>

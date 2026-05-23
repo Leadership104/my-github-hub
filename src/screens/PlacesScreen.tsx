@@ -34,6 +34,7 @@ interface Props {
   lng?: number;
   initialView?: string;
   onBack?: () => void;
+  onSwitchTab?: (tab: any, hint?: string) => void;
 }
 
 const PLACE_RADIUS_M = 16000; // ~10 mi — nearby should cross city/ZIP boundaries
@@ -259,7 +260,7 @@ function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: nu
   );
 }
 
-export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack }: Props) {
+export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack, onSwitchTab }: Props) {
   const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search'>(initialView === 'phrases' || initialView === 'destinations' || initialView?.startsWith('place:') ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -1632,6 +1633,10 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             const color = sectionColors[section.id] || '#3182CE';
             return (
               <button key={section.id} onClick={() => {
+                if (section.id === 'wellness' && onSwitchTab) {
+                  onSwitchTab('recreation');
+                  return;
+                }
                 setSelectedSection(section.id);
                 setView('section');
                 setActiveChip(null);
@@ -1650,7 +1655,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 }
                 if (firstChips.length > 0) selectChip(firstChips[0]);
               }}
-                className="btn-outline-3d flex flex-col items-center gap-2 p-4 rounded-kipita"
+                className="btn-outline-3d flex flex-col items-center gap-2 p-4 rounded-kipita transition-transform hover:scale-105 active:scale-95"
                 style={{ borderColor: color }}
               >
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ backgroundColor: color + '22' }}>
