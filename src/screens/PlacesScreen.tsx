@@ -34,7 +34,7 @@ interface Props {
   lng?: number;
   initialView?: string;
   onBack?: () => void;
-  onSwitchTab?: (tab: string, hint?: string) => void;
+  onSwitchTab?: (tab: any, hint?: string) => void;
 }
 
 const PLACE_RADIUS_M = 16000; // ~10 mi — nearby should cross city/ZIP boundaries
