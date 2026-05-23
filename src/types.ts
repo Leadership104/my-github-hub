@@ -147,4 +147,31 @@ export interface DemoPlace {
   price: string;
 }
 
-export type TabId = 'home' | 'ai' | 'trips' | 'places' | 'maps' | 'wallet' | 'groups' | 'safety' | 'atm' | 'perks' | 'fuel' | 'business';
+export type TabId = 'home' | 'ai' | 'trips' | 'places' | 'maps' | 'wallet' | 'groups' | 'safety' | 'atm' | 'perks' | 'fuel' | 'business' | 'recreation';
+
+export type RecreationCategory = 'all' | 'camping' | 'hiking' | 'water' | 'winter' | 'adventure' | 'cycling' | 'wildlife' | 'fitness';
+
+export interface RecreationSpot {
+  id: string;
+  name: string;
+  category: RecreationCategory;
+  source: 'recreation.gov' | 'nps' | 'osm' | 'parks_canada' | 'featured';
+  lat: number;
+  lng: number;
+  distKm?: number;
+  description?: string;
+  amenities?: string[];
+  activities?: string[];
+  cost?: string;
+  reservable?: boolean;
+  reservationUrl?: string;
+  imageUrl?: string;
+  difficulty?: 'easy' | 'moderate' | 'hard';
+  lengthKm?: number;
+  elevationM?: number;
+  season?: string;
+  rating?: number;
+  parkName?: string;
+  phone?: string;
+  website?: string;
+}
