@@ -364,7 +364,7 @@ function TypingIndicator() {
 // Wildfires, earthquakes, and active disasters are intentionally NOT separate chips — they live behind the
 // 🛡️ Safety chip as a follow-up emergency briefing the user can opt into after their normal safety read.
 const QUICK_ACTIONS = [
-  { emoji: '✈️', label: 'Plan a trip',      prompt: '__OPEN_WIZARD__' },
+  { emoji: '✈️', label: 'Plan a Trip',      prompt: '__OPEN_WIZARD__' },
   { emoji: '🗺️', label: 'Brief me',         prompt: 'Give me a full Know Before You Go briefing for where I am right now.' },
   { emoji: '🛡️', label: 'Safety',           prompt: 'What\'s the real safety situation here right now — crime, scams, things to watch for? Give me the normal briefing first, and at the end ask if I want a live emergency check (wildfires, earthquakes, active disasters).' },
   { emoji: '🌫️', label: 'Air quality',      prompt: 'How is the air quality and pollution near me right now? Use live AQI/PM2.5 data and tell me if it\'s safe to be outside or exercise.' },
@@ -590,10 +590,9 @@ export default function AIScreen({
 
   const sendMessage = useCallback(async (text: string) => {
     if (!text.trim() || loading) return;
-    // Intercept Plan-a-trip quick action → jump straight to wizard at current location
+    // Intercept Plan-a-trip quick action → show the Plan Chooser (Manual vs AI) in Trips
     if (text.trim() === '__OPEN_WIZARD__') {
-      const hint = locationName ? `plan:${locationName}|${countryCode || ''}` : '';
-      onSwitchTab?.('trips', hint);
+      onSwitchTab?.('trips', 'show-chooser');
       return;
     }
     const userMsg: ChatMessage = { id: Date.now().toString(), role: 'user', text: text.trim(), timestamp: Date.now() };
@@ -661,16 +660,22 @@ export default function AIScreen({
   useEffect(() => {
     if (!handoffPrompt || handoffSentRef.current) return;
     handoffSentRef.current = true;
-    // Seed an intro message so the user sees the support context immediately
+    // Seed an intro message appropriate for the handoff type
+    const isTripPlanner = handoffLabel?.includes('Trip Planner') || handoffLabel?.includes('✈️');
     setMessages([{
       id: 'handoff-intro',
       role: 'ai',
-      text: `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
+      text: isTripPlanner
+        ? `✈️ **AI Trip Planner** — Let's plan your perfect trip!\n\nWhere would you like to go, and roughly when?`
+        : `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
       timestamp: Date.now(),
     }]);
-    // Defer to ensure sendMessage closure is ready
-    const t = setTimeout(() => sendMessage(handoffPrompt), 50);
-    return () => clearTimeout(t);
+    // For trip planner, the AI intro already asks the opening question — let user respond naturally.
+    // For support handoffs, auto-send the prompt so the AI has full context immediately.
+    if (!isTripPlanner) {
+      const t = setTimeout(() => sendMessage(handoffPrompt), 50);
+      return () => clearTimeout(t);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handoffPrompt]);
 
