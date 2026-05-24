@@ -249,6 +249,127 @@ function placeMatchesCuisine(p: { name?: string; typeLabel?: string | null; type
   return keywords.some(k => hay.includes(k.toLowerCase()));
 }
 
+/* ─────────────────────────────────────────────────────────────────────
+   Generic chip prescreen verifier
+   ─────────────────────────────────────────────────────────────────────
+   Google text search frequently returns nearby businesses that aren't
+   actually in the category you asked for. Before showing any result
+   under a chip we re-check it against:
+     1. Meaningful tokens extracted from the chip's query + label
+        (after stripping generic stopwords like "restaurant", "service")
+     2. Google's own `types` array, matched through a lookup of expected
+        place types per chip keyword family
+   A place must satisfy at least one of those signals to pass. */
+const GENERIC_STOPWORDS = new Set([
+  'restaurant','restaurants','food','foods','place','places','shop','shops',
+  'store','stores','service','services','center','centre','centers','centres',
+  'station','stations','near','me','the','and','or','of','for','a','an','in',
+  'on','at','to','spot','spots','area','local','best','good','top','open','now',
+]);
+
+const CHIP_TYPE_HINTS: Array<{ tokens: string[]; types: string[] }> = [
+  { tokens: ['coffee','cafe','café'], types: ['cafe','bakery'] },
+  { tokens: ['bakery','bread','pastry','patisserie','boulangerie'], types: ['bakery'] },
+  { tokens: ['boba','tea','bubble tea'], types: ['cafe'] },
+  { tokens: ['juice','smoothie'], types: ['cafe','restaurant'] },
+  { tokens: ['gas','fuel','diesel','petrol'], types: ['gas_station'] },
+  { tokens: ['ev','charging','tesla','supercharger','electric vehicle'], types: ['electric_vehicle_charging_station'] },
+  { tokens: ['hotel','resort','hostel','motel','boutique','lodge','inn'], types: ['lodging'] },
+  { tokens: ['airbnb','vacation','rental'], types: ['lodging'] },
+  { tokens: ['spa','massage','wellness'], types: ['spa'] },
+  { tokens: ['hair','salon','barber','barbershop'], types: ['hair_care','beauty_salon'] },
+  { tokens: ['nail','manicure','pedicure'], types: ['beauty_salon'] },
+  { tokens: ['gym','fitness','crossfit'], types: ['gym'] },
+  { tokens: ['yoga','pilates'], types: ['gym'] },
+  { tokens: ['swimming','pool'], types: ['gym'] },
+  { tokens: ['boxing','muay'], types: ['gym'] },
+  { tokens: ['climbing'], types: ['gym'] },
+  { tokens: ['library'], types: ['library'] },
+  { tokens: ['bookstore','book'], types: ['book_store'] },
+  { tokens: ['mall','shopping'], types: ['shopping_mall','department_store','clothing_store'] },
+  { tokens: ['grocery','supermarket'], types: ['supermarket','grocery_or_supermarket','convenience_store'] },
+  { tokens: ['electronics'], types: ['electronics_store'] },
+  { tokens: ['clothing','fashion','apparel'], types: ['clothing_store'] },
+  { tokens: ['market','bazaar'], types: ['supermarket','grocery_or_supermarket','shopping_mall'] },
+  { tokens: ['museum','gallery'], types: ['museum','art_gallery'] },
+  { tokens: ['park','garden'], types: ['park'] },
+  { tokens: ['movie','cinema','theater'], types: ['movie_theater'] },
+  { tokens: ['bowling'], types: ['bowling_alley'] },
+  { tokens: ['nightclub','dance'], types: ['night_club'] },
+  { tokens: ['bar','pub','tavern'], types: ['bar','night_club'] },
+  { tokens: ['cocktail'], types: ['bar'] },
+  { tokens: ['wine'], types: ['bar','liquor_store'] },
+  { tokens: ['brewery','taproom','craft beer','beer'], types: ['bar'] },
+  { tokens: ['rooftop'], types: ['bar','restaurant'] },
+  { tokens: ['sports bar'], types: ['bar'] },
+  { tokens: ['karaoke'], types: ['bar','night_club'] },
+  { tokens: ['hookah','shisha'], types: ['bar','night_club'] },
+  { tokens: ['comedy'], types: ['night_club'] },
+  { tokens: ['live music'], types: ['bar','night_club'] },
+  { tokens: ['lounge'], types: ['bar','night_club'] },
+  { tokens: ['bus'], types: ['bus_station','transit_station'] },
+  { tokens: ['train','metro','subway','mrt'], types: ['train_station','subway_station','transit_station'] },
+  { tokens: ['airport'], types: ['airport'] },
+  { tokens: ['taxi','grab','rideshare','ride share'], types: ['taxi_stand'] },
+  { tokens: ['ferry','boat terminal'], types: ['ferry_terminal'] },
+  { tokens: ['bike','bicycle'], types: ['bicycle_store'] },
+  { tokens: ['oil change','mechanic','auto repair','car repair','brake','transmission','body shop','collision'], types: ['car_repair'] },
+  { tokens: ['tire'], types: ['car_repair'] },
+  { tokens: ['car wash','detailing'], types: ['car_wash'] },
+  { tokens: ['towing','roadside'], types: ['car_repair'] },
+  { tokens: ['laundromat','laundry'], types: ['laundry'] },
+  { tokens: ['dry clean','dry cleaner','dry cleaning'], types: ['laundry'] },
+  { tokens: ['beach','ocean'], types: ['natural_feature','tourist_attraction'] },
+  { tokens: ['lake','waterfront'], types: ['natural_feature','park'] },
+  { tokens: ['hiking','trail','trailhead'], types: ['park','tourist_attraction'] },
+  { tokens: ['theme park','amusement'], types: ['amusement_park'] },
+  { tokens: ['landmark','monument'], types: ['tourist_attraction'] },
+  { tokens: ['tour','sightseeing'], types: ['tourist_attraction','travel_agency'] },
+  { tokens: ['event','concert','festival'], types: ['tourist_attraction'] },
+  { tokens: ['arcade'], types: ['amusement_park'] },
+  { tokens: ['coworking','shared office','business center'], types: ['shared_office'] },
+  { tokens: ['surfing','kayak','diving','snorkel','sailing','paddle'], types: ['tourist_attraction','travel_agency'] },
+  { tokens: ['ski','snowboard','skating'], types: ['tourist_attraction'] },
+  { tokens: ['burger','diner','grill','steakhouse','bbq','barbecue','pizza','pizzeria','sushi','ramen','taco','curry','noodle','seafood','wings','sandwich','deli','bakery'], types: ['restaurant','meal_takeaway','meal_delivery'] },
+];
+
+function extractChipKeywords(query: string, label?: string): string[] {
+  const raw = `${query} ${label ?? ''}`
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+  const unigrams = raw.filter(w => !GENERIC_STOPWORDS.has(w) && w.length >= 3);
+  const bigrams: string[] = [];
+  for (let i = 0; i < raw.length - 1; i++) bigrams.push(`${raw[i]} ${raw[i + 1]}`);
+  return Array.from(new Set([...unigrams, ...bigrams]));
+}
+
+function expectedTypesForChip(keywords: string[]): string[] {
+  const set = new Set<string>();
+  CHIP_TYPE_HINTS.forEach(h => {
+    if (h.tokens.some(t => keywords.some(k => k === t || k.includes(t) || t.includes(k)))) {
+      h.types.forEach(t => set.add(t));
+    }
+  });
+  return [...set];
+}
+
+/* Returns true if the place is plausibly in the chip's category. */
+function verifyPlaceMatchesChip(
+  p: { name?: string; typeLabel?: string | null; types?: string[]; address?: string | null },
+  chip: { query?: string; label?: string },
+): boolean {
+  const keywords = extractChipKeywords(chip.query ?? '', chip.label);
+  if (keywords.length === 0) return true;
+  const hay = `${p.name ?? ''} ${p.typeLabel ?? ''}`.toLowerCase();
+  const types = (p.types ?? []).map(t => t.toLowerCase());
+  if (keywords.some(k => hay.includes(k))) return true;
+  const expected = expectedTypesForChip(keywords);
+  if (expected.length > 0 && types.some(t => expected.includes(t))) return true;
+  return false;
+}
+
 /* Build a directions URL that opens the OS-default maps app (Google/Apple/etc.). */
 function buildDirectionsUrl(p: { lat?: number; lng?: number; name?: string; address?: string }) {
   if (typeof p.lat === 'number' && typeof p.lng === 'number') {
@@ -551,7 +672,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       (async () => {
         setLoading(true);
         const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
-        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
+        const rawPlaces = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
+        const places = rawPlaces.filter(p => verifyPlaceMatchesChip(p, { query: term, label: selectedSub.label }));
         setLivePlaces(places);
         setLoading(false);
       })();
@@ -583,6 +705,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
     const places = rawPlaces.filter(p => {
       if (isLocalityResult(p.types)) return false;
+      if (!verifyPlaceMatchesChip(p, { query: searchTerm, label })) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
         return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
@@ -719,9 +842,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     // otherwise Google can return the locality itself (e.g. "Santa Clarita") instead of restaurants.
     const searchTerm = (chip.query && chip.query.trim()) || chip.label;
     const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
-    // Drop locality / non-business results, then cap by nearby radius instead of city/ZIP.
+    // Drop locality / non-business results, then prescreen against the chip's
+    // category (keyword + Google type match) so we never show unrelated places.
     const places = rawPlaces.filter(p => {
       if (isLocalityResult(p.types)) return false;
+      if (!verifyPlaceMatchesChip(p, { query: searchTerm, label: chip.label })) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
         return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
