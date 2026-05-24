@@ -672,7 +672,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       (async () => {
         setLoading(true);
         const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
-        const places = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
+        const rawPlaces = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
+        const places = rawPlaces.filter(p => verifyPlaceMatchesChip(p, { query: term, label: selectedSub.label }));
         setLivePlaces(places);
         setLoading(false);
       })();
