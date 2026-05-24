@@ -921,12 +921,39 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     // Use the explicit query (e.g. "american restaurant") not just the label ("American"),
     // otherwise Google can return the locality itself (e.g. "Santa Clarita") instead of restaurants.
     const searchTerm = (chip.query && chip.query.trim()) || chip.label;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
+    const fdKey = foodDrinkKey(chip.label);
+    const fdEntry = fdKey ? FOOD_DRINK_KEYWORDS[fdKey] : null;
+
+    // For Food & Drinks chips, run several phrasing variants (same idea as
+    // cuisine search) so we catch well-known venues that the generic query
+    // misses (e.g. "Starbucks Reserve" under Coffee, "Stone Brewing" under
+    // Brewery).
+    let rawPlaces: LivePlace[] = [];
+    if (fdEntry) {
+      const variants = [searchTerm, ...(fdEntry.variants ?? [])];
+      const lists = await Promise.all(
+        variants.map(v => fetchGooglePlaces('search', { query: v, lat, lng, radius: PLACE_RADIUS_M }))
+      );
+      const merged = new Map<string, LivePlace>();
+      lists.flat().forEach(p => {
+        const key = p.placeId || `${p.name}-${p.lat}-${p.lng}`;
+        if (!merged.has(key)) merged.set(key, p);
+      });
+      rawPlaces = Array.from(merged.values());
+    } else {
+      rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
+    }
+
     // Drop locality / non-business results, then prescreen against the chip's
-    // category (keyword + Google type match) so we never show unrelated places.
+    // category. For Food & Drinks chips, use the stricter keyword vocab so we
+    // never show a coffee shop under "Brewery" or a diner under "Steak".
     const places = rawPlaces.filter(p => {
       if (isLocalityResult(p.types)) return false;
-      if (!verifyPlaceMatchesChip(p, { query: searchTerm, label: chip.label })) return false;
+      if (fdEntry) {
+        if (!placeMatchesFoodDrink(p, chip.label)) return false;
+      } else if (!verifyPlaceMatchesChip(p, { query: searchTerm, label: chip.label })) {
+        return false;
+      }
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
         return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
