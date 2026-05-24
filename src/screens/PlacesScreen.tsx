@@ -41,6 +41,10 @@ const PLACE_RADIUS_M = 16000; // ~10 mi — nearby should cross city/ZIP boundar
 const PLACE_RADIUS_KM = PLACE_RADIUS_M / 1000;
 const FOOD_RADIUS_M = 16000;
 const FOOD_NEARBY_KM = 16;
+// When the user picks a specific cuisine (e.g. French), broaden the search
+// considerably — niche cuisines are often the only one for many miles.
+const CUISINE_RADIUS_M = 50000; // ~31 mi
+const CUISINE_NEARBY_KM = 50;
 const isLocalityResult = (types: string[] = []) =>
   types.some(t => ['locality', 'political', 'administrative_area_level_1', 'administrative_area_level_2', 'administrative_area_level_3', 'neighborhood', 'sublocality', 'postal_code', 'country'].includes(t));
 
