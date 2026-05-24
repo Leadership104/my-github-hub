@@ -725,8 +725,28 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       (async () => {
         setLoading(true);
         const term = (selectedSub.query && selectedSub.query.trim()) || selectedSub.label;
-        const rawPlaces = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
-        const places = rawPlaces.filter(p => verifyPlaceMatchesChip(p, { query: term, label: selectedSub.label }));
+        const fdKey = foodDrinkKey(selectedSub.label);
+        const fdEntry = fdKey ? FOOD_DRINK_KEYWORDS[fdKey] : null;
+        let rawPlaces: LivePlace[] = [];
+        if (fdEntry) {
+          const variants = [term, ...(fdEntry.variants ?? [])];
+          const lists = await Promise.all(
+            variants.map(v => fetchGooglePlaces('search', { query: v, lat, lng, radius: PLACE_RADIUS_M }))
+          );
+          const merged = new Map<string, LivePlace>();
+          lists.flat().forEach(p => {
+            const key = p.placeId || `${p.name}-${p.lat}-${p.lng}`;
+            if (!merged.has(key)) merged.set(key, p);
+          });
+          rawPlaces = Array.from(merged.values());
+        } else {
+          rawPlaces = await fetchGooglePlaces('search', { query: term, lat, lng, radius: PLACE_RADIUS_M });
+        }
+        const places = rawPlaces.filter(p =>
+          fdEntry
+            ? placeMatchesFoodDrink(p, selectedSub.label)
+            : verifyPlaceMatchesChip(p, { query: term, label: selectedSub.label })
+        );
         setLivePlaces(places);
         setLoading(false);
       })();
