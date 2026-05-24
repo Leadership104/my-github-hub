@@ -1072,7 +1072,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                       key={s.id}
                       onClick={() => {
                         setSelectedCuisine(s.id);
-                        loadFoodGuide(`${s.label.toLowerCase()} restaurant`);
+                        loadFoodGuide(`${s.label.toLowerCase()} restaurant`, s.id);
                       }}
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all flex-shrink-0
                         ${active
