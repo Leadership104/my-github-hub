@@ -196,6 +196,59 @@ const CUISINE_REGIONS: {
   },
 ];
 
+/* ── Keyword vocabularies used to verify that a result actually matches the
+   selected cuisine. Google text search for e.g. "french restaurant" sometimes
+   returns nearby places that aren't truly French; we re-check the name,
+   typeLabel and types for cuisine-specific tokens before showing them. ── */
+const CUISINE_KEYWORDS: Record<string, string[]> = {
+  // American
+  american: ['american', 'burger', 'diner', 'grill', 'bbq', 'barbecue', 'smokehouse', 'wings', 'steak'],
+  bbq: ['bbq', 'barbecue', 'barbeque', 'smokehouse', 'smoke house', 'ribs', 'brisket', 'pit'],
+  southern: ['southern', 'soul food', 'soul kitchen', 'fried chicken', 'gumbo', 'creole', 'cajun'],
+  cajun: ['cajun', 'creole', 'gumbo', 'jambalaya', 'crawfish', 'po-boy', 'po boy'],
+  'tex-mex': ['tex-mex', 'tex mex', 'taco', 'burrito', 'fajita', 'cantina', 'tortilla'],
+  steakhouse: ['steak', 'steakhouse', 'chophouse', 'chop house', 'prime rib'],
+  seafood: ['seafood', 'fish house', 'lobster', 'crab', 'oyster', 'shrimp', 'clam', 'fishery'],
+  // European
+  italian: ['italian', 'pizza', 'pizzeria', 'pasta', 'trattoria', 'osteria', 'ristorante', 'cucina', 'gelato'],
+  french: ['french', 'bistro', 'brasserie', 'patisserie', 'pâtisserie', 'boulangerie', 'crêpe', 'crepe', 'creperie', 'crêperie', 'chez ', 'le ', 'la ', 'café de', 'cafe de'],
+  spanish: ['spanish', 'tapas', 'paella', 'jamón', 'jamon', 'sangria'],
+  greek: ['greek', 'gyro', 'souvlaki', 'taverna', 'mediterranean greek'],
+  mediterranean: ['mediterranean', 'falafel', 'hummus', 'kebab', 'shawarma', 'gyro', 'pita'],
+  german: ['german', 'bratwurst', 'biergarten', 'bier garten', 'schnitzel', 'hofbrau', 'bavarian'],
+  portuguese: ['portuguese', 'peri peri', 'peri-peri', 'piri piri', 'nando', 'bacalhau'],
+  // Asian
+  japanese: ['japanese', 'sushi', 'ramen', 'izakaya', 'tempura', 'udon', 'soba', 'yakitori', 'teriyaki', 'hibachi', 'sake', 'donburi', 'okonomiyaki'],
+  chinese: ['chinese', 'dim sum', 'dumpling', 'wok', 'szechuan', 'sichuan', 'hunan', 'cantonese', 'peking', 'shanghai', 'mandarin', 'chow', 'panda'],
+  thai: ['thai', 'pad thai', 'tom yum', 'bangkok', 'siam'],
+  korean: ['korean', 'k-bbq', 'kbbq', 'k bbq', 'bibimbap', 'bulgogi', 'kimchi', 'seoul'],
+  vietnamese: ['vietnamese', 'pho', 'banh mi', 'bánh mì', 'saigon', 'hanoi'],
+  indian: ['indian', 'curry', 'tandoori', 'tikka', 'masala', 'biryani', 'naan', 'punjabi', 'bombay', 'mumbai', 'dosa'],
+  filipino: ['filipino', 'adobo', 'lechon', 'jollibee', 'kamayan', 'sinigang', 'lumpia'],
+  sushi: ['sushi', 'sashimi', 'maki', 'nigiri', 'omakase', 'japanese'],
+  // Latin
+  mexican: ['mexican', 'taco', 'taqueria', 'taquería', 'burrito', 'quesadilla', 'fajita', 'cantina', 'tortilla', 'cocina', 'tijuana', 'mariachi', 'guacamole'],
+  caribbean: ['caribbean', 'jerk', 'jamaican', 'plantain', 'trinidad', 'island'],
+  cuban: ['cuban', 'havana', 'mojito', 'ropa vieja', 'cubano'],
+  peruvian: ['peruvian', 'ceviche', 'lima', 'anticucho', 'pisco'],
+  brazilian: ['brazilian', 'churrascaria', 'churrasco', 'rodizio', 'rodízio', 'samba', 'brasil'],
+  argentine: ['argentine', 'argentinian', 'parrilla', 'asado', 'malbec'],
+  // African & Middle Eastern
+  ethiopian: ['ethiopian', 'injera', 'doro wat', 'addis', 'habesha'],
+  moroccan: ['moroccan', 'tagine', 'tajine', 'couscous', 'marrakech', 'casablanca'],
+  lebanese: ['lebanese', 'mezze', 'shawarma', 'falafel', 'beirut', 'kibbeh'],
+  turkish: ['turkish', 'kebab', 'döner', 'doner', 'baklava', 'istanbul', 'ottoman'],
+  israeli: ['israeli', 'shakshuka', 'hummus', 'falafel', 'tel aviv', 'sabich'],
+  persian: ['persian', 'iranian', 'kabob', 'kebab', 'saffron', 'tehran', 'shirazi'],
+};
+
+function placeMatchesCuisine(p: { name?: string; typeLabel?: string | null; types?: string[]; address?: string | null }, cuisineId: string): boolean {
+  const keywords = CUISINE_KEYWORDS[cuisineId];
+  if (!keywords || keywords.length === 0) return true;
+  const hay = `${p.name ?? ''} ${p.typeLabel ?? ''} ${(p.types ?? []).join(' ')}`.toLowerCase();
+  return keywords.some(k => hay.includes(k.toLowerCase()));
+}
+
 /* Build a directions URL that opens the OS-default maps app (Google/Apple/etc.). */
 function buildDirectionsUrl(p: { lat?: number; lng?: number; name?: string; address?: string }) {
   if (typeof p.lat === 'number' && typeof p.lng === 'number') {
@@ -507,7 +560,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
       const sub = region?.subs.find(s => s.id === selectedCuisine);
       const q = sub ? `${sub.label.toLowerCase()} restaurant` : (region?.query ?? 'restaurants');
-      loadFoodGuide(q);
+      loadFoodGuide(q, sub?.id);
     }
     if (activeChip) {
       const chip = activeChip;
@@ -586,7 +639,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, []);
 
   /* ── Food Guide loader ── */
-  const loadFoodGuide = useCallback(async (queryInput: string) => {
+  const loadFoodGuide = useCallback(async (queryInput: string, cuisineId?: string) => {
     setFoodGuideLoading(true);
     const isAll = !queryInput || queryInput === 'all' || queryInput.trim().toLowerCase() === 'restaurants';
     const query = isAll ? 'restaurants' : queryInput;
@@ -603,7 +656,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const key = p.placeId || `${p.name}-${p.lat}-${p.lng}`;
       if (!merged.has(key)) merged.set(key, p);
     });
-    const places = Array.from(merged.values());
+    let places = Array.from(merged.values());
+
+    // Cuisine relevance check: when a specific sub-cuisine is selected, drop
+    // results whose name / type / category don't actually mention that cuisine.
+    // This prevents e.g. a generic American diner from appearing under "French".
+    if (cuisineId && CUISINE_KEYWORDS[cuisineId]) {
+      places = places.filter(p => placeMatchesCuisine(p, cuisineId));
+    }
 
     // Sort: open first, then by distance bucket (0.5km), then rating
     const sorted = [...places].sort((a, b) => {
@@ -623,7 +683,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return haversine(lat, lng, p.lat, p.lng) <= FOOD_NEARBY_KM;
     });
 
-    setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
+    // When filtering by a specific cuisine, do NOT pad with farther/closed
+    // results — better to honestly show "none available" than to surface
+    // distant or irrelevant matches.
+    if (cuisineId && CUISINE_KEYWORDS[cuisineId]) {
+      setFoodGuidePlaces(nearby);
+    } else {
+      setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
+    }
     setFoodGuideLoading(false);
   }, [lat, lng, locationName]);
 
@@ -636,7 +703,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   const changeCuisine = useCallback(async (cuisine: string) => {
     setSelectedCuisine(cuisine);
-    await loadFoodGuide(cuisine === 'all' ? 'restaurants' : `${cuisine} restaurant`);
+    await loadFoodGuide(cuisine === 'all' ? 'restaurants' : `${cuisine} restaurant`, cuisine === 'all' ? undefined : cuisine);
   }, [loadFoodGuide]);
 
   /* ── Inline chip tap for eat section ── */
@@ -1005,7 +1072,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                       key={s.id}
                       onClick={() => {
                         setSelectedCuisine(s.id);
-                        loadFoodGuide(`${s.label.toLowerCase()} restaurant`);
+                        loadFoodGuide(`${s.label.toLowerCase()} restaurant`, s.id);
                       }}
                       className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap border transition-all flex-shrink-0
                         ${active
@@ -1040,13 +1107,21 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 </div>
               ))}
             </div>
-          ) : foodGuidePlaces.length === 0 ? (
-            <div className="text-center py-12">
-              <span className="text-4xl block mb-3">🍽️</span>
-              <p className="text-sm font-semibold text-foreground">No restaurants found nearby</p>
-              <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or check back later</p>
-            </div>
-          ) : (() => {
+          ) : foodGuidePlaces.length === 0 ? (() => {
+            const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
+            const sub = region?.subs.find(s => s.id === selectedCuisine);
+            const cuisineLabel = sub?.label
+              ?? (region && region.id !== 'all' ? region.label : null);
+            return (
+              <div className="text-center py-12">
+                <span className="text-4xl block mb-3">🍽️</span>
+                <p className="text-sm font-semibold text-foreground">
+                  {cuisineLabel ? `None available — no ${cuisineLabel} restaurants nearby` : 'No restaurants found nearby'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or expand your area</p>
+              </div>
+            );
+          })() : (() => {
             const openPlaces = foodGuidePlaces.filter(p => p.openNow !== false);
             const closedPlaces = foodGuidePlaces.filter(p => p.openNow === false);
 
