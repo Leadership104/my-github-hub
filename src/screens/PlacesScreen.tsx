@@ -841,9 +841,11 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     // otherwise Google can return the locality itself (e.g. "Santa Clarita") instead of restaurants.
     const searchTerm = (chip.query && chip.query.trim()) || chip.label;
     const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
-    // Drop locality / non-business results, then cap by nearby radius instead of city/ZIP.
+    // Drop locality / non-business results, then prescreen against the chip's
+    // category (keyword + Google type match) so we never show unrelated places.
     const places = rawPlaces.filter(p => {
       if (isLocalityResult(p.types)) return false;
+      if (!verifyPlaceMatchesChip(p, { query: searchTerm, label: chip.label })) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
         return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
