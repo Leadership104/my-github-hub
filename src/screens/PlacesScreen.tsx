@@ -560,7 +560,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
       const sub = region?.subs.find(s => s.id === selectedCuisine);
       const q = sub ? `${sub.label.toLowerCase()} restaurant` : (region?.query ?? 'restaurants');
-      loadFoodGuide(q);
+      loadFoodGuide(q, sub?.id);
     }
     if (activeChip) {
       const chip = activeChip;
