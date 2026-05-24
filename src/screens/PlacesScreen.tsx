@@ -704,6 +704,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
     const places = rawPlaces.filter(p => {
       if (isLocalityResult(p.types)) return false;
+      if (!verifyPlaceMatchesChip(p, { query: searchTerm, label })) return false;
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
         return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
