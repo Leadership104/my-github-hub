@@ -755,10 +755,32 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setLoading(true);
     // Use the explicit subcategory query so Google returns businesses, not the locality.
     const searchTerm = (query && query.trim()) || label;
-    const rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
+    const fdKey = foodDrinkKey(label);
+    const fdEntry = fdKey ? FOOD_DRINK_KEYWORDS[fdKey] : null;
+
+    let rawPlaces: LivePlace[] = [];
+    if (fdEntry) {
+      const variants = [searchTerm, ...(fdEntry.variants ?? [])];
+      const lists = await Promise.all(
+        variants.map(v => fetchGooglePlaces('search', { query: v, lat, lng, radius: PLACE_RADIUS_M }))
+      );
+      const merged = new Map<string, LivePlace>();
+      lists.flat().forEach(p => {
+        const key = p.placeId || `${p.name}-${p.lat}-${p.lng}`;
+        if (!merged.has(key)) merged.set(key, p);
+      });
+      rawPlaces = Array.from(merged.values());
+    } else {
+      rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
+    }
+
     const places = rawPlaces.filter(p => {
       if (isLocalityResult(p.types)) return false;
-      if (!verifyPlaceMatchesChip(p, { query: searchTerm, label })) return false;
+      if (fdEntry) {
+        if (!placeMatchesFoodDrink(p, label)) return false;
+      } else if (!verifyPlaceMatchesChip(p, { query: searchTerm, label })) {
+        return false;
+      }
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
         return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
       }
