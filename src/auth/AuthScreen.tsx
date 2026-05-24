@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 import kipitaLogo from '@/assets/kipita-icon.png';
 
 type Mode = 'signin' | 'signup' | 'forgot';
