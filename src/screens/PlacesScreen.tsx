@@ -253,6 +253,55 @@ function placeMatchesCuisine(p: { name?: string; typeLabel?: string | null; type
   return keywords.some(k => hay.includes(k.toLowerCase()));
 }
 
+/* ── Strict keyword vocab for non-cuisine Food & Drink chips (Coffee, Brewery,
+   Cocktail Bar, Boba, Bakery, Pizza, Steak, etc.). Same idea as
+   CUISINE_KEYWORDS: a place must mention one of these tokens in its name /
+   typeLabel / Google types to qualify under that chip. Keyed by the chip's
+   visible label, lowercased. ── */
+const FOOD_DRINK_KEYWORDS: Record<string, { keywords: string[]; types?: string[]; variants?: string[] }> = {
+  // cafe sub-chips
+  'coffee':       { keywords: ['coffee', 'espresso', 'cafe', 'café', 'roaster', 'latte', 'mocha', 'cappuccino', 'starbucks', 'peet', 'philz', 'blue bottle', 'dunkin'], types: ['cafe'], variants: ['coffee shop', 'espresso bar', 'coffee roaster'] },
+  'boba / tea':   { keywords: ['boba', 'bubble tea', 'milk tea', 'tea', 'matcha', 'chatime', 'gong cha', 'kung fu tea', 'tapioca'], types: ['cafe'], variants: ['boba tea', 'bubble tea shop', 'milk tea'] },
+  'juice bar':    { keywords: ['juice', 'smoothie', 'açaí', 'acai', 'jamba', 'pressed', 'cold press'], types: ['cafe', 'restaurant'], variants: ['juice bar', 'smoothie bar', 'acai bowl'] },
+  // drinks sub-chips
+  'cocktail bar': { keywords: ['cocktail', 'lounge', 'speakeasy', 'mixology', 'martini', 'bar'], types: ['bar', 'night_club'], variants: ['cocktail bar', 'cocktail lounge', 'speakeasy'] },
+  'brewery':      { keywords: ['brewery', 'brewing', 'taproom', 'tap room', 'brewhouse', 'craft beer', 'ale house', 'beer garden'], types: ['bar'], variants: ['brewery', 'taproom', 'craft brewery'] },
+  'wine bar':     { keywords: ['wine', 'vineyard', 'winery', 'enoteca', 'vino'], types: ['bar'], variants: ['wine bar', 'wine lounge', 'winery tasting'] },
+  'sports bar':   { keywords: ['sports', 'pub', 'tavern', 'sports bar', 'buffalo wild wings', 'beer'], types: ['bar'], variants: ['sports bar', 'sports pub'] },
+  'rooftop bar':  { keywords: ['rooftop', 'sky bar', 'sky lounge', 'roof top'], types: ['bar', 'restaurant'], variants: ['rooftop bar', 'rooftop lounge', 'sky bar'] },
+  'hookah':       { keywords: ['hookah', 'shisha', 'narghile'], types: ['bar', 'night_club'], variants: ['hookah lounge', 'shisha lounge'] },
+  // food sub-chips (non-cuisine ones — cuisine labels already covered by CUISINE_KEYWORDS)
+  'bakery':       { keywords: ['bakery', 'bread', 'pastry', 'patisserie', 'pâtisserie', 'boulangerie', 'cake shop', 'donut', 'doughnut', 'croissant'], types: ['bakery'], variants: ['bakery', 'pastry shop', 'bread bakery'] },
+  'burger':       { keywords: ['burger', 'cheeseburger', 'smash burger', "shake shack", 'in-n-out', 'in n out', 'five guys', 'mcdonald', "wendy's", 'whataburger'], types: ['restaurant', 'meal_takeaway'], variants: ['burger restaurant', 'burger joint', 'hamburger'] },
+  'fast food':    { keywords: ['fast food', 'drive-thru', 'drive thru', 'mcdonald', 'burger king', 'kfc', "wendy's", 'taco bell', 'subway', "carl's jr", 'jack in the box', 'chick-fil-a', 'arby'], types: ['meal_takeaway', 'meal_delivery', 'restaurant'], variants: ['fast food restaurant', 'fast food drive thru'] },
+  'pizza':        { keywords: ['pizza', 'pizzeria', 'pies', 'slice', "domino", 'pizza hut', 'papa john', 'little caesar'], types: ['restaurant', 'meal_takeaway'], variants: ['pizza restaurant', 'pizzeria', 'pizza place'] },
+  'seafood':      { keywords: ['seafood', 'fish', 'lobster', 'crab', 'oyster', 'shrimp', 'clam', 'fishery', 'fish house', 'fish market'], types: ['restaurant'], variants: ['seafood restaurant', 'fish house', 'oyster bar'] },
+  'steak':        { keywords: ['steak', 'steakhouse', 'chophouse', 'chop house', 'prime rib', "ruth's chris", 'morton', 'capital grille'], types: ['restaurant'], variants: ['steakhouse', 'steak restaurant', 'chophouse'] },
+};
+
+function foodDrinkKey(label?: string): string | null {
+  if (!label) return null;
+  const k = label.trim().toLowerCase();
+  return FOOD_DRINK_KEYWORDS[k] ? k : null;
+}
+
+function placeMatchesFoodDrink(p: { name?: string; typeLabel?: string | null; types?: string[] }, label: string): boolean {
+  const entry = FOOD_DRINK_KEYWORDS[label.trim().toLowerCase()];
+  if (!entry) return true;
+  const hay = `${p.name ?? ''} ${p.typeLabel ?? ''}`.toLowerCase();
+  if (entry.keywords.some(k => hay.includes(k.toLowerCase()))) return true;
+  // Type match alone is not enough — Google tags many things as 'restaurant'.
+  // Require type match AND at least a weak keyword hint in the hay.
+  const types = (p.types ?? []).map(t => t.toLowerCase());
+  if (entry.types && entry.types.some(t => types.includes(t))) {
+    // Reject obvious mismatches (e.g. a generic restaurant under "Coffee")
+    // by requiring the type to be a narrowly-relevant one.
+    const narrow = entry.types.filter(t => t !== 'restaurant' && t !== 'meal_takeaway' && t !== 'meal_delivery');
+    if (narrow.length > 0 && narrow.some(t => types.includes(t))) return true;
+  }
+  return false;
+}
+
 /* ─────────────────────────────────────────────────────────────────────
    Generic chip prescreen verifier
    ─────────────────────────────────────────────────────────────────────
