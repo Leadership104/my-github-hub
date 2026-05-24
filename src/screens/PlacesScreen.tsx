@@ -703,7 +703,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
   const changeCuisine = useCallback(async (cuisine: string) => {
     setSelectedCuisine(cuisine);
-    await loadFoodGuide(cuisine === 'all' ? 'restaurants' : `${cuisine} restaurant`);
+    await loadFoodGuide(cuisine === 'all' ? 'restaurants' : `${cuisine} restaurant`, cuisine === 'all' ? undefined : cuisine);
   }, [loadFoodGuide]);
 
   /* ── Inline chip tap for eat section ── */
