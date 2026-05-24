@@ -196,6 +196,59 @@ const CUISINE_REGIONS: {
   },
 ];
 
+/* ── Keyword vocabularies used to verify that a result actually matches the
+   selected cuisine. Google text search for e.g. "french restaurant" sometimes
+   returns nearby places that aren't truly French; we re-check the name,
+   typeLabel and types for cuisine-specific tokens before showing them. ── */
+const CUISINE_KEYWORDS: Record<string, string[]> = {
+  // American
+  american: ['american', 'burger', 'diner', 'grill', 'bbq', 'barbecue', 'smokehouse', 'wings', 'steak'],
+  bbq: ['bbq', 'barbecue', 'barbeque', 'smokehouse', 'smoke house', 'ribs', 'brisket', 'pit'],
+  southern: ['southern', 'soul food', 'soul kitchen', 'fried chicken', 'gumbo', 'creole', 'cajun'],
+  cajun: ['cajun', 'creole', 'gumbo', 'jambalaya', 'crawfish', 'po-boy', 'po boy'],
+  'tex-mex': ['tex-mex', 'tex mex', 'taco', 'burrito', 'fajita', 'cantina', 'tortilla'],
+  steakhouse: ['steak', 'steakhouse', 'chophouse', 'chop house', 'prime rib'],
+  seafood: ['seafood', 'fish house', 'lobster', 'crab', 'oyster', 'shrimp', 'clam', 'fishery'],
+  // European
+  italian: ['italian', 'pizza', 'pizzeria', 'pasta', 'trattoria', 'osteria', 'ristorante', 'cucina', 'gelato'],
+  french: ['french', 'bistro', 'brasserie', 'patisserie', 'pâtisserie', 'boulangerie', 'crêpe', 'crepe', 'creperie', 'crêperie', 'chez ', 'le ', 'la ', 'café de', 'cafe de'],
+  spanish: ['spanish', 'tapas', 'paella', 'jamón', 'jamon', 'sangria'],
+  greek: ['greek', 'gyro', 'souvlaki', 'taverna', 'mediterranean greek'],
+  mediterranean: ['mediterranean', 'falafel', 'hummus', 'kebab', 'shawarma', 'gyro', 'pita'],
+  german: ['german', 'bratwurst', 'biergarten', 'bier garten', 'schnitzel', 'hofbrau', 'bavarian'],
+  portuguese: ['portuguese', 'peri peri', 'peri-peri', 'piri piri', 'nando', 'bacalhau'],
+  // Asian
+  japanese: ['japanese', 'sushi', 'ramen', 'izakaya', 'tempura', 'udon', 'soba', 'yakitori', 'teriyaki', 'hibachi', 'sake', 'donburi', 'okonomiyaki'],
+  chinese: ['chinese', 'dim sum', 'dumpling', 'wok', 'szechuan', 'sichuan', 'hunan', 'cantonese', 'peking', 'shanghai', 'mandarin', 'chow', 'panda'],
+  thai: ['thai', 'pad thai', 'tom yum', 'bangkok', 'siam'],
+  korean: ['korean', 'k-bbq', 'kbbq', 'k bbq', 'bibimbap', 'bulgogi', 'kimchi', 'seoul'],
+  vietnamese: ['vietnamese', 'pho', 'banh mi', 'bánh mì', 'saigon', 'hanoi'],
+  indian: ['indian', 'curry', 'tandoori', 'tikka', 'masala', 'biryani', 'naan', 'punjabi', 'bombay', 'mumbai', 'dosa'],
+  filipino: ['filipino', 'adobo', 'lechon', 'jollibee', 'kamayan', 'sinigang', 'lumpia'],
+  sushi: ['sushi', 'sashimi', 'maki', 'nigiri', 'omakase', 'japanese'],
+  // Latin
+  mexican: ['mexican', 'taco', 'taqueria', 'taquería', 'burrito', 'quesadilla', 'fajita', 'cantina', 'tortilla', 'cocina', 'tijuana', 'mariachi', 'guacamole'],
+  caribbean: ['caribbean', 'jerk', 'jamaican', 'plantain', 'trinidad', 'island'],
+  cuban: ['cuban', 'havana', 'mojito', 'ropa vieja', 'cubano'],
+  peruvian: ['peruvian', 'ceviche', 'lima', 'anticucho', 'pisco'],
+  brazilian: ['brazilian', 'churrascaria', 'churrasco', 'rodizio', 'rodízio', 'samba', 'brasil'],
+  argentine: ['argentine', 'argentinian', 'parrilla', 'asado', 'malbec'],
+  // African & Middle Eastern
+  ethiopian: ['ethiopian', 'injera', 'doro wat', 'addis', 'habesha'],
+  moroccan: ['moroccan', 'tagine', 'tajine', 'couscous', 'marrakech', 'casablanca'],
+  lebanese: ['lebanese', 'mezze', 'shawarma', 'falafel', 'beirut', 'kibbeh'],
+  turkish: ['turkish', 'kebab', 'döner', 'doner', 'baklava', 'istanbul', 'ottoman'],
+  israeli: ['israeli', 'shakshuka', 'hummus', 'falafel', 'tel aviv', 'sabich'],
+  persian: ['persian', 'iranian', 'kabob', 'kebab', 'saffron', 'tehran', 'shirazi'],
+};
+
+function placeMatchesCuisine(p: { name?: string; typeLabel?: string; types?: string[]; address?: string }, cuisineId: string): boolean {
+  const keywords = CUISINE_KEYWORDS[cuisineId];
+  if (!keywords || keywords.length === 0) return true;
+  const hay = `${p.name ?? ''} ${p.typeLabel ?? ''} ${(p.types ?? []).join(' ')}`.toLowerCase();
+  return keywords.some(k => hay.includes(k.toLowerCase()));
+}
+
 /* Build a directions URL that opens the OS-default maps app (Google/Apple/etc.). */
 function buildDirectionsUrl(p: { lat?: number; lng?: number; name?: string; address?: string }) {
   if (typeof p.lat === 'number' && typeof p.lng === 'number') {
