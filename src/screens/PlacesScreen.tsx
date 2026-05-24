@@ -1107,13 +1107,21 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 </div>
               ))}
             </div>
-          ) : foodGuidePlaces.length === 0 ? (
-            <div className="text-center py-12">
-              <span className="text-4xl block mb-3">🍽️</span>
-              <p className="text-sm font-semibold text-foreground">No restaurants found nearby</p>
-              <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or check back later</p>
-            </div>
-          ) : (() => {
+          ) : foodGuidePlaces.length === 0 ? (() => {
+            const region = CUISINE_REGIONS.find(r => r.id === selectedRegion);
+            const sub = region?.subs.find(s => s.id === selectedCuisine);
+            const cuisineLabel = sub?.label
+              ?? (region && region.id !== 'all' ? region.label : null);
+            return (
+              <div className="text-center py-12">
+                <span className="text-4xl block mb-3">🍽️</span>
+                <p className="text-sm font-semibold text-foreground">
+                  {cuisineLabel ? `None available — no ${cuisineLabel} restaurants nearby` : 'No restaurants found nearby'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different cuisine or expand your area</p>
+              </div>
+            );
+          })() : (() => {
             const openPlaces = foodGuidePlaces.filter(p => p.openNow !== false);
             const closedPlaces = foodGuidePlaces.filter(p => p.openNow === false);
 
