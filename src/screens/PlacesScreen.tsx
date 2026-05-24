@@ -242,7 +242,7 @@ const CUISINE_KEYWORDS: Record<string, string[]> = {
   persian: ['persian', 'iranian', 'kabob', 'kebab', 'saffron', 'tehran', 'shirazi'],
 };
 
-function placeMatchesCuisine(p: { name?: string; typeLabel?: string; types?: string[]; address?: string }, cuisineId: string): boolean {
+function placeMatchesCuisine(p: { name?: string; typeLabel?: string | null; types?: string[]; address?: string | null }, cuisineId: string): boolean {
   const keywords = CUISINE_KEYWORDS[cuisineId];
   if (!keywords || keywords.length === 0) return true;
   const hay = `${p.name ?? ''} ${p.typeLabel ?? ''} ${(p.types ?? []).join(' ')}`.toLowerCase();
