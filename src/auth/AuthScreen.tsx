@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { lovable } from '@/integrations/lovable';
 import kipitaLogo from '@/assets/kipita-icon.png';
 
 type Mode = 'signin' | 'signup' | 'forgot';
@@ -54,12 +55,11 @@ export default function AuthScreen() {
   const handleGoogle = async () => {
     setError(null); setBusy(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin },
+      const result = await lovable.auth.signInWithOAuth('google', {
+        redirect_uri: window.location.origin,
       });
-      if (error) throw error;
-      // Browser navigates to Google, then redirects back — no further action needed here.
+      if (result.error) throw result.error;
+      // If redirected, browser is leaving the page; otherwise session is set.
     } catch (err: any) {
       setError(err?.message || 'Google sign-in failed');
       setBusy(false);
