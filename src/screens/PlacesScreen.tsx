@@ -770,26 +770,53 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     setFoodGuideLoading(true);
     const isAll = !queryInput || queryInput === 'all' || queryInput.trim().toLowerCase() === 'restaurants';
     const query = isAll ? 'restaurants' : queryInput;
+    const cuisineMode = !!(cuisineId && CUISINE_KEYWORDS[cuisineId]);
+    const radius = cuisineMode ? CUISINE_RADIUS_M : FOOD_RADIUS_M;
+    const nearbyKm = cuisineMode ? CUISINE_NEARBY_KM : FOOD_NEARBY_KM;
 
-    const textPromise = fetchGooglePlaces('search', { query, lat, lng, radius: FOOD_RADIUS_M });
-    const nearbyPromise = isAll
-      ? fetchGooglePlaces('nearby', { type: 'restaurant', lat, lng, radius: Math.min(FOOD_RADIUS_M, 5000) })
-      : Promise.resolve([] as LivePlace[]);
-    const [textPlaces, nearbyPlaces] = await Promise.all([textPromise, nearbyPromise]);
+    // For a specific cuisine, run several phrasing variants so we don't miss
+    // well-known restaurants (e.g. "Le Chêne") that Google's relevance ranking
+    // buries behind generic "french restaurant" results.
+    const searches: Promise<LivePlace[]>[] = [];
+    if (cuisineMode && cuisineId) {
+      const variants = [
+        `${cuisineId} restaurant`,
+        `${cuisineId} cuisine`,
+        `${cuisineId} bistro`,
+        `best ${cuisineId} restaurant`,
+      ];
+      variants.forEach(v => searches.push(
+        fetchGooglePlaces('search', { query: v, lat, lng, radius })
+      ));
+      // Also query each cuisine keyword directly (catches names like "bistro",
+      // "brasserie", "le chêne" that don't include the word "french").
+      (CUISINE_KEYWORDS[cuisineId] || []).forEach(kw => {
+        const k = kw.trim();
+        if (k.length >= 4 && !k.includes(' ')) {
+          searches.push(fetchGooglePlaces('search', { query: `${k} restaurant`, lat, lng, radius }));
+        }
+      });
+    } else {
+      searches.push(fetchGooglePlaces('search', { query, lat, lng, radius }));
+    }
+    if (isAll) {
+      searches.push(fetchGooglePlaces('nearby', { type: 'restaurant', lat, lng, radius: Math.min(radius, 5000) }));
+    }
+    const resultLists = await Promise.all(searches);
 
     // Dedupe by placeId, preferring text-search entries (richer metadata when present)
     const merged = new Map<string, LivePlace>();
-    [...textPlaces, ...nearbyPlaces].forEach(p => {
+    resultLists.flat().forEach(p => {
       const key = p.placeId || `${p.name}-${p.lat}-${p.lng}`;
       if (!merged.has(key)) merged.set(key, p);
     });
-    let places = Array.from(merged.values());
+    let places = Array.from(merged.values()).filter(p => !isLocalityResult(p.types));
 
     // Cuisine relevance check: when a specific sub-cuisine is selected, drop
     // results whose name / type / category don't actually mention that cuisine.
     // This prevents e.g. a generic American diner from appearing under "French".
-    if (cuisineId && CUISINE_KEYWORDS[cuisineId]) {
-      places = places.filter(p => placeMatchesCuisine(p, cuisineId));
+    if (cuisineMode) {
+      places = places.filter(p => placeMatchesCuisine(p, cuisineId!));
     }
 
     // Sort: open first, then by distance bucket (0.5km), then rating
@@ -807,13 +834,13 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
 
     const nearby = sorted.filter(p => {
       if (!p.lat || !p.lng) return true;
-      return haversine(lat, lng, p.lat, p.lng) <= FOOD_NEARBY_KM;
+      return haversine(lat, lng, p.lat, p.lng) <= nearbyKm;
     });
 
     // When filtering by a specific cuisine, do NOT pad with farther/closed
     // results — better to honestly show "none available" than to surface
     // distant or irrelevant matches.
-    if (cuisineId && CUISINE_KEYWORDS[cuisineId]) {
+    if (cuisineMode) {
       setFoodGuidePlaces(nearby);
     } else {
       setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
