@@ -639,7 +639,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, []);
 
   /* ── Food Guide loader ── */
-  const loadFoodGuide = useCallback(async (queryInput: string) => {
+  const loadFoodGuide = useCallback(async (queryInput: string, cuisineId?: string) => {
     setFoodGuideLoading(true);
     const isAll = !queryInput || queryInput === 'all' || queryInput.trim().toLowerCase() === 'restaurants';
     const query = isAll ? 'restaurants' : queryInput;
@@ -656,7 +656,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const key = p.placeId || `${p.name}-${p.lat}-${p.lng}`;
       if (!merged.has(key)) merged.set(key, p);
     });
-    const places = Array.from(merged.values());
+    let places = Array.from(merged.values());
+
+    // Cuisine relevance check: when a specific sub-cuisine is selected, drop
+    // results whose name / type / category don't actually mention that cuisine.
+    // This prevents e.g. a generic American diner from appearing under "French".
+    if (cuisineId && CUISINE_KEYWORDS[cuisineId]) {
+      places = places.filter(p => placeMatchesCuisine(p, cuisineId));
+    }
 
     // Sort: open first, then by distance bucket (0.5km), then rating
     const sorted = [...places].sort((a, b) => {
@@ -676,7 +683,14 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       return haversine(lat, lng, p.lat, p.lng) <= FOOD_NEARBY_KM;
     });
 
-    setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
+    // When filtering by a specific cuisine, do NOT pad with farther/closed
+    // results — better to honestly show "none available" than to surface
+    // distant or irrelevant matches.
+    if (cuisineId && CUISINE_KEYWORDS[cuisineId]) {
+      setFoodGuidePlaces(nearby);
+    } else {
+      setFoodGuidePlaces(nearby.length >= 3 ? nearby : sorted.slice(0, Math.max(3, nearby.length)));
+    }
     setFoodGuideLoading(false);
   }, [lat, lng, locationName]);
 
