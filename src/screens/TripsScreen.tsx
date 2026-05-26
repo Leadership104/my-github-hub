@@ -282,6 +282,48 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
   };
 
+  const saveTripEdits = (tripId: string, patch: Partial<import('../types').Trip>) => {
+    save(trips.map(t => t.id === tripId ? { ...t, ...patch } : t));
+  };
+
+  /**
+   * Detect which Places category an itinerary item refers to. Returns a hint
+   * string compatible with PlacesScreen's HINT_TO_SECTION map, or null.
+   * Order matters — more specific keywords come first.
+   */
+  const detectPlacesHint = (title: string): string | null => {
+    const t = title.toLowerCase();
+    const rules: Array<[RegExp, string]> = [
+      [/\b(museum|gallery|exhibit|art\b)/i, 'museum'],
+      [/\b(library|book ?store)\b/i, 'library'],
+      [/\b(park|garden|trail|hike|hiking|nature)\b/i, 'park'],
+      [/\b(beach|coast|shore)\b/i, 'attractions'],
+      [/\b(landmark|monument|attraction|sightsee|tour|cathedral|temple|shrine|castle|palace)\b/i, 'attractions'],
+      [/\b(spa|massage|wellness|sauna)\b/i, 'spa'],
+      [/\b(gym|fitness|yoga|workout)\b/i, 'gym'],
+      [/\b(bar|pub|club|nightlife|cocktail|lounge)\b/i, 'nightlife'],
+      [/\b(cafe|café|coffee|espresso)\b/i, 'cafe'],
+      [/\b(brunch|breakfast|lunch|dinner|restaurant|eat|food|dine|dining|cuisine|bistro|grill|pizzeria|sushi|ramen|taqueria)\b/i, 'food'],
+      [/\b(drink|brewery|winery|distillery|tap ?room|beer|wine)\b/i, 'drinks'],
+      [/\b(market|bazaar|souk)\b/i, 'market'],
+      [/\b(farmers ?market|farmer'?s ?market)\b/i, 'farmers_market'],
+      [/\b(grocery|supermarket)\b/i, 'grocery'],
+      [/\b(shop|shopping|boutique|mall|store)\b/i, 'shop'],
+      [/\b(pharmacy|drugstore|chemist)\b/i, 'pharmacy'],
+      [/\b(hospital|er|emergency room|clinic|urgent care|doctor)\b/i, 'hospital'],
+      [/\b(atm|cash machine|bank)\b/i, 'atm'],
+      [/\b(gas|petrol|fuel|gas station)\b/i, 'gas'],
+      [/\b(mechanic|auto repair|car repair)\b/i, 'mechanic'],
+      [/\b(oil change)\b/i, 'oil_change'],
+      [/\b(tire|tyre)\b/i, 'tire'],
+      [/\b(parking|garage|lot)\b/i, 'parking'],
+      [/\b(lodge|hotel|hostel|inn|motel|resort|stay)\b/i, 'lodge'],
+      [/\b(transit|subway|metro|bus|train|station|airport|taxi|uber|lyft|rideshare)\b/i, 'transport'],
+    ];
+    for (const [re, hint] of rules) if (re.test(t)) return hint;
+    return null;
+  };
+
   /**
    * Reorder itinerary items by dropping `draggedId` onto `targetId` (within the same day).
    * Strategy: rebuild the day's array in the new visual order, then re-stamp each item's
