@@ -55,6 +55,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [editTripDraft, setEditTripDraft] = useState<null | { dest: string; country: string; emoji: string; start: string; end: string; notes: string }>(null);
 
   // Plan a trip wizard
   const [showWizard, setShowWizard] = useState(false);
@@ -281,6 +282,48 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     save(trips.map(t => t.id === tripId ? { ...t, items: [...t.items, newItem] } : t));
   };
 
+  const saveTripEdits = (tripId: string, patch: Partial<import('../types').Trip>) => {
+    save(trips.map(t => t.id === tripId ? { ...t, ...patch } : t));
+  };
+
+  /**
+   * Detect which Places category an itinerary item refers to. Returns a hint
+   * string compatible with PlacesScreen's HINT_TO_SECTION map, or null.
+   * Order matters — more specific keywords come first.
+   */
+  const detectPlacesHint = (title: string): string | null => {
+    const t = title.toLowerCase();
+    const rules: Array<[RegExp, string]> = [
+      [/\b(museum|gallery|exhibit|art\b)/i, 'museum'],
+      [/\b(library|book ?store)\b/i, 'library'],
+      [/\b(park|garden|trail|hike|hiking|nature)\b/i, 'park'],
+      [/\b(beach|coast|shore)\b/i, 'attractions'],
+      [/\b(landmark|monument|attraction|sightsee|tour|cathedral|temple|shrine|castle|palace)\b/i, 'attractions'],
+      [/\b(spa|massage|wellness|sauna)\b/i, 'spa'],
+      [/\b(gym|fitness|yoga|workout)\b/i, 'gym'],
+      [/\b(bar|pub|club|nightlife|cocktail|lounge)\b/i, 'nightlife'],
+      [/\b(cafe|café|coffee|espresso)\b/i, 'cafe'],
+      [/\b(brunch|breakfast|lunch|dinner|restaurant|eat|food|dine|dining|cuisine|bistro|grill|pizzeria|sushi|ramen|taqueria)\b/i, 'food'],
+      [/\b(drink|brewery|winery|distillery|tap ?room|beer|wine)\b/i, 'drinks'],
+      [/\b(market|bazaar|souk)\b/i, 'market'],
+      [/\b(farmers ?market|farmer'?s ?market)\b/i, 'farmers_market'],
+      [/\b(grocery|supermarket)\b/i, 'grocery'],
+      [/\b(shop|shopping|boutique|mall|store)\b/i, 'shop'],
+      [/\b(pharmacy|drugstore|chemist)\b/i, 'pharmacy'],
+      [/\b(hospital|er|emergency room|clinic|urgent care|doctor)\b/i, 'hospital'],
+      [/\b(atm|cash machine|bank)\b/i, 'atm'],
+      [/\b(gas|petrol|fuel|gas station)\b/i, 'gas'],
+      [/\b(mechanic|auto repair|car repair)\b/i, 'mechanic'],
+      [/\b(oil change)\b/i, 'oil_change'],
+      [/\b(tire|tyre)\b/i, 'tire'],
+      [/\b(parking|garage|lot)\b/i, 'parking'],
+      [/\b(lodge|hotel|hostel|inn|motel|resort|stay)\b/i, 'lodge'],
+      [/\b(transit|subway|metro|bus|train|station|airport|taxi|uber|lyft|rideshare)\b/i, 'transport'],
+    ];
+    for (const [re, hint] of rules) if (re.test(t)) return hint;
+    return null;
+  };
+
   /**
    * Reorder itinerary items by dropping `draggedId` onto `targetId` (within the same day).
    * Strategy: rebuild the day's array in the new visual order, then re-stamp each item's
@@ -413,6 +456,59 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     return (
       <div className="flex flex-col h-full overflow-hidden">
         {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
+        {editTripDraft && createPortal(
+          <div className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setEditTripDraft(null)}>
+            <div className="bg-card w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card">
+                <h3 className="text-base font-extrabold text-foreground">Edit Trip Details</h3>
+                <button onClick={() => setEditTripDraft(null)} className="ms text-foreground" aria-label="Close">close</button>
+              </div>
+              <div className="p-5 space-y-3">
+                <div>
+                  <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">DESTINATION</label>
+                  <input value={editTripDraft.dest} onChange={e => setEditTripDraft({ ...editTripDraft, dest: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                </div>
+                <div className="grid grid-cols-[1fr_72px] gap-2">
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">COUNTRY</label>
+                    <input value={editTripDraft.country} onChange={e => setEditTripDraft({ ...editTripDraft, country: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">EMOJI</label>
+                    <input value={editTripDraft.emoji} onChange={e => setEditTripDraft({ ...editTripDraft, emoji: e.target.value })} maxLength={4} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-lg text-center outline-none focus:border-kipita-red" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">START</label>
+                    <input type="date" value={editTripDraft.start} onChange={e => setEditTripDraft({ ...editTripDraft, start: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">END</label>
+                    <input type="date" value={editTripDraft.end} onChange={e => setEditTripDraft({ ...editTripDraft, end: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">NOTES</label>
+                  <textarea value={editTripDraft.notes} onChange={e => setEditTripDraft({ ...editTripDraft, notes: e.target.value })} rows={3} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm outline-none focus:border-kipita-red resize-none" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => setEditTripDraft(null)} className="flex-1 px-4 py-2.5 bg-muted text-foreground rounded-full text-xs font-bold">Cancel</button>
+                  <button
+                    onClick={() => {
+                      if (!editTripDraft.dest.trim() || !editTripDraft.start || !editTripDraft.end) return;
+                      if (new Date(editTripDraft.end) < new Date(editTripDraft.start)) { alert('End date must be on or after start date.'); return; }
+                      saveTripEdits(trip.id, { dest: editTripDraft.dest.trim(), country: editTripDraft.country.trim(), emoji: editTripDraft.emoji.trim() || trip.emoji, start: editTripDraft.start, end: editTripDraft.end, notes: editTripDraft.notes });
+                      setEditTripDraft(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-kipita-red text-white rounded-full text-xs font-bold"
+                  >Save changes</button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
         {/* Hero image — main + thumbnails */}
         {(() => {
           const heroPhoto = activePhoto || trip.photo || tripRich?.photo;
@@ -447,7 +543,15 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               <div className="absolute bottom-3 left-4 right-4 text-white z-10">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{trip.emoji}</span>
-                  <h2 className="text-2xl font-extrabold drop-shadow">{trip.dest}</h2>
+                  <h2 className="text-2xl font-extrabold drop-shadow flex-1 min-w-0 truncate">{trip.dest}</h2>
+                  <button
+                    onClick={() => setEditTripDraft({ dest: trip.dest, country: trip.country, emoji: trip.emoji, start: trip.start, end: trip.end, notes: trip.notes || '' })}
+                    className="btn-3d w-9 h-9 rounded-full glass-dark flex items-center justify-center text-white flex-shrink-0"
+                    aria-label="Edit trip"
+                    title="Edit trip details"
+                  >
+                    <span className="ms text-base">edit</span>
+                  </button>
                 </div>
                 <p className="text-white/90 text-xs mt-1 drop-shadow">{formatRange()} · {tripDays} days</p>
               </div>
@@ -702,6 +806,21 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                                     <div className={`text-xs font-bold text-foreground leading-snug ${it.done ? 'line-through' : ''}`}>{it.title}</div>
                                   </div>
                                 </button>
+                                {(() => {
+                                  const hint = detectPlacesHint(it.title);
+                                  if (!hint || editMode || !onSwitchTab) return null;
+                                  return (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onSwitchTab('places', hint); }}
+                                      className="flex-shrink-0 text-[10px] font-extrabold text-kipita-red bg-kipita-red/10 hover:bg-kipita-red/20 px-2 py-1 rounded-full flex items-center gap-0.5"
+                                      aria-label="Open in Places"
+                                      title="Find nearby in Places"
+                                    >
+                                      <span className="ms text-xs">place</span>
+                                      Find
+                                    </button>
+                                  );
+                                })()}
                                 {editMode && (
                                   <div className="flex items-center gap-1 flex-shrink-0">
                                     <button
