@@ -55,6 +55,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [editTripDraft, setEditTripDraft] = useState<null | { dest: string; country: string; emoji: string; start: string; end: string; notes: string }>(null);
 
   // Plan a trip wizard
   const [showWizard, setShowWizard] = useState(false);
