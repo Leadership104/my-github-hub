@@ -761,8 +761,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       const chip = activeChip;
       setActiveChip(null);
       setTimeout(() => selectChip(chip), 0);
+    } else if (view === 'section' && selectedSection === 'eat') {
+      // Refresh the default "Nearby Now" food guide when location changes
+      loadFoodGuide('restaurants');
     }
   }, [lat, lng]);
+
 
   const hour = new Date().getHours();
   const greet = hour < 5 ? '🌙 Late Night' : hour < 10 ? '🍳 Good Morning' : hour < 14 ? '☀️ Good Afternoon' : hour < 18 ? '🌤️ Afternoon' : '🌆 Good Evening';
