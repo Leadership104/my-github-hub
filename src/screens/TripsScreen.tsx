@@ -456,6 +456,59 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     return (
       <div className="flex flex-col h-full overflow-hidden">
         {browserUrl && <InAppBrowser url={browserUrl} title={browserTitle} onClose={() => setBrowserUrl(null)} />}
+        {editTripDraft && createPortal(
+          <div className="fixed inset-0 z-[100] bg-black/60 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={() => setEditTripDraft(null)}>
+            <div className="bg-card w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-border shadow-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="px-5 py-4 border-b border-border flex items-center justify-between sticky top-0 bg-card">
+                <h3 className="text-base font-extrabold text-foreground">Edit Trip Details</h3>
+                <button onClick={() => setEditTripDraft(null)} className="ms text-foreground" aria-label="Close">close</button>
+              </div>
+              <div className="p-5 space-y-3">
+                <div>
+                  <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">DESTINATION</label>
+                  <input value={editTripDraft.dest} onChange={e => setEditTripDraft({ ...editTripDraft, dest: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                </div>
+                <div className="grid grid-cols-[1fr_72px] gap-2">
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">COUNTRY</label>
+                    <input value={editTripDraft.country} onChange={e => setEditTripDraft({ ...editTripDraft, country: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">EMOJI</label>
+                    <input value={editTripDraft.emoji} onChange={e => setEditTripDraft({ ...editTripDraft, emoji: e.target.value })} maxLength={4} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-lg text-center outline-none focus:border-kipita-red" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">START</label>
+                    <input type="date" value={editTripDraft.start} onChange={e => setEditTripDraft({ ...editTripDraft, start: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">END</label>
+                    <input type="date" value={editTripDraft.end} onChange={e => setEditTripDraft({ ...editTripDraft, end: e.target.value })} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm font-bold outline-none focus:border-kipita-red" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-extrabold text-muted-foreground tracking-wider">NOTES</label>
+                  <textarea value={editTripDraft.notes} onChange={e => setEditTripDraft({ ...editTripDraft, notes: e.target.value })} rows={3} className="w-full mt-1 bg-background border border-border rounded-kipita-sm px-3 py-2 text-sm outline-none focus:border-kipita-red resize-none" />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button onClick={() => setEditTripDraft(null)} className="flex-1 px-4 py-2.5 bg-muted text-foreground rounded-full text-xs font-bold">Cancel</button>
+                  <button
+                    onClick={() => {
+                      if (!editTripDraft.dest.trim() || !editTripDraft.start || !editTripDraft.end) return;
+                      if (new Date(editTripDraft.end) < new Date(editTripDraft.start)) { alert('End date must be on or after start date.'); return; }
+                      saveTripEdits(trip.id, { dest: editTripDraft.dest.trim(), country: editTripDraft.country.trim(), emoji: editTripDraft.emoji.trim() || trip.emoji, start: editTripDraft.start, end: editTripDraft.end, notes: editTripDraft.notes });
+                      setEditTripDraft(null);
+                    }}
+                    className="flex-1 px-4 py-2.5 bg-kipita-red text-white rounded-full text-xs font-bold"
+                  >Save changes</button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
         {/* Hero image — main + thumbnails */}
         {(() => {
           const heroPhoto = activePhoto || trip.photo || tripRich?.photo;
