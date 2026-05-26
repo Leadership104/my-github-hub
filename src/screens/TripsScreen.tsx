@@ -753,6 +753,21 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                                     <div className={`text-xs font-bold text-foreground leading-snug ${it.done ? 'line-through' : ''}`}>{it.title}</div>
                                   </div>
                                 </button>
+                                {(() => {
+                                  const hint = detectPlacesHint(it.title);
+                                  if (!hint || editMode || !onSwitchTab) return null;
+                                  return (
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); onSwitchTab('places', hint); }}
+                                      className="flex-shrink-0 text-[10px] font-extrabold text-kipita-red bg-kipita-red/10 hover:bg-kipita-red/20 px-2 py-1 rounded-full flex items-center gap-0.5"
+                                      aria-label="Open in Places"
+                                      title="Find nearby in Places"
+                                    >
+                                      <span className="ms text-xs">place</span>
+                                      Find
+                                    </button>
+                                  );
+                                })()}
                                 {editMode && (
                                   <div className="flex items-center gap-1 flex-shrink-0">
                                     <button
