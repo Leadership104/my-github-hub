@@ -490,7 +490,15 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               <div className="absolute bottom-3 left-4 right-4 text-white z-10">
                 <div className="flex items-center gap-2">
                   <span className="text-2xl">{trip.emoji}</span>
-                  <h2 className="text-2xl font-extrabold drop-shadow">{trip.dest}</h2>
+                  <h2 className="text-2xl font-extrabold drop-shadow flex-1 min-w-0 truncate">{trip.dest}</h2>
+                  <button
+                    onClick={() => setEditTripDraft({ dest: trip.dest, country: trip.country, emoji: trip.emoji, start: trip.start, end: trip.end, notes: trip.notes || '' })}
+                    className="btn-3d w-9 h-9 rounded-full glass-dark flex items-center justify-center text-white flex-shrink-0"
+                    aria-label="Edit trip"
+                    title="Edit trip details"
+                  >
+                    <span className="ms text-base">edit</span>
+                  </button>
                 </div>
                 <p className="text-white/90 text-xs mt-1 drop-shadow">{formatRange()} · {tripDays} days</p>
               </div>
