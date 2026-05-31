@@ -2140,9 +2140,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         </div>
 
       </div>
-      {toast && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background text-xs font-semibold px-4 py-2 rounded-full shadow-lg">{toast}</div>
-      )}
     </div>
   );
 }
