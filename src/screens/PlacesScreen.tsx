@@ -465,12 +465,6 @@ function PlaceCard({ p, lat, lng, onOpen, onToast }: { p: LivePlace; lat: number
     const nowFav = toggleFavoriteStore(placeToFavorite(p));
     onToast?.(nowFav ? `Saved ${p.name}` : `Removed ${p.name}`);
   };
-  const handleShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const res = await sharePlace({ name: p.name, address: p.address, lat: p.lat, lng: p.lng, mapsUrl: p.mapsUrl });
-    if (res === 'copied') onToast?.('Link copied to clipboard');
-    else if (res === 'failed') onToast?.('Sharing not available');
-  };
   return (
     <div role="button" tabIndex={0}
       onClick={() => onOpen(p)}
@@ -509,25 +503,20 @@ function PlaceCard({ p, lat, lng, onOpen, onToast }: { p: LivePlace; lat: number
           </div>
           {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
         </div>
-        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+        <div className="flex flex-col items-center justify-between self-stretch flex-shrink-0 py-1">
           <button onClick={handleFav}
-            className={`p-1.5 rounded-lg border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+            className={`p-2 rounded-lg border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
             aria-label={fav ? `Remove ${p.name} from favorites` : `Save ${p.name} to favorites`}
             aria-pressed={fav}>
-            <Heart className={`w-3.5 h-3.5 ${fav ? 'fill-kipita-red' : ''}`} />
+            <Heart className={`w-4 h-4 ${fav ? 'fill-kipita-red' : ''}`} />
           </button>
-          <button onClick={handleShare}
-            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
-            aria-label={`Share ${p.name}`}>
-            <Share2 className="w-3.5 h-3.5" />
-          </button>
+          <a href={dirUrl} target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+            aria-label={`Directions to ${p.name}`}>
+            <Navigation className="w-4 h-4" />
+          </a>
         </div>
-        <a href={dirUrl} target="_blank" rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="self-center flex items-center justify-center p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors flex-shrink-0"
-          aria-label={`Directions to ${p.name}`}>
-          <Navigation className="w-4 h-4" />
-        </a>
       </div>
     </div>
   );
@@ -1227,7 +1216,36 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-24 pt-4">
-          <h2 className="text-xl font-extrabold">{selectedPlace.name}</h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-xl font-extrabold">{selectedPlace.name}</h2>
+            {(() => {
+              const fav = favorites.some(f => f.placeId === selectedPlace.placeId);
+              return (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      const nowFav = toggleFavoriteStore(placeToFavorite(selectedPlace));
+                      showToast(nowFav ? `Saved ${selectedPlace.name}` : `Removed ${selectedPlace.name}`);
+                    }}
+                    className={`p-2 rounded-full border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+                    aria-pressed={fav}
+                    aria-label={fav ? 'Remove from favorites' : 'Save to favorites'}>
+                    <Heart className={`w-5 h-5 ${fav ? 'fill-kipita-red' : ''}`} />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const res = await sharePlace({ name: selectedPlace.name, address: selectedPlace.address, lat: selectedPlace.lat, lng: selectedPlace.lng, mapsUrl: selectedPlace.mapsUrl });
+                      if (res === 'copied') showToast('Link copied to clipboard');
+                      else if (res === 'failed') showToast('Sharing not available');
+                    }}
+                    className="p-2 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+                    aria-label="Share place">
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
           {selectedPlace.typeLabel && (
             <span className="inline-block text-[10px] font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded-full mt-1">
               {selectedPlace.typeLabel}
@@ -1336,32 +1354,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <a href={selectedPlace.website} target="_blank" rel="noopener noreferrer"
                 className="flex-1 text-center text-sm bg-muted text-foreground px-4 py-2.5 rounded-kipita-sm font-bold no-underline">🌐 Website</a>
             )}
-          </div>
-          <div className="flex gap-2 mt-2">
-            {(() => {
-              const fav = favorites.some(f => f.placeId === selectedPlace.placeId);
-              return (
-                <button
-                  onClick={() => {
-                    const nowFav = toggleFavoriteStore(placeToFavorite(selectedPlace));
-                    showToast(nowFav ? `Saved ${selectedPlace.name}` : `Removed ${selectedPlace.name}`);
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 text-sm px-4 py-2.5 rounded-kipita-sm font-bold border transition-colors ${fav ? 'bg-kipita-red/10 border-kipita-red text-kipita-red' : 'bg-card border-border text-foreground hover:border-foreground'}`}
-                  aria-pressed={fav}>
-                  <Heart className={`w-4 h-4 ${fav ? 'fill-kipita-red' : ''}`} />
-                  {fav ? 'Saved' : 'Save'}
-                </button>
-              );
-            })()}
-            <button
-              onClick={async () => {
-                const res = await sharePlace({ name: selectedPlace.name, address: selectedPlace.address, lat: selectedPlace.lat, lng: selectedPlace.lng, mapsUrl: selectedPlace.mapsUrl });
-                if (res === 'copied') showToast('Link copied to clipboard');
-                else if (res === 'failed') showToast('Sharing not available');
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 text-sm px-4 py-2.5 rounded-kipita-sm font-bold border border-border bg-card text-foreground hover:border-foreground transition-colors">
-              <Share2 className="w-4 h-4" /> Share
-            </button>
           </div>
           <div className="text-[9px] text-muted-foreground/50 mt-3 text-center">via {selectedPlace.source}</div>
         </div>
