@@ -434,12 +434,41 @@ function buildDirectionsUrl(p: { lat?: number; lng?: number; name?: string; addr
   return `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving`;
 }
 
-/* Reusable place card with a Directions button on every row. */
-function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: number; onOpen: (p: LivePlace) => void }) {
+function placeToFavorite(p: LivePlace): Omit<FavoritePlace, 'savedAt'> {
+  return {
+    placeId: p.placeId,
+    name: p.name,
+    address: p.address,
+    lat: p.lat,
+    lng: p.lng,
+    rating: p.rating,
+    photoUrl: p.photoUrl,
+    mapsUrl: p.mapsUrl,
+    website: p.website,
+    phone: p.phone,
+    typeLabel: p.typeLabel,
+  };
+}
+
+/* Reusable place card with Directions, Favorite, and Share buttons. */
+function PlaceCard({ p, lat, lng, onOpen, onToast }: { p: LivePlace; lat: number; lng: number; onOpen: (p: LivePlace) => void; onToast?: (msg: string) => void }) {
   const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
   const isHere = distKm !== null && distKm < 0.3;
   const driveTime = distKm && !isHere ? estimateDriveTime(distKm) : null;
   const dirUrl = buildDirectionsUrl(p);
+  const { isFavorite } = useFavorites();
+  const fav = isFavorite(p.placeId);
+  const handleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nowFav = toggleFavoriteStore(placeToFavorite(p));
+    onToast?.(nowFav ? `Saved ${p.name}` : `Removed ${p.name}`);
+  };
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = await sharePlace({ name: p.name, address: p.address, lat: p.lat, lng: p.lng, mapsUrl: p.mapsUrl });
+    if (res === 'copied') onToast?.('Link copied to clipboard');
+    else if (res === 'failed') onToast?.('Sharing not available');
+  };
   return (
     <div role="button" tabIndex={0}
       onClick={() => onOpen(p)}
@@ -477,6 +506,19 @@ function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: nu
             )}
           </div>
           {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
+        </div>
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          <button onClick={handleFav}
+            className={`p-1.5 rounded-lg border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+            aria-label={fav ? `Remove ${p.name} from favorites` : `Save ${p.name} to favorites`}
+            aria-pressed={fav}>
+            <Heart className={`w-3.5 h-3.5 ${fav ? 'fill-kipita-red' : ''}`} />
+          </button>
+          <button onClick={handleShare}
+            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+            aria-label={`Share ${p.name}`}>
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
         </div>
         <a href={dirUrl} target="_blank" rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
