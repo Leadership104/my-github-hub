@@ -1216,7 +1216,36 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 pb-24 pt-4">
-          <h2 className="text-xl font-extrabold">{selectedPlace.name}</h2>
+          <div className="flex items-start justify-between gap-3">
+            <h2 className="text-xl font-extrabold">{selectedPlace.name}</h2>
+            {(() => {
+              const fav = favorites.some(f => f.placeId === selectedPlace.placeId);
+              return (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => {
+                      const nowFav = toggleFavoriteStore(placeToFavorite(selectedPlace));
+                      showToast(nowFav ? `Saved ${selectedPlace.name}` : `Removed ${selectedPlace.name}`);
+                    }}
+                    className={`p-2 rounded-full border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+                    aria-pressed={fav}
+                    aria-label={fav ? 'Remove from favorites' : 'Save to favorites'}>
+                    <Heart className={`w-5 h-5 ${fav ? 'fill-kipita-red' : ''}`} />
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const res = await sharePlace({ name: selectedPlace.name, address: selectedPlace.address, lat: selectedPlace.lat, lng: selectedPlace.lng, mapsUrl: selectedPlace.mapsUrl });
+                      if (res === 'copied') showToast('Link copied to clipboard');
+                      else if (res === 'failed') showToast('Sharing not available');
+                    }}
+                    className="p-2 rounded-full border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+                    aria-label="Share place">
+                    <Share2 className="w-5 h-5" />
+                  </button>
+                </div>
+              );
+            })()}
+          </div>
           {selectedPlace.typeLabel && (
             <span className="inline-block text-[10px] font-semibold bg-muted text-muted-foreground px-2 py-0.5 rounded-full mt-1">
               {selectedPlace.typeLabel}
