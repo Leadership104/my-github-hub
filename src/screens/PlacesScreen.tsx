@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine, Stethoscope, Dumbbell, Leaf, Tent, Heart, Share2 } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
