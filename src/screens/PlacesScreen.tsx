@@ -532,7 +532,7 @@ function PlaceCard({ p, lat, lng, onOpen, onToast }: { p: LivePlace; lat: number
 }
 
 export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack, onSwitchTab }: Props) {
-  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search'>(initialView === 'phrases' || initialView === 'destinations' || initialView?.startsWith('place:') ? 'main' : (initialView || 'main') as any);
+  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search' | 'favorites'>(initialView === 'phrases' || initialView === 'destinations' || initialView?.startsWith('place:') ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
@@ -542,6 +542,12 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [searchLoading, setSearchLoading] = useState(false);
   const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
   const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const showToast = useCallback((msg: string) => {
+    setToast(msg);
+    window.setTimeout(() => setToast(t => (t === msg ? null : t)), 1800);
+  }, []);
+  const { favorites } = useFavorites();
   const categories = getCategories();
 
   // When deep-linked from home, "Back" at root level returns to home
