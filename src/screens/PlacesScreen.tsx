@@ -503,25 +503,20 @@ function PlaceCard({ p, lat, lng, onOpen, onToast }: { p: LivePlace; lat: number
           </div>
           {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
         </div>
-        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+        <div className="flex flex-col items-center justify-between self-stretch flex-shrink-0 py-1">
           <button onClick={handleFav}
-            className={`p-1.5 rounded-lg border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+            className={`p-2 rounded-lg border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
             aria-label={fav ? `Remove ${p.name} from favorites` : `Save ${p.name} to favorites`}
             aria-pressed={fav}>
-            <Heart className={`w-3.5 h-3.5 ${fav ? 'fill-kipita-red' : ''}`} />
+            <Heart className={`w-4 h-4 ${fav ? 'fill-kipita-red' : ''}`} />
           </button>
-          <button onClick={handleShare}
-            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
-            aria-label={`Share ${p.name}`}>
-            <Share2 className="w-3.5 h-3.5" />
-          </button>
+          <a href={dirUrl} target="_blank" rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center justify-center p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+            aria-label={`Directions to ${p.name}`}>
+            <Navigation className="w-4 h-4" />
+          </a>
         </div>
-        <a href={dirUrl} target="_blank" rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="self-center flex items-center justify-center p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors flex-shrink-0"
-          aria-label={`Directions to ${p.name}`}>
-          <Navigation className="w-4 h-4" />
-        </a>
       </div>
     </div>
   );
