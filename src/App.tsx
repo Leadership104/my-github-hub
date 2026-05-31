@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { ToastHost } from './lib/toast';
 import { useI18n, SUPPORTED_LANGUAGES, type LangCode } from './i18n';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants, useTravelSafety, preciseReverseGeocode } from './hooks';
 import type { ForecastDay } from './hooks';
@@ -391,6 +392,8 @@ export default function App() {
 
   return (
     <div className="flex flex-col h-dvh overflow-hidden bg-background">
+      <ToastHost />
+
       {/* Top Bar */}
       <header className="h-[64px] bg-white border-b border-black/40 shadow-sm flex items-center pl-2 pr-3 gap-2 relative z-[100] flex-shrink-0">
         <div className="flex-shrink-0">

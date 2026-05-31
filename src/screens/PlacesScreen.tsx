@@ -1,8 +1,12 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine, Stethoscope, Dumbbell, Leaf, Tent } from 'lucide-react';
+
+import { UtensilsCrossed, BedDouble, Car, ShoppingCart, HeartPulse, Compass, Clock, MapPin, Star, ChefHat, Navigation, Search, Fuel, Shirt, Monitor, Sparkles, Zap, Wine, Stethoscope, Dumbbell, Leaf, Tent, Heart, Share2 } from 'lucide-react';
 import { getCategories, CATEGORY_SUBS } from '../data';
 import { supabase } from '@/integrations/supabase/client';
 import { haversine, useDragScroll } from '../hooks';
+import { useFavorites, toggleFavorite as toggleFavoriteStore, type FavoritePlace } from '../lib/favorites';
+import { sharePlace } from '../lib/share';
+import { notify } from '../lib/toast';
 
 interface LivePlace {
   placeId: string;
@@ -432,12 +436,41 @@ function buildDirectionsUrl(p: { lat?: number; lng?: number; name?: string; addr
   return `https://www.google.com/maps/dir/?api=1&destination=${q}&travelmode=driving`;
 }
 
-/* Reusable place card with a Directions button on every row. */
-function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: number; onOpen: (p: LivePlace) => void }) {
+function placeToFavorite(p: LivePlace): Omit<FavoritePlace, 'savedAt'> {
+  return {
+    placeId: p.placeId,
+    name: p.name,
+    address: p.address,
+    lat: p.lat,
+    lng: p.lng,
+    rating: p.rating,
+    photoUrl: p.photoUrl,
+    mapsUrl: p.mapsUrl,
+    website: p.website,
+    phone: p.phone,
+    typeLabel: p.typeLabel,
+  };
+}
+
+/* Reusable place card with Directions, Favorite, and Share buttons. */
+function PlaceCard({ p, lat, lng, onOpen, onToast }: { p: LivePlace; lat: number; lng: number; onOpen: (p: LivePlace) => void; onToast?: (msg: string) => void }) {
   const distKm = p.lat && p.lng ? haversine(lat, lng, p.lat, p.lng) : null;
   const isHere = distKm !== null && distKm < 0.3;
   const driveTime = distKm && !isHere ? estimateDriveTime(distKm) : null;
   const dirUrl = buildDirectionsUrl(p);
+  const { isFavorite } = useFavorites();
+  const fav = isFavorite(p.placeId);
+  const handleFav = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const nowFav = toggleFavoriteStore(placeToFavorite(p));
+    onToast?.(nowFav ? `Saved ${p.name}` : `Removed ${p.name}`);
+  };
+  const handleShare = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const res = await sharePlace({ name: p.name, address: p.address, lat: p.lat, lng: p.lng, mapsUrl: p.mapsUrl });
+    if (res === 'copied') onToast?.('Link copied to clipboard');
+    else if (res === 'failed') onToast?.('Sharing not available');
+  };
   return (
     <div role="button" tabIndex={0}
       onClick={() => onOpen(p)}
@@ -476,6 +509,19 @@ function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: nu
           </div>
           {p.address && <div className="text-[10px] text-muted-foreground mt-0.5 truncate">{p.address}</div>}
         </div>
+        <div className="flex flex-col items-center gap-1 flex-shrink-0">
+          <button onClick={handleFav}
+            className={`p-1.5 rounded-lg border transition-colors ${fav ? 'border-kipita-red text-kipita-red bg-kipita-red/10' : 'border-border text-muted-foreground hover:text-foreground hover:border-foreground'}`}
+            aria-label={fav ? `Remove ${p.name} from favorites` : `Save ${p.name} to favorites`}
+            aria-pressed={fav}>
+            <Heart className={`w-3.5 h-3.5 ${fav ? 'fill-kipita-red' : ''}`} />
+          </button>
+          <button onClick={handleShare}
+            className="p-1.5 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors"
+            aria-label={`Share ${p.name}`}>
+            <Share2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
         <a href={dirUrl} target="_blank" rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           className="self-center flex items-center justify-center p-2 rounded-lg border border-border text-muted-foreground hover:text-foreground hover:border-foreground transition-colors flex-shrink-0"
@@ -488,7 +534,7 @@ function PlaceCard({ p, lat, lng, onOpen }: { p: LivePlace; lat: number; lng: nu
 }
 
 export default function PlacesScreen({ locationName = 'Current location', lat = 40.7128, lng = -74.006, initialView, onBack, onSwitchTab }: Props) {
-  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search'>(initialView === 'phrases' || initialView === 'destinations' || initialView?.startsWith('place:') ? 'main' : (initialView || 'main') as any);
+  const [view, setView] = useState<'main' | 'section' | 'category' | 'subcategory' | 'detail' | 'foodguide' | 'search' | 'favorites'>(initialView === 'phrases' || initialView === 'destinations' || initialView?.startsWith('place:') ? 'main' : (initialView || 'main') as any);
   const [selectedCat, setSelectedCat] = useState<string | null>(null);
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [selectedSub, setSelectedSub] = useState<{ label: string; query: string } | null>(null);
@@ -498,6 +544,8 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [searchLoading, setSearchLoading] = useState(false);
   const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
   const [loading, setLoading] = useState(false);
+  const showToast = useCallback((msg: string) => notify(msg), []);
+  const { favorites } = useFavorites();
   const categories = getCategories();
 
   // When deep-linked from home, "Back" at root level returns to home
@@ -1289,6 +1337,32 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 className="flex-1 text-center text-sm bg-muted text-foreground px-4 py-2.5 rounded-kipita-sm font-bold no-underline">🌐 Website</a>
             )}
           </div>
+          <div className="flex gap-2 mt-2">
+            {(() => {
+              const fav = favorites.some(f => f.placeId === selectedPlace.placeId);
+              return (
+                <button
+                  onClick={() => {
+                    const nowFav = toggleFavoriteStore(placeToFavorite(selectedPlace));
+                    showToast(nowFav ? `Saved ${selectedPlace.name}` : `Removed ${selectedPlace.name}`);
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-1.5 text-sm px-4 py-2.5 rounded-kipita-sm font-bold border transition-colors ${fav ? 'bg-kipita-red/10 border-kipita-red text-kipita-red' : 'bg-card border-border text-foreground hover:border-foreground'}`}
+                  aria-pressed={fav}>
+                  <Heart className={`w-4 h-4 ${fav ? 'fill-kipita-red' : ''}`} />
+                  {fav ? 'Saved' : 'Save'}
+                </button>
+              );
+            })()}
+            <button
+              onClick={async () => {
+                const res = await sharePlace({ name: selectedPlace.name, address: selectedPlace.address, lat: selectedPlace.lat, lng: selectedPlace.lng, mapsUrl: selectedPlace.mapsUrl });
+                if (res === 'copied') showToast('Link copied to clipboard');
+                else if (res === 'failed') showToast('Sharing not available');
+              }}
+              className="flex-1 flex items-center justify-center gap-1.5 text-sm px-4 py-2.5 rounded-kipita-sm font-bold border border-border bg-card text-foreground hover:border-foreground transition-colors">
+              <Share2 className="w-4 h-4" /> Share
+            </button>
+          </div>
           <div className="text-[9px] text-muted-foreground/50 mt-3 text-center">via {selectedPlace.source}</div>
         </div>
       </div>
@@ -1697,7 +1771,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
               </div>
             ) : displayPlaces.map((p, i) => (
-              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
             ))}
 
           </div>
@@ -1781,7 +1855,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
               </div>
             ) : displayPlaces.map((p, i) => (
-              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
             ))}
           </div>
         </div>
@@ -1889,7 +1963,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
             </div>
           ) : displayPlaces.map((p, i) => (
-            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
           ))}
         </div>
       </div>
@@ -1931,8 +2005,44 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <p className="text-xs text-muted-foreground mt-1">Try a different name or browse by category below</p>
             </div>
           ) : searchResults.map((p, i) => (
-            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
           ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Favorites view
+  if (view === 'favorites') {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <button onClick={goToMain} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+          <div className="flex items-center gap-2">
+            <Heart className="w-6 h-6 text-kipita-red fill-kipita-red" />
+            <h2 className="text-xl font-extrabold">Favorites</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{favorites.length} saved place{favorites.length === 1 ? '' : 's'}</p>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          {favorites.length === 0 ? (
+            <div className="text-center py-16">
+              <Heart className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-foreground">No favorites yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Tap the heart on any place to save it here.</p>
+            </div>
+          ) : favorites.map(f => {
+            const asLive: LivePlace = {
+              placeId: f.placeId, name: f.name, address: f.address, lat: f.lat, lng: f.lng,
+              rating: f.rating, reviewCount: 0, priceLevel: null, photoUrl: f.photoUrl,
+              photos: f.photoUrl ? [f.photoUrl] : [], openNow: null, closingTime: null,
+              hours: [], phone: f.phone, website: f.website, types: [], typeLabel: f.typeLabel,
+              mapsUrl: f.mapsUrl, reviews: [], summary: null, source: 'favorites',
+            };
+            return <PlaceCard key={f.placeId} p={asLive} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />;
+          })}
         </div>
       </div>
     );
@@ -1942,10 +2052,19 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
-        <h2 className="text-xl font-extrabold mb-1">Explore</h2>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xl font-extrabold">Explore</h2>
+          <button onClick={() => setView('favorites')}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full border border-border text-foreground hover:border-foreground transition-colors"
+            aria-label="Open favorites">
+            <Heart className={`w-3.5 h-3.5 ${favorites.length > 0 ? 'fill-kipita-red text-kipita-red' : ''}`} />
+            {favorites.length > 0 ? favorites.length : ''} Saved
+          </button>
+        </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
           <span className="ms text-sm">location_on</span> {locationName}
         </div>
+
 
         {/* Search bar */}
         <form
