@@ -1355,32 +1355,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 className="flex-1 text-center text-sm bg-muted text-foreground px-4 py-2.5 rounded-kipita-sm font-bold no-underline">🌐 Website</a>
             )}
           </div>
-          <div className="flex gap-2 mt-2">
-            {(() => {
-              const fav = favorites.some(f => f.placeId === selectedPlace.placeId);
-              return (
-                <button
-                  onClick={() => {
-                    const nowFav = toggleFavoriteStore(placeToFavorite(selectedPlace));
-                    showToast(nowFav ? `Saved ${selectedPlace.name}` : `Removed ${selectedPlace.name}`);
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-1.5 text-sm px-4 py-2.5 rounded-kipita-sm font-bold border transition-colors ${fav ? 'bg-kipita-red/10 border-kipita-red text-kipita-red' : 'bg-card border-border text-foreground hover:border-foreground'}`}
-                  aria-pressed={fav}>
-                  <Heart className={`w-4 h-4 ${fav ? 'fill-kipita-red' : ''}`} />
-                  {fav ? 'Saved' : 'Save'}
-                </button>
-              );
-            })()}
-            <button
-              onClick={async () => {
-                const res = await sharePlace({ name: selectedPlace.name, address: selectedPlace.address, lat: selectedPlace.lat, lng: selectedPlace.lng, mapsUrl: selectedPlace.mapsUrl });
-                if (res === 'copied') showToast('Link copied to clipboard');
-                else if (res === 'failed') showToast('Sharing not available');
-              }}
-              className="flex-1 flex items-center justify-center gap-1.5 text-sm px-4 py-2.5 rounded-kipita-sm font-bold border border-border bg-card text-foreground hover:border-foreground transition-colors">
-              <Share2 className="w-4 h-4" /> Share
-            </button>
-          </div>
           <div className="text-[9px] text-muted-foreground/50 mt-3 text-center">via {selectedPlace.source}</div>
         </div>
       </div>
