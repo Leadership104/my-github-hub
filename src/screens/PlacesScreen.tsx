@@ -2014,14 +2014,62 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     );
   }
 
+  // Favorites view
+  if (view === 'favorites') {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="px-5 pt-5 pb-3 flex-shrink-0">
+          <button onClick={goToMain} className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+            <span className="ms text-lg">arrow_back</span> Back
+          </button>
+          <div className="flex items-center gap-2">
+            <Heart className="w-6 h-6 text-kipita-red fill-kipita-red" />
+            <h2 className="text-xl font-extrabold">Favorites</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{favorites.length} saved place{favorites.length === 1 ? '' : 's'}</p>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          {favorites.length === 0 ? (
+            <div className="text-center py-16">
+              <Heart className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-foreground">No favorites yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Tap the heart on any place to save it here.</p>
+            </div>
+          ) : favorites.map(f => {
+            const asLive: LivePlace = {
+              placeId: f.placeId, name: f.name, address: f.address, lat: f.lat, lng: f.lng,
+              rating: f.rating, reviewCount: 0, priceLevel: null, photoUrl: f.photoUrl,
+              photos: f.photoUrl ? [f.photoUrl] : [], openNow: null, closingTime: null,
+              hours: [], phone: f.phone, website: f.website, types: [], typeLabel: f.typeLabel,
+              mapsUrl: f.mapsUrl, reviews: [], summary: null, source: 'favorites',
+            };
+            return <PlaceCard key={f.placeId} p={asLive} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />;
+          })}
+        </div>
+        {toast && (
+          <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-foreground text-background text-xs font-semibold px-4 py-2 rounded-full shadow-lg">{toast}</div>
+        )}
+      </div>
+    );
+  }
+
   // Main places view
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <div className="px-5 pt-5 pb-3 flex-shrink-0">
-        <h2 className="text-xl font-extrabold mb-1">Explore</h2>
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xl font-extrabold">Explore</h2>
+          <button onClick={() => setView('favorites')}
+            className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full border border-border text-foreground hover:border-foreground transition-colors"
+            aria-label="Open favorites">
+            <Heart className={`w-3.5 h-3.5 ${favorites.length > 0 ? 'fill-kipita-red text-kipita-red' : ''}`} />
+            {favorites.length > 0 ? favorites.length : ''} Saved
+          </button>
+        </div>
         <div className="flex items-center gap-1 text-xs text-muted-foreground mb-3">
           <span className="ms text-sm">location_on</span> {locationName}
         </div>
+
 
         {/* Search bar */}
         <form
