@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { haversine, useDragScroll } from '../hooks';
 import { useFavorites, toggleFavorite as toggleFavoriteStore, type FavoritePlace } from '../lib/favorites';
 import { sharePlace } from '../lib/share';
+import { notify } from '../lib/toast';
 
 interface LivePlace {
   placeId: string;
