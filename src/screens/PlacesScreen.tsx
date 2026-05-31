@@ -1747,7 +1747,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
               </div>
             ) : displayPlaces.map((p, i) => (
-              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
             ))}
 
           </div>
@@ -1831,7 +1831,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
                 <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
               </div>
             ) : displayPlaces.map((p, i) => (
-              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+              <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
             ))}
           </div>
         </div>
@@ -1939,7 +1939,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
             </div>
           ) : displayPlaces.map((p, i) => (
-            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
           ))}
         </div>
       </div>
@@ -1981,7 +1981,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <p className="text-xs text-muted-foreground mt-1">Try a different name or browse by category below</p>
             </div>
           ) : searchResults.map((p, i) => (
-            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} />
+            <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
           ))}
         </div>
       </div>
