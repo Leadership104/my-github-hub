@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react';
+import { ToastHost } from './lib/toast';
 import { useI18n, SUPPORTED_LANGUAGES, type LangCode } from './i18n';
 import { useLocation, useWeather, useCryptoPrices, useMetalPrices, useBTCMerchants, useTravelSafety, preciseReverseGeocode } from './hooks';
 import type { ForecastDay } from './hooks';
