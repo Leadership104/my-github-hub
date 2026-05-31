@@ -543,11 +543,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [searchLoading, setSearchLoading] = useState(false);
   const [livePlaces, setLivePlaces] = useState<LivePlace[]>([]);
   const [loading, setLoading] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const showToast = useCallback((msg: string) => {
-    setToast(msg);
-    window.setTimeout(() => setToast(t => (t === msg ? null : t)), 1800);
-  }, []);
+  const showToast = useCallback((msg: string) => notify(msg), []);
   const { favorites } = useFavorites();
   const categories = getCategories();
 
