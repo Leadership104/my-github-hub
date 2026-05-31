@@ -465,12 +465,6 @@ function PlaceCard({ p, lat, lng, onOpen, onToast }: { p: LivePlace; lat: number
     const nowFav = toggleFavoriteStore(placeToFavorite(p));
     onToast?.(nowFav ? `Saved ${p.name}` : `Removed ${p.name}`);
   };
-  const handleShare = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const res = await sharePlace({ name: p.name, address: p.address, lat: p.lat, lng: p.lng, mapsUrl: p.mapsUrl });
-    if (res === 'copied') onToast?.('Link copied to clipboard');
-    else if (res === 'failed') onToast?.('Sharing not available');
-  };
   return (
     <div role="button" tabIndex={0}
       onClick={() => onOpen(p)}
