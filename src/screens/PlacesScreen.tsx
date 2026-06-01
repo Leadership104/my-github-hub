@@ -897,6 +897,54 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     }
   }, []);
 
+  /* ── Saved-in-section helper ── */
+  const renderSavedInSection = useCallback((chipLabels: string[]) => {
+    const lc = chipLabels.map(s => s.toLowerCase()).filter(Boolean);
+    if (favorites.length === 0 || lc.length === 0) return null;
+    const matched = favorites.filter(f => {
+      const tl = (f.typeLabel || '').toLowerCase();
+      if (!tl) return false;
+      return lc.some(c => tl.includes(c) || c.includes(tl));
+    });
+    if (matched.length === 0) return null;
+    return (
+      <div className="bg-card border border-border rounded-kipita p-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-[10px] font-bold tracking-widest text-muted-foreground flex items-center gap-1">
+            <Heart className="w-3 h-3 fill-kipita-red text-kipita-red" /> SAVED HERE
+          </p>
+          <button onClick={() => setView('favorites')} className="text-[10px] font-semibold text-foreground/80 hover:text-foreground underline">
+            See all ({favorites.length})
+          </button>
+        </div>
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide -mx-1 px-1">
+          {matched.slice(0, 12).map(f => {
+            const asLive: LivePlace = {
+              placeId: f.placeId, name: f.name, address: f.address, lat: f.lat, lng: f.lng,
+              rating: f.rating, reviewCount: 0, priceLevel: null, photoUrl: f.photoUrl,
+              photos: f.photoUrl ? [f.photoUrl] : [], openNow: null, closingTime: null,
+              hours: [], phone: f.phone, website: f.website, types: [], typeLabel: f.typeLabel,
+              mapsUrl: f.mapsUrl, reviews: [], summary: null, source: 'favorites',
+            };
+            return (
+              <button key={f.placeId} onClick={() => openPlaceDetail(asLive)}
+                className="flex-shrink-0 w-32 text-left active:scale-95 transition-transform">
+                <div className="w-32 h-20 rounded-xl bg-muted overflow-hidden mb-1 relative">
+                  {f.photoUrl
+                    ? <img src={f.photoUrl} alt={f.name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center text-xl">📍</div>}
+                  <Heart className="absolute top-1 right-1 w-3 h-3 fill-kipita-red text-kipita-red drop-shadow" />
+                </div>
+                <p className="text-[11px] font-semibold text-foreground truncate">{f.name}</p>
+                {f.typeLabel && <p className="text-[9px] text-muted-foreground truncate">{f.typeLabel}</p>}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }, [favorites, openPlaceDetail]);
+
   /* ── Food Guide loader ── */
   const loadFoodGuide = useCallback(async (queryInput: string, cuisineId?: string) => {
     setFoodGuideLoading(true);
@@ -1740,6 +1788,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
 
           <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+            {renderSavedInSection(allChips.map(c => c.label))}
             <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
             {isLoading ? (
@@ -1819,6 +1868,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
 
           <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+            {renderSavedInSection(allChips.map(c => c.label))}
             <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
             {isLoading ? (
@@ -1927,6 +1977,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         </div>
 
         <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+          {renderSavedInSection(sortedChips.map(c => c.label))}
           <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
           {isLoading ? (

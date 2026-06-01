@@ -706,95 +706,82 @@ function ReconciliationPanel({ backend }: { backend: BackendPayload | null }) {
 }
 
 /* ── Crime Metrics Panel ─────────────────────────────────────────────────── */
-function CrimeMetricsPanel({ result, backend }: { result: TravelSafetyResult; backend: BackendPayload | null }) {
+type CrimeBand = 'Very Low' | 'Low' | 'Moderate' | 'High' | 'Very High';
+
+function bandFor(metric: 'homicide' | 'violent' | 'robbery' | 'assault' | 'kidnap', v: number | null): CrimeBand | null {
+  if (v == null) return null;
+  // Per-100k thresholds derived from UNODC + FBI UCR distributions.
+  const T: Record<string, number[]> = {
+    homicide: [1, 3, 8, 15],
+    violent:  [100, 300, 600, 1000],
+    robbery:  [20, 60, 150, 300],
+    assault:  [50, 150, 400, 800],
+    kidnap:   [0.5, 2, 5, 10],
+  };
+  const t = T[metric];
+  if (v < t[0]) return 'Very Low';
+  if (v < t[1]) return 'Low';
+  if (v < t[2]) return 'Moderate';
+  if (v < t[3]) return 'High';
+  return 'Very High';
+}
+
+function bandColor(band: CrimeBand | null): string {
+  switch (band) {
+    case 'Very Low':  return '#16a34a';
+    case 'Low':       return '#65a30d';
+    case 'Moderate':  return '#ca8a04';
+    case 'High':      return '#ea580c';
+    case 'Very High': return '#dc2626';
+    default:          return '#94a3b8';
+  }
+}
+
+function CrimeMetricsPanel({ result, backend: _backend }: { result: TravelSafetyResult; backend: BackendPayload | null }) {
   const m = result.crimeMetrics;
-  const unodc = backend?.unodc;
   const dr = result.dangerousCityRanking;
 
-  const metricRows: { label: string; value: number | null; unit: string; benchmarkNote?: string }[] = [
-    { label: 'Homicide Rate', value: m.homicideRatePer100k, unit: '/100k',
-      benchmarkNote: m.homicideRatePer100k != null ? (() => {
-        const globalLabel = m.homicideRatePer100k! < 2 ? 'Very Low' : m.homicideRatePer100k! < 8 ? 'Low–Moderate' : m.homicideRatePer100k! < 20 ? 'High' : 'Severe';
-        const nationalLabel = m.vsNationalAvg != null
-          ? (m.vsNationalAvg > 2 ? 'High' : m.vsNationalAvg > 1.2 ? 'Above avg' : 'Near avg') + ' nationally'
-          : null;
-        return nationalLabel ? `${globalLabel} globally · ${nationalLabel}` : `${globalLabel} by global standards`;
-      })() : undefined },
-    { label: 'Violent Crime Rate', value: m.violentCrimeRatePer100k, unit: '/100k' },
-    { label: 'Robbery Rate', value: m.robberyRatePer100k, unit: '/100k' },
-    { label: 'Assault Rate', value: m.assaultRatePer100k, unit: '/100k' },
-    { label: 'Kidnapping Rate', value: m.kidnappingRatePer100k, unit: '/100k' },
+  const metricRows: { label: string; metric: 'homicide' | 'violent' | 'robbery' | 'assault' | 'kidnap'; value: number | null }[] = [
+    { label: 'Homicide',     metric: 'homicide', value: m.homicideRatePer100k },
+    { label: 'Violent Crime', metric: 'violent', value: m.violentCrimeRatePer100k },
+    { label: 'Robbery',      metric: 'robbery',  value: m.robberyRatePer100k },
+    { label: 'Assault',      metric: 'assault',  value: m.assaultRatePer100k },
+    { label: 'Kidnapping',   metric: 'kidnap',   value: m.kidnappingRatePer100k },
   ];
 
   return (
     <div className="space-y-4">
-      {/* UNODC source note */}
-      {unodc && (
-        <div className="bg-card border border-border rounded-kipita p-4">
-          <p className="text-[10px] font-semibold text-muted-foreground tracking-widest mb-3">
-            UNODC HOMICIDE DATA
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            {unodc.cityHomicidePer100k != null && (
-              <div className="p-2 bg-muted rounded-kipita">
-                <p className="text-[8px] text-muted-foreground uppercase">City Homicide</p>
-                <p className="text-xl font-black text-foreground">{unodc.cityHomicidePer100k.toFixed(1)}</p>
-                <p className="text-[8px] text-muted-foreground">per 100,000 · {unodc.yearOfData}</p>
-              </div>
-            )}
-            {unodc.countryHomicidePer100k != null && (
-              <div className="p-2 bg-muted rounded-kipita">
-                <p className="text-[8px] text-muted-foreground uppercase">Country Rate</p>
-                <p className="text-xl font-black text-foreground">{unodc.countryHomicidePer100k.toFixed(1)}</p>
-                <p className="text-[8px] text-muted-foreground">per 100,000 · {unodc.yearOfData}</p>
-              </div>
-            )}
-            {m.vsNationalAvg != null && (
-              <div className="p-2 bg-muted rounded-kipita">
-                <p className="text-[8px] text-muted-foreground uppercase">vs National Avg</p>
-                <p className="text-xl font-black text-foreground">{m.vsNationalAvg}×</p>
-                <p className="text-[8px] text-muted-foreground">
-                  {m.vsNationalAvg > 2 ? 'Significantly elevated' : m.vsNationalAvg > 1.2 ? 'Above average' : 'Near average'}
-                </p>
-              </div>
-            )}
-            {m.percentileViolent != null && (
-              <div className="p-2 bg-muted rounded-kipita">
-                <p className="text-[8px] text-muted-foreground uppercase">Global Percentile</p>
-                <p className="text-xl font-black text-foreground">{m.percentileViolent}th</p>
-                <p className="text-[8px] text-muted-foreground">
-                  {m.percentileViolent >= 90 ? 'Top 10% most dangerous' : m.percentileViolent >= 75 ? 'Above 75th percentile' : 'Below 75th percentile'}
-                </p>
-              </div>
-            )}
-          </div>
-          <p className="text-[9px] text-muted-foreground/60 mt-2">
-            Source: UNODC Global Study on Homicide 2023–2024 · local statistical agencies
-          </p>
-        </div>
-      )}
-
-      {/* Crime rates table */}
+      {/* Crime levels (categorical, no raw rates) */}
       <div className="bg-card border border-border rounded-kipita p-4">
         <p className="text-[10px] font-semibold text-muted-foreground tracking-widest mb-3">
-          CRIME METRICS (PER 100,000 POPULATION)
+          CRIME LEVELS
         </p>
-        <div className="space-y-3">
-          {metricRows.map(row => (
-            <div key={row.label}>
-              <div className="flex items-center justify-between mb-0.5">
+        <div className="space-y-2.5">
+          {metricRows.map(row => {
+            const band = bandFor(row.metric, row.value);
+            const color = bandColor(band);
+            return (
+              <div key={row.label} className="flex items-center justify-between gap-3">
                 <span className="text-xs text-foreground">{row.label}</span>
-                <span className="text-xs font-bold text-foreground">
-                  {row.value != null ? `${row.value.toFixed(1)}${row.unit}` : 'N/A'}
-                </span>
+                {band ? (
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full"
+                    style={{ color, backgroundColor: `${color}1A`, border: `1px solid ${color}66` }}
+                  >
+                    {band}
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-semibold text-muted-foreground">No data</span>
+                )}
               </div>
-              {row.benchmarkNote && (
-                <p className="text-[9px] text-muted-foreground">{row.benchmarkNote}</p>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
+        <p className="text-[9px] text-muted-foreground/60 mt-3">
+          Levels are derived from UNODC, FBI UCR, and local statistical agencies.
+        </p>
       </div>
+
 
       {/* Trend */}
       <div className="bg-card border border-border rounded-kipita p-4">
