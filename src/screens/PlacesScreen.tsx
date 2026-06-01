@@ -1868,6 +1868,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
           </div>
 
           <div ref={resultsScrollRef} className="flex-1 overflow-y-auto px-5 pb-24 pt-3 space-y-3">
+            {renderSavedInSection(allChips.map(c => c.label))}
             <h3 className="text-sm font-bold text-foreground">{heading}</h3>
 
             {isLoading ? (
