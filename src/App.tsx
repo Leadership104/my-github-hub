@@ -153,14 +153,28 @@ export default function App() {
     setActiveTour(null);
   }, [tab, splash]);
 
+  // Stash the user's "home" (real/detected) location whenever a trip
+  // temporarily overrides it (e.g. planning a Bali trip). When the user
+  // navigates back to Home, we restore their actual location.
+  const homeLocationRef = useRef<LocationState | null>(null);
+
   const switchTab = useCallback((t: TabId, hint?: string) => {
     prevTabRef.current = tab;
+    if (t === 'home' && homeLocationRef.current) {
+      updateLocation(homeLocationRef.current);
+      homeLocationRef.current = null;
+    }
     setTab(t);
     setScreenHint(hint);
   }, [tab]);
 
   const goBack = useCallback(() => {
-    setTab(prevTabRef.current || 'home');
+    const target = prevTabRef.current || 'home';
+    if (target === 'home' && homeLocationRef.current) {
+      updateLocation(homeLocationRef.current);
+      homeLocationRef.current = null;
+    }
+    setTab(target);
     prevTabRef.current = 'home';
     setScreenHint(undefined);
   }, []);
@@ -365,7 +379,13 @@ export default function App() {
     switch (tab) {
       case 'home':   return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} lat={lat} lng={lng} onSwitchTab={switchTab} />;
       case 'ai':     return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={screenHint === 'plan-trip' ? "I'd like to plan a trip with your help. Please ask me where I want to go, roughly when I want to travel, and how many days. Once you have the key details, give me a brief trip overview so I can confirm before you create it." : undefined} handoffLabel={screenHint === 'plan-trip' ? '✈️ AI Trip Planner' : undefined} />;
-      case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} onSetLocation={updateLocation} />;
+      case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} onSetLocation={(loc) => {
+        // Stash the user's real/home location the first time a trip overrides it
+        if (!homeLocationRef.current) {
+          homeLocationRef.current = { lat, lng, name: locationName, fullAddress, countryCode };
+        }
+        updateLocation(loc);
+      }} />;
       case 'places': return <PlacesScreen locationName={locationName} lat={lat} lng={lng} initialView={screenHint as any} onBack={goBack} onSwitchTab={switchTab} />;
       case 'safety': return <SafetyScreen locationName={locationName} countryCode={countryCode} advisoryScore={advisoryData?.rawScore} lat={lat} lng={lng} onBack={goBack} />;
       // Lazy-loaded secondary screens
