@@ -336,6 +336,49 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     return null;
   };
 
+  // Cache of geocoded trip destinations so we don't refetch on every "Find" click.
+  const destCoordsCache = useRef<Map<string, { lat: number; lng: number; name: string; countryCode?: string }>>(new Map());
+
+  /**
+   * Re-points the global app location to the trip's destination, then opens
+   * the requested Places sub-section. This is what makes "Find" on a Bali
+   * itinerary item show Bali places (not the user's current city).
+   */
+  const openPlacesAtTrip = async (trip: Trip, hint: string) => {
+    if (!onSwitchTab) return;
+    const key = `${trip.dest}|${trip.country}`.toLowerCase();
+    let coords = destCoordsCache.current.get(key);
+    if (!coords && onSetLocation) {
+      try {
+        const results = await searchDestinations(trip.dest);
+        // Prefer a match whose country matches the trip's country
+        const wantedCountry = (trip.country || '').toLowerCase().trim();
+        const best = results.find(r => r.country.toLowerCase() === wantedCountry && r.lat != null && r.lng != null)
+          || results.find(r => r.lat != null && r.lng != null);
+        if (best && best.lat != null && best.lng != null) {
+          coords = {
+            lat: best.lat,
+            lng: best.lng,
+            name: best.name,
+            countryCode: undefined,
+          };
+          destCoordsCache.current.set(key, coords);
+        }
+      } catch { /* offline / geocoder down — fall through with current location */ }
+    }
+    if (coords && onSetLocation) {
+      onSetLocation({
+        lat: coords.lat,
+        lng: coords.lng,
+        name: `${coords.name}, ${trip.country}`.replace(/,\s*$/, ''),
+        fullAddress: `${coords.name}, ${trip.country}`.replace(/,\s*$/, ''),
+        countryCode: coords.countryCode,
+      });
+    }
+    onSwitchTab('places', hint);
+  };
+
+
   /**
    * Reorder itinerary items by dropping `draggedId` onto `targetId` (within the same day).
    * Strategy: rebuild the day's array in the new visual order, then re-stamp each item's
