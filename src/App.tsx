@@ -153,14 +153,28 @@ export default function App() {
     setActiveTour(null);
   }, [tab, splash]);
 
+  // Stash the user's "home" (real/detected) location whenever a trip
+  // temporarily overrides it (e.g. planning a Bali trip). When the user
+  // navigates back to Home, we restore their actual location.
+  const homeLocationRef = useRef<LocationState | null>(null);
+
   const switchTab = useCallback((t: TabId, hint?: string) => {
     prevTabRef.current = tab;
+    if (t === 'home' && homeLocationRef.current) {
+      updateLocation(homeLocationRef.current);
+      homeLocationRef.current = null;
+    }
     setTab(t);
     setScreenHint(hint);
   }, [tab]);
 
   const goBack = useCallback(() => {
-    setTab(prevTabRef.current || 'home');
+    const target = prevTabRef.current || 'home';
+    if (target === 'home' && homeLocationRef.current) {
+      updateLocation(homeLocationRef.current);
+      homeLocationRef.current = null;
+    }
+    setTab(target);
     prevTabRef.current = 'home';
     setScreenHint(undefined);
   }, []);
