@@ -196,6 +196,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
     setWPickedGallery([]); setWPickedHistory(undefined); setWPickedArea(undefined);
     setWPickedHero(undefined);
+    // Closing the wizard should land the user on their Upcoming trips list
+    // (not the empty "Plan" pane they came from).
+    setTab('upcoming');
   };
 
   const finishWizard = () => {
