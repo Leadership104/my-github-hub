@@ -317,7 +317,17 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
       [/\b(oil change)\b/i, 'oil_change'],
       [/\b(tire|tyre)\b/i, 'tire'],
       [/\b(parking|garage|lot)\b/i, 'parking'],
-      [/\b(lodge|hotel|hostel|inn|motel|resort|stay)\b/i, 'lodge'],
+      [/\b(villa)\b/i, 'villa'],
+      [/\b(airbnb|vacation rental|short[- ]?term rental)\b/i, 'airbnb'],
+      [/\b(hostel|backpacker)\b/i, 'hostel'],
+      [/\b(resort)\b/i, 'resort'],
+      [/\b(motel)\b/i, 'motel'],
+      [/\b(cabin)\b/i, 'cabin'],
+      [/\b(b&b|bed[- ]?and[- ]?breakfast)\b/i, 'bnb'],
+      [/\b(inn)\b/i, 'inn'],
+      [/\b(campground|camp ?site|rv park)\b/i, 'campground'],
+      [/\b(lodge)\b/i, 'lodge'],
+      [/\b(hotel|stay|check[- ]?in|accommodation|lodging)\b/i, 'hotel'],
       [/\b(transit|subway|metro|bus|train|station|airport|taxi|uber|lyft|rideshare)\b/i, 'transport'],
     ];
     for (const [re, hint] of rules) if (re.test(t)) return hint;
