@@ -616,6 +616,17 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     park: { sectionId: 'parks', chipCatId: 'park' },
     parking: { sectionId: 'parking', chipCatId: 'parking' },
     lodge: { sectionId: 'lodges', chipCatId: 'lodge' },
+    hotel: { sectionId: 'lodges', chipCatId: 'hotel', subLabel: 'Hotel' },
+    villa: { sectionId: 'lodges', chipCatId: 'hotel', subLabel: 'Villa' },
+    hostel: { sectionId: 'lodges', chipCatId: 'hotel', subLabel: 'Hostel' },
+    resort: { sectionId: 'lodges', chipCatId: 'hotel', subLabel: 'Resort' },
+    airbnb: { sectionId: 'lodges', chipCatId: 'hotel', subLabel: 'Airbnb' },
+    motel: { sectionId: 'lodges', chipCatId: 'hotel', subLabel: 'Motel' },
+    cabin: { sectionId: 'lodges', chipCatId: 'lodge', subLabel: 'Cabin' },
+    inn: { sectionId: 'lodges', chipCatId: 'lodge', subLabel: 'Inn' },
+    bnb: { sectionId: 'lodges', chipCatId: 'lodge', subLabel: 'B&B' },
+    campground: { sectionId: 'lodges', chipCatId: 'lodge', subLabel: 'Campground' },
+    stay: { sectionId: 'lodges' },
   };
 
   // Inject ad-hoc sub-chip queries (Farmers Market doesn't exist as a stock sub).
