@@ -583,7 +583,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
     { id: 'library', label: 'Libraries', emoji: '📚', icon: Monitor, catIds: ['library'] },
     { id: 'parks', label: 'Parks', emoji: '🌳', icon: Leaf, catIds: ['park'] },
     { id: 'parking', label: 'Parking', emoji: '🅿️', icon: Car, catIds: ['parking'] },
-    { id: 'lodges', label: 'Lodges', emoji: '🏕️', icon: Tent, catIds: ['lodge'] },
+    { id: 'lodges', label: 'Stay', emoji: '🏨', icon: Tent, catIds: ['hotel', 'lodge'] },
   ];
 
   // Map hint strings to section IDs and optional chip catId
