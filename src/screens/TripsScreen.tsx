@@ -196,6 +196,9 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
     setWPickedPhoto(undefined); setWPickedSummary(undefined);
     setWPickedGallery([]); setWPickedHistory(undefined); setWPickedArea(undefined);
     setWPickedHero(undefined);
+    // Closing the wizard should land the user on their Upcoming trips list
+    // (not the empty "Plan" pane they came from).
+    setTab('upcoming');
   };
 
   const finishWizard = () => {
@@ -340,11 +343,47 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const destCoordsCache = useRef<Map<string, { lat: number; lng: number; name: string; countryCode?: string }>>(new Map());
 
   /**
-   * Re-points the global app location to the trip's destination, then opens
-   * the requested Places sub-section. This is what makes "Find" on a Bali
-   * itinerary item show Bali places (not the user's current city).
+   * Pull a specific place name out of an itinerary title so "Find" can deep-link
+   * straight to that location instead of just a category list. Examples:
+   *   "Sunset at Echo Beach"                  → "Echo Beach"
+   *   "Surf lesson at Batu Bolong"            → "Batu Bolong"
+   *   "Ramen at Ichiran Shinjuku — booths"    → "Ichiran Shinjuku"
+   *   "Louvre Museum (book ahead!)"           → "Louvre Museum"
+   *   "Day trip to Kamakura — Great Buddha"   → "Kamakura"
+   *   "Hotel check-in — Park Hyatt Tokyo"     → "Park Hyatt Tokyo"
+   * Returns null when nothing more specific than a category can be inferred.
    */
-  const openPlacesAtTrip = async (trip: Trip, hint: string) => {
+  const extractPlaceName = (title: string): string | null => {
+    // 1. Strip after em-dash / hyphen-separator / colon / open-paren
+    let t = title.split(/—|\s-\s|:|\(/)[0].trim();
+    // 2. Strip trailing "& X" / "+ X" / "or X" / ", X"
+    t = t.split(/\s(?:&|\+|or)\s|,\s/i)[0].trim();
+
+    const GENERIC = /^(Day|Hotel|Lunch|Dinner|Breakfast|Brunch|Arrive|Depart|Check[- ]?In|Check[- ]?Out|Free|Optional|Morning|Afternoon|Evening|Night)$/i;
+
+    // 3. "<verb/noun> at|to|in|from <Proper Noun>" — favour the trailing place
+    const prep = t.match(/\b(?:at|to|in|from)\s+([A-Z][\w''\-]*(?:\s+(?:de|la|le|of|the|du|del)\s+[A-Z][\w''\-]*|\s+[A-Z][\w''\-]*){0,4})/);
+    if (prep) {
+      const candidate = prep[1].trim();
+      if (!GENERIC.test(candidate)) return candidate;
+    }
+
+    // 4. Otherwise the first run of 2+ Capitalised words (proper noun phrase)
+    const cap = t.match(/([A-Z][\w''\-]*(?:\s+[A-Z][\w''\-]*){1,5})/);
+    if (cap) {
+      const candidate = cap[1].trim();
+      if (!GENERIC.test(candidate)) return candidate;
+    }
+    return null;
+  };
+
+  /**
+   * Re-points the global app location to the trip's destination, then opens
+   * the requested Places sub-section. If the itinerary item names a specific
+   * spot (e.g. "Echo Beach"), deep-link straight to that place's detail page
+   * instead of just landing on a category list.
+   */
+  const openPlacesAtTrip = async (trip: Trip, hint: string, itemTitle?: string) => {
     if (!onSwitchTab) return;
     const key = `${trip.dest}|${trip.country}`.toLowerCase();
     let coords = destCoordsCache.current.get(key);
@@ -374,6 +413,19 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         fullAddress: `${coords.name}, ${trip.country}`.replace(/,\s*$/, ''),
         countryCode: coords.countryCode,
       });
+    }
+
+    // Prefer an exact place deep-link when the itinerary names a specific spot.
+    const specific = itemTitle ? extractPlaceName(itemTitle) : null;
+    if (specific) {
+      const payload = {
+        name: specific,
+        address: `${trip.dest}, ${trip.country}`.replace(/,\s*$/, ''),
+        lat: coords?.lat,
+        lng: coords?.lng,
+      };
+      onSwitchTab('places', `place:${encodeURIComponent(JSON.stringify(payload))}`);
+      return;
     }
     onSwitchTab('places', hint);
   };
@@ -863,13 +915,17 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                                 </button>
                                 {(() => {
                                   const hint = detectPlacesHint(it.title);
-                                  if (!hint || editMode || !onSwitchTab) return null;
+                                  const specific = extractPlaceName(it.title);
+                                  // Show "Find" whenever we can resolve either a specific spot
+                                  // or a category — so e.g. "Sunset at Echo Beach" works even
+                                  // though no category keyword matches.
+                                  if ((!hint && !specific) || editMode || !onSwitchTab) return null;
                                   return (
                                     <button
-                                      onClick={(e) => { e.stopPropagation(); openPlacesAtTrip(trip, hint); }}
+                                      onClick={(e) => { e.stopPropagation(); openPlacesAtTrip(trip, hint || 'attractions', it.title); }}
                                       className="flex-shrink-0 text-[10px] font-extrabold text-kipita-red bg-kipita-red/10 hover:bg-kipita-red/20 px-2 py-1 rounded-full flex items-center gap-0.5"
                                       aria-label="Open in Places"
-                                      title="Find nearby in Places"
+                                      title={specific ? `Find ${specific}` : 'Find nearby in Places'}
                                     >
                                       <span className="ms text-xs">place</span>
                                       Find
