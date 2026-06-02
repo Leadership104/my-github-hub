@@ -364,10 +364,19 @@ export const CATEGORY_SUBS: Record<string, SubCategory[]> = {
   ],
   hotel: [
     { label: 'Hotel', query: 'hotel', emoji: '🏨' },
-    { label: 'Hostel', query: 'hostel backpacker', emoji: '🛏️' },
-    { label: 'Airbnb', query: 'vacation rental', emoji: '🏠' },
+    { label: 'Villa', query: 'villa vacation rental', emoji: '🏡' },
     { label: 'Resort', query: 'resort luxury', emoji: '🏖️' },
     { label: 'Boutique', query: 'boutique hotel', emoji: '🌟' },
+    { label: 'Hostel', query: 'hostel backpacker', emoji: '🛏️' },
+    { label: 'Airbnb', query: 'vacation rental short-term', emoji: '🏠' },
+    { label: 'Motel', query: 'motel', emoji: '🛌' },
+  ],
+  lodge: [
+    { label: 'Lodge', query: 'lodge', emoji: '🏕️' },
+    { label: 'Cabin', query: 'cabin rental', emoji: '🪵' },
+    { label: 'Inn', query: 'inn bed and breakfast', emoji: '🏡' },
+    { label: 'B&B', query: 'bed and breakfast', emoji: '🍳' },
+    { label: 'Campground', query: 'campground RV park', emoji: '⛺' },
   ],
   transport: [
     { label: 'Bus', query: 'bus station stop', emoji: '🚌' },
