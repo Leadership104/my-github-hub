@@ -30,11 +30,13 @@ interface Props {
   onSwitchTab?: (tab: import('../types').TabId, hint?: string) => void;
   /** Optional hint of form "plan:City|Country" to auto-open wizard pre-filled */
   initialHint?: string;
+  /** Sets the global app location (used to point Places at the trip's destination) */
+  onSetLocation?: (loc: { lat: number; lng: number; name: string; fullAddress?: string; countryCode?: string }) => void;
 }
 
 type WizardStep = 'dest' | 'date' | 'days' | 'invites' | 'confirm';
 
-export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, initialHint }: Props) {
+export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, initialHint, onSetLocation }: Props) {
   const save = (updated: Trip[]) => onSaveTrips(updated);
 
   const [tab, setTab] = useState<'plan' | 'upcoming' | 'completed'>('plan');
