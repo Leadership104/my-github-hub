@@ -288,7 +288,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
       {/* Tab bar */}
       <div className="flex border-b border-border bg-card flex-shrink-0 overflow-x-auto">
-        {(['overview', 'advisories', 'crime', 'neighborhood', 'sources'] as const).map(tab => (
+        {(['overview', 'advisories', 'crime', 'neighborhood', 'sources'] as const)
+          .filter(tab => showSources || tab !== 'sources')
+          .map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
