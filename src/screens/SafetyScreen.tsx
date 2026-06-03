@@ -168,6 +168,9 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
       window.removeEventListener('storage', sync);
     };
   }, []);
+  useEffect(() => {
+    if (activeTab === 'sources' && !showSources) setActiveTab('overview');
+  }, [activeTab, showSources]);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const country = (countryCode || 'US').toUpperCase();
