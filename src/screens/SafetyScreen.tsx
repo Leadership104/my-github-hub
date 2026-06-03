@@ -154,6 +154,20 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const [backend, setBackend] = useState<BackendPayload | null>(null);
   const [result, setResult] = useState<TravelSafetyResult | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'advisories' | 'crime' | 'neighborhood' | 'sources'>('overview');
+  const [showSources, setShowSources] = useState<boolean>(() => {
+    try { return localStorage.getItem('kip_show_safety_sources') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    const sync = () => {
+      try { setShowSources(localStorage.getItem('kip_show_safety_sources') === '1'); } catch {}
+    };
+    window.addEventListener('kip-show-sources-changed', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('kip-show-sources-changed', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const country = (countryCode || 'US').toUpperCase();
