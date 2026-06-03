@@ -74,18 +74,18 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
         });
         if (!r.ok) return [];
         const j = await r.json();
-        const arr = j?.places || j?.results || [];
+        const arr = Array.isArray(j) ? j : (j?.places || j?.results || []);
         return arr.map((p: any) => {
-          const la = p?.location?.latitude ?? p?.geometry?.location?.lat;
-          const ln = p?.location?.longitude ?? p?.geometry?.location?.lng;
-          const rawName = p?.displayName?.text || p?.name || '';
+          const la = p?.lat ?? p?.location?.latitude ?? p?.geometry?.location?.lat;
+          const ln = p?.lng ?? p?.location?.longitude ?? p?.geometry?.location?.lng;
+          const rawName = p?.name || p?.displayName?.text || '';
           const name = rawName && !/^atm$/i.test(rawName.trim())
             ? rawName
             : (t === 'bank' ? 'Bank' : 'ATM');
           return {
             lat: la, lng: ln,
             name,
-            address: p?.formattedAddress || p?.vicinity,
+            address: p?.address || p?.formattedAddress || p?.vicinity,
             distance: la && ln ? haversineKm(lat, lng, la, ln) : undefined,
             type: t,
             photoUrl: p?.photoUrl || (Array.isArray(p?.photos) ? p.photos[0] : null) || null,
