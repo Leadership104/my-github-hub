@@ -455,10 +455,28 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
         {/* ── ADVISORIES TAB ───────────────────────────────────────────── */}
         {activeTab === 'advisories' && (
-          <>
-            <AdvisoryComparisonPanel result={result} backend={backend} />
-            <ReconciliationPanel backend={backend} />
-          </>
+          country === 'US' ? (
+            <div className="bg-card border border-border rounded-kipita p-4 space-y-2">
+              <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">
+                GOVERNMENT TRAVEL ADVISORIES
+              </p>
+              <p className="text-xs font-semibold text-foreground">Not applicable within the United States.</p>
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                Foreign-government travel advisories are issued for international destinations. For domestic safety, this screen uses local data sources — FBI Crime Data Explorer, UCR/NIBRS, NOAA weather alerts, USGS earthquakes, NASA FIRMS wildfires, and city/neighborhood crime statistics.
+              </p>
+              <button
+                onClick={() => setActiveTab('crime')}
+                className="mt-2 text-[11px] font-bold text-kipita-red hover:underline"
+              >
+                View local crime data →
+              </button>
+            </div>
+          ) : (
+            <>
+              <AdvisoryComparisonPanel result={result} backend={backend} />
+              <ReconciliationPanel backend={backend} />
+            </>
+          )
         )}
 
         {/* ── CRIME TAB ────────────────────────────────────────────────── */}
@@ -476,7 +494,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         )}
 
         {/* ── SOURCES TAB ──────────────────────────────────────────────── */}
-        {activeTab === 'sources' && (
+        {activeTab === 'sources' && showSources && (
           <LiveFeedsPanel backend={backend} isLive={isLive} />
         )}
       </div>
