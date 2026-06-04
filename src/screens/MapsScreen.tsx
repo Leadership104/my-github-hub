@@ -435,8 +435,11 @@ export default function MapsScreen({ lat, lng, merchants, loading, initialFilter
         }
       } catch { /* Nominatim supplementary — non-critical */ }
 
-      allPlaces.sort((a, b) => (a.distance || 99) - (b.distance || 99));
-      setNearbyPlaces(allPlaces);
+      // Drop entries without valid coordinates/distance, then sort nearest-first
+      const sorted = allPlaces
+        .filter(p => typeof p.lat === 'number' && typeof p.lng === 'number' && typeof p.distance === 'number' && !isNaN(p.distance))
+        .sort((a, b) => (a.distance as number) - (b.distance as number));
+      setNearbyPlaces(sorted);
     } catch {
       setNearbyPlaces([]);
     }
