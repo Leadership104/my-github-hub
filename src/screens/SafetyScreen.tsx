@@ -276,8 +276,10 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
           <p className="text-white/50 text-[10px]">
             {isLive
-              ? `Live · ${sourceCount} sources · US State Dept · UK FCDO · Canada · Australia · ACLED · UNODC`
-              : backend ? 'Connecting to live sources…' : 'Calibrated baseline'}
+              ? (showSources
+                  ? `Live · ${sourceCount} sources · US State Dept · UK FCDO · Canada · Australia · ACLED · UNODC`
+                  : 'Live data · auto-refreshing')
+              : backend ? 'Connecting…' : 'Calibrated baseline'}
           </p>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -1053,11 +1055,13 @@ function LiveFeedsPanel({ backend, isLive }: { backend: BackendPayload | null; i
         </p>
       </div>
 
-      <div className="p-3 rounded-kipita border border-border/50 bg-muted/20">
-        <p className="text-[9px] text-muted-foreground leading-relaxed">
-          <strong className="text-foreground">Data sources:</strong> US State Dept (live), UK FCDO (verified static), Canada IRCC (verified static), Australia Smartraveller (verified static), ACLED Conflict Index (semi-annual), UNODC 2023–2024, FBI CDE (US only, live), NASA USGS/EONET/FIRMS, NOAA NWS, GDACS, OpenStreetMap Overpass, Open-Meteo, CDC Travel Health, WHO DON, ReliefWeb, Google News RSS. Crowdsourced data is not used as a primary source.
-        </p>
-      </div>
+      {showSources && (
+        <div className="p-3 rounded-kipita border border-border/50 bg-muted/20">
+          <p className="text-[9px] text-muted-foreground leading-relaxed">
+            <strong className="text-foreground">Data sources:</strong> US State Dept (live), UK FCDO (verified static), Canada IRCC (verified static), Australia Smartraveller (verified static), ACLED Conflict Index (semi-annual), UNODC 2023–2024, FBI CDE (US only, live), NASA USGS/EONET/FIRMS, NOAA NWS, GDACS, OpenStreetMap Overpass, Open-Meteo, CDC Travel Health, WHO DON, ReliefWeb, Google News RSS. Crowdsourced data is not used as a primary source.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
