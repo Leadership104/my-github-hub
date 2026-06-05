@@ -1814,7 +1814,15 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <div className="text-center py-12">
                 <span className="text-3xl block mb-2">🍽️</span>
                 <p className="text-sm font-semibold text-foreground">No places found</p>
-                <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different category{activeChip ? ' or expand your search' : ''}</p>
+                {activeChip && chipRadiusM < 80000 && (
+                  <button
+                    onClick={() => selectChip(activeChip, Math.min(chipRadiusM * 2, 80000))}
+                    className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold">
+                    <span className="ms text-sm">explore</span>
+                    Expand search radius ({Math.round((Math.min(chipRadiusM * 2, 80000) / 1000) * 0.621371)} mi)
+                  </button>
+                )}
               </div>
             ) : displayPlaces.map((p, i) => (
               <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
@@ -1899,7 +1907,15 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <div className="text-center py-12">
                 <span className="text-3xl block mb-2">{section?.emoji}</span>
                 <p className="text-sm font-semibold text-foreground">No places found</p>
-                <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different category{activeChip ? ' or expand your search' : ''}</p>
+                {activeChip && chipRadiusM < 80000 && (
+                  <button
+                    onClick={() => selectChip(activeChip, Math.min(chipRadiusM * 2, 80000))}
+                    className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold">
+                    <span className="ms text-sm">explore</span>
+                    Expand search radius ({Math.round((Math.min(chipRadiusM * 2, 80000) / 1000) * 0.621371)} mi)
+                  </button>
+                )}
               </div>
             ) : displayPlaces.map((p, i) => (
               <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
@@ -2008,7 +2024,15 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <div className="text-center py-12">
               <span className="text-3xl block mb-2">{section?.emoji}</span>
               <p className="text-sm font-semibold text-foreground">No places found</p>
-              <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
+              <p className="text-xs text-muted-foreground mt-1">Try a different category{activeChip ? ' or expand your search' : ''}</p>
+              {activeChip && chipRadiusM < 80000 && (
+                <button
+                  onClick={() => selectChip(activeChip, Math.min(chipRadiusM * 2, 80000))}
+                  className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold">
+                  <span className="ms text-sm">explore</span>
+                  Expand search radius ({Math.round((Math.min(chipRadiusM * 2, 80000) / 1000) * 0.621371)} mi)
+                </button>
+              )}
             </div>
           ) : displayPlaces.map((p, i) => (
             <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
