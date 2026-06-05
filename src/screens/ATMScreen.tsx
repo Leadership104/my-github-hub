@@ -78,6 +78,11 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
         return arr.map((p: any) => {
           const la = p?.lat ?? p?.location?.latitude ?? p?.geometry?.location?.lat;
           const ln = p?.lng ?? p?.location?.longitude ?? p?.geometry?.location?.lng;
+          const types: string[] = Array.isArray(p?.types) ? p.types.map((x: any) => String(x).toLowerCase()) : [];
+          // Strict type gate: when looking for ATMs, drop pure-bank results (no atm tag).
+          // When looking for banks, drop standalone ATM kiosks (no bank tag).
+          if (t === 'atm' && types.length && !types.includes('atm')) return null;
+          if (t === 'bank' && types.length && !types.includes('bank')) return null;
           const rawName = p?.name || p?.displayName?.text || '';
           const name = rawName && !/^atm$/i.test(rawName.trim())
             ? rawName
@@ -90,7 +95,7 @@ export default function ATMScreen({ lat, lng, merchants, onBack, onViewOnMap }: 
             type: t,
             photoUrl: p?.photoUrl || (Array.isArray(p?.photos) ? p.photos[0] : null) || null,
           } as ATMResult;
-        }).filter((x: ATMResult) => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+        }).filter((x: ATMResult | null): x is ATMResult => !!x && Number.isFinite(x.lat) && Number.isFinite(x.lng));
       } catch { return []; }
     };
 
