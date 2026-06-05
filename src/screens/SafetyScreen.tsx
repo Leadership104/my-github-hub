@@ -276,8 +276,10 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
           <p className="text-white/50 text-[10px]">
             {isLive
-              ? `Live · ${sourceCount} sources · US State Dept · UK FCDO · Canada · Australia · ACLED · UNODC`
-              : backend ? 'Connecting to live sources…' : 'Calibrated baseline'}
+              ? (showSources
+                  ? `Live · ${sourceCount} sources · US State Dept · UK FCDO · Canada · Australia · ACLED · UNODC`
+                  : 'Live data · auto-refreshing')
+              : backend ? 'Connecting…' : 'Calibrated baseline'}
           </p>
         </div>
         <div className="flex items-center gap-1.5 flex-shrink-0">

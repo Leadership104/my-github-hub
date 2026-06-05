@@ -562,6 +562,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   const [activeChip, setActiveChip] = useState<{ label: string; query: string } | null>(null);
   const [chipResults, setChipResults] = useState<LivePlace[]>([]);
   const [chipLoading, setChipLoading] = useState(false);
+  const [chipRadiusM, setChipRadiusM] = useState<number>(PLACE_RADIUS_M);
 
   // When a chip is selected (or its results arrive), scroll results to top so
   // the user clearly sees the new selection's content rather than a silent swap.
@@ -1052,29 +1053,27 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
   }, [loadFoodGuide]);
 
   /* ── Inline chip tap for eat section ── */
-  const selectChip = useCallback(async (chip: { label: string; query: string }) => {
-    if (activeChip?.label === chip.label) {
+  const selectChip = useCallback(async (chip: { label: string; query: string }, overrideRadiusM?: number) => {
+    if (overrideRadiusM == null && activeChip?.label === chip.label) {
       setActiveChip(null);
       setChipResults([]);
+      setChipRadiusM(PLACE_RADIUS_M);
       return;
     }
+    const radiusM = overrideRadiusM ?? PLACE_RADIUS_M;
+    const radiusKm = radiusM / 1000;
+    setChipRadiusM(radiusM);
     setActiveChip(chip);
     setChipLoading(true);
-    // Use the explicit query (e.g. "american restaurant") not just the label ("American"),
-    // otherwise Google can return the locality itself (e.g. "Santa Clarita") instead of restaurants.
     const searchTerm = (chip.query && chip.query.trim()) || chip.label;
     const fdKey = foodDrinkKey(chip.label);
     const fdEntry = fdKey ? FOOD_DRINK_KEYWORDS[fdKey] : null;
 
-    // For Food & Drinks chips, run several phrasing variants (same idea as
-    // cuisine search) so we catch well-known venues that the generic query
-    // misses (e.g. "Starbucks Reserve" under Coffee, "Stone Brewing" under
-    // Brewery).
     let rawPlaces: LivePlace[] = [];
     if (fdEntry) {
       const variants = [searchTerm, ...(fdEntry.variants ?? [])];
       const lists = await Promise.all(
-        variants.map(v => fetchGooglePlaces('search', { query: v, lat, lng, radius: PLACE_RADIUS_M }))
+        variants.map(v => fetchGooglePlaces('search', { query: v, lat, lng, radius: radiusM }))
       );
       const merged = new Map<string, LivePlace>();
       lists.flat().forEach(p => {
@@ -1083,12 +1082,9 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       });
       rawPlaces = Array.from(merged.values());
     } else {
-      rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: PLACE_RADIUS_M });
+      rawPlaces = await fetchGooglePlaces('search', { query: `${searchTerm}`, lat, lng, radius: radiusM });
     }
 
-    // Drop locality / non-business results, then prescreen against the chip's
-    // category. For Food & Drinks chips, use the stricter keyword vocab so we
-    // never show a coffee shop under "Brewery" or a diner under "Steak".
     const places = rawPlaces.filter(p => {
       if (isLocalityResult(p.types)) return false;
       if (fdEntry) {
@@ -1097,7 +1093,7 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
         return false;
       }
       if (typeof p.lat === 'number' && typeof p.lng === 'number') {
-        return haversine(lat, lng, p.lat, p.lng) <= PLACE_RADIUS_KM;
+        return haversine(lat, lng, p.lat, p.lng) <= radiusKm;
       }
       return true;
     });
@@ -1105,8 +1101,6 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
       if (a.openNow !== b.openNow) return a.openNow ? -1 : 1;
       const distA = a.lat && a.lng ? haversine(lat, lng, a.lat, a.lng) : 9999;
       const distB = b.lat && b.lng ? haversine(lat, lng, b.lat, b.lng) : 9999;
-      // Distance buckets (0.5km) so a clearly-closer place wins, but within the
-      // same bucket prefer higher rating × log(reviews) for relevance.
       const bucketA = Math.floor(distA * 2);
       const bucketB = Math.floor(distB * 2);
       if (bucketA !== bucketB) return bucketA - bucketB;
@@ -1820,7 +1814,15 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <div className="text-center py-12">
                 <span className="text-3xl block mb-2">🍽️</span>
                 <p className="text-sm font-semibold text-foreground">No places found</p>
-                <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different category{activeChip ? ' or expand your search' : ''}</p>
+                {activeChip && chipRadiusM < 80000 && (
+                  <button
+                    onClick={() => selectChip(activeChip, Math.min(chipRadiusM * 2, 80000))}
+                    className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold">
+                    <span className="ms text-sm">explore</span>
+                    Expand search radius ({Math.round((Math.min(chipRadiusM * 2, 80000) / 1000) * 0.621371)} mi)
+                  </button>
+                )}
               </div>
             ) : displayPlaces.map((p, i) => (
               <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
@@ -1905,7 +1907,15 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
               <div className="text-center py-12">
                 <span className="text-3xl block mb-2">{section?.emoji}</span>
                 <p className="text-sm font-semibold text-foreground">No places found</p>
-                <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different category{activeChip ? ' or expand your search' : ''}</p>
+                {activeChip && chipRadiusM < 80000 && (
+                  <button
+                    onClick={() => selectChip(activeChip, Math.min(chipRadiusM * 2, 80000))}
+                    className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold">
+                    <span className="ms text-sm">explore</span>
+                    Expand search radius ({Math.round((Math.min(chipRadiusM * 2, 80000) / 1000) * 0.621371)} mi)
+                  </button>
+                )}
               </div>
             ) : displayPlaces.map((p, i) => (
               <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
@@ -2014,7 +2024,15 @@ export default function PlacesScreen({ locationName = 'Current location', lat = 
             <div className="text-center py-12">
               <span className="text-3xl block mb-2">{section?.emoji}</span>
               <p className="text-sm font-semibold text-foreground">No places found</p>
-              <p className="text-xs text-muted-foreground mt-1">Try a different category</p>
+              <p className="text-xs text-muted-foreground mt-1">Try a different category{activeChip ? ' or expand your search' : ''}</p>
+              {activeChip && chipRadiusM < 80000 && (
+                <button
+                  onClick={() => selectChip(activeChip, Math.min(chipRadiusM * 2, 80000))}
+                  className="mt-3 inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-foreground text-background text-xs font-semibold">
+                  <span className="ms text-sm">explore</span>
+                  Expand search radius ({Math.round((Math.min(chipRadiusM * 2, 80000) / 1000) * 0.621371)} mi)
+                </button>
+              )}
             </div>
           ) : displayPlaces.map((p, i) => (
             <PlaceCard key={p.placeId || i} p={p} lat={lat} lng={lng} onOpen={openPlaceDetail} onToast={showToast} />
