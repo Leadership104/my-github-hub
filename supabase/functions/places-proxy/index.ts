@@ -47,11 +47,24 @@ const DETAIL_FIELDS = [
   "editorialSummary",
 ].join(",");
 
-/* ── Nearby Search (New) ── */
-async function nearbySearch(lat: number, lng: number, type: string, radius = 3500, maxResults = 20) {
-  const body = {
+/* ── Nearby Search (New) ──
+ * Default ranks strictly by DISTANCE so the closest results come back first.
+ * Google's default (POPULARITY/relevance) blends rating + recency of reviews,
+ * which causes the app to skip closer locations in favor of better-reviewed
+ * ones further away. Distance-first is what users expect for gas, ATMs, etc.
+ */
+async function nearbySearch(
+  lat: number,
+  lng: number,
+  type: string,
+  radius = 3500,
+  maxResults = 20,
+  rankBy: "DISTANCE" | "POPULARITY" = "DISTANCE",
+) {
+  const body: Record<string, unknown> = {
     includedTypes: [type],
     maxResultCount: Math.min(maxResults, 20),
+    rankPreference: rankBy,
     locationRestriction: {
       circle: { center: { latitude: lat, longitude: lng }, radius },
     },
