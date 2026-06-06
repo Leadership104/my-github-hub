@@ -354,6 +354,9 @@ serve(async (req) => {
     const placeId = params.placeId;
     const category = params.category;
     const strict = params.strict === true || params.strict === "true";
+    const rankByRaw = (params.rankBy || params.rank || "").toString().toUpperCase();
+    const rankBy: "DISTANCE" | "POPULARITY" =
+      rankByRaw === "POPULARITY" ? "POPULARITY" : "DISTANCE";
 
     let result: any;
 
@@ -362,7 +365,7 @@ serve(async (req) => {
         const googleType = category
           ? CATEGORY_TYPE_MAP[category] || category
           : type || "restaurant";
-        const data = await nearbySearch(lat, lng, googleType, radius);
+        const data = await nearbySearch(lat, lng, googleType, radius, 20, rankBy);
         result = normalizePlaces(data);
         break;
       }
