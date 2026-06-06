@@ -83,9 +83,10 @@ function placeTypeToHint(type: string): string {
 
 // ── Live Stats Bar ────────────────────────────────────────────────────────────
 function StatsBar({
-  weather, advisoryScore, locationName,
+  weather, forecast, advisoryScore, locationName,
 }: {
   weather?: { emoji: string; temp: string; desc: string };
+  forecast?: import('../hooks').ForecastDay[];
   advisoryScore?: number;
   locationName?: string;
 }) {
@@ -114,6 +115,22 @@ function StatsBar({
           <span className="text-sm">{weather.emoji}</span>
           <span className="text-[11px] font-bold text-foreground">{weather.temp}</span>
           <span className="text-[10px] text-muted-foreground hidden sm:block">{weather.desc}</span>
+          {forecast && forecast[0] && (
+            <span className="text-[10px] text-muted-foreground border-l border-border pl-1.5 ml-0.5">
+              H {forecast[0].high}° · L {forecast[0].low}°
+            </span>
+          )}
+        </div>
+      )}
+      {forecast && forecast.length > 1 && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1">
+          {forecast.slice(1, 5).map(f => (
+            <span key={f.date} className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{f.dayName.slice(0,3)}</span>
+              <span>{f.emoji}</span>
+              <span>{f.high}°</span>
+            </span>
+          ))}
         </div>
       )}
       {advisoryScore != null && (
