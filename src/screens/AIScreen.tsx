@@ -58,6 +58,7 @@ interface Props {
   lat?: number;
   lng?: number;
   weather?: { emoji: string; temp: string; desc: string };
+  forecast?: import('../hooks').ForecastDay[];
   advisoryScore?: number;
   trips?: Trip[];
   onCreateTrip?: (dest: string, country: string, days: number) => void;
@@ -382,7 +383,7 @@ const QUICK_ACTIONS = [
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function AIScreen({
   btcPrice, locationName, countryCode, lat, lng,
-  weather, advisoryScore, trips,
+  weather, forecast, advisoryScore, trips,
   onCreateTrip, onBack, onSwitchTab,
   handoffPrompt, handoffLabel,
 }: Props) {
