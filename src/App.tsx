@@ -225,6 +225,7 @@ export default function App() {
   // Daily health check: verify core APIs every 24h, show banner if any fail.
   const [healthIssues, setHealthIssues] = useState<string[]>([]);
   const [healthDismissed, setHealthDismissed] = useState(false);
+  const [showForecast, setShowForecast] = useState(false);
   useEffect(() => {
     const KEY = 'kip_health_last_v3';
     const DAY_MS = 24 * 60 * 60 * 1000;
