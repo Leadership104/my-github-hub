@@ -483,10 +483,6 @@ export default function App() {
               </div>
             </>
           )}
-                </div>
-              </div>
-            </>
-          )}
           <button onClick={() => setShowSOS(true)}
             data-tour="header-sos"
             className="bg-kipita-red rounded-md w-9 h-9 flex items-center justify-center flex-shrink-0 shadow-md"
