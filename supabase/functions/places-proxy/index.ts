@@ -325,8 +325,7 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const unauthorized = await requireUser(req);
-  if (unauthorized) return unauthorized;
+  // Public proxy: no user auth required. Google key stays server-side.
 
 
 
