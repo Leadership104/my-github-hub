@@ -546,6 +546,7 @@ export default function AIScreen({
           lng,
           btcPrice,
           weather: weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : undefined,
+          forecast: forecast && forecast.length ? forecast.slice(0, 5).map(f => `${f.dayName}: ${f.emoji} ${f.desc}, H ${f.high}° / L ${f.low}°`).join(' | ') : undefined,
           advisoryScore,
         },
       },
@@ -720,7 +721,7 @@ export default function AIScreen({
       )}
 
       {/* Live stats bar */}
-      <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} />
+      <StatsBar weather={weather} forecast={forecast} advisoryScore={advisoryScore} locationName={locationName} />
 
       {/* Quick actions horizontal scroll */}
       <div data-tour="ai-quick-actions" className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
