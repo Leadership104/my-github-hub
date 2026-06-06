@@ -282,7 +282,7 @@ export function useWeather(lat: number, lng: number) {
   const [forecast, setForecast] = useState<ForecastDay[]>([]);
   useEffect(() => {
     if (!lat || !lng) return;
-    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=5`)
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&temperature_unit=fahrenheit&timezone=auto&forecast_days=7`)
       .then(r => r.json())
       .then(d => {
         const temp = Math.round(d.current?.temperature_2m ?? 0);
