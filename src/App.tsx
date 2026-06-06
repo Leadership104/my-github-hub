@@ -225,8 +225,9 @@ export default function App() {
   // Daily health check: verify core APIs every 24h, show banner if any fail.
   const [healthIssues, setHealthIssues] = useState<string[]>([]);
   const [healthDismissed, setHealthDismissed] = useState(false);
+  const [showForecast, setShowForecast] = useState(false);
   useEffect(() => {
-    const KEY = 'kip_health_last';
+    const KEY = 'kip_health_last_v3';
     const DAY_MS = 24 * 60 * 60 * 1000;
     const run = async () => {
       const checks: { name: string; fn: () => Promise<boolean> }[] = [
@@ -378,7 +379,7 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home':   return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} lat={lat} lng={lng} onSwitchTab={switchTab} />;
-      case 'ai':     return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={screenHint === 'plan-trip' ? "I'd like to plan a trip with your help. Please ask me where I want to go, roughly when I want to travel, and how many days. Once you have the key details, give me a brief trip overview so I can confirm before you create it." : undefined} handoffLabel={screenHint === 'plan-trip' ? '✈️ AI Trip Planner' : undefined} />;
+      case 'ai':     return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} forecast={forecast} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={screenHint === 'plan-trip' ? "I'd like to plan a trip with your help. Please ask me where I want to go, roughly when I want to travel, and how many days. Once you have the key details, give me a brief trip overview so I can confirm before you create it." : undefined} handoffLabel={screenHint === 'plan-trip' ? '✈️ AI Trip Planner' : undefined} />;
       case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} onSetLocation={(loc) => {
         // Stash the user's real/home location the first time a trip overrides it
         if (!homeLocationRef.current) {
@@ -429,11 +430,51 @@ export default function App() {
           </div>
           <span className="ms text-sm text-kipita-navy/60">expand_more</span>
         </button>
-        <div className="flex items-center gap-1 flex-shrink-0 ml-1">
-          <button className="flex items-center gap-0.5 px-1.5 py-1.5 rounded-kipita-sm text-xs font-bold text-kipita-navy hover:bg-black/5 transition-colors">
+        <div className="flex items-center gap-1 flex-shrink-0 ml-1 relative">
+          <button
+            onClick={() => setShowForecast(v => !v)}
+            className="flex items-center gap-0.5 px-1.5 py-1.5 rounded-kipita-sm text-xs font-bold text-kipita-navy hover:bg-black/5 transition-colors"
+            title="Tap for 5-day forecast"
+            aria-expanded={showForecast}
+          >
             <span>{weather.emoji}</span>
             <span>{weather.temp}</span>
+            <span className="ms text-xs text-kipita-navy/60">expand_more</span>
           </button>
+          {showForecast && (
+            <>
+              <div className="fixed inset-0 z-[110]" onClick={() => setShowForecast(false)} />
+              <div className="absolute top-full right-0 mt-1 z-[120] w-64 bg-white rounded-kipita shadow-xl border border-black/10 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <div className="text-xs font-bold text-kipita-navy">{locationName?.split(',')[0] || 'Current'}</div>
+                    <div className="text-[10px] text-muted-foreground">{weather.desc} · now</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-lg leading-none">{weather.emoji}</div>
+                    <div className="text-sm font-extrabold text-kipita-navy">{weather.temp}</div>
+                  </div>
+                </div>
+                <div className="border-t border-black/10 pt-2">
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">5-day forecast</div>
+                  {forecast.length === 0 ? (
+                    <div className="text-[11px] text-muted-foreground py-2">Loading forecast…</div>
+                  ) : (
+                    <ul className="space-y-1">
+                      {forecast.slice(0, 5).map(f => (
+                        <li key={f.date} className="flex items-center justify-between text-[11px]">
+                          <span className="font-semibold text-kipita-navy w-12">{f.dayName}</span>
+                          <span className="text-base">{f.emoji}</span>
+                          <span className="text-muted-foreground flex-1 ml-2 truncate">{f.desc}</span>
+                          <span className="font-bold text-kipita-navy">{f.high}°<span className="text-muted-foreground font-normal"> / {f.low}°</span></span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
           <button onClick={() => setShowSOS(true)}
             data-tour="header-sos"
             className="bg-kipita-red rounded-md w-9 h-9 flex items-center justify-center flex-shrink-0 shadow-md"

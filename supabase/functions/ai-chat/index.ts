@@ -847,6 +847,7 @@ serve(async (req) => {
 
       if (context.location) liveDataBlock += `\n- User location: ${context.location}`;
       if (context.weather) liveDataBlock += `\n- Live weather: ${context.weather}`;
+      if (context.forecast) liveDataBlock += `\n- 5-day forecast: ${context.forecast}`;
 
       if (context.advisoryScore != null) {
         const safetyDesc =

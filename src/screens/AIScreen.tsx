@@ -58,6 +58,7 @@ interface Props {
   lat?: number;
   lng?: number;
   weather?: { emoji: string; temp: string; desc: string };
+  forecast?: import('../hooks').ForecastDay[];
   advisoryScore?: number;
   trips?: Trip[];
   onCreateTrip?: (dest: string, country: string, days: number) => void;
@@ -82,9 +83,10 @@ function placeTypeToHint(type: string): string {
 
 // ── Live Stats Bar ────────────────────────────────────────────────────────────
 function StatsBar({
-  weather, advisoryScore, locationName,
+  weather, forecast, advisoryScore, locationName,
 }: {
   weather?: { emoji: string; temp: string; desc: string };
+  forecast?: import('../hooks').ForecastDay[];
   advisoryScore?: number;
   locationName?: string;
 }) {
@@ -113,6 +115,22 @@ function StatsBar({
           <span className="text-sm">{weather.emoji}</span>
           <span className="text-[11px] font-bold text-foreground">{weather.temp}</span>
           <span className="text-[10px] text-muted-foreground hidden sm:block">{weather.desc}</span>
+          {forecast && forecast[0] && (
+            <span className="text-[10px] text-muted-foreground border-l border-border pl-1.5 ml-0.5">
+              H {forecast[0].high}° · L {forecast[0].low}°
+            </span>
+          )}
+        </div>
+      )}
+      {forecast && forecast.length > 1 && (
+        <div className="flex items-center gap-1.5 flex-shrink-0 bg-muted/60 rounded-lg px-2 py-1">
+          {forecast.slice(1, 5).map(f => (
+            <span key={f.date} className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+              <span className="font-semibold text-foreground">{f.dayName.slice(0,3)}</span>
+              <span>{f.emoji}</span>
+              <span>{f.high}°</span>
+            </span>
+          ))}
         </div>
       )}
       {advisoryScore != null && (
@@ -382,7 +400,7 @@ const QUICK_ACTIONS = [
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function AIScreen({
   btcPrice, locationName, countryCode, lat, lng,
-  weather, advisoryScore, trips,
+  weather, forecast, advisoryScore, trips,
   onCreateTrip, onBack, onSwitchTab,
   handoffPrompt, handoffLabel,
 }: Props) {
@@ -528,6 +546,7 @@ export default function AIScreen({
           lng,
           btcPrice,
           weather: weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : undefined,
+          forecast: forecast && forecast.length ? forecast.slice(0, 5).map(f => `${f.dayName}: ${f.emoji} ${f.desc}, H ${f.high}° / L ${f.low}°`).join(' | ') : undefined,
           advisoryScore,
         },
       },
@@ -702,7 +721,7 @@ export default function AIScreen({
       )}
 
       {/* Live stats bar */}
-      <StatsBar weather={weather} advisoryScore={advisoryScore} locationName={locationName} />
+      <StatsBar weather={weather} forecast={forecast} advisoryScore={advisoryScore} locationName={locationName} />
 
       {/* Quick actions horizontal scroll */}
       <div data-tour="ai-quick-actions" className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
