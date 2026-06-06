@@ -434,7 +434,7 @@ export default function App() {
           <button
             onClick={() => setShowForecast(v => !v)}
             className="flex items-center gap-0.5 px-1.5 py-1.5 rounded-kipita-sm text-xs font-bold text-kipita-navy hover:bg-black/5 transition-colors"
-            title="Tap for 5-day forecast"
+            title="Tap for 7-day forecast"
             aria-expanded={showForecast}
           >
             <span>{weather.emoji}</span>
@@ -444,7 +444,7 @@ export default function App() {
           {showForecast && (
             <>
               <div className="fixed inset-0 z-[110]" onClick={() => setShowForecast(false)} />
-              <div className="absolute top-full right-0 mt-1 z-[120] w-64 bg-white rounded-kipita shadow-xl border border-black/10 p-3">
+              <div className="absolute top-full right-0 mt-1 z-[120] w-72 bg-white rounded-kipita shadow-xl border border-black/10 p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div>
                     <div className="text-xs font-bold text-kipita-navy">{locationName?.split(',')[0] || 'Current'}</div>
@@ -456,12 +456,12 @@ export default function App() {
                   </div>
                 </div>
                 <div className="border-t border-black/10 pt-2">
-                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">5-day forecast</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground mb-1">7-day forecast</div>
                   {forecast.length === 0 ? (
                     <div className="text-[11px] text-muted-foreground py-2">Loading forecast…</div>
                   ) : (
                     <ul className="space-y-1">
-                      {forecast.slice(0, 5).map(f => (
+                      {forecast.slice(0, 7).map(f => (
                         <li key={f.date} className="flex items-center justify-between text-[11px]">
                           <span className="font-semibold text-kipita-navy w-12">{f.dayName}</span>
                           <span className="text-base">{f.emoji}</span>
@@ -471,6 +471,18 @@ export default function App() {
                       ))}
                     </ul>
                   )}
+                  <a
+                    href={`https://weather.com/weather/tenday/l/${lat},${lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block mt-2 text-center text-[10px] font-bold text-kipita-red hover:underline"
+                  >
+                    View extended forecast on weather.com →
+                  </a>
+                </div>
+              </div>
+            </>
+          )}
                 </div>
               </div>
             </>
