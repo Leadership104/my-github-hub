@@ -471,7 +471,6 @@ export default function App() {
                       ))}
                     </ul>
                   )}
-                  </a>
                 </div>
               </div>
             </>
