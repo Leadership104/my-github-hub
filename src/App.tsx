@@ -471,14 +471,6 @@ export default function App() {
                       ))}
                     </ul>
                   )}
-                  <a
-                    href={`https://weather.com/weather/tenday/l/${lat},${lng}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block mt-2 text-center text-[10px] font-bold text-kipita-red hover:underline"
-                  >
-                    View extended forecast on weather.com →
-                  </a>
                 </div>
               </div>
             </>
