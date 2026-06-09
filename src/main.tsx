@@ -7,7 +7,6 @@ import { AuthProvider, useAuth } from './auth/useAuth';
 import AuthScreen from './auth/AuthScreen';
 import OnboardingScreen from './auth/OnboardingScreen';
 import ResetPasswordScreen from './auth/ResetPasswordScreen';
-import PasswordGate, { isAppUnlocked } from './components/PasswordGate';
 import kipitaSplash from './assets/kipita-splash.jpeg';
 
 function AuthGate() {
@@ -49,8 +48,8 @@ function AuthGate() {
 }
 
 function Root() {
-  const [unlocked, setUnlocked] = React.useState(() => isAppUnlocked());
-  if (!unlocked) return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  // Clear any prior gate flag so returning users aren't affected
+  if (typeof window !== 'undefined') sessionStorage.removeItem('kip_unlocked');
   return (
     <I18nProvider>
       <AuthProvider>
