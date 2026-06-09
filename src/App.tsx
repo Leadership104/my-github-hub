@@ -25,7 +25,7 @@ const BusinessScreen    = lazy(() => import('./screens/BusinessScreen'));
 const RecreationScreen  = lazy(() => import('./screens/RecreationScreen'));
 import OnboardingTour, { hasSeenTour, resetAllTours, type TourStep } from './components/OnboardingTour';
 import LocationSafetyBar from './components/LocationSafetyBar';
-import PasswordGate, { isAppUnlocked } from './components/PasswordGate';
+
 import ErrorBoundary from './components/ErrorBoundary';
 import { useAuth } from './auth/useAuth';
 
@@ -103,7 +103,7 @@ function loadTrips(): Trip[] {
 }
 
 export default function App() {
-  const [unlocked, setUnlocked] = useState<boolean>(() => isAppUnlocked());
+  
   const [tab, setTab] = useState<TabId>('home');
   const [screenHint, setScreenHint] = useState<string | undefined>();
   const prevTabRef = useRef<TabId>('home');
@@ -356,10 +356,6 @@ export default function App() {
 
   const advisoryData = useTravelSafety(countryCode);
 
-  // Password lock gate
-  if (!unlocked) {
-    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
-  }
 
   // Splash screen
   if (splash) {
