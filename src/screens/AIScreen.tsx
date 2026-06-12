@@ -407,8 +407,10 @@ export default function AIScreen({
   weather, forecast, advisoryScore, trips,
   onCreateTrip, onBack, onSwitchTab,
   handoffPrompt, handoffLabel,
+  itineraryTripId, onApplyItinerary,
 }: Props) {
   const [messages, setMessages]         = useState<ChatMessage[]>([]);
+  const [appliedFor, setAppliedFor]     = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions]   = useState<string[]>([]);
   const [input, setInput]               = useState('');
   const [loading, setLoading]           = useState(false);
