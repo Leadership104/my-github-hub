@@ -102,6 +102,9 @@ function parseItineraryBlock(text: string): Array<{ day: number; time: string; t
       .filter(it => it.title);
     return items.length > 0 ? items : null;
   } catch { return null; }
+}
+
+
 
 // ── Live Stats Bar ────────────────────────────────────────────────────────────
 function StatsBar({
