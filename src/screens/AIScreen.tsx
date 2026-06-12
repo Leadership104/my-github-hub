@@ -753,9 +753,38 @@ export default function AIScreen({
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((msg, idx) => {
           const isNewest = idx === messages.length - 1 && msg.role === 'ai';
+          const parsedItin = msg.role === 'ai' && itineraryTripId ? parseItineraryBlock(msg.text) : null;
+          const displayMsg = parsedItin
+            ? { ...msg, text: msg.text.replace(/```kipita-itinerary[\s\S]*?```/g, '').trim() }
+            : msg;
+          const alreadyApplied = appliedFor.has(msg.id);
           return (
             <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
-              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
+              <MessageBubble msg={displayMsg} onInAppNav={onSwitchTab} />
+              {parsedItin && parsedItin.length > 0 && itineraryTripId && (
+                <div className="flex flex-col items-start gap-1.5 mt-2 ml-1">
+                  <button
+                    onClick={() => {
+                      onApplyItinerary?.(itineraryTripId, parsedItin);
+                      setAppliedFor(prev => { const next = new Set(prev); next.add(msg.id); return next; });
+                      setTripCreatedToast('Itinerary updated');
+                      setTimeout(() => setTripCreatedToast(''), 2500);
+                    }}
+                    disabled={alreadyApplied}
+                    className={`px-4 py-2 rounded-full text-xs font-bold shadow-md transition-all active:scale-95 ${alreadyApplied ? 'bg-muted text-muted-foreground' : 'bg-kipita-green text-white hover:opacity-90'}`}
+                  >
+                    {alreadyApplied ? '✓ Applied to itinerary' : `✨ Apply changes (${parsedItin.length} items)`}
+                  </button>
+                  {!alreadyApplied && (
+                    <button
+                      onClick={() => onSwitchTab?.('trips')}
+                      className="text-[10px] text-muted-foreground underline"
+                    >
+                      Open itinerary first
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
