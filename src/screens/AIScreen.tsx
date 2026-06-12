@@ -69,6 +69,10 @@ interface Props {
   handoffPrompt?: string;
   /** Visible mode label shown in the header when in support handoff. */
   handoffLabel?: string;
+  /** When set, the AI is editing this trip's itinerary — enables "Apply changes" button. */
+  itineraryTripId?: string;
+  /** Called when user taps "Apply changes" on a parsed itinerary block. */
+  onApplyItinerary?: (tripId: string, items: Array<{ day: number; time: string; title: string }>) => void;
 }
 
 function placeTypeToHint(type: string): string {
