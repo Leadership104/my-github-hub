@@ -769,7 +769,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   onClick={() => {
                     const items = (trip.items || []).slice().sort((a, b) => (a.day - b.day) || String(a.time).localeCompare(String(b.time)));
                     const itinLines = items.length
-                      ? items.map(it => `• Day ${it.day} ${it.time || ''} — ${it.title}${it.loc ? ` @ ${it.loc}` : ''}`).join('\n')
+                      ? items.map(it => `• Day ${it.day} ${it.time || ''} — ${it.title}`).join('\n')
                       : '(no itinerary items yet)';
                     const prompt = [
                       `Let's chat about my trip to ${trip.dest}, ${trip.country} (${trip.start} → ${trip.end}).`,
