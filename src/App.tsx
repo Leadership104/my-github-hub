@@ -375,7 +375,21 @@ export default function App() {
   const renderScreen = () => {
     switch (tab) {
       case 'home':   return <HomeScreen weather={weather} forecast={forecast} locationName={locationName} fullAddress={fullAddress} countryCode={countryCode} lat={lat} lng={lng} onSwitchTab={switchTab} />;
-      case 'ai':     return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} forecast={forecast} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={screenHint === 'plan-trip' ? "I'd like to plan a trip with your help. Please ask me where I want to go, roughly when I want to travel, and how many days. Once you have the key details, give me a brief trip overview so I can confirm before you create it." : undefined} handoffLabel={screenHint === 'plan-trip' ? '✈️ AI Trip Planner' : undefined} />;
+      case 'ai': {
+        let aiHandoffPrompt: string | undefined;
+        let aiHandoffLabel: string | undefined;
+        if (screenHint === 'plan-trip') {
+          aiHandoffPrompt = "I'd like to plan a trip with your help. Please ask me where I want to go, roughly when I want to travel, and how many days. Once you have the key details, give me a brief trip overview so I can confirm before you create it.";
+          aiHandoffLabel = '✈️ AI Trip Planner';
+        } else if (screenHint?.startsWith('chat:')) {
+          try {
+            const payload = JSON.parse(decodeURIComponent(escape(atob(screenHint.slice(5)))));
+            aiHandoffPrompt = payload.prompt;
+            aiHandoffLabel = payload.label;
+          } catch {}
+        }
+        return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} forecast={forecast} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={aiHandoffPrompt} handoffLabel={aiHandoffLabel} />;
+      }
       case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} onSetLocation={(loc) => {
         // Stash the user's real/home location the first time a trip overrides it
         if (!homeLocationRef.current) {
