@@ -69,6 +69,10 @@ interface Props {
   handoffPrompt?: string;
   /** Visible mode label shown in the header when in support handoff. */
   handoffLabel?: string;
+  /** When set, the AI is editing this trip's itinerary — enables "Apply changes" button. */
+  itineraryTripId?: string;
+  /** Called when user taps "Apply changes" on a parsed itinerary block. */
+  onApplyItinerary?: (tripId: string, items: Array<{ day: number; time: string; title: string }>) => void;
 }
 
 function placeTypeToHint(type: string): string {
@@ -80,6 +84,27 @@ function placeTypeToHint(type: string): string {
   if (t.includes('shop') || t.includes('store') || t.includes('mall')) return 'shopping';
   return 'food';
 }
+
+/** Extract a fenced ```kipita-itinerary [...] ``` JSON block from an AI message. */
+function parseItineraryBlock(text: string): Array<{ day: number; time: string; title: string }> | null {
+  if (!text) return null;
+  const m = text.match(/```kipita-itinerary\s*([\s\S]*?)```/);
+  if (!m) return null;
+  try {
+    const parsed = JSON.parse(m[1].trim());
+    if (!Array.isArray(parsed)) return null;
+    const items = parsed
+      .map((it: any) => ({
+        day: Number(it?.day) || 1,
+        time: typeof it?.time === 'string' ? it.time : '12:00',
+        title: String(it?.title || '').trim(),
+      }))
+      .filter(it => it.title);
+    return items.length > 0 ? items : null;
+  } catch { return null; }
+}
+
+
 
 // ── Live Stats Bar ────────────────────────────────────────────────────────────
 function StatsBar({
@@ -403,8 +428,10 @@ export default function AIScreen({
   weather, forecast, advisoryScore, trips,
   onCreateTrip, onBack, onSwitchTab,
   handoffPrompt, handoffLabel,
+  itineraryTripId, onApplyItinerary,
 }: Props) {
   const [messages, setMessages]         = useState<ChatMessage[]>([]);
+  const [appliedFor, setAppliedFor]     = useState<Set<string>>(new Set());
   const [suggestions, setSuggestions]   = useState<string[]>([]);
   const [input, setInput]               = useState('');
   const [loading, setLoading]           = useState(false);
@@ -679,18 +706,23 @@ export default function AIScreen({
   useEffect(() => {
     if (!handoffPrompt || handoffSentRef.current) return;
     handoffSentRef.current = true;
-    // Seed an intro message appropriate for the handoff type
-    const isTripPlanner = handoffLabel?.includes('Trip Planner') || handoffLabel?.includes('✈️');
+    const isItineraryEdit = !!itineraryTripId;
+    const isTripPlanner = !isItineraryEdit && (handoffLabel?.includes('Trip Planner') || handoffLabel?.includes('✈️'));
     setMessages([{
       id: 'handoff-intro',
       role: 'ai',
-      text: isTripPlanner
-        ? `✈️ **AI Trip Planner** — Let's plan your perfect trip!\n\nWhere would you like to go, and roughly when?`
-        : `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
+      text: isItineraryEdit
+        ? `✈️ **${handoffLabel || 'Itinerary chat'}** — I've loaded your current itinerary. Tell me what to change and I'll propose a revision you can apply with one tap.`
+        : isTripPlanner
+          ? `✈️ **AI Trip Planner** — Let's plan your perfect trip!\n\nWhere would you like to go, and roughly when?`
+          : `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
       timestamp: Date.now(),
     }]);
-    // For trip planner, the AI intro already asks the opening question — let user respond naturally.
-    // For support handoffs, auto-send the prompt so the AI has full context immediately.
+    if (isItineraryEdit) {
+      const augmented = handoffPrompt + `\n\nIMPORTANT: Whenever you propose a revised itinerary, end your reply with a fenced code block exactly in this format (no commentary inside it):\n\n\`\`\`kipita-itinerary\n[{"day":1,"time":"09:00","title":"Activity name"}]\n\`\`\`\n\nInclude the FULL revised itinerary in the block (every day, every item), using 24-hour HH:MM times. The user will tap "Apply changes" to write it into their trip.`;
+      const t = setTimeout(() => sendMessage(augmented), 50);
+      return () => clearTimeout(t);
+    }
     if (!isTripPlanner) {
       const t = setTimeout(() => sendMessage(handoffPrompt), 50);
       return () => clearTimeout(t);
@@ -742,9 +774,38 @@ export default function AIScreen({
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {messages.map((msg, idx) => {
           const isNewest = idx === messages.length - 1 && msg.role === 'ai';
+          const parsedItin = msg.role === 'ai' && itineraryTripId ? parseItineraryBlock(msg.text) : null;
+          const displayMsg = parsedItin
+            ? { ...msg, text: msg.text.replace(/```kipita-itinerary[\s\S]*?```/g, '').trim() }
+            : msg;
+          const alreadyApplied = appliedFor.has(msg.id);
           return (
             <div key={msg.id} ref={isNewest ? lastAiMsgRef : undefined}>
-              <MessageBubble msg={msg} onInAppNav={onSwitchTab} />
+              <MessageBubble msg={displayMsg} onInAppNav={onSwitchTab} />
+              {parsedItin && parsedItin.length > 0 && itineraryTripId && (
+                <div className="flex flex-col items-start gap-1.5 mt-2 ml-1">
+                  <button
+                    onClick={() => {
+                      onApplyItinerary?.(itineraryTripId, parsedItin);
+                      setAppliedFor(prev => { const next = new Set(prev); next.add(msg.id); return next; });
+                      setTripCreatedToast('Itinerary updated');
+                      setTimeout(() => setTripCreatedToast(''), 2500);
+                    }}
+                    disabled={alreadyApplied}
+                    className={`px-4 py-2 rounded-full text-xs font-bold shadow-md transition-all active:scale-95 ${alreadyApplied ? 'bg-muted text-muted-foreground' : 'bg-kipita-green text-white hover:opacity-90'}`}
+                  >
+                    {alreadyApplied ? '✓ Applied to itinerary' : `✨ Apply changes (${parsedItin.length} items)`}
+                  </button>
+                  {!alreadyApplied && (
+                    <button
+                      onClick={() => onSwitchTab?.('trips')}
+                      className="text-[10px] text-muted-foreground underline"
+                    >
+                      Open itinerary first
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

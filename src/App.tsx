@@ -378,6 +378,7 @@ export default function App() {
       case 'ai': {
         let aiHandoffPrompt: string | undefined;
         let aiHandoffLabel: string | undefined;
+        let aiItineraryTripId: string | undefined;
         if (screenHint === 'plan-trip') {
           aiHandoffPrompt = "I'd like to plan a trip with your help. Please ask me where I want to go, roughly when I want to travel, and how many days. Once you have the key details, give me a brief trip overview so I can confirm before you create it.";
           aiHandoffLabel = '✈️ AI Trip Planner';
@@ -386,9 +387,23 @@ export default function App() {
             const payload = JSON.parse(decodeURIComponent(escape(atob(screenHint.slice(5)))));
             aiHandoffPrompt = payload.prompt;
             aiHandoffLabel = payload.label;
+            aiItineraryTripId = payload.tripId;
           } catch {}
         }
-        return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} forecast={forecast} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={aiHandoffPrompt} handoffLabel={aiHandoffLabel} />;
+        const handleApplyItinerary = (tripId: string, items: Array<{ day: number; time: string; title: string }>) => {
+          saveTrips(trips.map(t => {
+            if (t.id !== tripId) return t;
+            const newItems = items.map((it, idx) => ({
+              id: `i-${Date.now()}-${idx}`,
+              day: Number(it.day) || 1,
+              time: typeof it.time === 'string' ? it.time : '12:00',
+              title: String(it.title || 'Activity'),
+              done: false,
+            }));
+            return { ...t, items: newItems };
+          }));
+        };
+        return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} forecast={forecast} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={aiHandoffPrompt} handoffLabel={aiHandoffLabel} itineraryTripId={aiItineraryTripId} onApplyItinerary={handleApplyItinerary} />;
       }
       case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} onSetLocation={(loc) => {
         // Stash the user's real/home location the first time a trip overrides it

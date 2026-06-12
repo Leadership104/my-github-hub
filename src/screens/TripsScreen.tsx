@@ -779,7 +779,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                       '',
                       'I want your help refining this itinerary — suggest improvements, swap activities, fix timing, add ideas, or remove things. Ask me what I want to change.',
                     ].join('\n');
-                    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ prompt, label: `✈️ ${trip.dest} itinerary chat` }))));
+                    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ prompt, label: `✈️ ${trip.dest} itinerary chat`, tripId: trip.id }))));
                     onSwitchTab?.('ai', `chat:${encoded}`);
                   }}
                   className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
