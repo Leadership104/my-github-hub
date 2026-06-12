@@ -685,18 +685,23 @@ export default function AIScreen({
   useEffect(() => {
     if (!handoffPrompt || handoffSentRef.current) return;
     handoffSentRef.current = true;
-    // Seed an intro message appropriate for the handoff type
-    const isTripPlanner = handoffLabel?.includes('Trip Planner') || handoffLabel?.includes('✈️');
+    const isItineraryEdit = !!itineraryTripId;
+    const isTripPlanner = !isItineraryEdit && (handoffLabel?.includes('Trip Planner') || handoffLabel?.includes('✈️'));
     setMessages([{
       id: 'handoff-intro',
       role: 'ai',
-      text: isTripPlanner
-        ? `✈️ **AI Trip Planner** — Let's plan your perfect trip!\n\nWhere would you like to go, and roughly when?`
-        : `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
+      text: isItineraryEdit
+        ? `✈️ **${handoffLabel || 'Itinerary chat'}** — I've loaded your current itinerary. Tell me what to change and I'll propose a revision you can apply with one tap.`
+        : isTripPlanner
+          ? `✈️ **AI Trip Planner** — Let's plan your perfect trip!\n\nWhere would you like to go, and roughly when?`
+          : `🆘 **${handoffLabel || 'Support handoff'}** — I've got the full context. Working on next steps now…`,
       timestamp: Date.now(),
     }]);
-    // For trip planner, the AI intro already asks the opening question — let user respond naturally.
-    // For support handoffs, auto-send the prompt so the AI has full context immediately.
+    if (isItineraryEdit) {
+      const augmented = handoffPrompt + `\n\nIMPORTANT: Whenever you propose a revised itinerary, end your reply with a fenced code block exactly in this format (no commentary inside it):\n\n\`\`\`kipita-itinerary\n[{"day":1,"time":"09:00","title":"Activity name"}]\n\`\`\`\n\nInclude the FULL revised itinerary in the block (every day, every item), using 24-hour HH:MM times. The user will tap "Apply changes" to write it into their trip.`;
+      const t = setTimeout(() => sendMessage(augmented), 50);
+      return () => clearTimeout(t);
+    }
     if (!isTripPlanner) {
       const t = setTimeout(() => sendMessage(handoffPrompt), 50);
       return () => clearTimeout(t);
