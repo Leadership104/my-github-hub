@@ -766,17 +766,25 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
                   {editMode ? 'Done' : 'Edit'}
                 </button>
                 <button
-                  onClick={() => { setSelectedTrip(null); setAiHandoff(null); setShowAiPlanner(true); }}
+                  onClick={() => {
+                    const items = (trip.items || []).slice().sort((a, b) => (a.day - b.day) || String(a.time).localeCompare(String(b.time)));
+                    const itinLines = items.length
+                      ? items.map(it => `• Day ${it.day} ${it.time || ''} — ${it.title}`).join('\n')
+                      : '(no itinerary items yet)';
+                    const prompt = [
+                      `Let's chat about my trip to ${trip.dest}, ${trip.country} (${trip.start} → ${trip.end}).`,
+                      '',
+                      'Current itinerary:',
+                      itinLines,
+                      '',
+                      'I want your help refining this itinerary — suggest improvements, swap activities, fix timing, add ideas, or remove things. Ask me what I want to change.',
+                    ].join('\n');
+                    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify({ prompt, label: `✈️ ${trip.dest} itinerary chat` }))));
+                    onSwitchTab?.('ai', `chat:${encoded}`);
+                  }}
                   className="text-xs font-bold text-kipita-red bg-kipita-red/10 px-3 py-1.5 rounded-full flex items-center gap-1"
                 >
                   ✨ Ask AI
-                </button>
-                <button
-                  onClick={() => openSupportHandoff({ trip, topic: `my trip to ${trip.dest}`, label: `🆘 ${trip.dest} trip support` })}
-                  className="text-xs font-bold text-foreground bg-muted px-3 py-1.5 rounded-full flex items-center gap-1"
-                >
-                  <span className="ms text-sm">support_agent</span>
-                  Help
                 </button>
                 <button
                   onClick={() => setExportTrip(trip)}
