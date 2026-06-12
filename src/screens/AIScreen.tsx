@@ -85,6 +85,24 @@ function placeTypeToHint(type: string): string {
   return 'food';
 }
 
+/** Extract a fenced ```kipita-itinerary [...] ``` JSON block from an AI message. */
+function parseItineraryBlock(text: string): Array<{ day: number; time: string; title: string }> | null {
+  if (!text) return null;
+  const m = text.match(/```kipita-itinerary\s*([\s\S]*?)```/);
+  if (!m) return null;
+  try {
+    const parsed = JSON.parse(m[1].trim());
+    if (!Array.isArray(parsed)) return null;
+    const items = parsed
+      .map((it: any) => ({
+        day: Number(it?.day) || 1,
+        time: typeof it?.time === 'string' ? it.time : '12:00',
+        title: String(it?.title || '').trim(),
+      }))
+      .filter(it => it.title);
+    return items.length > 0 ? items : null;
+  } catch { return null; }
+
 // ── Live Stats Bar ────────────────────────────────────────────────────────────
 function StatsBar({
   weather, forecast, advisoryScore, locationName,
