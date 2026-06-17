@@ -153,24 +153,7 @@ const LEVEL_COLOR: Record<TravelerWarning['level'], string> = {
 export default function SafetyScreen({ locationName, countryCode, advisoryScore, lat, lng, onBack }: Props) {
   const [backend, setBackend] = useState<BackendPayload | null>(null);
   const [result, setResult] = useState<TravelSafetyResult | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'advisories' | 'crime' | 'neighborhood' | 'sources'>('overview');
-  const [showSources, setShowSources] = useState<boolean>(() => {
-    try { return localStorage.getItem('kip_show_safety_sources') === '1'; } catch { return false; }
-  });
-  useEffect(() => {
-    const sync = () => {
-      try { setShowSources(localStorage.getItem('kip_show_safety_sources') === '1'); } catch {}
-    };
-    window.addEventListener('kip-show-sources-changed', sync);
-    window.addEventListener('storage', sync);
-    return () => {
-      window.removeEventListener('kip-show-sources-changed', sync);
-      window.removeEventListener('storage', sync);
-    };
-  }, []);
-  useEffect(() => {
-    if (activeTab === 'sources' && !showSources) setActiveTab('overview');
-  }, [activeTab, showSources]);
+  const [activeTab, setActiveTab] = useState<'overview' | 'advisories' | 'crime' | 'neighborhood'>('overview');
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const country = (countryCode || 'US').toUpperCase();
@@ -253,7 +236,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center space-y-2">
             <div className="w-8 h-8 border-2 border-kipita-red border-t-transparent rounded-full animate-spin mx-auto" />
-            <p className="text-xs text-muted-foreground">Querying {isLive ? '17' : '—'} live data sources…</p>
+            <p className="text-xs text-muted-foreground">Loading safety data…</p>
           </div>
         </div>
       </div>
@@ -263,7 +246,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
   const scoreColor = getRiskColor(result.riskBand);
   const needleX = (GCX + (GR - 8) * Math.cos(scoreAngle(result.finalSafetyScore))).toFixed(1);
   const needleY = (GCY + (GR - 8) * Math.sin(scoreAngle(result.finalSafetyScore))).toFixed(1);
-  const sourceCount = (backend?.advisorySources?.length ?? 0) + 6;
+  
 
   return (
     <div className="flex flex-col h-full overflow-hidden screen-enter">
@@ -276,9 +259,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           <p className="text-white text-sm font-bold truncate">Safety — {locationName}</p>
           <p className="text-white/50 text-[10px]">
             {isLive
-              ? (showSources
-                  ? `Live · ${sourceCount} sources · US State Dept · UK FCDO · Canada · Australia · ACLED · UNODC`
-                  : 'Live data · auto-refreshing')
+              ? 'Live data · auto-refreshing'
               : backend ? 'Connecting…' : 'Calibrated baseline'}
           </p>
         </div>
@@ -293,9 +274,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
 
       {/* Tab bar */}
       <div className="flex border-b border-border bg-card flex-shrink-0 overflow-x-auto">
-        {(['overview', 'advisories', 'crime', 'neighborhood', 'sources'] as const)
-          .filter(tab => showSources || tab !== 'sources')
-          .map(tab => (
+        {(['overview', 'advisories', 'crime', 'neighborhood'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -347,7 +326,6 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
               <div className="flex gap-2 mt-1 flex-wrap justify-center">
                 {[
                   ['Confidence', `${result.confidence} (${result.confidencePercent}%)`],
-                  ['Sources', `${(backend?.advisorySources?.length ?? 0) + 6} verified`],
                   ['Updated', relativeTime(backend?.fetchedAt)],
                 ].map(([k, v]) => (
                   <div key={k} className="bg-muted rounded-lg px-2.5 py-1 text-center">
@@ -467,7 +445,7 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
               </p>
               <p className="text-xs font-semibold text-foreground">Not applicable within the United States.</p>
               <p className="text-[11px] text-muted-foreground leading-snug">
-                Foreign-government travel advisories are issued for international destinations. For domestic safety, this screen uses local data sources — FBI Crime Data Explorer, UCR/NIBRS, NOAA weather alerts, USGS earthquakes, NASA FIRMS wildfires, and city/neighborhood crime statistics.
+                Foreign-government travel advisories are issued for international destinations. For domestic safety, see the Crime and Areas tabs for local risk insights.
               </p>
               <button
                 onClick={() => setActiveTab('crime')}
@@ -498,10 +476,6 @@ export default function SafetyScreen({ locationName, countryCode, advisoryScore,
           />
         )}
 
-        {/* ── SOURCES TAB ──────────────────────────────────────────────── */}
-        {activeTab === 'sources' && showSources && (
-          <LiveFeedsPanel backend={backend} isLive={isLive} />
-        )}
       </div>
     </div>
   );
@@ -641,7 +615,7 @@ function AdvisoryComparisonPanel({ result, backend }: { result: TravelSafetyResu
   const minLevel = Math.min(...advisories.map(a => a.level));
   const spread = maxLevel - minLevel;
   const agreementColor = spread === 0 ? '#22c55e' : spread === 1 ? '#eab308' : '#ef4444';
-  const agreementLabel = spread === 0 ? 'FULL AGREEMENT' : spread === 1 ? 'MINOR DISAGREEMENT' : 'SOURCES CONFLICT';
+  const agreementLabel = spread === 0 ? 'FULL AGREEMENT' : spread === 1 ? 'MINOR DISAGREEMENT' : 'CONFLICTING ASSESSMENT';
 
   return (
     <div className="bg-card border border-border rounded-kipita p-4">
@@ -658,7 +632,7 @@ function AdvisoryComparisonPanel({ result, backend }: { result: TravelSafetyResu
       {spread >= 2 && (
         <div className="mb-3 p-2.5 rounded-kipita border border-amber-500/40 bg-amber-500/10">
           <p className="text-[10px] font-semibold text-amber-500">
-            ⚠ Advisory sources disagree significantly. Using most conservative rating per protocol.
+            ⚠ Assessments disagree significantly. Using the most conservative rating per protocol.
           </p>
         </div>
       )}
@@ -670,7 +644,7 @@ function AdvisoryComparisonPanel({ result, backend }: { result: TravelSafetyResu
             <div key={i} className="border border-border/60 rounded-kipita p-3">
               <div className="flex items-start justify-between gap-2 mb-1">
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground">{a.source}</p>
+                  <p className="text-xs font-semibold text-foreground">Assessment {i + 1}</p>
                   <p className="text-[9px] text-muted-foreground">{relativeTime(a.lastUpdated)}</p>
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">
@@ -702,7 +676,7 @@ function AdvisoryComparisonPanel({ result, backend }: { result: TravelSafetyResu
 
       {/* Conservative note */}
       <p className="text-[9px] text-muted-foreground/60 text-center mt-3 pt-2 border-t border-border/40">
-        When sources disagree, the most conservative (highest) advisory level is used.
+        When assessments disagree, the most conservative (highest) advisory level is used.
       </p>
     </div>
   );
@@ -738,7 +712,7 @@ function ReconciliationPanel({ backend }: { backend: BackendPayload | null }) {
         </div>
       </div>
       <p className="text-[9px] text-muted-foreground/60 text-center">
-        Confidence-weighted averaging with conservative bias when sources disagree.
+        Confidence-weighted averaging with conservative bias when assessments disagree.
       </p>
     </div>
   );
@@ -816,9 +790,6 @@ function CrimeMetricsPanel({ result, backend: _backend }: { result: TravelSafety
             );
           })}
         </div>
-        <p className="text-[9px] text-muted-foreground/60 mt-3">
-          Levels are derived from UNODC, FBI UCR, and local statistical agencies.
-        </p>
       </div>
 
 
@@ -867,7 +838,7 @@ function CrimeMetricsPanel({ result, backend: _backend }: { result: TravelSafety
                 ⚠ <strong>Ranked #{dr.nationalRank}</strong> most dangerous nationally — score capped at 60
               </p>
             )}
-            <p className="text-[9px] text-muted-foreground mt-1">Source: {dr.source}</p>
+            
           </div>
         </div>
       )}
@@ -1071,7 +1042,7 @@ function HeadlinesPanel({ headlines }: { headlines: { title: string; link: strin
     <div className="bg-card border border-border rounded-kipita p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">LOCAL SAFETY HEADLINES</p>
-        <span className="text-[9px] text-muted-foreground">Past 7 days · Google News</span>
+        <span className="text-[9px] text-muted-foreground">Past 7 days</span>
       </div>
       <div className="space-y-2.5">
         {headlines.map((h, i) => (

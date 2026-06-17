@@ -772,26 +772,6 @@ export default function App() {
                   <span className="ms text-lg text-muted-foreground">edit</span> {t('profile.edit')}
                 </button>
                 <button
-                  onClick={() => {
-                    const next = localStorage.getItem('kip_show_safety_sources') !== '1';
-                    localStorage.setItem('kip_show_safety_sources', next ? '1' : '0');
-                    window.dispatchEvent(new Event('kip-show-sources-changed'));
-                    // Force re-render of menu
-                    setShowProfile(false);
-                    setTimeout(() => setShowProfile(true), 0);
-                  }}
-                  className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors">
-                  <span className="flex items-center gap-3">
-                    <span className="ms text-lg text-muted-foreground">shield</span> Show safety sources
-                  </span>
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                    (typeof window !== 'undefined' && localStorage.getItem('kip_show_safety_sources') === '1')
-                      ? 'bg-kipita-red/20 text-kipita-red' : 'bg-muted-foreground/20 text-muted-foreground'
-                  }`}>
-                    {(typeof window !== 'undefined' && localStorage.getItem('kip_show_safety_sources') === '1') ? 'ON' : 'OFF'}
-                  </span>
-                </button>
-                <button
                   onClick={() => setShowLangPicker(true)}
                   className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-sm font-medium hover:bg-muted transition-colors"
                 >
