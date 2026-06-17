@@ -1042,7 +1042,7 @@ function HeadlinesPanel({ headlines }: { headlines: { title: string; link: strin
     <div className="bg-card border border-border rounded-kipita p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-[10px] font-semibold text-muted-foreground tracking-widest">LOCAL SAFETY HEADLINES</p>
-        <span className="text-[9px] text-muted-foreground">Past 7 days · Google News</span>
+        <span className="text-[9px] text-muted-foreground">Past 7 days</span>
       </div>
       <div className="space-y-2.5">
         {headlines.map((h, i) => (
