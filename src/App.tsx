@@ -358,6 +358,21 @@ export default function App() {
     } catch { showToast('Could not save location'); }
   }, [user, locationName, fullAddress, countryCode, lat, lng, savedLocations, showToast]);
 
+  const saveLocation = useCallback(async (loc: LocationState) => {
+    if (!user) { showToast('Sign in to save locations'); return; }
+    if (savedLocations.some(s => s.name === loc.name)) { showToast('Already saved'); return; }
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.from('saved_locations').insert({
+        user_id: user.id, name: loc.name, full_address: loc.fullAddress ?? null,
+        country_code: loc.countryCode ?? null, lat: loc.lat, lng: loc.lng,
+      }).select().single();
+      if (error) throw error;
+      setSavedLocations(prev => [data as SavedLoc, ...prev]);
+      showToast('⭐ Saved');
+    } catch { showToast('Could not save'); }
+  }, [user, savedLocations, showToast]);
+
   const deleteSavedLocation = useCallback(async (id: string) => {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
@@ -366,6 +381,7 @@ export default function App() {
       showToast('Removed');
     } catch { showToast('Could not remove'); }
   }, [showToast]);
+
 
 
   const detectCurrentLocation = useCallback(() => {
