@@ -303,23 +303,25 @@ export default function App() {
         const d = await r.json();
         setLocationSuggestions(d.map((item: any) => {
           const a = item.address || {};
-          // Prefer the most specific named place the user likely typed.
-          const locality =
-            a.neighbourhood || a.suburb || a.quarter || a.hamlet ||
-            a.village || a.town || a.city_district || a.city ||
-            a.municipality || a.county || item.namedetails?.name ||
-            item.display_name?.split(',')[0] || val;
           const cc = a.country_code?.toUpperCase() || '';
           const stateAbbr = a.ISO3166_2_lvl4?.split('-')[1] || '';
+          const city = a.city || a.town || a.village || a.hamlet || a.municipality || a.county || '';
+          const street = [a.house_number, a.road].filter(Boolean).join(' ');
+          // Prefer street address when present (specific lookups like "10800 Gibson Blvd SE").
+          const locality = street ||
+            a.neighbourhood || a.suburb || a.quarter ||
+            a.city_district || city ||
+            item.namedetails?.name || item.display_name?.split(',')[0] || val;
           const region = cc === 'US'
             ? (stateAbbr || a.state || '')
-            : (a.city || a.town || a.state || '');
+            : (city || a.state || '');
           const postcode = a.postcode || '';
-          // US cities: "City, ST, USA" — all other countries: "Place, Region, CC"
           const displayCountry = cc === 'US' ? 'USA' : cc;
           const parts: string[] = [locality];
-          if (region && region !== locality) parts.push(region);
-          if (postcode && !region && cc !== 'US') parts.push(postcode);
+          if (street && city && city !== locality) parts.push(city);
+          if (region && region !== locality && !parts.includes(region)) parts.push(region);
+          if (cc === 'US' && postcode) parts.push(postcode);
+          else if (postcode && !region) parts.push(postcode);
           if (displayCountry) parts.push(displayCountry);
           return {
             lat: parseFloat(item.lat),
@@ -356,6 +358,21 @@ export default function App() {
     } catch { showToast('Could not save location'); }
   }, [user, locationName, fullAddress, countryCode, lat, lng, savedLocations, showToast]);
 
+  const saveLocation = useCallback(async (loc: LocationState) => {
+    if (!user) { showToast('Sign in to save locations'); return; }
+    if (savedLocations.some(s => s.name === loc.name)) { showToast('Already saved'); return; }
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.from('saved_locations').insert({
+        user_id: user.id, name: loc.name, full_address: loc.fullAddress ?? null,
+        country_code: loc.countryCode ?? null, lat: loc.lat, lng: loc.lng,
+      }).select().single();
+      if (error) throw error;
+      setSavedLocations(prev => [data as SavedLoc, ...prev]);
+      showToast('⭐ Saved');
+    } catch { showToast('Could not save'); }
+  }, [user, savedLocations, showToast]);
+
   const deleteSavedLocation = useCallback(async (id: string) => {
     try {
       const { supabase } = await import('@/integrations/supabase/client');
@@ -364,6 +381,7 @@ export default function App() {
       showToast('Removed');
     } catch { showToast('Could not remove'); }
   }, [showToast]);
+
 
 
   const detectCurrentLocation = useCallback(() => {
@@ -654,15 +672,21 @@ export default function App() {
                 <div className="mb-3">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Search Results</p>
                   {locationSuggestions.map((s, i) => (
-                    <button key={i} onClick={() => selectLocation(s)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors text-left">
-                      <span className="ms text-muted-foreground text-lg">location_on</span>
-                      <span className="text-sm font-semibold">{s.name}</span>
-                    </button>
+                    <div key={i} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors">
+                      <button onClick={() => selectLocation(s)} className="flex-1 flex items-center gap-3 text-left min-w-0">
+                        <span className="ms text-muted-foreground text-lg">location_on</span>
+                        <span className="text-sm font-semibold truncate">{s.name}</span>
+                      </button>
+                      {user && (
+                        <button onClick={() => saveLocation(s)} aria-label="Save location"
+                          className="ms text-kipita-gold hover:text-kipita-red text-lg p-1">star</button>
+                      )}
+                    </div>
                   ))}
                   <hr className="border-border my-2" />
                 </div>
               )}
+
 
               {/* Preset locations */}
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Popular Cities</p>
