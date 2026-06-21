@@ -303,23 +303,25 @@ export default function App() {
         const d = await r.json();
         setLocationSuggestions(d.map((item: any) => {
           const a = item.address || {};
-          // Prefer the most specific named place the user likely typed.
-          const locality =
-            a.neighbourhood || a.suburb || a.quarter || a.hamlet ||
-            a.village || a.town || a.city_district || a.city ||
-            a.municipality || a.county || item.namedetails?.name ||
-            item.display_name?.split(',')[0] || val;
           const cc = a.country_code?.toUpperCase() || '';
           const stateAbbr = a.ISO3166_2_lvl4?.split('-')[1] || '';
+          const city = a.city || a.town || a.village || a.hamlet || a.municipality || a.county || '';
+          const street = [a.house_number, a.road].filter(Boolean).join(' ');
+          // Prefer street address when present (specific lookups like "10800 Gibson Blvd SE").
+          const locality = street ||
+            a.neighbourhood || a.suburb || a.quarter ||
+            a.city_district || city ||
+            item.namedetails?.name || item.display_name?.split(',')[0] || val;
           const region = cc === 'US'
             ? (stateAbbr || a.state || '')
-            : (a.city || a.town || a.state || '');
+            : (city || a.state || '');
           const postcode = a.postcode || '';
-          // US cities: "City, ST, USA" — all other countries: "Place, Region, CC"
           const displayCountry = cc === 'US' ? 'USA' : cc;
           const parts: string[] = [locality];
-          if (region && region !== locality) parts.push(region);
-          if (postcode && !region && cc !== 'US') parts.push(postcode);
+          if (street && city && city !== locality) parts.push(city);
+          if (region && region !== locality && !parts.includes(region)) parts.push(region);
+          if (cc === 'US' && postcode) parts.push(postcode);
+          else if (postcode && !region) parts.push(postcode);
           if (displayCountry) parts.push(displayCountry);
           return {
             lat: parseFloat(item.lat),
