@@ -182,6 +182,17 @@ export default function App() {
   const [locationSearch, setLocationSearch] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState<LocationState[]>([]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  type SavedLoc = { id: string; name: string; full_address: string | null; country_code: string | null; lat: number; lng: number };
+  const [savedLocations, setSavedLocations] = useState<SavedLoc[]>([]);
+  const loadSavedLocations = useCallback(async () => {
+    if (!user) { setSavedLocations([]); return; }
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase.from('saved_locations').select('*').order('created_at', { ascending: false });
+      setSavedLocations((data as SavedLoc[]) || []);
+    } catch { /* ignore */ }
+  }, [user]);
+  useEffect(() => { loadSavedLocations(); }, [loadSavedLocations]);
 
   const { lat, lng, name: locationName, fullAddress, countryCode, updateLocation } = useLocation();
   const [toast, setToast] = useState<string | null>(null);
@@ -328,6 +339,32 @@ export default function App() {
     setLocationSearch('');
     setLocationSuggestions([]);
   }, [updateLocation]);
+
+  const saveCurrentLocation = useCallback(async () => {
+    if (!user) { showToast('Sign in to save locations'); return; }
+    if (!locationName || locationName === 'Detecting…') { showToast('No location to save'); return; }
+    if (savedLocations.some(s => s.name === locationName)) { showToast('Already saved'); return; }
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.from('saved_locations').insert({
+        user_id: user.id, name: locationName, full_address: fullAddress ?? null,
+        country_code: countryCode ?? null, lat, lng,
+      }).select().single();
+      if (error) throw error;
+      setSavedLocations(prev => [data as SavedLoc, ...prev]);
+      showToast('⭐ Location saved');
+    } catch { showToast('Could not save location'); }
+  }, [user, locationName, fullAddress, countryCode, lat, lng, savedLocations, showToast]);
+
+  const deleteSavedLocation = useCallback(async (id: string) => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      await supabase.from('saved_locations').delete().eq('id', id);
+      setSavedLocations(prev => prev.filter(s => s.id !== id));
+      showToast('Removed');
+    } catch { showToast('Could not remove'); }
+  }, [showToast]);
+
 
   const detectCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -578,7 +615,39 @@ export default function App() {
                 </div>
               </button>
 
+              {/* Save current location (logged-in only) */}
+              {user && (
+                <button onClick={saveCurrentLocation}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-kipita hover:bg-muted transition-colors text-left mb-2">
+                  <span className="ms text-kipita-gold text-xl">star</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold">Save current location</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{locationName}</div>
+                  </div>
+                </button>
+              )}
+
               <hr className="border-border my-2" />
+
+              {/* Saved locations (logged-in only) */}
+              {user && savedLocations.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Saved Locations</p>
+                  {savedLocations.map(s => (
+                    <div key={s.id} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors">
+                      <button onClick={() => selectLocation({ lat: s.lat, lng: s.lng, name: s.name, fullAddress: s.full_address || undefined, countryCode: s.country_code || undefined })}
+                        className="flex-1 flex items-center gap-3 text-left min-w-0">
+                        <span className="ms text-kipita-gold text-lg">star</span>
+                        <span className="text-sm font-semibold truncate">{s.name}</span>
+                      </button>
+                      <button onClick={() => deleteSavedLocation(s.id)} aria-label="Remove saved location"
+                        className="ms text-muted-foreground hover:text-kipita-red text-base p-1">delete</button>
+                    </div>
+                  ))}
+                  <hr className="border-border my-2" />
+                </div>
+              )}
+
 
               {/* Search results */}
               {locationSuggestions.length > 0 && (

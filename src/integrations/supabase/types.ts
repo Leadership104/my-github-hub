@@ -98,6 +98,39 @@ export type Database = {
         }
         Relationships: []
       }
+      saved_locations: {
+        Row: {
+          country_code: string | null
+          created_at: string
+          full_address: string | null
+          id: string
+          lat: number
+          lng: number
+          name: string
+          user_id: string
+        }
+        Insert: {
+          country_code?: string | null
+          created_at?: string
+          full_address?: string | null
+          id?: string
+          lat: number
+          lng: number
+          name: string
+          user_id: string
+        }
+        Update: {
+          country_code?: string | null
+          created_at?: string
+          full_address?: string | null
+          id?: string
+          lat?: number
+          lng?: number
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       signup_notifications: {
         Row: {
           created_at: string
