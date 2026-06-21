@@ -672,15 +672,21 @@ export default function App() {
                 <div className="mb-3">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Search Results</p>
                   {locationSuggestions.map((s, i) => (
-                    <button key={i} onClick={() => selectLocation(s)}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors text-left">
-                      <span className="ms text-muted-foreground text-lg">location_on</span>
-                      <span className="text-sm font-semibold">{s.name}</span>
-                    </button>
+                    <div key={i} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors">
+                      <button onClick={() => selectLocation(s)} className="flex-1 flex items-center gap-3 text-left min-w-0">
+                        <span className="ms text-muted-foreground text-lg">location_on</span>
+                        <span className="text-sm font-semibold truncate">{s.name}</span>
+                      </button>
+                      {user && (
+                        <button onClick={() => saveLocation(s)} aria-label="Save location"
+                          className="ms text-kipita-gold hover:text-kipita-red text-lg p-1">star</button>
+                      )}
+                    </div>
                   ))}
                   <hr className="border-border my-2" />
                 </div>
               )}
+
 
               {/* Preset locations */}
               <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Popular Cities</p>
