@@ -615,7 +615,39 @@ export default function App() {
                 </div>
               </button>
 
+              {/* Save current location (logged-in only) */}
+              {user && (
+                <button onClick={saveCurrentLocation}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-kipita hover:bg-muted transition-colors text-left mb-2">
+                  <span className="ms text-kipita-gold text-xl">star</span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-bold">Save current location</div>
+                    <div className="text-[10px] text-muted-foreground truncate">{locationName}</div>
+                  </div>
+                </button>
+              )}
+
               <hr className="border-border my-2" />
+
+              {/* Saved locations (logged-in only) */}
+              {user && savedLocations.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">Saved Locations</p>
+                  {savedLocations.map(s => (
+                    <div key={s.id} className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors">
+                      <button onClick={() => selectLocation({ lat: s.lat, lng: s.lng, name: s.name, fullAddress: s.full_address || undefined, countryCode: s.country_code || undefined })}
+                        className="flex-1 flex items-center gap-3 text-left min-w-0">
+                        <span className="ms text-kipita-gold text-lg">star</span>
+                        <span className="text-sm font-semibold truncate">{s.name}</span>
+                      </button>
+                      <button onClick={() => deleteSavedLocation(s.id)} aria-label="Remove saved location"
+                        className="ms text-muted-foreground hover:text-kipita-red text-base p-1">delete</button>
+                    </div>
+                  ))}
+                  <hr className="border-border my-2" />
+                </div>
+              )}
+
 
               {/* Search results */}
               {locationSuggestions.length > 0 && (
