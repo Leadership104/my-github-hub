@@ -340,6 +340,32 @@ export default function App() {
     setLocationSuggestions([]);
   }, [updateLocation]);
 
+  const saveCurrentLocation = useCallback(async () => {
+    if (!user) { showToast('Sign in to save locations'); return; }
+    if (!locationName || locationName === 'Detecting…') { showToast('No location to save'); return; }
+    if (savedLocations.some(s => s.name === locationName)) { showToast('Already saved'); return; }
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data, error } = await supabase.from('saved_locations').insert({
+        user_id: user.id, name: locationName, full_address: fullAddress ?? null,
+        country_code: countryCode ?? null, lat, lng,
+      }).select().single();
+      if (error) throw error;
+      setSavedLocations(prev => [data as SavedLoc, ...prev]);
+      showToast('⭐ Location saved');
+    } catch { showToast('Could not save location'); }
+  }, [user, locationName, fullAddress, countryCode, lat, lng, savedLocations, showToast]);
+
+  const deleteSavedLocation = useCallback(async (id: string) => {
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      await supabase.from('saved_locations').delete().eq('id', id);
+      setSavedLocations(prev => prev.filter(s => s.id !== id));
+      showToast('Removed');
+    } catch { showToast('Could not remove'); }
+  }, [showToast]);
+
+
   const detectCurrentLocation = useCallback(() => {
     if (!navigator.geolocation) {
       showToast('Location not supported on this device');
