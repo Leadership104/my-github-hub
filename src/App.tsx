@@ -182,6 +182,17 @@ export default function App() {
   const [locationSearch, setLocationSearch] = useState('');
   const [locationSuggestions, setLocationSuggestions] = useState<LocationState[]>([]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  type SavedLoc = { id: string; name: string; full_address: string | null; country_code: string | null; lat: number; lng: number };
+  const [savedLocations, setSavedLocations] = useState<SavedLoc[]>([]);
+  const loadSavedLocations = useCallback(async () => {
+    if (!user) { setSavedLocations([]); return; }
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data } = await supabase.from('saved_locations').select('*').order('created_at', { ascending: false });
+      setSavedLocations((data as SavedLoc[]) || []);
+    } catch { /* ignore */ }
+  }, [user]);
+  useEffect(() => { loadSavedLocations(); }, [loadSavedLocations]);
 
   const { lat, lng, name: locationName, fullAddress, countryCode, updateLocation } = useLocation();
   const [toast, setToast] = useState<string | null>(null);
