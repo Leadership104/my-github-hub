@@ -459,7 +459,7 @@ export default function App() {
             return { ...t, items: newItems };
           }));
         };
-        return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} forecast={forecast} advisoryScore={advisoryData?.rawScore} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={aiHandoffPrompt} handoffLabel={aiHandoffLabel} itineraryTripId={aiItineraryTripId} onApplyItinerary={handleApplyItinerary} />;
+        return <AIScreen btcPrice={btcPrice} locationName={locationName} countryCode={countryCode} lat={lat} lng={lng} weather={weather} forecast={forecast} advisoryScore={advisoryData?.rawScore} localSafetyLabel={localSafety?.label} localSafetyScore={localSafety?.score} trips={trips} onCreateTrip={handleCreateTrip} onAddBooking={handleAddBooking} onBack={goBack} onSwitchTab={switchTab} handoffPrompt={aiHandoffPrompt} handoffLabel={aiHandoffLabel} itineraryTripId={aiItineraryTripId} onApplyItinerary={handleApplyItinerary} />;
       }
       case 'trips':  return <TripsScreen trips={trips} onSaveTrips={saveTrips} onBack={goBack} onSwitchTab={switchTab} initialHint={screenHint} onSetLocation={(loc) => {
         // Stash the user's real/home location the first time a trip overrides it
