@@ -75,8 +75,10 @@ export default function LocationSafetyBar({ locationName, fullAddress, countryCo
       baseRates,
     });
     const sl = safetyLevel(result.score);
-    setSafetyResult({ score: result.score, ...sl });
-  }, [liveSafety, countryCode, locationName, isDomestic, liveRates]);
+    const resolved = { score: result.score, ...sl };
+    setSafetyResult(resolved);
+    onResolved?.(resolved);
+  }, [liveSafety, countryCode, locationName, isDomestic, liveRates, onResolved]);
 
   const level = safetyResult?.level ?? -1;
   const display = fullAddress || locationName || 'Detecting…';
