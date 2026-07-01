@@ -9,6 +9,7 @@ interface Props {
   lat?: number;
   lng?: number;
   onTap?: () => void;
+  onResolved?: (r: { score: number; level: number; label: string; color: string }) => void;
 }
 
 const DOTS = [
@@ -23,7 +24,7 @@ const DOTS = [
  * Persistent dark address + safety strip — kept consistent across every screen.
  * Shows the full address and safety dot indicator. Tapping opens the Safety screen.
  */
-export default function LocationSafetyBar({ locationName, fullAddress, countryCode, lat, lng, onTap }: Props) {
+export default function LocationSafetyBar({ locationName, fullAddress, countryCode, lat, lng, onTap, onResolved }: Props) {
   const liveSafety = useTravelSafety(countryCode);
   const [safetyResult, setSafetyResult] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
   const [liveRates, setLiveRates] = useState<Record<string, number> | null>(null);
@@ -74,8 +75,10 @@ export default function LocationSafetyBar({ locationName, fullAddress, countryCo
       baseRates,
     });
     const sl = safetyLevel(result.score);
-    setSafetyResult({ score: result.score, ...sl });
-  }, [liveSafety, countryCode, locationName, isDomestic, liveRates]);
+    const resolved = { score: result.score, ...sl };
+    setSafetyResult(resolved);
+    onResolved?.(resolved);
+  }, [liveSafety, countryCode, locationName, isDomestic, liveRates, onResolved]);
 
   const level = safetyResult?.level ?? -1;
   const display = fullAddress || locationName || 'Detecting…';
