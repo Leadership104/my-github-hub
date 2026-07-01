@@ -9,6 +9,7 @@ interface Props {
   lat?: number;
   lng?: number;
   onTap?: () => void;
+  onResolved?: (r: { score: number; level: number; label: string; color: string }) => void;
 }
 
 const DOTS = [
