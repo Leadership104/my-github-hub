@@ -595,7 +595,7 @@ export default function AIScreen({
         timestamp: Date.now(),
       }]);
     }).finally(() => setBriefingLoading(false));
-  }, [locationName, countryCode, lat, lng, weather, advisoryScore, btcPrice]);
+  }, [locationName, countryCode, lat, lng, weather, advisoryScore, localSafetyLabel, localSafetyScore, btcPrice]);
 
   const handlePlaceChipTap = useCallback((place: PlaceChip, action?: 'view' | 'navigate') => {
     if (action === 'navigate' && place.mapsUrl) {
