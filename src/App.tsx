@@ -410,6 +410,7 @@ export default function App() {
   }, [selectLocation, showToast]);
 
   const advisoryData = useTravelSafety(countryCode);
+  const [localSafety, setLocalSafety] = useState<{ score: number; level: number; label: string; color: string } | null>(null);
 
 
   // Splash screen
