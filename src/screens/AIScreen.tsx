@@ -577,6 +577,8 @@ export default function AIScreen({
           weather: weather ? `${weather.emoji} ${weather.temp} ${weather.desc}` : undefined,
           forecast: forecast && forecast.length ? forecast.slice(0, 5).map(f => `${f.dayName}: ${f.emoji} ${f.desc}, H ${f.high}° / L ${f.low}°`).join(' | ') : undefined,
           advisoryScore,
+          localSafetyLabel,
+          localSafetyScore,
         },
       },
     }).then(({ data, error }) => {
