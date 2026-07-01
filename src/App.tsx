@@ -1011,6 +1011,7 @@ export default function App() {
         lat={lat}
         lng={lng}
         onTap={() => switchTab('safety')}
+        onResolved={setLocalSafety}
       />
 
       {/* Main Content */}
