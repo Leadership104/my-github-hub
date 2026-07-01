@@ -110,30 +110,43 @@ function parseItineraryBlock(text: string): Array<{ day: number; time: string; t
 
 // ── Live Stats Bar ────────────────────────────────────────────────────────────
 function StatsBar({
-  weather, forecast, advisoryScore, locationName,
+  weather, forecast, advisoryScore, locationName, localSafetyLabel, localSafetyScore,
 }: {
   weather?: { emoji: string; temp: string; desc: string };
   forecast?: import('../hooks').ForecastDay[];
   advisoryScore?: number;
   locationName?: string;
+  localSafetyLabel?: string;
+  localSafetyScore?: number;
 }) {
+  // Prefer the locally-computed safety label (matches the header strip exactly).
+  const labelFromLocal = localSafetyLabel;
+  const colorFromLocal =
+    localSafetyScore == null ? undefined
+    : localSafetyScore >= 75 ? '#22c55e'
+    : localSafetyScore >= 55 ? '#84cc16'
+    : localSafetyScore >= 35 ? '#eab308'
+    : localSafetyScore >= 18 ? '#f97316' : '#ef4444';
+
   const safetyColor =
-    advisoryScore == null   ? '#64748b'
+    colorFromLocal ??
+    (advisoryScore == null   ? '#64748b'
     : advisoryScore <= 1.5  ? '#22c55e'
     : advisoryScore <= 2.5  ? '#84cc16'
     : advisoryScore <= 3.5  ? '#eab308'
-    : advisoryScore <= 4.2  ? '#f97316' : '#ef4444';
+    : advisoryScore <= 4.2  ? '#f97316' : '#ef4444');
   const safetyLabel =
-    advisoryScore == null   ? 'No data'
+    labelFromLocal ??
+    (advisoryScore == null   ? 'No data'
     : advisoryScore <= 1.5  ? 'Very safe'
     : advisoryScore <= 2.5  ? 'Generally safe'
     : advisoryScore <= 3.5  ? 'Stay alert'
-    : advisoryScore <= 4.2  ? 'High risk' : 'Extreme risk';
+    : advisoryScore <= 4.2  ? 'High risk' : 'Extreme risk');
 
   const now = new Date();
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  if (!weather && advisoryScore == null) return null;
+  if (!weather && advisoryScore == null && localSafetyLabel == null) return null;
 
   return (
     <div className="flex gap-2 px-3 py-2 border-b border-border bg-card/60 overflow-x-auto scrollbar-hide flex-shrink-0">
