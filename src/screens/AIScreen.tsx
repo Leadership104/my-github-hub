@@ -60,6 +60,8 @@ interface Props {
   weather?: { emoji: string; temp: string; desc: string };
   forecast?: import('../hooks').ForecastDay[];
   advisoryScore?: number;
+  localSafetyLabel?: string;
+  localSafetyScore?: number;
   trips?: Trip[];
   onCreateTrip?: (dest: string, country: string, days: number) => void;
   onAddBooking?: (tripId: string, booking: Booking) => void;
