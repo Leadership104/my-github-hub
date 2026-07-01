@@ -1059,12 +1059,24 @@ serve(async (req) => {
     let userMessage = message;
 
     if (agenticBriefing && context?.location) {
+      // Prefer the locally-computed safety label (matches the header strip the user sees).
+      // Fall back to the coarser travel-advisory score if no local label is available.
+      const localLabel: string | undefined = context.localSafetyLabel;
+      const localScore: number | undefined = context.localSafetyScore;
+      const localVibe =
+        localLabel === 'Safe'     ? "safe — chill and explore freely"
+        : localLabel === 'Safer'  ? "generally safe — normal city awareness"
+        : localLabel === 'Moderate' ? "moderate risk — stay aware of your surroundings"
+        : localLabel === 'Risky'  ? "elevated risk — real precautions needed, avoid sketchy areas at night"
+        : localLabel === 'Unsafe' ? "high risk — serious caution required, avoid non-essential outings after dark"
+        : null;
       const safetyVibe =
-        context.advisoryScore == null ? "unknown safety data"
+        localVibe ??
+        (context.advisoryScore == null ? "unknown safety data"
         : context.advisoryScore <= 1.5 ? "very safe — chill and explore freely"
         : context.advisoryScore <= 2.5 ? "generally safe — normal city awareness"
         : context.advisoryScore <= 3.5 ? "elevated risk — keep your wits about you"
-        : "high risk — real precautions needed";
+        : "high risk — real precautions needed");
 
       const cc = context.countryCode?.toUpperCase() || "";
       const scams = SCAM_ALERTS[cc]?.slice(0, 1)?.[0] || null;
