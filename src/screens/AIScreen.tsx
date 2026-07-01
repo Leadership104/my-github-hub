@@ -770,7 +770,7 @@ export default function AIScreen({
       )}
 
       {/* Live stats bar */}
-      <StatsBar weather={weather} forecast={forecast} advisoryScore={advisoryScore} locationName={locationName} />
+      <StatsBar weather={weather} forecast={forecast} advisoryScore={advisoryScore} locationName={locationName} localSafetyLabel={localSafetyLabel} localSafetyScore={localSafetyScore} />
 
       {/* Quick actions horizontal scroll */}
       <div data-tour="ai-quick-actions" className="flex gap-2 px-3 py-2.5 overflow-x-auto scrollbar-hide flex-shrink-0 border-b border-border/50">
