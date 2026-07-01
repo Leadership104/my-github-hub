@@ -427,7 +427,7 @@ const QUICK_ACTIONS = [
 // ── Main Screen ───────────────────────────────────────────────────────────────
 export default function AIScreen({
   btcPrice, locationName, countryCode, lat, lng,
-  weather, forecast, advisoryScore, trips,
+  weather, forecast, advisoryScore, localSafetyLabel, localSafetyScore, trips,
   onCreateTrip, onBack, onSwitchTab,
   handoffPrompt, handoffLabel,
   itineraryTripId, onApplyItinerary,
