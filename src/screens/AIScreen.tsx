@@ -562,9 +562,12 @@ export default function AIScreen({
   useEffect(() => {
     if (handoffPrompt) return;
     if (!locationName) return;
-    const key = `${locationName}|${countryCode || ''}`;
+    // Wait for the local safety label to resolve so the briefing matches the header.
+    if (!localSafetyLabel) return;
+    const key = `${locationName}|${countryCode || ''}|${localSafetyLabel}`;
     if (briefingKeyRef.current === key) return;
     briefingKeyRef.current = key;
+
 
     setMessages([{
       id: 'briefing-loading',
