@@ -7,6 +7,7 @@ import { searchDestinations, getDestinationDetails, getRichDestinationDetails, t
 import AIScreen from './AIScreen';
 import GroupsScreen from './GroupsScreen';
 import InAppBrowser from '../components/InAppBrowser';
+import TravelWalletScreen from './TravelWalletScreen';
 
 const BOOKING_TYPE_META: Record<string, { emoji: string; label: string }> = {
   flight: { emoji: '✈️', label: 'Flight' },
@@ -57,6 +58,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   const [dragOverItemId, setDragOverItemId] = useState<string | null>(null);
   const [showInviteForm, setShowInviteForm] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
+  const [showWallet, setShowWallet] = useState(false);
   const [editTripDraft, setEditTripDraft] = useState<null | { dest: string; country: string; emoji: string; start: string; end: string; notes: string }>(null);
 
   // Plan a trip wizard
@@ -519,6 +521,17 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
   /* ── TRIP DETAIL — matches screenshot ── */
   if (selectedTrip) {
     const trip = trips.find(t => t.id === selectedTrip.id) || selectedTrip;
+
+    if (showWallet) {
+      return (
+        <TravelWalletScreen
+          trip={trip}
+          onBack={() => setShowWallet(false)}
+          onOpenSafety={() => onSwitchTab?.('safety')}
+        />
+      );
+    }
+
     const daysUntil = Math.ceil((new Date(trip.start).getTime() - Date.now()) / 86400000);
     const bookings = trip.bookings || [];
     const flightBooking = bookings.find(b => b.type === 'flight');
@@ -539,7 +552,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
 
     const EXPEDIA_AFFILIATE = 'https://expedia.com/affiliate/eA2cKky';
     const HOTELS_AFFILIATE = 'https://www.hotels.com/affiliate/RrZ7bmg';
-    const BOOK_MANAGE_TILES = [
+    const BOOK_MANAGE_TILES: Array<{ emoji: string; label: string; sub: string; url?: string; action?: () => void; active: boolean }> = [
       {
         emoji: '✈️', label: 'Flights',
         sub: flightBooking?.flightNumber || 'Search',
@@ -556,6 +569,12 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
         emoji: '🚢', label: 'Cruises',
         sub: 'Search',
         url: EXPEDIA_AFFILIATE,
+        active: false,
+      },
+      {
+        emoji: '🧳', label: 'Wallet',
+        sub: 'Packing list',
+        action: () => setShowWallet(true),
         active: false,
       },
     ];
@@ -632,7 +651,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-black/30" />
               <button
-                onClick={() => { setSelectedTrip(null); setShowInviteForm(false); }}
+                onClick={() => { setSelectedTrip(null); setShowInviteForm(false); setShowWallet(false); }}
                 className="btn-3d absolute top-4 left-4 w-10 h-10 rounded-full glass-dark flex items-center justify-center text-white z-10"
               >
                 <span className="ms text-xl">arrow_back</span>
@@ -709,7 +728,7 @@ export default function TripsScreen({ trips, onSaveTrips, onBack, onSwitchTab, i
               {BOOK_MANAGE_TILES.map(t => (
                 <button
                   key={t.label}
-                  onClick={() => openInternal(t.url, `${t.label} · ${trip.dest}`)}
+                  onClick={() => t.action ? t.action() : t.url && openInternal(t.url, `${t.label} · ${trip.dest}`)}
                   className="flex flex-col items-center gap-1 p-2 rounded-xl border border-border hover:border-kipita-red/40 hover:shadow-sm transition-all text-center active:scale-95"
                 >
                   <span className="text-xl">{t.emoji}</span>
