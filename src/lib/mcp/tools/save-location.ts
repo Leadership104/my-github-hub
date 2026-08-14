@@ -14,7 +14,7 @@ export default defineTool({
     country_code: z.string().optional().describe("Two-letter country code, e.g. US."),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
-  needsApproval: true,
+  
   handler: async ({ name, lat, lng, full_address, country_code }, ctx) => {
     if (!ctx.isAuthenticated()) {
       return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
