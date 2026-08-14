@@ -7,7 +7,10 @@ import { AuthProvider, useAuth } from './auth/useAuth';
 import AuthScreen from './auth/AuthScreen';
 import OnboardingScreen from './auth/OnboardingScreen';
 import ResetPasswordScreen from './auth/ResetPasswordScreen';
+import OAuthConsentScreen from './auth/OAuthConsentScreen';
 import kipitaSplash from './assets/kipita-splash.jpeg';
+
+const CONSENT_PATH = '/.lovable/oauth/consent';
 
 function AuthGate() {
   const { session, profile, loading } = useAuth();
