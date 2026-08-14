@@ -5,6 +5,17 @@ import kipitaLogo from '@/assets/kipita-icon.png';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
+/**
+ * Where auth should land after sign-in. Preserves the full OAuth consent URL so
+ * MCP clients complete authorization instead of bouncing to the home screen.
+ */
+function postAuthUrl() {
+  if (typeof window === 'undefined') return '/';
+  return window.location.pathname === '/.lovable/oauth/consent'
+    ? window.location.href
+    : `${window.location.origin}/`;
+}
+
 export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
@@ -23,7 +34,7 @@ export default function AuthScreen() {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/`,
+            emailRedirectTo: postAuthUrl(),
             data: { display_name: displayName || email.split('@')[0] },
           },
         });
@@ -56,7 +67,7 @@ export default function AuthScreen() {
     setError(null); setBusy(true);
     try {
       const result = await lovable.auth.signInWithOAuth('google', {
-        redirect_uri: window.location.origin,
+        redirect_uri: postAuthUrl(),
       });
       if (result.error) throw result.error;
       // If redirected, browser is leaving the page; otherwise session is set.
