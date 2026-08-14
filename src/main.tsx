@@ -37,6 +37,8 @@ function AuthGate() {
     return <ResetPasswordScreen />;
   }
 
+  const onConsentPath = typeof window !== 'undefined' && window.location.pathname === CONSENT_PATH;
+
   if (loading) {
     return (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white">
@@ -44,6 +46,9 @@ function AuthGate() {
       </div>
     );
   }
+
+  // MCP / OAuth consent: requires a real session (guest mode is not enough).
+  if (onConsentPath) return session ? <OAuthConsentScreen /> : <AuthScreen />;
 
   if (!session && !guest) return <AuthScreen />;
   if (session && !profile?.onboarded) return <OnboardingScreen />;
