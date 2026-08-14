@@ -1,0 +1,192 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.2",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://jdncnzllpuvixnivpcos.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "my-github-hub",
+      "version": "0.1.0",
+      "title": "My GitHub Hub"
+    },
+    "tools": [
+      {
+        "name": "search_places",
+        "title": "Search places near a location",
+        "description": "Find restaurants, cafes, ATMs, gas stations, hotels, pharmacies and other places near a latitude/longitude. Use `category` for a category sweep (ranked by distance) or `query` for a free-text search.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "description": "Latitude of the search center."
+            },
+            "lng": {
+              "type": "number",
+              "description": "Longitude of the search center."
+            },
+            "category": {
+              "description": "Category keyword such as restaurant, cafe, atm, bank, gas, pharmacy, hotel, museum, park, bar.",
+              "type": "string"
+            },
+            "query": {
+              "description": "Free-text search, e.g. 'French restaurant' or 'vegan brunch'. Takes precedence over category.",
+              "type": "string"
+            },
+            "radius_meters": {
+              "description": "Search radius in meters. Defaults to 3500 for category search, 12000 for text search.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lat",
+            "lng"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "geocode_place",
+        "title": "Geocode a city or address",
+        "description": "Turn a city, address or landmark name into latitude/longitude plus country, so other tools can be called with coordinates.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "description": "City, address or landmark, e.g. 'Albuquerque NM' or 'Echo Beach Bali'."
+            }
+          },
+          "required": [
+            "query"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_weather_forecast",
+        "title": "Get weather forecast",
+        "description": "Current conditions plus a multi-day forecast (high/low, precipitation chance) for a latitude/longitude.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "lat": {
+              "type": "number",
+              "description": "Latitude."
+            },
+            "lng": {
+              "type": "number",
+              "description": "Longitude."
+            },
+            "days": {
+              "description": "Forecast days, 1-7. Defaults to 7.",
+              "type": "number"
+            }
+          },
+          "required": [
+            "lat",
+            "lng"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_saved_locations",
+        "title": "List my saved locations",
+        "description": "List the locations the signed-in user has saved in the app, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "save_location",
+        "title": "Save a location",
+        "description": "Save a location (name, address, coordinates) to the signed-in user's saved locations in the app.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Short label for the location, e.g. 'Home' or 'Le Chene'."
+            },
+            "lat": {
+              "type": "number",
+              "description": "Latitude."
+            },
+            "lng": {
+              "type": "number",
+              "description": "Longitude."
+            },
+            "full_address": {
+              "description": "Full street address, when known.",
+              "type": "string"
+            },
+            "country_code": {
+              "description": "Two-letter country code, e.g. US.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "name",
+            "lat",
+            "lng"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_business_listings",
+        "title": "List my business listings",
+        "description": "List the business listings owned by the signed-in user, including verification status.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
