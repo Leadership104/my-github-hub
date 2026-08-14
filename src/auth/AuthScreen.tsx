@@ -5,6 +5,17 @@ import kipitaLogo from '@/assets/kipita-icon.png';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
+/**
+ * Where auth should land after sign-in. Preserves the full OAuth consent URL so
+ * MCP clients complete authorization instead of bouncing to the home screen.
+ */
+function postAuthUrl() {
+  if (typeof window === 'undefined') return '/';
+  return window.location.pathname === '/.lovable/oauth/consent'
+    ? window.location.href
+    : `${window.location.origin}/`;
+}
+
 export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>('signin');
   const [email, setEmail] = useState('');
