@@ -804,8 +804,9 @@ serve(async (req) => {
   }
 
   try {
-    const auth = await requireUser(req);
-    if (!auth.ok) return auth.res;
+    // Sign-in is optional: guests can use the AI assistant too.
+    // The AI key stays server-side, so no secret is exposed.
+    void requireUser;
 
     const { message, history, context, agenticBriefing } = await req.json();
 
