@@ -173,14 +173,14 @@ async function fetchNearbyPlaces(lat: number, lng: number, type: string, max = 5
 }
 
 function extractSpecificPlaceQueries(message: string): string[] {
-  const m = (message || “”).trim();
+  const m = (message || "").trim();
 
   // Match curly/smart quotes (U+201C/D) and straight double (U+22) — but NOT the straight
-  // single apostrophe (U+27), which fires false positives on contractions like “I’m” / “it’s”.
-  const OPEN_Q  = ‘”“„‘’;
-  const CLOSE_Q = ‘””‟’’;
+  // single apostrophe (U+27), which fires false positives on contractions like "I'm" / "it's".
+  const OPEN_Q  = '\u201C\u201D\u201E\u2018\u2019"';
+  const CLOSE_Q = '\u201C\u201D\u201F\u2018\u2019"';
   const quoted: string[] = [];
-  for (const qm of m.matchAll(new RegExp(`[${OPEN_Q}]([^${CLOSE_Q}]{2,70})[${CLOSE_Q}]`, ‘g’))) {
+  for (const qm of m.matchAll(new RegExp(`[${OPEN_Q}]([^${CLOSE_Q}]{2,70})[${CLOSE_Q}]`, 'g'))) {
     quoted.push(qm[1]);
   }
 
