@@ -1122,7 +1122,7 @@ End with one line: *Ask me anything else about ${context.location}.*`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages,
-        max_tokens: 700,
+        max_tokens: agenticBriefing ? 1000 : 700,
         temperature: 0.7,
       }),
     });
