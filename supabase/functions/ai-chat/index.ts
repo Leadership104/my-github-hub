@@ -217,7 +217,7 @@ function extractSpecificPlaceQueries(message: string): string[] {
   if (bareM) extracted.push(bareM.trim());
 
   return [...quoted, ...extracted]
-    .map((q) => q.replace(/\s+/g, “ “).trim().replace(/[.,;:!?]+$/, “”))
+    .map((q) => q.replace(/\s+/g, " ").trim().replace(/[.,;:!?]+$/, ""))
     .filter((q) => q.length >= 2 && q.length <= 70 && !isGeneric(q))
     .flatMap((q) =>
       /\b(restaurant|ristorante|bar|cafe|café|coffee|hotel|museum|park|bistro|grill|kitchen|eatery|diner|trattoria|pizzeria)\b/i.test(q)
