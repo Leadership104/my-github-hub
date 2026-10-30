@@ -1083,23 +1083,25 @@ serve(async (req) => {
       const emergency = EMERGENCY_NUMBERS[cc];
       const health = HEALTH_NOTES[cc];
 
-      userMessage = `Generate a SHORT "Know Before You Go" briefing for **${context.location}**.
+      userMessage = `Generate a COMPLETE "Know Before You Go" briefing for **${context.location}** — the full rundown a traveler on the go can read once and be ready. Do NOT tease information behind links or tell the user to tap elsewhere for details; give the actual answer in each section.
 
-Use the LIVE TRAVEL CONTEXT data. Be tight — every section 1–2 sentences max. Total ≤ 160 words.
+Use the LIVE TRAVEL CONTEXT data. Each section 2–4 sentences with concrete specifics (names, numbers, times). Total ~300–380 words. Scannable, no fluff.
 
 **📍 ${context.location}**
 
-**🛡️ Safety:** Calibrated take (${safetyVibe}) + ONE specific thing to watch for. End with [Safety details](kipita://tab/safety).
+**🛡️ Safety:** Calibrated take (${safetyVibe}). Name the specific things to watch for here (scams, areas, times of day) and one concrete precaution.
 
-**🌡️ Right now:** Weather + what it means for today's plan in 1 sentence.
+**🌡️ Weather:** Current conditions plus today's high/low and what it means for plans (clothing, timing, indoor vs outdoor).
 
-**🍽️ Eat:** Pick the single best open spot from live restaurants — name it. End with [More food spots](kipita://tab/places?hint=food).
+**🍽️ Eat:** Name the 2–3 best open spots from the live restaurant data with cuisine and why each is worth it.
 
-**✨ Do:** 1 specific thing from live attractions. End with [Open map](kipita://tab/maps).
+**✨ Do:** Name 2–3 specific things from the live attractions data worth doing today.
 
-**🏥 Health:** State live AQI + UV in plain words (e.g., "AQI 42, UV 6 — fine, wear sunscreen"). Tap water: safe / unsafe.${health ? ` ${health}` : ""} Source: [CDC Travelers' Health](https://wwwnc.cdc.gov/travel).${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
+**🏥 Health:** Live AQI + UV in plain words (e.g., "AQI 42, UV 6 — fine, wear sunscreen"). Tap water: safe / unsafe.${health ? ` ${health}` : ""}
 
-*Ask me: "Best neighborhood to stay?" · "Is tap water safe?" · "What scams here?"*`;
+**💵 Money & getting around:** One line each on payment norms (cards vs cash) and the best way to get around this area.${scams ? `\n\n**⚠️ Watch out:** ${scams}` : ""}${emergency ? `\n\n**🆘 Emergency:** Police ${emergency.police} · Ambulance ${emergency.ambulance}` : ""}
+
+End with one line: *Ask me anything else about ${context.location}.*`;
     }
 
     const messages = [
