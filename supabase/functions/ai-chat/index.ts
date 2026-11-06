@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { isBriefingRequest, requestCompleteReply } from "./completion.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -808,7 +809,7 @@ serve(async (req) => {
     // The AI key stays server-side, so no secret is exposed.
     void requireUser;
 
-    const { message, history, context, agenticBriefing } = await req.json();
+    const { message, history, context, agenticBriefing: requestedBriefing } = await req.json();
 
     if (!message || typeof message !== "string") {
       return new Response(JSON.stringify({ error: "Message is required" }), {
@@ -818,6 +819,7 @@ serve(async (req) => {
     }
 
 
+    const agenticBriefing = isBriefingRequest(message, requestedBriefing);
     const apiKey = LOVABLE_API_KEY();
     if (!apiKey) {
       return new Response(JSON.stringify({ error: "AI service not configured" }), {
@@ -1114,7 +1116,7 @@ End with one line: *Ask me anything else about ${context.location}.*`;
       { role: "user", content: userMessage },
     ];
 
-    const response = await fetch(AI_GATEWAY, {
+    const response = await requestCompleteReply((maxTokens) => fetch(AI_GATEWAY, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
@@ -1123,10 +1125,10 @@ End with one line: *Ask me anything else about ${context.location}.*`;
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages,
-        max_tokens: agenticBriefing ? 1800 : 700,
+        max_tokens: maxTokens,
         temperature: 0.7,
       }),
-    });
+    }), agenticBriefing ? 6144 : 4096);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -1178,6 +1180,7 @@ End with one line: *Ask me anything else about ${context.location}.*`;
         const auditPrompt = `You are a strict editor checking a Kipita travel-safety reply for INTERNAL CONTRADICTIONS and misalignment with the official advisory level.
 
 Official advisory score: ${context?.advisoryScore ?? "unknown"} → "${advisoryLabel}"
+Local safety rating: ${context?.localSafetyLabel ?? "unknown"} (${context?.localSafetyScore ?? "unknown"}). When available, this local rating is authoritative and MUST match the reply; the country advisory must not override it.
 Location: ${context?.location || "unknown"}
 
 REPLY TO AUDIT:
@@ -1194,16 +1197,16 @@ CHECKS:
 If the reply is internally consistent and aligned, respond with EXACTLY: OK
 Otherwise, respond with ONLY a corrected version of the reply (same format, same length, same in-app links/CTAs preserved). No preamble. No explanation. Just the rewritten reply.`;
 
-        const auditResp = await fetch(AI_GATEWAY, {
+        const auditResp = await requestCompleteReply((maxTokens) => fetch(AI_GATEWAY, {
           method: "POST",
           headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
           body: JSON.stringify({
             model: "google/gemini-2.5-flash-lite",
             messages: [{ role: "user", content: auditPrompt }],
-            max_tokens: 700,
+            max_tokens: maxTokens,
             temperature: 0.2,
           }),
-        });
+        }), agenticBriefing ? 6144 : 4096);
         if (auditResp.ok) {
           const auditData = await auditResp.json();
           const auditOut = (auditData.choices?.[0]?.message?.content || "").trim();
