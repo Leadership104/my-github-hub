@@ -675,13 +675,16 @@ export default function AIScreen({
       if (typeof lng === 'number') context.lng = lng;
       if (btcPrice) context.btcPrice = btcPrice;
       if (weather) context.weather = `${weather.emoji} ${weather.temp} ${weather.desc}`;
+      if (forecast?.length) context.forecast = forecast.map(f => `${f.dayName}: ${f.emoji} ${f.desc}, H ${f.high}° / L ${f.low}°`).join(' | ');
+      if (localSafetyLabel) context.localSafetyLabel = localSafetyLabel;
+      if (typeof localSafetyScore === 'number') context.localSafetyScore = localSafetyScore;
       if (typeof advisoryScore === 'number') context.advisoryScore = advisoryScore;
       if (trips && trips.length > 0) context.trips = trips;
 
       const history = messages.slice(-10).map(m => ({ role: m.role, text: m.text }));
 
       const { data, error } = await supabase.functions.invoke('ai-chat', {
-        body: { message: text.trim(), history, context },
+        body: { message: text.trim(), history, context, agenticBriefing: text.trim() === QUICK_ACTIONS.find(action => action.label === 'Brief me')?.prompt },
       });
 
       if (error) throw error;
@@ -716,7 +719,7 @@ export default function AIScreen({
     } finally {
       setLoading(false);
     }
-  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, advisoryScore, trips, onSwitchTab, conversationMode, speak]);
+  }, [loading, messages, locationName, countryCode, lat, lng, btcPrice, weather, forecast, localSafetyLabel, localSafetyScore, advisoryScore, trips, onSwitchTab, conversationMode, speak]);
 
   // Keep ref in sync so toggleListening can call sendMessage without circular dep
   sendMessageRef.current = sendMessage;
